@@ -1,90 +1,16 @@
-import {
-  CHANNEL_COUNT,
-  CHANNEL_NEUTRAL_US,
-  defaultShaping,
-  neutralChannels,
-} from '@yonderrc/protocol';
-import type { BindingMode, ChannelBinding, InputSource, Profile } from '@yonderrc/protocol';
+import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/protocol';
+import type { Profile } from '@yonderrc/protocol';
+import { buildProfile } from './templates';
 
-const PROFILES_KEY = 'yonderrc.profiles.v1';
-const ACTIVE_KEY = 'yonderrc.activeProfile.v1';
+const PROFILES_KEY = 'yonderrc.profiles.v2';
+const ACTIVE_KEY = 'yonderrc.activeProfile.v2';
 
-let idCounter = 0;
-function bindingId(): string {
-  return `b${Date.now().toString(36)}${(idCounter++).toString(36)}`;
-}
-
-export function makeBinding(
-  channel: number,
-  source: InputSource,
-  element: string,
-  mode: BindingMode,
-  overrides: Partial<ChannelBinding['shaping']> = {},
-  holdRampSeconds?: number,
-): ChannelBinding {
-  return {
-    id: bindingId(),
-    channel,
-    source,
-    element,
-    mode,
-    holdRampSeconds,
-    shaping: { ...defaultShaping(), ...overrides },
-  };
-}
-
-/** The three profiles the user asked for, plus a gamepad one — all editable. */
+/** Model demo profiles: a car, a plane and a drone, each pre-wired to its type. */
 function seedProfiles(): Profile[] {
   return [
-    {
-      id: 'keyboard',
-      name: 'Keyboard + Buttons',
-      driver: 'sim',
-      throttleChannels: [2],
-      bindings: [
-        makeBinding(0, 'keyboard', 'a|d', 'proportional'),
-        makeBinding(2, 'keyboard', 's|w', 'proportional'),
-        makeBinding(4, 'onscreen', 'btn', 'momentary'),
-        makeBinding(5, 'onscreen', 'btn', 'toggle'),
-      ],
-    },
-    {
-      id: 'gamepad',
-      name: 'Gamepad Sticks',
-      driver: 'sim',
-      throttleChannels: [2],
-      bindings: [
-        makeBinding(0, 'gamepad', 'axis:0', 'proportional'),
-        makeBinding(2, 'gamepad', 'axis:3:inv', 'proportional'),
-        makeBinding(3, 'gamepad', 'axis:2', 'proportional'),
-        makeBinding(4, 'gamepad', 'button:0', 'momentary'),
-        makeBinding(5, 'gamepad', 'button:1', 'toggle'),
-      ],
-    },
-    {
-      id: 'touch',
-      name: 'Touch Joysticks',
-      driver: 'sim',
-      throttleChannels: [2],
-      bindings: [
-        makeBinding(0, 'virtual', 'joy:L:x', 'proportional'),
-        makeBinding(2, 'virtual', 'joy:R:y', 'proportional'),
-        makeBinding(4, 'onscreen', 'btn', 'momentary'),
-        makeBinding(5, 'onscreen', 'btn', 'toggle'),
-      ],
-    },
-    {
-      id: 'holdramp',
-      name: 'Hold-ramp Buttons',
-      driver: 'sim',
-      throttleChannels: [2],
-      bindings: [
-        // Throttle climbs the longer you hold — proportional from a button.
-        makeBinding(2, 'onscreen', 'btn', 'hold-ramp', {}, 0.8),
-        makeBinding(0, 'keyboard', 'a|d', 'proportional'),
-        makeBinding(5, 'onscreen', 'btn', 'toggle'),
-      ],
-    },
+    buildProfile('car', { id: 'demo-car', name: 'Demo Car' }),
+    buildProfile('plane', { id: 'demo-plane', name: 'Demo Plane' }),
+    buildProfile('drone', { id: 'demo-drone', name: 'Demo Drone' }),
   ];
 }
 
@@ -93,7 +19,7 @@ export function loadProfiles(): Profile[] {
     const raw = localStorage.getItem(PROFILES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Profile[];
-      if (Array.isArray(parsed) && parsed.length) return parsed;
+      if (Array.isArray(parsed) && parsed.length && parsed[0].vehicleType) return parsed;
     }
   } catch {
     /* fall through to seed */
@@ -114,7 +40,7 @@ export function saveProfiles(profiles: Profile[]): void {
 export function getActiveId(profiles: Profile[]): string {
   const stored = localStorage.getItem(ACTIVE_KEY);
   if (stored && profiles.some((p) => p.id === stored)) return stored;
-  return profiles[0]?.id ?? 'keyboard';
+  return profiles[0]?.id ?? 'demo-car';
 }
 
 export function setActiveId(id: string): void {
@@ -136,11 +62,17 @@ export function profileFailsafeUs(profile: Profile): number[] {
   return arr;
 }
 
+let cloneCounter = 0;
 export function cloneProfile(p: Profile, name: string): Profile {
   return {
     ...p,
-    id: `p${Date.now().toString(36)}`,
+    id: `p${Date.now().toString(36)}${(cloneCounter++).toString(36)}`,
     name,
-    bindings: p.bindings.map((b) => ({ ...b, id: bindingId(), shaping: { ...b.shaping } })),
+    endpoints: { ...p.endpoints },
+    bindings: p.bindings.map((b) => ({
+      ...b,
+      id: `b${Date.now().toString(36)}${(cloneCounter++).toString(36)}`,
+      shaping: { ...b.shaping },
+    })),
   };
 }

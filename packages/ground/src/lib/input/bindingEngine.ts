@@ -90,11 +90,11 @@ export class BindingEngine {
       return axis === 'y' ? j.y : j.x;
     }
     if (b.source === 'keyboard') {
-      // element "negKey|posKey", ramped with return-to-center.
+      // element "negKey|posKey", ramped; return target depends on the detent.
       const [neg, pos] = b.element.split('|').map(normElementKey);
       const dir = (snap.keys.has(pos) ? 1 : 0) + (snap.keys.has(neg) ? -1 : 0);
-      const cur = this.ramp.get(b.id) ?? 0;
-      const next = rampAxis(cur, dir, dt);
+      const cur = this.ramp.get(b.id) ?? (b.detent === 'low' ? -1 : 0);
+      const next = rampAxis(cur, dir, dt, b.detent ?? 'center');
       this.ramp.set(b.id, next);
       return next;
     }
@@ -129,12 +129,14 @@ export class BindingEngine {
   }
 }
 
-function rampAxis(current: number, dir: number, dt: number): number {
+function rampAxis(current: number, dir: number, dt: number, detent: 'center' | 'low' | 'free' = 'center'): number {
   if (dir === 0) {
+    if (detent === 'free') return current; // ratcheted: stay put
+    const target = detent === 'low' ? -1 : 0;
     const step = CENTER_SPRING_PER_SEC * dt;
-    if (current > 0) return Math.max(0, current - step);
-    if (current < 0) return Math.min(0, current + step);
-    return 0;
+    if (current > target) return Math.max(target, current - step);
+    if (current < target) return Math.min(target, current + step);
+    return target;
   }
   return clamp(current + dir * KEY_RAMP_PER_SEC * dt, -1, 1);
 }

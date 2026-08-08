@@ -805,3 +805,79 @@ body {
   font-size: 14px;
   font-weight: 600;
 }
+
+/* ---- model editor (v1.1) ---- */
+.type-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.new-model {
+  max-width: 110px;
+}
+.field {
+  margin-bottom: 14px;
+}
+.field > .eyebrow {
+  margin-bottom: 8px;
+}
+.radios {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px solid var(--line-bright);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 7px 11px;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+.radio.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.radio input {
+  accent-color: var(--accent);
+}
+.note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+.detent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+.detent-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+.ch-label {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+.ch-mode {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}

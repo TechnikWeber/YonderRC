@@ -17,8 +17,7 @@ function fillGeometry(us: number): { left: number; width: number } {
 function labelsFor(profile: Profile): Record<number, string> {
   const out: Record<number, string> = {};
   for (const b of profile.bindings) {
-    const tag = `${b.source}/${b.mode.replace('proportional', 'prop').replace('momentary', 'mom')}`;
-    out[b.channel] = out[b.channel] ? `${out[b.channel]}+` : tag;
+    out[b.channel] = b.label ?? `${b.source}/${b.mode}`;
   }
   return out;
 }

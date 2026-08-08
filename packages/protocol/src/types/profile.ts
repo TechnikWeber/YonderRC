@@ -1,15 +1,27 @@
 /**
  * Profile & binding schema.
  *
- * A profile stores, per output channel, HOW an input drives it. This is what
- * makes "profile A = sticks, profile B = plain buttons, profile C = hold-for-
- * proportional buttons" fall out of one model instead of being special cases.
- *
- * v0.1 uses a small subset of this (see ground/src/lib/input). The full editor
- * and persistence land in M1 — the shape is defined now so both sides agree.
+ * A profile represents a MODEL (a car, plane, drone, boat …). It stores which
+ * output channel each control drives, the input METHOD used to fly it
+ * (keyboard / gamepad / touch), the global endpoint range, and per-stick detent
+ * (self-centering) behaviour so different transmitter modes can be simulated.
  */
 
+export type VehicleType = 'car' | 'plane' | 'drone' | 'boat';
+export type InputMethod = 'keyboard' | 'gamepad' | 'touch';
 export type InputSource = 'gamepad' | 'keyboard' | 'onscreen' | 'virtual';
+
+/**
+ * Detent = what a stick axis does when released:
+ *  - center : springs back to the middle (neutral)
+ *  - low    : springs to the minimum (e.g. throttle to idle)
+ *  - free   : stays where you left it (ratcheted throttle feel)
+ * Applies to touch and keyboard axes; a physical gamepad centers on its own.
+ */
+export type Detent = 'center' | 'low' | 'free';
+
+/** The four stick axes, mode-2 layout by convention. */
+export type StickAxis = 'leftX' | 'leftY' | 'rightX' | 'rightY';
 
 /**
  * How an input element maps onto a channel value.
@@ -17,7 +29,6 @@ export type InputSource = 'gamepad' | 'keyboard' | 'onscreen' | 'virtual';
  *  - momentary    : channel = high while held, else low (tastend)
  *  - toggle       : each press flips between two positions (schaltend)
  *  - hold-ramp    : held button ramps toward a target, releases back to center
- *                   (the "proportional over hold duration" idea — TODO, M5)
  */
 export type BindingMode = 'proportional' | 'momentary' | 'toggle' | 'hold-ramp';
 
@@ -28,7 +39,7 @@ export interface ChannelShaping {
   expo: number;
   /** Reverse channel direction. */
   reverse: boolean;
-  /** Endpoint (EPA) limits in µs — never exceed the mechanical safe range. */
+  /** Endpoint (EPA) limits in µs for THIS channel (default from profile.endpoints). */
   minUs: number;
   maxUs: number;
   /** Value driven on the vehicle when the link is lost. */
@@ -43,16 +54,33 @@ export interface ChannelBinding {
   /** Identifier of the element on that source (axis index, key code, button id). */
   element: string;
   mode: BindingMode;
+  /** Which logical stick axis this is, if it's a stick axis (for detents/joysticks). */
+  stickAxis?: StickAxis;
+  /** Self-centering behaviour for stick axes (touch + keyboard). */
+  detent?: Detent;
+  /** Human label for the control, e.g. "Throttle", "Aileron". */
+  label?: string;
   /** For hold-ramp: full-travel time in seconds while held (default 0.5). */
   holdRampSeconds?: number;
   shaping: ChannelShaping;
 }
 
+export interface Endpoints {
+  minUs: number;
+  maxUs: number;
+}
+
 export interface Profile {
   id: string;
   name: string;
+  /** The kind of model this profile flies. */
+  vehicleType: VehicleType;
   /** Output path on the vehicle this profile drives. */
   driver: 'sim' | 'pca9685' | 'gpio-pwm' | 'sbus';
+  /** Which input method is active for this model. */
+  inputMethod: InputMethod;
+  /** Global default endpoint range; per-channel shaping may override. */
+  endpoints: Endpoints;
   /** Channels forced safe while disarmed (typically throttle). */
   throttleChannels: number[];
   bindings: ChannelBinding[];

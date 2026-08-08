@@ -1,22 +1,39 @@
 import { useMemo } from 'react';
-import type { Profile } from '@yonderrc/protocol';
+import type { Detent, Profile } from '@yonderrc/protocol';
 import type { InputManager } from '../lib/input/inputManager';
 import type { BindingEngine } from '../lib/input/bindingEngine';
 import { VirtualJoystick } from './VirtualJoystick';
 
-function joyMeta(profile: Profile) {
-  // Group virtual bindings by joystick id and figure out which axes are used.
-  const byJoy = new Map<string, { x: boolean; y: boolean; throttle: boolean }>();
+interface JoyCfg {
+  axisX: boolean;
+  axisY: boolean;
+  detentX: Detent;
+  detentY: Detent;
+  label: string;
+}
+
+function joyConfigs(profile: Profile): Record<'L' | 'R', JoyCfg | null> {
+  const mk = (): JoyCfg => ({ axisX: false, axisY: false, detentX: 'center', detentY: 'center', label: '' });
+  const map: Record<'L' | 'R', JoyCfg | null> = { L: null, R: null };
+  const labels: Record<'L' | 'R', string[]> = { L: [], R: [] };
   for (const b of profile.bindings) {
     if (b.source !== 'virtual') continue;
-    const [, jid, axis] = b.element.split(':');
-    const m = byJoy.get(jid) ?? { x: false, y: false, throttle: false };
-    if (axis === 'y') m.y = true;
-    else m.x = true;
-    if (profile.throttleChannels.includes(b.channel)) m.throttle = true;
-    byJoy.set(jid, m);
+    const [, jid, axis] = b.element.split(':') as ['joy', 'L' | 'R', 'x' | 'y'];
+    const cfg = map[jid] ?? mk();
+    if (axis === 'x') {
+      cfg.axisX = true;
+      cfg.detentX = b.detent ?? 'center';
+    } else {
+      cfg.axisY = true;
+      cfg.detentY = b.detent ?? 'center';
+    }
+    if (b.label) labels[jid].push(b.label);
+    map[jid] = cfg;
   }
-  return byJoy;
+  (['L', 'R'] as const).forEach((k) => {
+    if (map[k]) map[k]!.label = labels[k].join(' / ') || `Stick ${k}`;
+  });
+  return map;
 }
 
 export function ControlPad({
@@ -34,32 +51,42 @@ export function ControlPad({
   onToggleArm: () => void;
   version: number;
 }) {
-  const joys = useMemo(() => joyMeta(profile), [profile]);
+  const joys = useMemo(() => joyConfigs(profile), [profile]);
   const onscreen = profile.bindings.filter((b) => b.source === 'onscreen');
+  const hasJoys = !!(joys.L || joys.R);
+
+  const methodHint =
+    profile.inputMethod === 'keyboard'
+      ? 'Keyboard: W A S D (left stick) · I J K L (right stick) · aux keys G H …'
+      : profile.inputMethod === 'gamepad'
+        ? 'Gamepad: sticks drive the axes, buttons drive aux. Plug in and go.'
+        : 'Touch: drag the sticks. Detents (centering) are set per axis in Setup.';
 
   return (
     <section className="panel">
-      <span className="eyebrow">Controls · {profile.name}</span>
-      <button
-        className={`arm-btn${armed ? ' armed' : ''}`}
-        onClick={onToggleArm}
-        aria-pressed={armed}
-      >
+      <span className="eyebrow">
+        {profile.name} · {profile.vehicleType} · {profile.inputMethod}
+      </span>
+      <button className={`arm-btn${armed ? ' armed' : ''}`} onClick={onToggleArm} aria-pressed={armed}>
         {armed ? 'ARMED — tap to disarm' : 'DISARMED — tap to arm'}
       </button>
 
-      {joys.size > 0 && (
+      {hasJoys && (
         <div className="joy-row" data-version={version}>
-          {[...joys.entries()].map(([jid, m]) => (
-            <VirtualJoystick
-              key={jid}
-              id={jid}
-              label={`Stick ${jid}`}
-              axis={m.x && m.y ? 'xy' : m.y ? 'y' : 'x'}
-              spring={!m.throttle}
-              onChange={(id, x, y) => input.setJoystick(id, x, y)}
-            />
-          ))}
+          {(['L', 'R'] as const).map((k) =>
+            joys[k] ? (
+              <VirtualJoystick
+                key={k}
+                id={k}
+                label={joys[k]!.label}
+                axisX={joys[k]!.axisX}
+                axisY={joys[k]!.axisY}
+                detentX={joys[k]!.detentX}
+                detentY={joys[k]!.detentY}
+                onChange={(jid, x, y) => input.setJoystick(jid, x, y)}
+              />
+            ) : null,
+          )}
         </div>
       )}
 
@@ -67,11 +94,11 @@ export function ControlPad({
         <div className="pad-grid">
           {onscreen.map((b) => {
             const isToggle = b.mode === 'toggle';
-            const active = isToggle ? engine.getToggle(b.id) : input.isPressed(b.id);
+            const activeState = isToggle ? engine.getToggle(b.id) : input.isPressed(b.id);
             return (
               <button
                 key={b.id}
-                className={`padbtn${active ? ' active' : ''}`}
+                className={`padbtn${activeState ? ' active' : ''}`}
                 onPointerDown={(e) => {
                   (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
                   input.setPressed(b.id, true);
@@ -80,11 +107,9 @@ export function ControlPad({
                 onPointerLeave={() => input.setPressed(b.id, false)}
                 onPointerCancel={() => input.setPressed(b.id, false)}
               >
-                <span>
-                  CH{String(b.channel + 1).padStart(2, '0')} · {b.mode}
-                </span>
+                <span>{b.label ?? `CH${b.channel + 1}`}</span>
                 <span className="sub">
-                  {isToggle ? (active ? 'on' : 'off') : 'hold'}
+                  CH{String(b.channel + 1).padStart(2, '0')} · {isToggle ? (activeState ? 'on' : 'off') : b.mode}
                 </span>
               </button>
             );
@@ -92,11 +117,7 @@ export function ControlPad({
         </div>
       )}
 
-      <p className="hint">
-        This profile’s inputs are live. Keyboard/gamepad work anytime; on-screen
-        buttons and sticks appear here when the profile uses them. Edit mappings in
-        Setup.
-      </p>
+      <p className="hint">{methodHint}</p>
     </section>
   );
 }

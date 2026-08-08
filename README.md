@@ -4,10 +4,17 @@ Fernsteuerung jenseits der Sichtweite über IP. Eine App für Video, Steuerung u
 Konfiguration — Windows, Linux und Browser (inkl. Smartphone). Steuere Autos,
 Boote, Flugzeuge oder Drohnen über LTE mit niedriger Latenz.
 
-**v1.0.0 — Software komplett, Simulationsmodus.** Alle geplanten Funktionen sind
+**v1.1.0 — Modell-Profile & vollwertiger Touch-Joystick.** Alle geplanten Funktionen sind
 da und im Sim lauffähig; keine Hardware nötig. Die Hardware-Meilensteine (Video,
 Treiber, LTE) warten nur noch aufs reale Gegentesten. Der komplette Steuerpfad
 läuft auf einem PC (oder Handy im selben Netz), die 16 Kanäle reagieren live.
+
+**Neu in v1.1:** Profile sind jetzt **Modelle** (Auto/Flugzeug/Drohne/Boot) mit
+passenden Demo-Kanälen. Innerhalb eines Modells wählst du die **Eingabemethode**
+(Keyboard / Gamepad / Touch); für die Sticks lässt sich das **Einrasten** pro
+Achse einstellen (Mitte / Minimum / frei), um Sender-Modi zu simulieren. Dazu ein
+vollwertiger **Touch-Joystick** (Multitouch, Deadzone, Federrücklauf) und global
+sowie pro Kanal einstellbare **Endpunkte (µs)**.
 
 ## Was heute funktioniert
 
@@ -169,7 +176,7 @@ bleibt dabei disarmed und hält alle anderen Kanäle sicher.
 ### TODO-Parkplatz (für später vereinbart)
 
 - ~~Proportional-über-Haltedauer-Buttons~~ ✓ (hold-ramp-Modus seit M1)
-- Vollwertiger virtueller Joystick (Multitouch, Deadzone, Federrücklauf, Skalierung).
+- ~~Vollwertiger virtueller Joystick (Multitouch, Deadzone, Federrücklauf, Skalierung).~~ ✓ (v1.1)
 - Gamepad-Lern-/Kalibrier-UI („beweg jetzt den Gas-Stick") für beliebige Controller.
 - WebHID für exotische Controller.
 - Telemetrie-Rückkanal + OSD-Spannung (braucht Sensor); Protokoll reserviert ihn.

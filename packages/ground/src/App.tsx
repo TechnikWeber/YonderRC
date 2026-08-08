@@ -23,6 +23,7 @@ import { ChannelMonitor } from './components/ChannelMonitor';
 import { BindingEditor } from './components/BindingEditor';
 import { VideoPanel } from './components/VideoPanel';
 import { CalibrationPanel } from './components/CalibrationPanel';
+import { buildProfile, vehicleTypes } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -151,12 +152,22 @@ export function App() {
       return updated;
     });
   };
+  const newFromTemplate = (type: string) => {
+    if (!type) return;
+    const p = buildProfile(type as ReturnType<typeof vehicleTypes>[number]);
+    setProfiles((list) => {
+      const updated = [...list, p];
+      saveProfiles(updated);
+      return updated;
+    });
+    selectProfile(p.id);
+  };
 
   return (
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.0</span>
+        <span className="ver">ground · v1.1</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -172,10 +183,16 @@ export function App() {
       />
 
       <div className="profile-bar">
-        <span className="eyebrow">Profile</span>
+        <span className="eyebrow">Model</span>
         <select value={active.id} onChange={(e) => selectProfile(e.target.value)}>
           {profiles.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
+            <option key={p.id} value={p.id}>{p.name} · {p.vehicleType}</option>
+          ))}
+        </select>
+        <select className="new-model" value="" onChange={(e) => newFromTemplate(e.target.value)} aria-label="New model from template">
+          <option value="">+ New…</option>
+          {vehicleTypes().map((t) => (
+            <option key={t} value={t}>{t}</option>
           ))}
         </select>
       </div>
@@ -195,7 +212,6 @@ export function App() {
         <>
           <BindingEditor
             profile={active}
-            input={input}
             onChange={updateProfile}
             onRename={(name) => updateProfile({ ...active, name })}
             onDelete={deleteActive}
@@ -205,7 +221,7 @@ export function App() {
             profile={active}
             calibration={status?.calibration}
             connected={connected}
-            onStart={(ch) => linkRef.current?.sendCalib('start', ch)}
+            onStart={(ch) => linkRef.current?.sendCalib('start', ch, active.endpoints.minUs, active.endpoints.maxUs)}
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
