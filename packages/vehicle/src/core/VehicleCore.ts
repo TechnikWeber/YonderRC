@@ -102,6 +102,19 @@ export class VehicleCore {
     this.armed = armed;
   }
 
+  /**
+   * Reset the accepted-sequence tracking. Called when a NEW ground connects (page
+   * reload, reconnect), whose seq counter restarts at 0. Without this the vehicle
+   * would treat every fresh frame as "older" than the last session's high seq and
+   * drop them all — freezing channels, tripping failsafe and making round-trip
+   * climb forever.
+   */
+  resetControlLink(): void {
+    this.lastSeq = -1;
+    this.lastFrameAt = 0;
+    this.lastClientT = 0;
+  }
+
   // --- ESC calibration control (from the ground) ---
   startCalibration(channel: number, minUs?: number, maxUs?: number): void {
     this.armed = false; // never armed during calibration

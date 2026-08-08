@@ -35,6 +35,9 @@ export function startWsServer(core: VehicleCore, config: VehicleConfig, system: 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const who = req.socket.remoteAddress ?? 'unknown';
     console.log(`[link] ground connected from ${who}`);
+    // Fresh ground session: its seq restarts at 0, so forget the old high-water
+    // mark or every new frame would be dropped as "stale".
+    core.resetControlLink();
 
     const sendSignal = (msg: RtcSignalMessage) => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));

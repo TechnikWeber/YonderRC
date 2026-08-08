@@ -118,7 +118,12 @@ export function App() {
 
   const monitorChannels = connected && status ? status.channels : previewChannels;
   const latencyMs =
-    connected && status && status.lastClientT > 0 && status.lastFrameAgeMs >= 0
+    connected &&
+    status &&
+    !failsafe &&
+    status.lastClientT > 0 &&
+    status.lastFrameAgeMs >= 0 &&
+    status.lastFrameAgeMs < 500
       ? Math.max(0, Date.now() - status.lastClientT)
       : null;
 
@@ -167,7 +172,7 @@ export function App() {
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.1.1</span>
+        <span className="ver">ground · v1.1.2</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
