@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Detent, Profile } from '@yonderrc/protocol';
 import type { InputManager } from '../lib/input/inputManager';
 import type { BindingEngine } from '../lib/input/bindingEngine';
@@ -42,6 +42,8 @@ export function ControlPad({
   engine,
   armed,
   onToggleArm,
+  connected,
+  calibrationActive,
   version,
 }: {
   profile: Profile;
@@ -49,11 +51,25 @@ export function ControlPad({
   engine: BindingEngine;
   armed: boolean;
   onToggleArm: () => void;
+  connected: boolean;
+  calibrationActive: boolean;
   version: number;
 }) {
   const joys = useMemo(() => joyConfigs(profile), [profile]);
   const onscreen = profile.bindings.filter((b) => b.source === 'onscreen');
   const hasJoys = !!(joys.L || joys.R);
+  // Stable identity so the joystick's effect doesn't churn (which used to cancel
+  // the spring animation mid-flight).
+  const handleJoy = useCallback((jid: string, x: number, y: number) => input.setJoystick(jid, x, y), [input]);
+
+  const armDisabled = !connected || calibrationActive;
+  const armLabel = !connected
+    ? 'Connect the vehicle to arm'
+    : calibrationActive
+      ? 'ESC calibration active — cancel it to arm'
+      : armed
+        ? 'ARMED — tap to disarm'
+        : 'DISARMED — tap to arm';
 
   const methodHint =
     profile.inputMethod === 'keyboard'
@@ -67,8 +83,13 @@ export function ControlPad({
       <span className="eyebrow">
         {profile.name} · {profile.vehicleType} · {profile.inputMethod}
       </span>
-      <button className={`arm-btn${armed ? ' armed' : ''}`} onClick={onToggleArm} aria-pressed={armed}>
-        {armed ? 'ARMED — tap to disarm' : 'DISARMED — tap to arm'}
+      <button
+        className={`arm-btn${armed ? ' armed' : ''}`}
+        onClick={onToggleArm}
+        disabled={armDisabled}
+        aria-pressed={armed}
+      >
+        {armLabel}
       </button>
 
       {hasJoys && (
@@ -83,7 +104,7 @@ export function ControlPad({
                 axisY={joys[k]!.axisY}
                 detentX={joys[k]!.detentX}
                 detentY={joys[k]!.detentY}
-                onChange={(jid, x, y) => input.setJoystick(jid, x, y)}
+                onChange={handleJoy}
               />
             ) : null,
           )}

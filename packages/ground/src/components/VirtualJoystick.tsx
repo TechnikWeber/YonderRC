@@ -122,9 +122,14 @@ export function VirtualJoystick({
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
-      if (raf.current) cancelAnimationFrame(raf.current);
     };
   }, [fromEvent, springReturn]);
+
+  // Cancel any in-flight spring animation only when the component unmounts,
+  // never on a routine re-render (that used to kill the spring mid-flight).
+  useEffect(() => () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+  }, []);
 
   return (
     <div className="joy-wrap">

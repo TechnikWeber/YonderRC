@@ -881,3 +881,11 @@ body {
   color: var(--muted);
   margin-left: auto;
 }
+
+.arm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--line-bright);
+  color: var(--muted);
+  background: var(--panel-2);
+}
