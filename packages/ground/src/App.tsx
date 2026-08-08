@@ -117,15 +117,30 @@ export function App() {
   }, [failsafe, input]);
 
   const monitorChannels = connected && status ? status.channels : previewChannels;
-  const latencyMs =
-    connected &&
-    status &&
-    !failsafe &&
-    status.lastClientT > 0 &&
-    status.lastFrameAgeMs >= 0 &&
-    status.lastFrameAgeMs < 500
-      ? Math.max(0, Date.now() - status.lastClientT)
-      : null;
+
+  // Round-trip time: raw samples jitter with the status phase (~0–70 ms). Smooth
+  // them with an exponential moving average and refresh the shown number slowly,
+  // the way games display a stable ping.
+  const rttEma = useRef<number | null>(null);
+  const [rttDisplay, setRttDisplay] = useState<number | null>(null);
+  useEffect(() => {
+    const fresh =
+      connected && status && !failsafe && status.lastClientT > 0 &&
+      status.lastFrameAgeMs >= 0 && status.lastFrameAgeMs < 500;
+    if (fresh) {
+      const sample = Math.max(0, Date.now() - status!.lastClientT);
+      const prev = rttEma.current;
+      rttEma.current = prev == null ? sample : prev + 0.1 * (sample - prev);
+    } else {
+      rttEma.current = null;
+    }
+  }, [status, connected, failsafe]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRttDisplay(rttEma.current == null ? null : Math.round(rttEma.current));
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
 
   // --- profile management ---
   const updateProfile = (next: Profile) => {
@@ -172,7 +187,7 @@ export function App() {
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.1.3</span>
+        <span className="ver">ground · v1.1.4</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -208,7 +223,7 @@ export function App() {
         driver={welcome?.driver ?? ''}
         armed={armed}
         failsafe={failsafe}
-        latencyMs={latencyMs}
+        latencyMs={rttDisplay}
         gamepad={gamepad}
         gamepadKind={input.gamepadKind}
       />
@@ -245,7 +260,7 @@ export function App() {
             controlPath={controlPath}
             armed={armed}
             failsafe={failsafe}
-            latencyMs={latencyMs}
+            latencyMs={rttDisplay}
             channels={monitorChannels}
             profile={active}
           />
@@ -271,7 +286,7 @@ export function App() {
               calibrationActive={status?.calibration?.active ?? false}
               version={tick}
             />
-            <ChannelMonitor channels={monitorChannels} failsafe={failsafe} profile={active} />
+            <ChannelMonitor channels={monitorChannels} failsafe={failsafe} profile={active} armed={armed} />
           </div>
         </>
       )}

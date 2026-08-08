@@ -26,12 +26,15 @@ export function ChannelMonitor({
   channels,
   failsafe,
   profile,
+  armed,
 }: {
   channels: number[];
   failsafe: boolean;
   profile: Profile;
+  armed: boolean;
 }) {
   const labels = labelsFor(profile);
+  const throttleSet = new Set(profile.throttleChannels);
   return (
     <section className={`panel monitor${failsafe ? ' failsafe' : ''}`}>
       <div className="mon-head">
@@ -42,10 +45,12 @@ export function ChannelMonitor({
         const us = channels[i] ?? CHANNEL_NEUTRAL_US;
         const { left, width } = fillGeometry(us);
         const label = labels[i];
+        const heldSafe = !armed && !failsafe && throttleSet.has(i);
         return (
           <div className="chan" key={i}>
             <span className={`name${label ? ' bound' : ''}`}>
               {String(i + 1).padStart(2, '0')} {label ?? '—'}
+              {heldSafe && <span className="safe-tag">disarm</span>}
             </span>
             <div className="track">
               <div className="center" />

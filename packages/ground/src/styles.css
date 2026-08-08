@@ -889,3 +889,16 @@ body {
   color: var(--muted);
   background: var(--panel-2);
 }
+
+.safe-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--idle);
+  border: 1px solid var(--idle);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
