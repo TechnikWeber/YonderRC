@@ -84,7 +84,7 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
       { channel: 4, label: 'Lights', mode: 'toggle' },
       { channel: 5, label: 'Horn', mode: 'momentary' },
     ],
-    defaultDetents: { ...CENTER, rightY: 'low' },
+    defaultDetents: { ...CENTER, rightY: 'free' },
     defaultInputMethod: 'keyboard',
   },
   plane: {
@@ -101,8 +101,8 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
       { channel: 4, label: 'Flaps', mode: 'toggle' },
       { channel: 5, label: 'Gear', mode: 'toggle' },
     ],
-    // Throttle (left Y) holds at idle; control surfaces center.
-    defaultDetents: { ...CENTER, leftY: 'low' },
+    // Throttle (left Y) stays where set (ratcheted); control surfaces center.
+    defaultDetents: { ...CENTER, leftY: 'free' },
     defaultInputMethod: 'touch',
   },
   drone: {

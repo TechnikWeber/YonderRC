@@ -29,8 +29,12 @@ export function VirtualJoystick({
   onChange: (id: string, x: number, y: number) => void;
 }) {
   const baseRef = useRef<HTMLDivElement>(null);
-  const [knob, setKnob] = useState({ x: 0, y: detentY === 'low' ? -1 : 0 });
-  const value = useRef({ x: 0, y: detentY === 'low' ? -1 : 0 });
+  // Resting position: center axes rest at 0; low/free axes rest at minimum
+  // (idle) — so a throttle loads safely at the bottom.
+  const initX = detentX === 'center' ? 0 : -1;
+  const initY = detentY === 'center' ? 0 : -1;
+  const [knob, setKnob] = useState({ x: initX, y: initY });
+  const value = useRef({ x: initX, y: initY });
   const active = useRef(false);
   const pointerId = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
@@ -129,6 +133,13 @@ export function VirtualJoystick({
   // never on a routine re-render (that used to kill the spring mid-flight).
   useEffect(() => () => {
     if (raf.current) cancelAnimationFrame(raf.current);
+  }, []);
+
+  // Publish the resting value once on mount so the channel is correct before the
+  // first touch (e.g. a free/low throttle sits at idle, not center).
+  useEffect(() => {
+    onChange(id, initX, initY);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

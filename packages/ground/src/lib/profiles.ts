@@ -2,8 +2,8 @@ import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/pr
 import type { Profile } from '@yonderrc/protocol';
 import { buildProfile } from './templates';
 
-const PROFILES_KEY = 'yonderrc.profiles.v2';
-const ACTIVE_KEY = 'yonderrc.activeProfile.v2';
+const PROFILES_KEY = 'yonderrc.profiles.v3';
+const ACTIVE_KEY = 'yonderrc.activeProfile.v3';
 
 /** Model demo profiles: a car, a plane and a drone, each pre-wired to its type. */
 function seedProfiles(): Profile[] {
