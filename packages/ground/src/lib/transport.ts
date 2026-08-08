@@ -1,0 +1,198 @@
+import {
+  PROTOCOL_VERSION,
+  type ClientMessage,
+  type RtcSignalMessage,
+  type ServerMessage,
+  type StatusMessage,
+  type WelcomeMessage,
+} from '@yonderrc/protocol';
+
+export type LinkState = 'disconnected' | 'connecting' | 'connected';
+export type ControlPath = 'ws' | 'webrtc';
+
+export interface LinkCallbacks {
+  onState?: (state: LinkState) => void;
+  onWelcome?: (msg: WelcomeMessage) => void;
+  onStatus?: (msg: StatusMessage) => void;
+  onControlPath?: (path: ControlPath) => void;
+}
+
+const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+/**
+ * Control link. Always connects a WebSocket first — it carries the handshake,
+ * status stream, and WebRTC signaling, and is the control fallback. If WebRTC is
+ * preferred, it negotiates a data channel over that signaling; once open, control
+ * frames travel over the data channel (low-latency, NAT-friendly) instead of WS.
+ */
+export class LinkClient {
+  private ws: WebSocket | null = null;
+  private url = '';
+  private seq = 0;
+  private wantConnected = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private cbs: LinkCallbacks;
+
+  private preferWebRtc = false;
+  private pc: RTCPeerConnection | null = null;
+  private dc: RTCDataChannel | null = null;
+
+  constructor(cbs: LinkCallbacks = {}) {
+    this.cbs = cbs;
+  }
+
+  connect(url: string): void {
+    this.url = url;
+    this.wantConnected = true;
+    this.open();
+  }
+
+  disconnect(): void {
+    this.wantConnected = false;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    this.teardownRtc();
+    this.ws?.close();
+    this.ws = null;
+    this.cbs.onState?.('disconnected');
+  }
+
+  setPreferWebRtc(v: boolean): void {
+    this.preferWebRtc = v;
+    if (v && this.ws?.readyState === WebSocket.OPEN && !this.pc) this.upgradeToWebRtc();
+    if (!v) {
+      this.teardownRtc();
+      this.cbs.onControlPath?.('ws');
+    }
+  }
+
+  private open(): void {
+    this.cbs.onState?.('connecting');
+    try {
+      this.ws = new WebSocket(this.url);
+    } catch {
+      this.scheduleReconnect();
+      return;
+    }
+
+    this.ws.onopen = () => {
+      this.cbs.onState?.('connected');
+      this.send({ type: 'hello', clientName: 'ground-web', protocol: PROTOCOL_VERSION });
+    };
+
+    this.ws.onmessage = (ev) => {
+      let msg: ServerMessage;
+      try {
+        msg = JSON.parse(ev.data as string) as ServerMessage;
+      } catch {
+        return;
+      }
+      if (msg.type === 'welcome') {
+        this.cbs.onWelcome?.(msg);
+        if (this.preferWebRtc && !this.pc) this.upgradeToWebRtc();
+      } else if (msg.type === 'status') {
+        this.cbs.onStatus?.(msg);
+      } else if (msg.type === 'rtc') {
+        void this.onSignal(msg);
+      }
+    };
+
+    this.ws.onclose = () => {
+      this.teardownRtc();
+      this.cbs.onState?.('disconnected');
+      this.cbs.onControlPath?.('ws');
+      this.scheduleReconnect();
+    };
+    this.ws.onerror = () => {};
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.wantConnected || this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (this.wantConnected) this.open();
+    }, 1000);
+  }
+
+  // --- WebRTC control upgrade (ground = offerer) ---
+  private async upgradeToWebRtc(): Promise<void> {
+    try {
+      this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      this.dc = this.pc.createDataChannel('control', { ordered: false, maxRetransmits: 0 });
+      this.dc.onopen = () => this.cbs.onControlPath?.('webrtc');
+      this.dc.onclose = () => this.cbs.onControlPath?.('ws');
+      this.pc.onicecandidate = (e) => {
+        if (e.candidate) this.sendSignal({ type: 'rtc', sub: 'ice', payload: e.candidate });
+      };
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
+      this.sendSignal({ type: 'rtc', sub: 'offer', payload: this.pc.localDescription });
+    } catch (err) {
+      console.warn('[link] webrtc upgrade failed, staying on ws:', err);
+      this.teardownRtc();
+    }
+  }
+
+  private async onSignal(msg: RtcSignalMessage): Promise<void> {
+    if (!this.pc) return;
+    try {
+      if (msg.sub === 'answer') {
+        await this.pc.setRemoteDescription(msg.payload as RTCSessionDescriptionInit);
+      } else if (msg.sub === 'ice') {
+        await this.pc.addIceCandidate(msg.payload as RTCIceCandidateInit);
+      }
+    } catch (err) {
+      console.warn('[link] signaling error:', err);
+    }
+  }
+
+  private teardownRtc(): void {
+    try {
+      this.dc?.close();
+      this.pc?.close();
+    } catch {
+      /* ignore */
+    }
+    this.dc = null;
+    this.pc = null;
+  }
+
+  private sendSignal(msg: RtcSignalMessage): void {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+  }
+
+  private send(msg: ClientMessage): void {
+    // Prefer the data channel for control payload when it's open.
+    if (this.dc && this.dc.readyState === 'open') {
+      this.dc.send(JSON.stringify(msg));
+      return;
+    }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  sendControl(channels: number[]): void {
+    this.send({ type: 'control', seq: this.seq++, t: Date.now(), channels });
+  }
+  sendArm(armed: boolean): void {
+    this.send({ type: 'arm', armed });
+  }
+  sendConfig(failsafeUs: number[], throttleChannels: number[]): void {
+    // Config always goes over WS (reliable) regardless of control path.
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'config', failsafeUs, throttleChannels }));
+    }
+  }
+
+  /** ESC calibration control (reliable, over WS). */
+  sendCalib(action: 'start' | 'next' | 'cancel', channel?: number, minUs?: number, maxUs?: number): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'calib', action, channel, minUs, maxUs }));
+    }
+  }
+
+  get isOpen(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+}

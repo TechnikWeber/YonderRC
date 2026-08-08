@@ -1,0 +1,33 @@
+# go2rtc configuration for YonderRC.
+#
+# go2rtc captures the camera, hardware-encodes H.264 and publishes it over WebRTC
+# with sub-second latency. The ground app plays it via WHEP (/api/whep?src=NAME).
+# Each entry under `streams` is one selectable camera in the app's switcher.
+
+api:
+  listen: ":1984" # WHEP + web UI: http://<vehicle>:1984
+
+webrtc:
+  listen: ":8555" # WebRTC media (UDP+TCP)
+  candidates:
+    - stun:8555 # discover the public address for LTE; add a TURN server for CGNAT
+
+streams:
+  # --- SIM: synthetic test pattern, no camera needed ---------------------------
+  # Lets you validate the whole video path on a PC with no hardware.
+  test:
+    - "ffmpeg:device?video=testsrc#video=h264#hardware"
+
+  # --- Raspberry Pi camera (libcamera) — enable on real hardware ---------------
+  # rpicam:
+  #   - "exec:libcamera-vid -t 0 --inline --nopreview --codec h264
+  #      --width 1280 --height 720 --framerate 30 --intra 30 -o - > {output}"
+
+  # --- USB camera (V4L2), hardware path if the cam outputs H.264 ---------------
+  # usb0:
+  #   - "ffmpeg:/dev/video0#video=h264#hardware"
+
+# Tuning notes for lowest latency later:
+#  - keep GOP short (intra ~= framerate) so new viewers sync fast
+#  - prefer the camera's own H.264 if it has it (no re-encode)
+#  - on Pi 4 / Pi Zero 2 W use the hardware H.264 encoder; the Pi 5 lacks one

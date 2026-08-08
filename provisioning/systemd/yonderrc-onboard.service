@@ -1,0 +1,12 @@
+[Unit]
+Description=YonderRC onboarding — WiFi hotspot fallback when isolated
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/yonderrc/provisioning/onboard.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

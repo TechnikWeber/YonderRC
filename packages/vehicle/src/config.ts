@@ -1,0 +1,123 @@
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
+import type { DriverKind, DriverOptions } from './drivers/index.js';
+import type { SystemKind } from './system/index.js';
+
+/**
+ * Config is env-defaulted and file-persisted. The on-Pi setup UI writes a small
+ * JSON file of "persistent" fields; loadConfig() layers that over the env
+ * defaults so the appliance keeps its settings across reboots. Env still wins for
+ * host/port/system so docker + dev stay predictable.
+ */
+export interface VehicleConfig {
+  vehicleName: string;
+  host: string;
+  port: number;
+  driver: DriverKind;
+  watchdogTimeoutMs: number;
+  /** Channels treated as throttle: forced safe while disarmed. */
+  throttleChannels: number[];
+  /** Throttle SimDriver terminal logging (ms); 0 disables. */
+  simLogEveryMs: number;
+  /** Base URL of the go2rtc video server, or null for pure sim without video. */
+  videoBaseUrl: string | null;
+  /** Available camera stream names for switching. */
+  cameras: string[];
+  /** Hardware-driver-specific options (I2C, GPIO pins, serial path). */
+  driverOptions: DriverOptions;
+  /** 'sim' (default) or 'real' networking (Pi). */
+  systemKind: SystemKind;
+  /** LTE APN to auto-connect at boot, if set. */
+  apn: string | null;
+  /** Where the persistent config file lives. */
+  configPath: string;
+}
+
+/** The subset the setup UI can edit and persist. */
+export interface PersistentConfig {
+  vehicleName?: string;
+  driver?: DriverKind;
+  watchdogTimeoutMs?: number;
+  throttleChannels?: number[];
+  cameras?: string[];
+  videoBaseUrl?: string | null;
+  apn?: string | null;
+}
+
+function num(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function publicHost(): string {
+  return process.env.YRC_PUBLIC_HOST ?? 'localhost';
+}
+
+export function loadPersisted(path: string): PersistentConfig {
+  try {
+    if (existsSync(path)) return JSON.parse(readFileSync(path, 'utf8')) as PersistentConfig;
+  } catch {
+    /* corrupt or unreadable — ignore, fall back to defaults */
+  }
+  return {};
+}
+
+export function savePersisted(path: string, patch: PersistentConfig): PersistentConfig {
+  const merged = { ...loadPersisted(path), ...patch };
+  writeFileSync(path, JSON.stringify(merged, null, 2));
+  return merged;
+}
+
+export function loadConfig(): VehicleConfig {
+  const configPath = process.env.YRC_CONFIG ?? 'yonderrc-config.json';
+  const p = loadPersisted(configPath);
+
+  const envDriver = process.env.YRC_DRIVER as DriverKind | undefined;
+  const envCameras = process.env.YRC_CAMERAS
+    ? process.env.YRC_CAMERAS.split(',').map((s) => s.trim()).filter(Boolean)
+    : undefined;
+
+  return {
+    // Persistent fields: file overrides env-default.
+    vehicleName: p.vehicleName ?? process.env.YRC_NAME ?? 'YonderRC-Sim',
+    driver: p.driver ?? envDriver ?? 'sim',
+    watchdogTimeoutMs: p.watchdogTimeoutMs ?? num('YRC_WATCHDOG_MS', WATCHDOG_TIMEOUT_MS),
+    throttleChannels:
+      p.throttleChannels ??
+      (process.env.YRC_THROTTLE_CH ?? '2')
+        .split(',')
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n)),
+    cameras: p.cameras ?? envCameras ?? ['test'],
+    videoBaseUrl:
+      p.videoBaseUrl !== undefined
+        ? p.videoBaseUrl
+        : process.env.YRC_VIDEO_URL === ''
+          ? null
+          : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:1984`,
+    apn: p.apn ?? process.env.YRC_APN ?? null,
+
+    // Env-only fields.
+    host: process.env.YRC_HOST ?? '0.0.0.0',
+    port: num('YRC_PORT', 8080),
+    simLogEveryMs: num('YRC_SIM_LOG_MS', 0),
+    systemKind: (process.env.YRC_SYSTEM as SystemKind) ?? 'sim',
+    configPath,
+    driverOptions: {
+      pca9685: {
+        bus: num('YRC_I2C_BUS', 1),
+        address: process.env.YRC_I2C_ADDR ? Number(process.env.YRC_I2C_ADDR) : 0x40,
+        freqHz: num('YRC_PWM_FREQ', 50),
+      },
+      gpioPwm: process.env.YRC_GPIO_PINS
+        ? { pins: process.env.YRC_GPIO_PINS.split(',').map((s) => Number(s.trim())) }
+        : {},
+      sbus: {
+        path: process.env.YRC_SBUS_PATH ?? '/dev/ttyAMA0',
+        frameIntervalMs: num('YRC_SBUS_INTERVAL_MS', 7),
+      },
+    },
+  };
+}

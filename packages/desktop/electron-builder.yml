@@ -1,0 +1,20 @@
+appId: com.yonderrc.desktop
+productName: YonderRC
+directories:
+  output: release
+files:
+  - dist/**
+  - renderer/**
+  - package.json
+# @kmamal/sdl ships native binaries; keep it unpacked so it loads at runtime.
+asarUnpack:
+  - node_modules/@kmamal/**
+win:
+  target:
+    - nsis
+    - portable
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility

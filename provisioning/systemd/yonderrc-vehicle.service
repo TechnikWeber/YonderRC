@@ -1,0 +1,21 @@
+[Unit]
+Description=YonderRC vehicle service
+After=network.target go2rtc.service
+Wants=go2rtc.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/yonderrc
+# Real networking on the Pi; change YRC_DRIVER to pca9685 | gpio-pwm | sbus.
+Environment=YRC_SYSTEM=real
+Environment=YRC_DRIVER=sim
+Environment=YRC_PORT=8080
+Environment=YRC_CONFIG=/opt/yonderrc/yonderrc-config.json
+ExecStart=/usr/bin/npm run start -w @yonderrc/vehicle
+Restart=always
+RestartSec=2
+# pigpio needs root for DMA PWM; drop to a hardware-group user for I2C/SBUS only.
+User=root
+
+[Install]
+WantedBy=multi-user.target

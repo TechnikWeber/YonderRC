@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>YonderRC — Setup</title>
+    <style>
+      :root {
+        --bg: #0b0f14; --panel: #121821; --panel-2: #0f141b; --line: #1e2833;
+        --line-b: #2b3947; --text: #c7d1dc; --muted: #6b7986; --accent: #35d0c3;
+        --go: #46d17f; --idle: #f2b74a; --bad: #ff5d5d;
+        --mono: ui-monospace, Menlo, Consolas, monospace;
+        --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+      .wrap { max-width: 640px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      h1 { font-size: 20px; margin: 4px 0; }
+      .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+      .row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 14px; }
+      .row .k { color: var(--muted); }
+      .row .v { font-family: var(--mono); text-align: right; }
+      .v.go { color: var(--go); } .v.bad { color: var(--bad); } .v.warn { color: var(--idle); }
+      label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+      input, select {
+        background: var(--panel-2); border: 1px solid var(--line-b); color: var(--text);
+        font-family: var(--mono); font-size: 14px; padding: 10px 12px; border-radius: 8px;
+      }
+      input:focus, select:focus { outline: 2px solid var(--accent); }
+      .btn {
+        appearance: none; border: 1px solid var(--line-b); background: var(--panel-2); color: var(--text);
+        font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 8px; cursor: pointer;
+      }
+      .btn.primary { border-color: var(--accent); color: var(--accent); }
+      .btn.bad { border-color: var(--bad); color: var(--bad); }
+      .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+      .msg { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 18px; }
+      .msg a { color: var(--accent); word-break: break-all; }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>YonderRC · Setup</h1>
+
+      <section class="panel">
+        <div class="eyebrow">System status</div>
+        <div id="status"><div class="row"><span class="k">loading…</span></div></div>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">LTE</div>
+        <label>APN<input id="apn" placeholder="internet" /></label>
+        <div class="btns">
+          <button class="btn primary" onclick="lteConnect()">Connect</button>
+          <button class="btn" onclick="post('/api/lte/disconnect')">Disconnect</button>
+        </div>
+        <div class="msg" id="lte-msg"></div>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">Tailscale (remote access over LTE)</div>
+        <label>Auth key (optional — leave blank for browser login)
+          <input id="authkey" placeholder="tskey-auth-…" />
+        </label>
+        <div class="btns">
+          <button class="btn primary" onclick="tsUp()">Bring up</button>
+          <button class="btn" onclick="post('/api/tailscale/down')">Stop</button>
+        </div>
+        <div class="msg" id="ts-msg"></div>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">Vehicle configuration</div>
+        <label>Name<input id="vehicleName" /></label>
+        <div class="grid2">
+          <label>Output driver
+            <select id="driver">
+              <option value="sim">sim</option>
+              <option value="pca9685">pca9685</option>
+              <option value="gpio-pwm">gpio-pwm</option>
+              <option value="sbus">sbus</option>
+            </select>
+          </label>
+          <label>Watchdog (ms)<input id="watchdogTimeoutMs" type="number" /></label>
+        </div>
+        <div class="grid2">
+          <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
+          <label>Cameras<input id="cameras" placeholder="test" /></label>
+        </div>
+        <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
+        <div class="btns"><button class="btn primary" onclick="saveConfig()">Save</button></div>
+        <div class="msg" id="cfg-msg"></div>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">System</div>
+        <div class="btns"><button class="btn bad" onclick="reboot()">Reboot vehicle</button></div>
+        <div class="msg" id="sys-msg"></div>
+      </section>
+
+      <div class="foot">YonderRC setup · configure headless, then connect from the ground app</div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      async function getJSON(u) { const r = await fetch(u); return r.json(); }
+      async function post(u, body) {
+        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+        return r.json();
+      }
+
+      function renderStatus(s) {
+        const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
+        const ts = s.tailscale, lte = s.lte, wifi = s.wifi;
+        $('status').innerHTML =
+          row('hostname', s.hostname) +
+          row('mode', s.kind === 'real' ? 'real (Pi)' : 'sim', s.kind === 'real' ? 'go' : 'warn') +
+          row('LTE', lte.present ? (lte.connected ? 'connected' : 'idle') : 'no modem', lte.connected ? 'go' : (lte.present ? 'warn' : 'bad')) +
+          (lte.present ? row('· operator', (lte.operator || '—') + (lte.signal != null ? ` · ${lte.signal}%` : '')) : '') +
+          (lte.ip ? row('· IP', lte.ip) : '') +
+          row('Tailscale', ts.backendState, ts.running ? 'go' : 'warn') +
+          (ts.ip ? row('· IP', ts.ip) : '') +
+          row('WiFi', `${wifi.mode}${wifi.ssid ? ' · ' + wifi.ssid : ''}`);
+        if (ts.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${ts.loginUrl}" target="_blank" rel="noreferrer">${ts.loginUrl}</a>`;
+      }
+
+      async function refresh() { try { renderStatus(await getJSON('/api/system')); } catch {} }
+
+      async function loadConfig() {
+        const c = await getJSON('/api/config');
+        $('vehicleName').value = c.vehicleName || '';
+        $('driver').value = c.driver || 'sim';
+        $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 300;
+        $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
+        $('cameras').value = (c.cameras || []).join(', ');
+        $('videoBaseUrl').value = c.videoBaseUrl || '';
+        $('apn').value = c.apn || '';
+      }
+
+      async function saveConfig() {
+        const patch = {
+          vehicleName: $('vehicleName').value.trim(),
+          driver: $('driver').value,
+          watchdogTimeoutMs: Number($('watchdogTimeoutMs').value) || 300,
+          throttleChannels: $('throttleChannels').value.split(',').map((s) => Number(s.trim()) - 1).filter((n) => Number.isInteger(n) && n >= 0),
+          cameras: $('cameras').value.split(',').map((s) => s.trim()).filter(Boolean),
+          videoBaseUrl: $('videoBaseUrl').value.trim() || null,
+        };
+        const r = await post('/api/config', patch);
+        $('cfg-msg').textContent = r.note || 'Saved.';
+      }
+
+      async function lteConnect() {
+        $('lte-msg').textContent = 'Connecting…';
+        const r = await post('/api/lte', { apn: $('apn').value.trim() });
+        $('lte-msg').textContent = r.message || '';
+        refresh();
+      }
+      async function tsUp() {
+        $('ts-msg').textContent = 'Starting…';
+        const r = await post('/api/tailscale', { authKey: $('authkey').value.trim() || undefined });
+        $('ts-msg').innerHTML = r.loginUrl ? `Login: <a href="${r.loginUrl}" target="_blank" rel="noreferrer">${r.loginUrl}</a>` : (r.message || '');
+        refresh();
+      }
+      async function reboot() {
+        if (!confirm('Reboot the vehicle now?')) return;
+        const r = await post('/api/reboot');
+        $('sys-msg').textContent = r.message || '';
+      }
+
+      loadConfig();
+      refresh();
+      setInterval(refresh, 3000);
+    </script>
+  </body>
+</html>

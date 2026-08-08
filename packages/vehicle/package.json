@@ -1,0 +1,27 @@
+{
+  "name": "@yonderrc/vehicle",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "YonderRC vehicle service: owns the output driver, runs the failsafe watchdog and the control link.",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@yonderrc/protocol": "*",
+    "node-datachannel": "^0.32.3",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "i2c-bus": "^5.2.3",
+    "pigpio": "^3.3.1",
+    "serialport": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2"
+  }
+}

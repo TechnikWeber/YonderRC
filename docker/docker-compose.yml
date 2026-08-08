@@ -1,0 +1,34 @@
+# YonderRC vehicle stack: control service + go2rtc video.
+# Host networking so WebRTC (media + data channel) works without port juggling.
+#
+#   docker compose -f docker/docker-compose.yml up
+#
+# On a real Pi, uncomment the devices to pass the camera / I2C / UART / LTE
+# through to the containers. In sim you need none of that.
+
+services:
+  vehicle:
+    build:
+      context: ..
+      dockerfile: docker/vehicle.Dockerfile
+    network_mode: host
+    environment:
+      YRC_PORT: "8080"
+      YRC_DRIVER: "sim" # → pca9685 | gpio-pwm | sbus on real hardware (M3)
+      YRC_VIDEO_URL: "http://localhost:1984"
+      YRC_CAMERAS: "test" # → "rpicam,usb0" once cameras are configured
+    # devices:
+    #   - "/dev/i2c-1:/dev/i2c-1"     # PCA9685
+    #   - "/dev/ttyAMA0:/dev/ttyAMA0" # SBUS UART
+    restart: unless-stopped
+
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    network_mode: host
+    volumes:
+      - ./go2rtc.yaml:/config/go2rtc.yaml:ro
+    # devices:
+    #   - "/dev/video0:/dev/video0"   # USB camera
+    # For the Pi camera, run go2rtc on the host instead of in a container —
+    # libcamera in Docker is fiddly. See go2rtc.yaml.
+    restart: unless-stopped
