@@ -11,14 +11,14 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.3.0');
+  console.log('  YonderRC vehicle service  v1.3.1');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
   console.log(`  channels  : ${CHANNEL_COUNT} @ ${CONTROL_RATE_HZ} Hz`);
   console.log(`  watchdog  : ${config.watchdogTimeoutMs} ms → failsafe`);
   console.log(`  throttle  : ch [${config.throttleChannels.join(', ')}] safe while disarmed`);
-  console.log(`  video     : ${config.videoBaseUrl ?? 'disabled'} · cams [${config.cameras.join(', ')}]`);
+  console.log(`  video     : ${config.videoBaseUrl ?? 'disabled'} · cams [${config.cameras.map((c) => c.name).join(', ')}]`);
   console.log('');
 
   // Start the configured driver. If it fails (e.g. a hardware driver was chosen
