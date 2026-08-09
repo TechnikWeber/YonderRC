@@ -39,6 +39,8 @@ export interface VehicleConfig {
   cameras: CameraCfg[];
   /** Path of the generated go2rtc config. */
   go2rtcConfigPath: string;
+  /** Detected H.264 encoder for generated camera sources (set at startup). */
+  h264Encoder: string;
   /** Where the persistent config file lives. */
   configPath: string;
 }
@@ -119,6 +121,7 @@ export function loadConfig(): VehicleConfig {
     },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
     go2rtcConfigPath: process.env.YRC_GO2RTC_CONFIG ?? 'docker/go2rtc.yaml',
+    h264Encoder: 'libx264',
 
     // Env-only fields.
     host: process.env.YRC_HOST ?? '0.0.0.0',

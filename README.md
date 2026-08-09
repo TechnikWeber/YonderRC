@@ -24,6 +24,8 @@ statt heimlich Sim-Werte. Und der Pi ist jetzt **autark im Feld bedienbar**: bei
 fehlendem Netz startet ein WLAN-Hotspot, das **Handy öffnet per Captive Portal**
 direkt die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst ausgeliefert.
 
+**Neu in v1.5.1:** Der H.264-Encoder fürs Video wird jetzt **automatisch erkannt** — `libx264`, Ciscos `libopenh264` (in Fedoras `ffmpeg-free` enthalten) oder der Hardware-Encoder auf dem Pi. Kein RPM Fusion mehr nötig.
+
 **Hardware:** Für den Aufbau auf echtem Raspberry Pi (Teileliste, Verkabelung,
 Schritt-für-Schritt zuerst im WLAN, dann per LTE/Tailscale) siehe
 [`docs/HARDWARE.md`](docs/HARDWARE.md).

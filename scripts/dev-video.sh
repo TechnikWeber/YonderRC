@@ -12,14 +12,16 @@ if ! command -v ffmpeg >/dev/null; then
   exit 1
 fi
 
-# go2rtc needs an H.264 encoder for browser WebRTC. Fedora's patent-free
-# "ffmpeg-free" ships WITHOUT libx264, which makes the stream fail with a cryptic
-# "Unknown encoder 'libx264'". Catch that here with a clear fix.
-if ! ffmpeg -hide_banner -encoders 2>/dev/null | grep -q 'libx264'; then
+# go2rtc needs an H.264 encoder for browser WebRTC. YonderRC auto-picks whichever
+# ffmpeg has: libx264, Cisco's libopenh264 (in Fedora's ffmpeg-free!), or a Pi
+# hardware encoder. Only bail if NONE is present.
+ENCODERS=$(ffmpeg -hide_banner -encoders 2>/dev/null || true)
+if ! echo "$ENCODERS" | grep -qE 'libx264|libopenh264|h264_v4l2m2m|h264_omx|h264_nvenc'; then
   echo
-  echo "  ✗ Your ffmpeg has no libx264 encoder (common with Fedora 'ffmpeg-free')."
-  echo "    go2rtc needs it for browser video. Install the full ffmpeg:"
-  echo
+  echo "  ✗ Your ffmpeg has no usable H.264 encoder."
+  echo "    Easiest on Fedora — install openh264 (patent-free, works with ffmpeg-free):"
+  echo "      sudo dnf install -y openh264 ffmpeg-free"
+  echo "    Or the full ffmpeg with libx264 via RPM Fusion:"
   echo "      sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-\$(rpm -E %fedora).noarch.rpm"
   echo "      sudo dnf install -y --allowerasing ffmpeg"
   echo
@@ -27,6 +29,8 @@ if ! ffmpeg -hide_banner -encoders 2>/dev/null | grep -q 'libx264'; then
   echo
   exit 1
 fi
+PICKED=$(echo "$ENCODERS" | grep -oE 'libx264|libopenh264|h264_v4l2m2m|h264_omx|h264_nvenc' | head -1)
+echo "H.264 encoder available: $PICKED"
 
 if [ ! -x "$BIN" ]; then
   mkdir -p bin

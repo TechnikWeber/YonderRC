@@ -5,14 +5,14 @@ import { VehicleCore } from './core/VehicleCore.js';
 import { startWsServer } from './transport/wsServer.js';
 import { createSystem } from './system/index.js';
 import { TelemetryService } from './sensors/TelemetryService.js';
-import { applyCameras } from './video/cameraManager.js';
+import { applyCameras, detectH264Encoder } from './video/cameraManager.js';
 import { startCaptivePortal } from './transport/captivePortal.js';
 
 async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.5.0');
+  console.log('  YonderRC vehicle service  v1.5.1');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -54,7 +54,9 @@ async function main() {
   await telemetry.start();
 
   // Generate go2rtc.yaml from the graphical camera list (best effort at boot).
-  await applyCameras(config.cameras, config.go2rtcConfigPath, config.videoBaseUrl).catch(() => {});
+  config.h264Encoder = await detectH264Encoder();
+  console.log(`  encoder   : ${config.h264Encoder} (auto-detected)`);
+  await applyCameras(config.cameras, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch(() => {});
 
   startWsServer(core, config, system, telemetry);
   console.log(`  setup UI  : http://<vehicle>:${config.port}/setup  (system: ${config.systemKind})`);
