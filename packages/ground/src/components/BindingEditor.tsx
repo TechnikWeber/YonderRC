@@ -9,12 +9,14 @@ const AXIS_LABEL: Record<StickAxis, string> = { leftX: 'Left ◀▶', leftY: 'Le
 
 export function BindingEditor({
   profile,
+  locked = false,
   onChange,
   onRename,
   onDelete,
   onDuplicate,
 }: {
   profile: Profile;
+  locked?: boolean;
   onChange: (next: Profile) => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -34,6 +36,10 @@ export function BindingEditor({
 
   return (
     <section className="panel editor">
+      {locked && (
+        <div className="editor-lock">🔒 Disarm the vehicle to change model settings.</div>
+      )}
+      <div className={locked ? 'editor-body locked' : 'editor-body'}>
       <div className="editor-head">
         <input className="name-input" value={profile.name} onChange={(e) => onRename(e.target.value)} aria-label="Profile name" />
         <span className="type-badge">{profile.vehicleType}</span>
@@ -128,6 +134,7 @@ export function BindingEditor({
           </div>
         ))}
         <p className="note">Channel count: {CHANNEL_COUNT}. Mapping comes from the model template; tweak shaping per channel here.</p>
+      </div>
       </div>
     </section>
   );

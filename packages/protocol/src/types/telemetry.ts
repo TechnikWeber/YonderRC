@@ -14,6 +14,10 @@ export interface TelemetryReading {
 
 export interface TelemetryMessage {
   type: 'telemetry';
+  /** Where the values come from: real sensors, or explicitly-enabled sim. */
+  source: 'sim' | 'real';
+  /** False when 'real' is selected but the sensor can't be read (show "no data"). */
+  ok: boolean;
   /** Volts per configured voltage channel. */
   voltages: TelemetryReading[];
   /** Amps per configured current channel. */

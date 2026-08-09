@@ -1,6 +1,6 @@
 {
   "name": "@yonderrc/protocol",
-  "version": "1.3.1",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "description": "Shared wire protocol, channel model and profile schema for YonderRC.",

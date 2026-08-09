@@ -15,6 +15,7 @@ import { handleSetup, type SetupContext } from './setupRouter.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import { applyCameras } from '../video/cameraManager.js';
+import { serveGroundApp } from './staticServer.js';
 
 /**
  * v0.1 control link over WebSocket, now doubling as the WebRTC signaling channel
@@ -48,6 +49,10 @@ export function startWsServer(
     // Fresh ground session: its seq restarts at 0, so forget the old high-water
     // mark or every new frame would be dropped as "stale".
     core.resetControlLink();
+    // Safety: by default every new connection starts DISARMED, so after a link
+    // loss + reconnect the operator must re-arm deliberately. Disabled for aircraft
+    // (config.disarmOnReconnect = false), where cutting motors in flight would crash.
+    if (config.disarmOnReconnect) core.setArmed(false);
 
     const sendSignal = (msg: RtcSignalMessage) => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
@@ -125,11 +130,14 @@ function handleHttp(
     res.end(JSON.stringify({ videoBaseUrl: config.videoBaseUrl, cameras: config.cameras }));
     return;
   }
-  if (req.url === '/' || req.url === '/health') {
+  if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, vehicle: config.vehicleName, driver: config.driver }));
     return;
   }
+  // Serve the built ground app (control + setup from a phone in AP mode). Falls
+  // through to 404 in dev where the app is served separately by Vite.
+  if (serveGroundApp(req, res)) return;
   res.writeHead(404);
   res.end('not found');
 }

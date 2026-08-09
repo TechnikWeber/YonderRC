@@ -49,8 +49,16 @@ export interface ArmMessage {
  */
 export interface SetConfigMessage {
   type: 'config';
+  /** Per-channel values held on LINK LOSS while armed (drone throttle → hold). */
   failsafeUs?: number[];
+  /** Channels forced to their disarmed value while disarmed (typically throttle). */
   throttleChannels?: number[];
+  /**
+   * Per-channel value a channel takes when DELIBERATELY disarmed. Distinct from
+   * failsafe: a disarmed drone has motors OFF (min), while its in-flight failsafe
+   * holds at center. Defaults to failsafe if omitted.
+   */
+  disarmedUs?: number[];
 }
 
 /** Vehicle → Ground */

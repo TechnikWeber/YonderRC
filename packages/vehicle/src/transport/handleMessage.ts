@@ -25,9 +25,11 @@ export function handleClientMessage(core: VehicleCore, msg: ClientMessage): void
       break;
     case 'config':
       if (msg.failsafeUs) core.setFailsafe(msg.failsafeUs);
+      if (msg.disarmedUs) core.setDisarmedUs(msg.disarmedUs);
       if (msg.throttleChannels) core.setThrottleChannels(msg.throttleChannels);
       console.log(
         `[link] config updated: failsafe=${msg.failsafeUs ? 'yes' : 'no'} ` +
+          `disarmed=${msg.disarmedUs ? 'yes' : 'no'} ` +
           `throttle=[${msg.throttleChannels?.join(',') ?? 'unchanged'}]`,
       );
       break;

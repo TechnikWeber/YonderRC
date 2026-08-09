@@ -96,6 +96,7 @@
           <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
           <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
         </div>
+        <label class="chk"><input type="checkbox" id="disarmOnReconnect" /> Auto-disarm on reconnect <span style="color:var(--muted)">— turn OFF for aircraft (disarming in flight cuts motors)</span></label>
         <div class="btns"><button class="btn primary" onclick="saveConfig()">Save</button></div>
         <div class="msg" id="cfg-msg"></div>
       </section>
@@ -185,6 +186,7 @@
         $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 300;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
+        $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
         $('apn').value = c.apn || '';
       }
 
@@ -195,6 +197,7 @@
           watchdogTimeoutMs: Number($('watchdogTimeoutMs').value) || 300,
           throttleChannels: $('throttleChannels').value.split(',').map((s) => Number(s.trim()) - 1).filter((n) => Number.isInteger(n) && n >= 0),
           videoBaseUrl: $('videoBaseUrl').value.trim() || null,
+          disarmOnReconnect: $('disarmOnReconnect').checked,
         };
         const r = await post('/api/config', patch);
         $('cfg-msg').textContent = r.note || 'Saved.';

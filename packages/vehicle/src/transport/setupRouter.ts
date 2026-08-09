@@ -83,6 +83,7 @@ export async function handleSetup(
       cameras: c.cameras,
       videoBaseUrl: c.videoBaseUrl,
       apn: c.apn,
+      disarmOnReconnect: c.disarmOnReconnect,
       systemKind: c.systemKind,
     });
     return true;
@@ -91,6 +92,7 @@ export async function handleSetup(
   if (url === '/api/config' && method === 'POST') {
     const patch = (await readBody(req)) as PersistentConfig;
     const saved = savePersisted(ctx.config.configPath, patch);
+    if (typeof patch.disarmOnReconnect === 'boolean') ctx.config.disarmOnReconnect = patch.disarmOnReconnect;
     ctx.onConfigSaved?.(patch);
     json(res, 200, { ok: true, saved, note: 'Saved. Some changes apply after a restart.' });
     return true;

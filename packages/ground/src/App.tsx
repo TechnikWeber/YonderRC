@@ -14,6 +14,7 @@ import {
   cloneProfile,
   getActiveId,
   loadProfiles,
+  profileDisarmedUs,
   profileFailsafeUs,
   saveProfiles,
   setActiveId,
@@ -27,6 +28,25 @@ import { CalibrationPanel } from './components/CalibrationPanel';
 import { buildProfile, vehicleTypes } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
+
+/**
+ * If the vehicle reports its video URL as localhost but we connected to it
+ * remotely (e.g. a phone → the Pi's AP), rewrite the video host to the host we're
+ * actually talking to, so video works without the vehicle knowing its own address.
+ */
+function effectiveVideoBase(reported: string | null | undefined, wsUrl: string): string | null {
+  if (!reported) return null;
+  try {
+    const v = new URL(reported);
+    if (v.hostname === 'localhost' || v.hostname === '127.0.0.1') {
+      const host = new URL(wsUrl.replace(/^ws/, 'http')).hostname;
+      if (host) v.hostname = host;
+    }
+    return v.toString().replace(/\/$/, '');
+  } catch {
+    return reported;
+  }
+}
 
 export function App() {
   const [url, setUrl] = useState(DEFAULT_URL);
@@ -66,7 +86,7 @@ export function App() {
   }
 
   function pushConfig(p: Profile) {
-    linkRef.current?.sendConfig(profileFailsafeUs(p), p.throttleChannels);
+    linkRef.current?.sendConfig(profileFailsafeUs(p), p.throttleChannels, profileDisarmedUs(p));
   }
 
   // Control loop.
@@ -190,7 +210,7 @@ export function App() {
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.3.1</span>
+        <span className="ver">ground · v1.5.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -207,17 +227,18 @@ export function App() {
 
       <div className="profile-bar">
         <span className="eyebrow">Model</span>
-        <select value={active.id} onChange={(e) => selectProfile(e.target.value)}>
+        <select value={active.id} onChange={(e) => selectProfile(e.target.value)} disabled={armed}>
           {profiles.map((p) => (
             <option key={p.id} value={p.id}>{p.name} · {p.vehicleType}</option>
           ))}
         </select>
-        <select className="new-model" value="" onChange={(e) => newFromTemplate(e.target.value)} aria-label="New model from template">
+        <select className="new-model" value="" onChange={(e) => newFromTemplate(e.target.value)} aria-label="New model from template" disabled={armed}>
           <option value="">+ New…</option>
           {vehicleTypes().map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        {armed && <span className="lock-hint">🔒 disarm to change model</span>}
       </div>
 
       <StatusStrip
@@ -229,12 +250,22 @@ export function App() {
         latencyMs={rttDisplay}
         gamepad={gamepad}
         gamepadKind={input.gamepadKind}
+        telemetrySource={
+          !connected || !telemetry
+            ? null
+            : telemetry.source === 'sim'
+              ? 'sim'
+              : telemetry.ok
+                ? 'real'
+                : 'nodata'
+        }
       />
 
       {setupMode ? (
         <>
           <BindingEditor
             profile={active}
+            locked={armed}
             onChange={updateProfile}
             onRename={(name) => updateProfile({ ...active, name })}
             onDelete={deleteActive}
@@ -257,7 +288,7 @@ export function App() {
             </div>
           )}
           <VideoPanel
-            videoBaseUrl={welcome?.videoBaseUrl ?? null}
+            videoBaseUrl={effectiveVideoBase(welcome?.videoBaseUrl, url)}
             cameras={welcome?.cameras ?? []}
             linkState={linkState}
             controlPath={controlPath}

@@ -6,12 +6,13 @@ import { startWsServer } from './transport/wsServer.js';
 import { createSystem } from './system/index.js';
 import { TelemetryService } from './sensors/TelemetryService.js';
 import { applyCameras } from './video/cameraManager.js';
+import { startCaptivePortal } from './transport/captivePortal.js';
 
 async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.3.1');
+  console.log('  YonderRC vehicle service  v1.5.0');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -57,7 +58,11 @@ async function main() {
 
   startWsServer(core, config, system, telemetry);
   console.log(`  setup UI  : http://<vehicle>:${config.port}/setup  (system: ${config.systemKind})`);
+  console.log(`  control   : http://<vehicle>:${config.port}/  (ground app, if built)`);
   console.log(`  telemetry : ${config.telemetry.source} · ${config.telemetry.enabled ? 'on' : 'off'}`);
+
+  // Captive portal for AP-mode onboarding (binds :80; skipped if not permitted).
+  if (config.systemKind === 'real') startCaptivePortal(config.port);
 
   // Auto-connect LTE at boot if an APN was configured via the setup UI.
   if (config.apn) {

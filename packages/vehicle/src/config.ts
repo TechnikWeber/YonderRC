@@ -28,6 +28,11 @@ export interface VehicleConfig {
   systemKind: SystemKind;
   /** LTE APN to auto-connect at boot, if set. */
   apn: string | null;
+  /**
+   * Auto-disarm whenever a new ground connects. Safe for cars (prevents runaway);
+   * turn OFF for aircraft, where disarming in flight would cut the motors.
+   */
+  disarmOnReconnect: boolean;
   /** Telemetry (sensors, coulomb counting, battery). */
   telemetry: TelemetryConfig;
   /** Cameras (graphical); generates go2rtc.yaml. */
@@ -46,6 +51,7 @@ export interface PersistentConfig {
   throttleChannels?: number[];
   videoBaseUrl?: string | null;
   apn?: string | null;
+  disarmOnReconnect?: boolean;
   telemetry?: TelemetryConfig;
   cameras?: CameraCfg[];
 }
@@ -100,6 +106,7 @@ export function loadConfig(): VehicleConfig {
           ? null
           : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:1984`,
     apn: p.apn ?? process.env.YRC_APN ?? null,
+    disarmOnReconnect: p.disarmOnReconnect ?? true,
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

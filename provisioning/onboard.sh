@@ -28,4 +28,13 @@ nmcli device wifi hotspot ifname "$IFACE" ssid "$SSID" password "$PASS" || {
 # NetworkManager assigns 10.42.0.1 by default for shared mode; pin a friendly one.
 nmcli connection modify Hotspot ipv4.addresses 192.168.4.1/24 ipv4.method shared || true
 nmcli connection up Hotspot || true
-echo "[onboard] hotspot up — connect and open http://192.168.4.1:8080/setup"
+
+# Captive portal: make NetworkManager's dnsmasq resolve EVERY name to the Pi, so
+# phones detect a captive portal and open the control/setup page automatically.
+NMDIR=/etc/NetworkManager/dnsmasq-shared.d
+sudo mkdir -p "$NMDIR"
+echo 'address=/#/192.168.4.1' | sudo tee "$NMDIR/yonderrc-captive.conf" >/dev/null
+nmcli connection down Hotspot 2>/dev/null || true
+nmcli connection up Hotspot || true
+
+echo "[onboard] hotspot up — connect and the control page opens at http://192.168.4.1:8080/"

@@ -182,10 +182,10 @@ export class LinkClient {
   sendArm(armed: boolean): void {
     this.send({ type: 'arm', armed });
   }
-  sendConfig(failsafeUs: number[], throttleChannels: number[]): void {
+  sendConfig(failsafeUs: number[], throttleChannels: number[], disarmedUs?: number[]): void {
     // Config always goes over WS (reliable) regardless of control path.
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: 'config', failsafeUs, throttleChannels }));
+      this.ws.send(JSON.stringify({ type: 'config', failsafeUs, throttleChannels, disarmedUs }));
     }
   }
 

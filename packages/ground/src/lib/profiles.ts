@@ -1,6 +1,6 @@
 import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/protocol';
 import type { Profile } from '@yonderrc/protocol';
-import { buildProfile } from './templates';
+import { buildProfile, disarmedThrottleUs } from './templates';
 
 const PROFILES_KEY = 'yonderrc.profiles.v3';
 const ACTIVE_KEY = 'yonderrc.activeProfile.v3';
@@ -58,6 +58,20 @@ export function profileFailsafeUs(profile: Profile): number[] {
     if (b.channel >= 0 && b.channel < CHANNEL_COUNT) {
       arr[b.channel] = b.shaping.failsafeUs ?? CHANNEL_NEUTRAL_US;
     }
+  }
+  return arr;
+}
+
+/**
+ * Build the disarmed-value array. Throttle channels take their OFF/STOP value
+ * (car/boat = neutral/stop, plane/drone = min/motors-off) — distinct from the
+ * in-flight failsafe so a disarmed drone never holds throttle.
+ */
+export function profileDisarmedUs(profile: Profile): number[] {
+  const arr = neutralChannels();
+  const off = disarmedThrottleUs(profile.vehicleType, profile.endpoints);
+  for (const ch of profile.throttleChannels) {
+    if (ch >= 0 && ch < CHANNEL_COUNT) arr[ch] = off;
   }
   return arr;
 }

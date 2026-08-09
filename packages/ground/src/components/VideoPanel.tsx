@@ -95,6 +95,14 @@ function bar(us: number): number {
 
 /** Battery/telemetry block for the OSD: voltages, currents, capacity, percent. */
 function TelemetryOsd({ t }: { t: TelemetryMessage }) {
+  // Real source but no sensor → make it unmistakable, never show fake numbers.
+  if (t.source === 'real' && !t.ok) {
+    return (
+      <div className="osd-tel">
+        <span className="osd-nodata">⚠ NO SENSOR</span>
+      </div>
+    );
+  }
   const pct = t.batteryPercent;
   const capLine =
     t.capacityMah != null
@@ -104,6 +112,7 @@ function TelemetryOsd({ t }: { t: TelemetryMessage }) {
       : `${Math.round(t.mah)} mAh`;
   return (
     <div className="osd-tel">
+      {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">SIM DATA</span>}
       {t.voltages.map((v, i) => (
         <span key={`v${i}`} className="osd-batt">{v.value.toFixed(2)} V</span>
       ))}

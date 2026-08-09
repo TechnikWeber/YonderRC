@@ -42,6 +42,7 @@ export class VehicleCore {
   private channelCount: number;
   private watchdogTimeoutMs: number;
   private failsafeUs: number[];
+  private disarmedUs: number[];
   private throttleChannels: Set<number>;
 
   private commanded: number[];
@@ -59,6 +60,7 @@ export class VehicleCore {
     this.channelCount = opts.channelCount ?? CHANNEL_COUNT;
     this.watchdogTimeoutMs = opts.watchdogTimeoutMs ?? WATCHDOG_TIMEOUT_MS;
     this.failsafeUs = (opts.failsafeUs ?? neutralChannels()).slice(0, this.channelCount);
+    this.disarmedUs = this.failsafeUs.slice();
     this.throttleChannels = new Set(opts.throttleChannels ?? []);
     this.commanded = this.failsafeUs.slice();
   }
@@ -139,6 +141,14 @@ export class VehicleCore {
     }
   }
 
+  /** Update per-channel disarmed values (throttle → off/stop, distinct from failsafe). */
+  setDisarmedUs(channelsUs: number[]): void {
+    for (let i = 0; i < this.channelCount; i++) {
+      const v = channelsUs[i];
+      if (typeof v === 'number') this.disarmedUs[i] = clampChannelUs(v);
+    }
+  }
+
   /** Update which channels are forced safe while disarmed (typically throttle). */
   setThrottleChannels(channels: number[]): void {
     this.throttleChannels = new Set(channels.filter((n) => Number.isInteger(n)));
@@ -152,7 +162,7 @@ export class VehicleCore {
   /**
    * Resolve the values actually sent to the driver, applying the safety rules:
    *  1. link lost      → every channel to its failsafe value
-   *  2. disarmed       → throttle channels forced to failsafe (rest pass through)
+   *  2. disarmed       → throttle channels forced to their DISARMED value (off/stop)
    *  3. armed + linked → commanded values
    */
   private resolveOutput(): number[] {
@@ -173,8 +183,10 @@ export class VehicleCore {
     this.failsafeActive = false;
     const out = this.commanded.slice();
     if (!this.armed) {
+      // Deliberately disarmed: throttle to its OFF/STOP value (not the in-flight
+      // failsafe, which for a drone holds mid). Other channels pass through.
       for (const ch of this.throttleChannels) {
-        if (ch >= 0 && ch < out.length) out[ch] = this.failsafeUs[ch];
+        if (ch >= 0 && ch < out.length) out[ch] = this.disarmedUs[ch];
       }
     }
     return out;

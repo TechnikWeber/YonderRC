@@ -132,9 +132,39 @@ function shaping(endpoints: Endpoints, failsafeUs: number): ChannelShaping {
   return { trimUs: 0, expo: 0, reverse: false, minUs: endpoints.minUs, maxUs: endpoints.maxUs, failsafeUs };
 }
 
-function failsafeFor(channel: number, throttleChannels: number[], endpoints: Endpoints): number {
-  // Throttle fails safe to minimum (motor idle/off); everything else to center.
-  return throttleChannels.includes(channel) ? endpoints.minUs : 1500;
+function centerUs(endpoints: Endpoints): number {
+  return Math.round((endpoints.minUs + endpoints.maxUs) / 2);
+}
+
+/**
+ * Failsafe value for a channel on LINK LOSS while armed. This is deliberately
+ * vehicle-type aware, because "safe" differs:
+ *  - car/boat throttle → center (neutral = stop; min could be full reverse!)
+ *  - plane throttle    → min (motor off, glide down)
+ *  - drone throttle    → center (HOLD; min would cut motors and drop it)
+ * All non-throttle channels center. Every value stays editable per channel.
+ */
+function failsafeFor(
+  channel: number,
+  throttleChannels: number[],
+  endpoints: Endpoints,
+  vehicleType: VehicleType,
+): number {
+  const center = centerUs(endpoints);
+  if (!throttleChannels.includes(channel)) return center;
+  if (vehicleType === 'plane') return endpoints.minUs;
+  return center; // car, boat, drone throttle → neutral/hold
+}
+
+/**
+ * Value a throttle channel takes when DELIBERATELY disarmed (on the bench / landed).
+ * This is NOT the failsafe value — a disarmed drone must have motors OFF (min),
+ * even though its in-flight failsafe holds at center.
+ *  - car/boat → center (stop)
+ *  - plane/drone → min (motors off)
+ */
+export function disarmedThrottleUs(vehicleType: VehicleType, endpoints: Endpoints): number {
+  return vehicleType === 'car' || vehicleType === 'boat' ? centerUs(endpoints) : endpoints.minUs;
 }
 
 function buildBindings(
@@ -158,7 +188,7 @@ function buildBindings(
       stickAxis: ax.stickAxis,
       detent: detents[ax.stickAxis],
       label: ax.label,
-      shaping: shaping(endpoints, failsafeFor(ax.channel, t.throttleChannels, endpoints)),
+      shaping: shaping(endpoints, failsafeFor(ax.channel, t.throttleChannels, endpoints, t.vehicleType)),
     });
   }
 
@@ -172,7 +202,7 @@ function buildBindings(
       element,
       mode: a.mode,
       label: a.label,
-      shaping: shaping(endpoints, failsafeFor(a.channel, t.throttleChannels, endpoints)),
+      shaping: shaping(endpoints, failsafeFor(a.channel, t.throttleChannels, endpoints, t.vehicleType)),
     });
   });
 
@@ -235,12 +265,10 @@ export function applyEndpoints(profile: Profile, endpoints: Endpoints): Profile 
     endpoints,
     bindings: profile.bindings.map((b) => ({
       ...b,
-      shaping: {
-        ...b.shaping,
-        minUs: endpoints.minUs,
-        maxUs: endpoints.maxUs,
-        failsafeUs: profile.throttleChannels.includes(b.channel) ? endpoints.minUs : b.shaping.failsafeUs,
-      },
+      // Only the travel limits change; failsafe values are a safety setting and
+      // must NOT be silently reset here (that could turn a drone's "hold" failsafe
+      // back into a motor-cut).
+      shaping: { ...b.shaping, minUs: endpoints.minUs, maxUs: endpoints.maxUs },
     })),
   };
 }

@@ -938,3 +938,50 @@ body {
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
+
+/* ---- safety locks & sim indicator (v1.4) ---- */
+.lock-hint {
+  font-size: 12px;
+  color: var(--idle);
+  margin-left: 8px;
+}
+.editor-lock {
+  background: rgba(242, 183, 74, 0.12);
+  border: 1px solid var(--idle);
+  color: var(--idle);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.editor-body.locked {
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+.osd-sim {
+  align-self: flex-end;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0b0f14;
+  background: var(--idle);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-bottom: 2px;
+}
+
+.osd-nodata {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bad);
+  border-radius: 3px;
+  padding: 2px 7px;
+  animation: nodata-blink 1s steps(1) infinite;
+}
+@keyframes nodata-blink {
+  50% { opacity: 0.35; }
+}

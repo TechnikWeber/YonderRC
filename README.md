@@ -9,6 +9,25 @@ da und im Sim lauffähig; keine Hardware nötig. Die Hardware-Meilensteine (Vide
 Treiber, LTE) warten nur noch aufs reale Gegentesten. Der komplette Steuerpfad
 läuft auf einem PC (oder Handy im selben Netz), die 16 Kanäle reagieren live.
 
+**Neu in v1.4:** Sim-Telemetrie ist jetzt klar als **SIM** gekennzeichnet (im OSD
+und in der Statusleiste), damit man sie nie für echte Sensordaten hält. Das
+**Modell lässt sich nicht mehr im gearmten Zustand wechseln** und die Einstellungen
+sind dann gesperrt. Neue Sicherheitsregel: **jede neue Verbindung startet
+disarmed** (nach Link-Verlust bewusst neu armen). Und ein ausführlicher
+Hardware-Guide ist dazugekommen.
+
+**Neu in v1.5:** Sicherheit & Feld-Betrieb. **Disarmen und Failsafe sind jetzt
+getrennt** und modellabhängig (Drohne: Failsafe hält Gas mittig, Disarmen schaltet
+Motoren aus). **Auto-Disarm bei Reconnect abschaltbar** (für Flugzeug/Drohne).
+Telemetrie ohne Sim-Fallback: fehlt der Sensor, zeigt das OSD **rot „NO SENSOR"**
+statt heimlich Sim-Werte. Und der Pi ist jetzt **autark im Feld bedienbar**: bei
+fehlendem Netz startet ein WLAN-Hotspot, das **Handy öffnet per Captive Portal**
+direkt die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst ausgeliefert.
+
+**Hardware:** Für den Aufbau auf echtem Raspberry Pi (Teileliste, Verkabelung,
+Schritt-für-Schritt zuerst im WLAN, dann per LTE/Tailscale) siehe
+[`docs/HARDWARE.md`](docs/HARDWARE.md).
+
 **Neu in v1.3:** Telemetrie-Rückkanal mit **Spannungs-/Stromsensoren** (Sim-Fallback,
 oder real ADS1115/1015, MCP3008/3208 für Spannung und INA219/226/260/3221 sowie
 ACS712/758 für Strom), **präzises Coulomb-Counting** (verbrauchte mAh) und

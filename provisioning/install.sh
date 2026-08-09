@@ -39,6 +39,9 @@ echo "-- npm install (sim by default; hardware driver deps are optional)"
 cd "$REPO"
 npm install --omit=optional
 
+echo "-- build the ground control app (so a phone can fly/configure via the Pi)"
+npm run build -w @yonderrc/ground
+
 echo "-- hardware access groups (I2C / GPIO / serial)"
 usermod -aG i2c,gpio,dialout "${SUDO_USER:-pi}" || true
 # Enable I2C + UART on the Pi if raspi-config is present:

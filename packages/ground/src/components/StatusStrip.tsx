@@ -51,6 +51,7 @@ export function StatusStrip({
   latencyMs,
   gamepad,
   gamepadKind,
+  telemetrySource,
 }: {
   linkState: LinkState;
   vehicleName: string;
@@ -60,6 +61,7 @@ export function StatusStrip({
   latencyMs: number | null;
   gamepad: string | null;
   gamepadKind: 'browser' | 'sdl';
+  telemetrySource: 'sim' | 'real' | 'nodata' | null;
 }) {
   const linkClass = linkState === 'connected' ? 'link' : 'warn';
   return (
@@ -91,6 +93,12 @@ export function StatusStrip({
       <div className="stat">
         <div className="k">Driver</div>
         <div className="v">{driver || '—'}</div>
+      </div>
+      <div className="stat">
+        <div className="k">Telemetry</div>
+        <div className={`v ${telemetrySource === 'real' ? 'good' : telemetrySource === 'nodata' ? 'bad' : telemetrySource === 'sim' ? 'warn' : ''}`}>
+          {telemetrySource === null ? '—' : telemetrySource === 'sim' ? 'SIM' : telemetrySource === 'nodata' ? 'NO DATA' : 'real'}
+        </div>
       </div>
     </section>
   );
