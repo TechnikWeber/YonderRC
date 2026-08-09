@@ -902,3 +902,39 @@ body {
   margin-left: 6px;
   vertical-align: middle;
 }
+
+/* ---- telemetry OSD (v1.3) ---- */
+.osd-tel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.osd-batt-bar {
+  position: relative;
+  width: 92px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  margin-top: 2px;
+}
+.osd-batt-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+}
+.osd-batt-pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}

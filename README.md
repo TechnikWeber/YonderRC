@@ -9,6 +9,14 @@ da und im Sim lauffähig; keine Hardware nötig. Die Hardware-Meilensteine (Vide
 Treiber, LTE) warten nur noch aufs reale Gegentesten. Der komplette Steuerpfad
 läuft auf einem PC (oder Handy im selben Netz), die 16 Kanäle reagieren live.
 
+**Neu in v1.3:** Telemetrie-Rückkanal mit **Spannungs-/Stromsensoren** (Sim-Fallback,
+oder real ADS1115/1015, MCP3008/3208 für Spannung und INA219/226/260/3221 sowie
+ACS712/758 für Strom), **präzises Coulomb-Counting** (verbrauchte mAh) und
+**Batterie-Prozent** aus einer eingestellten Kapazität — alles im OSD, wahlweise
+„x/x mAh verbraucht" oder „…Rest". Kameras/Streams werden jetzt **grafisch** im
+Setup verwaltet (Typ, Auflösung, FPS, Bitrate) und generieren die go2rtc-Config
+automatisch. Dazu eine **Video-Latenz-Schätzung** (glass-to-glass) im OSD.
+
 **Neu in v1.1:** Profile sind jetzt **Modelle** (Auto/Flugzeug/Drohne/Boot) mit
 passenden Demo-Kanälen. Innerhalb eines Modells wählst du die **Eingabemethode**
 (Keyboard / Gamepad / Touch); für die Sticks lässt sich das **Einrasten** pro
@@ -123,20 +131,27 @@ Im Drive-Tab „Control via WebRTC data channel" anhaken. Der WebSocket bleibt f
 Handshake, Status und Signalisierung; sobald der Data-Channel offen ist, laufen
 die Steuer-Frames darüber (Anzeige wechselt auf `WEBRTC`).
 
-### Video testen (M2)
+### Video testen (M2) — im Sim ohne Kamera
 
-Video kommt von **go2rtc**. Am einfachsten mit Docker:
+Das Video kommt von **go2rtc** (separates Programm). Im Sim gibt es ein
+synthetisches Testbild. Am einfachsten mit dem Helfer-Skript (lädt go2rtc einmalig
+herunter, braucht `ffmpeg`):
 
 ```bash
-docker compose -f docker/docker-compose.yml up
+# Fedora: einmalig  sudo dnf install -y ffmpeg-free
+npm run dev            # Terminal 1: Fahrzeug + Boden-App
+npm run dev:video      # Terminal 2: go2rtc mit Testbild-Stream 'test'
 ```
 
-Das startet Fahrzeug-Dienst + go2rtc mit einem synthetischen Testbild-Stream
-(`test`). In der Boden-App erscheint das Bild im FPV-Panel mit OSD-Overlay. Ohne
-Docker kannst du go2rtc auch direkt starten (`go2rtc -config docker/go2rtc.yaml`);
-dafür muss `ffmpeg` installiert sein. Auf echter Hardware trägst du in
-`docker/go2rtc.yaml` die Pi-Cam bzw. USB-Kamera ein (Beispiele sind auskommentiert
-enthalten).
+Dann in der Boden-App **Connect** drücken — im FPV-Panel erscheint das Testbild mit
+OSD (Status, Round-trip, Kanäle). Bei mehreren Kameras zeigt das Panel einen
+Umschalter.
+
+Die Boden-App spricht go2rtcs WebRTC-Endpoint `/api/webrtc?src=<name>` an
+(verifiziert mit go2rtc 1.9.14). Kameras/Streams konfigurierst du in
+`docker/go2rtc.yaml` — für echte Hardware kommentierst du dort die Pi-Cam- bzw.
+USB-Kamera-Zeile ein. Alternativ startet `docker compose -f docker/docker-compose.yml up`
+Fahrzeug + go2rtc zusammen.
 
 ### Hardware-Treiber wählen (M3)
 

@@ -38,6 +38,12 @@
       .msg { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 18px; }
       .msg a { color: var(--accent); word-break: break-all; }
       .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+      .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+      .item { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 8px; background: var(--panel-2); }
+      .eyebrow2 { font-size: 11px; color: var(--muted); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+      .btn.tiny { padding: 4px 10px; font-size: 12px; }
+      .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
       .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
     </style>
   </head>
@@ -88,11 +94,54 @@
         </div>
         <div class="grid2">
           <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
-          <label>Cameras<input id="cameras" placeholder="test" /></label>
+          <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
         </div>
-        <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
         <div class="btns"><button class="btn primary" onclick="saveConfig()">Save</button></div>
         <div class="msg" id="cfg-msg"></div>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">Cameras</div>
+        <div id="cam-list"></div>
+        <div class="btns">
+          <button class="btn" onclick="addCamera()">+ Add camera</button>
+          <button class="btn primary" onclick="saveCameras()">Save &amp; apply</button>
+        </div>
+        <div class="msg" id="cam-msg"></div>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">Telemetry (voltage / current / battery)</div>
+        <div class="grid2">
+          <label>Source
+            <select id="telSource">
+              <option value="sim">sim (no sensor)</option>
+              <option value="real">real sensors</option>
+            </select>
+          </label>
+          <label>Sample rate (Hz)<input id="telHz" type="number" placeholder="10" /></label>
+        </div>
+        <div class="eyebrow2">Voltage channels</div>
+        <div id="volt-list"></div>
+        <div class="btns"><button class="btn" onclick="addVolt()">+ Voltage</button></div>
+        <div class="eyebrow2">Current channels</div>
+        <div id="curr-list"></div>
+        <div class="btns"><button class="btn" onclick="addCurr()">+ Current</button></div>
+        <div class="grid2">
+          <label>Battery capacity (mAh)<input id="capacity" type="number" placeholder="e.g. 2200" /></label>
+          <label>Capacity display
+            <select id="displayMode">
+              <option value="remaining">x/x mAh remaining</option>
+              <option value="consumed">x/x mAh consumed</option>
+            </select>
+          </label>
+        </div>
+        <label class="chk"><input type="checkbox" id="countCapacity" /> Count consumed capacity (coulomb counting)</label>
+        <div class="btns">
+          <button class="btn primary" onclick="saveTelemetry()">Save</button>
+          <button class="btn" onclick="resetCapacity()">Reset mAh</button>
+        </div>
+        <div class="msg" id="tel-msg"></div>
       </section>
 
       <section class="panel">
@@ -135,7 +184,6 @@
         $('driver').value = c.driver || 'sim';
         $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 300;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
-        $('cameras').value = (c.cameras || []).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('apn').value = c.apn || '';
       }
@@ -146,7 +194,6 @@
           driver: $('driver').value,
           watchdogTimeoutMs: Number($('watchdogTimeoutMs').value) || 300,
           throttleChannels: $('throttleChannels').value.split(',').map((s) => Number(s.trim()) - 1).filter((n) => Number.isInteger(n) && n >= 0),
-          cameras: $('cameras').value.split(',').map((s) => s.trim()).filter(Boolean),
           videoBaseUrl: $('videoBaseUrl').value.trim() || null,
         };
         const r = await post('/api/config', patch);
@@ -171,7 +218,105 @@
         $('sys-msg').textContent = r.message || '';
       }
 
+      // ---- Cameras (graphical) ----
+      let cams = [];
+      const CAM_TYPES = ['sim', 'rpicam', 'usb'];
+      function renderCams() {
+        $('cam-list').innerHTML = cams.map((c, i) => `
+          <div class="item">
+            <div class="grid3">
+              <label>Name<input value="${c.name || ''}" oninput="camSet(${i},'name',this.value)" /></label>
+              <label>Type<select onchange="camSet(${i},'type',this.value)">
+                ${CAM_TYPES.map((t) => `<option value="${t}" ${c.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+              </select></label>
+              <label>Device<input value="${c.device || ''}" placeholder="/dev/video0" oninput="camSet(${i},'device',this.value)" /></label>
+            </div>
+            <div class="grid4">
+              <label>W<input type="number" value="${c.width || 1280}" oninput="camSet(${i},'width',+this.value)" /></label>
+              <label>H<input type="number" value="${c.height || 720}" oninput="camSet(${i},'height',+this.value)" /></label>
+              <label>FPS<input type="number" value="${c.fps || 25}" oninput="camSet(${i},'fps',+this.value)" /></label>
+              <label>kbps<input type="number" value="${c.bitrateKbps || ''}" placeholder="auto" oninput="camSet(${i},'bitrateKbps',+this.value)" /></label>
+            </div>
+            <div class="btns"><button class="btn tiny" onclick="camDel(${i})">Remove</button></div>
+          </div>`).join('');
+      }
+      function camSet(i, k, v) { cams[i][k] = v; }
+      function camDel(i) { cams.splice(i, 1); renderCams(); }
+      function addCamera() { cams.push({ name: 'cam' + (cams.length + 1), type: 'sim', width: 1280, height: 720, fps: 25 }); renderCams(); }
+      async function loadCameras() {
+        const r = await getJSON('/api/cameras');
+        cams = r.cameras || [];
+        renderCams();
+      }
+      async function saveCameras() {
+        $('cam-msg').textContent = 'Applying…';
+        const r = await post('/api/cameras', { cameras: cams });
+        $('cam-msg').textContent = r.message || 'Saved.';
+      }
+
+      // ---- Telemetry ----
+      let volts = [], currs = [];
+      const V_KINDS = ['sim', 'mcp3008', 'mcp3208', 'ads1115', 'ads1015'];
+      const C_KINDS = ['sim', 'ina219', 'ina226', 'ina260', 'ina3221', 'acs712', 'acs758'];
+      function renderVolts() {
+        $('volt-list').innerHTML = volts.map((v, i) => `
+          <div class="item"><div class="grid3">
+            <label>Label<input value="${v.label || ''}" oninput="vSet(${i},'label',this.value)" /></label>
+            <label>Sensor<select onchange="vSet(${i},'kind',this.value)">
+              ${V_KINDS.map((k) => `<option value="${k}" ${v.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
+            </select></label>
+            <label>Channel<input type="number" value="${v.channel ?? 0}" oninput="vSet(${i},'channel',+this.value)" /></label>
+          </div><div class="btns"><button class="btn tiny" onclick="vDel(${i})">Remove</button></div></div>`).join('');
+      }
+      function renderCurrs() {
+        $('curr-list').innerHTML = currs.map((c, i) => `
+          <div class="item"><div class="grid3">
+            <label>Label<input value="${c.label || ''}" oninput="cSet(${i},'label',this.value)" /></label>
+            <label>Sensor<select onchange="cSet(${i},'kind',this.value)">
+              ${C_KINDS.map((k) => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
+            </select></label>
+            <label>Shunt Ω<input type="number" step="0.0001" value="${c.shuntOhms ?? ''}" placeholder="0.001" oninput="cSet(${i},'shuntOhms',+this.value)" /></label>
+          </div><div class="btns"><button class="btn tiny" onclick="cDel(${i})">Remove</button></div></div>`).join('');
+      }
+      function vSet(i, k, val) { volts[i][k] = val; }
+      function cSet(i, k, val) { currs[i][k] = val; }
+      function vDel(i) { volts.splice(i, 1); renderVolts(); }
+      function cDel(i) { currs.splice(i, 1); renderCurrs(); }
+      function addVolt() { volts.push({ label: 'Voltage ' + (volts.length + 1), kind: 'sim' }); renderVolts(); }
+      function addCurr() { currs.push({ label: 'Current ' + (currs.length + 1), kind: 'sim' }); renderCurrs(); }
+      async function loadTelemetry() {
+        const t = await getJSON('/api/telemetry');
+        $('telSource').value = t.source || 'sim';
+        $('telHz').value = t.sampleHz ?? 10;
+        $('capacity').value = t.batteryCapacityMah ?? '';
+        $('displayMode').value = t.displayMode || 'remaining';
+        $('countCapacity').checked = !!t.countCapacity;
+        volts = t.voltages || [];
+        currs = t.currents || [];
+        renderVolts(); renderCurrs();
+      }
+      async function saveTelemetry() {
+        const body = {
+          enabled: true,
+          source: $('telSource').value,
+          sampleHz: Number($('telHz').value) || 10,
+          voltages: volts,
+          currents: currs,
+          countCapacity: $('countCapacity').checked,
+          batteryCapacityMah: $('capacity').value ? Number($('capacity').value) : null,
+          displayMode: $('displayMode').value,
+        };
+        const r = await post('/api/telemetry', body);
+        $('tel-msg').textContent = r.note || 'Saved.';
+      }
+      async function resetCapacity() {
+        const r = await post('/api/telemetry/reset');
+        $('tel-msg').textContent = r.message || 'Reset.';
+      }
+
       loadConfig();
+      loadCameras();
+      loadTelemetry();
       refresh();
       setInterval(refresh, 3000);
     </script>

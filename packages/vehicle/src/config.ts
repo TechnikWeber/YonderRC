@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
+import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 
@@ -21,14 +22,18 @@ export interface VehicleConfig {
   simLogEveryMs: number;
   /** Base URL of the go2rtc video server, or null for pure sim without video. */
   videoBaseUrl: string | null;
-  /** Available camera stream names for switching. */
-  cameras: string[];
   /** Hardware-driver-specific options (I2C, GPIO pins, serial path). */
   driverOptions: DriverOptions;
   /** 'sim' (default) or 'real' networking (Pi). */
   systemKind: SystemKind;
   /** LTE APN to auto-connect at boot, if set. */
   apn: string | null;
+  /** Telemetry (sensors, coulomb counting, battery). */
+  telemetry: TelemetryConfig;
+  /** Cameras (graphical); generates go2rtc.yaml. */
+  cameras: CameraCfg[];
+  /** Path of the generated go2rtc config. */
+  go2rtcConfigPath: string;
   /** Where the persistent config file lives. */
   configPath: string;
 }
@@ -39,9 +44,10 @@ export interface PersistentConfig {
   driver?: DriverKind;
   watchdogTimeoutMs?: number;
   throttleChannels?: number[];
-  cameras?: string[];
   videoBaseUrl?: string | null;
   apn?: string | null;
+  telemetry?: TelemetryConfig;
+  cameras?: CameraCfg[];
 }
 
 function num(name: string, fallback: number): number {
@@ -75,9 +81,6 @@ export function loadConfig(): VehicleConfig {
   const p = loadPersisted(configPath);
 
   const envDriver = process.env.YRC_DRIVER as DriverKind | undefined;
-  const envCameras = process.env.YRC_CAMERAS
-    ? process.env.YRC_CAMERAS.split(',').map((s) => s.trim()).filter(Boolean)
-    : undefined;
 
   return {
     // Persistent fields: file overrides env-default.
@@ -90,7 +93,6 @@ export function loadConfig(): VehicleConfig {
         .split(',')
         .map((s) => Number(s.trim()))
         .filter((n) => Number.isInteger(n)),
-    cameras: p.cameras ?? envCameras ?? ['test'],
     videoBaseUrl:
       p.videoBaseUrl !== undefined
         ? p.videoBaseUrl
@@ -98,6 +100,18 @@ export function loadConfig(): VehicleConfig {
           ? null
           : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:1984`,
     apn: p.apn ?? process.env.YRC_APN ?? null,
+    telemetry: p.telemetry ?? {
+      enabled: true,
+      source: 'sim',
+      sampleHz: 10,
+      voltages: [{ label: 'Voltage 1', kind: 'sim' }],
+      currents: [{ label: 'Current 1', kind: 'sim' }],
+      countCapacity: true,
+      batteryCapacityMah: null,
+      displayMode: 'remaining',
+    },
+    cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
+    go2rtcConfigPath: process.env.YRC_GO2RTC_CONFIG ?? 'docker/go2rtc.yaml',
 
     // Env-only fields.
     host: process.env.YRC_HOST ?? '0.0.0.0',

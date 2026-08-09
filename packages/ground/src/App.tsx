@@ -4,6 +4,7 @@ import {
   neutralChannels,
   type Profile,
   type StatusMessage,
+  type TelemetryMessage,
   type WelcomeMessage,
 } from '@yonderrc/protocol';
 import { LinkClient, type ControlPath, type LinkState } from './lib/transport';
@@ -32,6 +33,7 @@ export function App() {
   const [linkState, setLinkState] = useState<LinkState>('disconnected');
   const [welcome, setWelcome] = useState<WelcomeMessage | null>(null);
   const [status, setStatus] = useState<StatusMessage | null>(null);
+  const [telemetry, setTelemetry] = useState<TelemetryMessage | null>(null);
   const [gamepad, setGamepad] = useState<string | null>(null);
   const [previewChannels, setPreviewChannels] = useState<number[]>(neutralChannels());
   const [tick, setTick] = useState(0);
@@ -58,6 +60,7 @@ export function App() {
         pushConfig(activeRef.current); // vehicle needs failsafe as soon as we connect
       },
       onStatus: setStatus,
+      onTelemetry: setTelemetry,
       onControlPath: setControlPath,
     });
   }
@@ -187,7 +190,7 @@ export function App() {
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.1.4</span>
+        <span className="ver">ground · v1.3.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -263,6 +266,7 @@ export function App() {
             latencyMs={rttDisplay}
             channels={monitorChannels}
             profile={active}
+            telemetry={connected ? telemetry : null}
           />
           <div className="link-opts">
             <label className="opt">

@@ -4,12 +4,16 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { VehicleConfig, PersistentConfig } from '../config.js';
 import { savePersisted } from '../config.js';
 import type { SystemManager } from '../system/index.js';
+import type { TelemetryService } from '../sensors/TelemetryService.js';
+import type { CameraCfg } from '@yonderrc/protocol';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
 export interface SetupContext {
   config: VehicleConfig;
   system: SystemManager;
+  telemetry: TelemetryService;
+  applyCameras: (cams: CameraCfg[]) => Promise<void>;
   /** Called after config is persisted so the caller can note "restart needed". */
   onConfigSaved?: (patch: PersistentConfig) => void;
 }
@@ -114,6 +118,39 @@ export async function handleSetup(
 
   if (url === '/api/reboot' && method === 'POST') {
     json(res, 200, await ctx.system.reboot());
+    return true;
+  }
+
+  // --- telemetry ---
+  if (url === '/api/telemetry' && method === 'GET') {
+    json(res, 200, ctx.config.telemetry);
+    return true;
+  }
+  if (url === '/api/telemetry' && method === 'POST') {
+    const telemetry = (await readBody(req)) as PersistentConfig['telemetry'];
+    savePersisted(ctx.config.configPath, { telemetry });
+    ctx.onConfigSaved?.({ telemetry });
+    json(res, 200, { ok: true, note: 'Telemetry saved. Restart the vehicle to apply.' });
+    return true;
+  }
+  if (url === '/api/telemetry/reset' && method === 'POST') {
+    ctx.telemetry.resetCapacity();
+    json(res, 200, { ok: true, message: 'Coulomb counter reset.' });
+    return true;
+  }
+
+  // --- cameras (graphical → generates go2rtc.yaml) ---
+  if (url === '/api/cameras' && method === 'GET') {
+    json(res, 200, { cameras: ctx.config.cameras });
+    return true;
+  }
+  if (url === '/api/cameras' && method === 'POST') {
+    const body = (await readBody(req)) as { cameras?: CameraCfg[] };
+    const cameras = body.cameras ?? [];
+    savePersisted(ctx.config.configPath, { cameras });
+    ctx.config.cameras = cameras;
+    await ctx.applyCameras(cameras);
+    json(res, 200, { ok: true, message: `Applied ${cameras.length} camera(s) and reloaded video.` });
     return true;
   }
 

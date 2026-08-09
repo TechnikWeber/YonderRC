@@ -57,7 +57,8 @@ export interface SetConfigMessage {
 export type ServerMessage =
   | WelcomeMessage
   | StatusMessage
-  | RtcSignalMessage;
+  | RtcSignalMessage
+  | import('./telemetry').TelemetryMessage;
 
 export interface WelcomeMessage {
   type: 'welcome';

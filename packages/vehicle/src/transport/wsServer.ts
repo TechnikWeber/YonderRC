@@ -13,16 +13,26 @@ import { handleClientMessage } from './handleMessage.js';
 import { WebRtcControl } from './WebRtcControl.js';
 import { handleSetup, type SetupContext } from './setupRouter.js';
 import type { SystemManager } from '../system/index.js';
+import type { TelemetryService } from '../sensors/TelemetryService.js';
+import { applyCameras } from '../video/cameraManager.js';
 
 /**
  * v0.1 control link over WebSocket, now doubling as the WebRTC signaling channel
  * (M2). Control payload can travel either over the WS (fallback) or, once
- * negotiated, over a WebRTC data channel. Status + signaling stay on the WS.
+ * negotiated, over a WebRTC data channel. Status + telemetry + signaling stay on
+ * the WS.
  */
-export function startWsServer(core: VehicleCore, config: VehicleConfig, system: SystemManager) {
+export function startWsServer(
+  core: VehicleCore,
+  config: VehicleConfig,
+  system: SystemManager,
+  telemetry: TelemetryService,
+) {
   const setupCtx: SetupContext = {
     config,
     system,
+    telemetry,
+    applyCameras: (cams) => applyCameras(cams, config.go2rtcConfigPath, config.videoBaseUrl),
     onConfigSaved: (patch) => console.log('[setup] config saved:', Object.keys(patch).join(', ')),
   };
   const http = createServer((req, res) => {
@@ -52,13 +62,18 @@ export function startWsServer(core: VehicleCore, config: VehicleConfig, system: 
       driver: config.driver,
       watchdogTimeoutMs: config.watchdogTimeoutMs,
       videoBaseUrl: config.videoBaseUrl,
-      cameras: config.cameras,
+      cameras: config.cameras.map((c) => c.name),
     };
     ws.send(JSON.stringify(welcome));
 
     const statusTimer = setInterval(() => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(core.status()));
     }, 50);
+    // Telemetry at a calmer rate (voltage/current/mAh change slowly).
+    const telemetryTimer = setInterval(() => {
+      const t = telemetry.message;
+      if (t && ws.readyState === ws.OPEN) ws.send(JSON.stringify(t));
+    }, 200);
 
     ws.on('message', (raw) => {
       let msg: ClientMessage;
@@ -76,6 +91,7 @@ export function startWsServer(core: VehicleCore, config: VehicleConfig, system: 
 
     ws.on('close', () => {
       clearInterval(statusTimer);
+      clearInterval(telemetryTimer);
       rtc.close();
       console.log(`[link] ground disconnected (${who}); watchdog will hold failsafe`);
     });

@@ -4,12 +4,14 @@ import { createDriver } from './drivers/index.js';
 import { VehicleCore } from './core/VehicleCore.js';
 import { startWsServer } from './transport/wsServer.js';
 import { createSystem } from './system/index.js';
+import { TelemetryService } from './sensors/TelemetryService.js';
+import { applyCameras } from './video/cameraManager.js';
 
 async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.1.4');
+  console.log('  YonderRC vehicle service  v1.3.0');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -45,8 +47,17 @@ async function main() {
   }
 
   const system = createSystem(config.systemKind);
-  startWsServer(core, config, system);
+
+  // Telemetry (sensors → coulomb counting → OSD). Sim by default.
+  const telemetry = new TelemetryService(config.telemetry);
+  await telemetry.start();
+
+  // Generate go2rtc.yaml from the graphical camera list (best effort at boot).
+  await applyCameras(config.cameras, config.go2rtcConfigPath, config.videoBaseUrl).catch(() => {});
+
+  startWsServer(core, config, system, telemetry);
   console.log(`  setup UI  : http://<vehicle>:${config.port}/setup  (system: ${config.systemKind})`);
+  console.log(`  telemetry : ${config.telemetry.source} · ${config.telemetry.enabled ? 'on' : 'off'}`);
 
   // Auto-connect LTE at boot if an APN was configured via the setup UI.
   if (config.apn) {
@@ -55,6 +66,7 @@ async function main() {
 
   const shutdown = async () => {
     console.log('\n[core] shutting down, holding failsafe…');
+    await telemetry.stop();
     await core.stop();
     process.exit(0);
   };

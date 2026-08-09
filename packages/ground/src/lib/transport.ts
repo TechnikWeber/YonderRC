@@ -4,6 +4,7 @@ import {
   type RtcSignalMessage,
   type ServerMessage,
   type StatusMessage,
+  type TelemetryMessage,
   type WelcomeMessage,
 } from '@yonderrc/protocol';
 
@@ -14,6 +15,7 @@ export interface LinkCallbacks {
   onState?: (state: LinkState) => void;
   onWelcome?: (msg: WelcomeMessage) => void;
   onStatus?: (msg: StatusMessage) => void;
+  onTelemetry?: (msg: TelemetryMessage) => void;
   onControlPath?: (path: ControlPath) => void;
 }
 
@@ -92,6 +94,8 @@ export class LinkClient {
         if (this.preferWebRtc && !this.pc) this.upgradeToWebRtc();
       } else if (msg.type === 'status') {
         this.cbs.onStatus?.(msg);
+      } else if (msg.type === 'telemetry') {
+        this.cbs.onTelemetry?.(msg);
       } else if (msg.type === 'rtc') {
         void this.onSignal(msg);
       }
