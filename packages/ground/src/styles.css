@@ -985,3 +985,30 @@ body {
 @keyframes nodata-blink {
   50% { opacity: 0.35; }
 }
+
+/* ---- recording controls (v1.6) ---- */
+.btn.tiny.rec-on { border-color: var(--bad); color: var(--bad); font-weight: 700; }
+.rec-settings {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+  background: var(--panel-2);
+}
+.rec-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.rec-folder { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.rec-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.rec-field input { font-family: var(--mono); }
+.rec-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+.rec-badge {
+  position: absolute; top: 10px; left: 10px;
+  background: var(--bad); color: #fff; font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 2px 8px; border-radius: 3px;
+  animation: rec-pulse 1.2s ease-in-out infinite;
+}
+@keyframes rec-pulse { 50% { opacity: 0.45; } }
+.rec-toast {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.75); color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 6px;
+}
+@media (max-width: 640px) { .rec-grid { grid-template-columns: 1fr 1fr; } }

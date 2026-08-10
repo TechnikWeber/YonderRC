@@ -146,6 +146,21 @@
       </section>
 
       <section class="panel">
+        <div class="eyebrow">Hardware test — RÄDER HOCH / PROPS AB</div>
+        <div class="grid2">
+          <label>Channel to sweep<input id="testCh" type="number" placeholder="1" /></label>
+          <div style="display:flex;align-items:flex-end"><button class="btn" onclick="sweepChannel()">Sweep (min→max→center)</button></div>
+        </div>
+        <div class="btns">
+          <button class="btn" onclick="readSensors()">Read sensors now</button>
+          <button class="btn" onclick="snapCameras()">Snapshot cameras</button>
+        </div>
+        <div class="msg" id="test-msg"></div>
+        <div id="test-sensors"></div>
+        <div id="test-cams" class="grid2"></div>
+      </section>
+
+      <section class="panel">
         <div class="eyebrow">System</div>
         <div class="btns"><button class="btn bad" onclick="reboot()">Reboot vehicle</button></div>
         <div class="msg" id="sys-msg"></div>
@@ -315,6 +330,29 @@
       async function resetCapacity() {
         const r = await post('/api/telemetry/reset');
         $('tel-msg').textContent = r.message || 'Reset.';
+      }
+
+      // ---- Hardware test ----
+      async function sweepChannel() {
+        const ch = Number($('testCh').value) - 1;
+        if (!(ch >= 0)) { $('test-msg').textContent = 'Enter a channel number.'; return; }
+        $('test-msg').textContent = 'Sweeping… watch the servo.';
+        const r = await post('/api/test/channel', { channel: ch });
+        $('test-msg').textContent = r.message || (r.ok ? 'Done.' : 'Failed.');
+      }
+      async function readSensors() {
+        const t = await getJSON('/api/telemetry/live');
+        if (t.ok === false) { $('test-sensors').innerHTML = '<div class="msg">No sensor data (source real without sensor, or telemetry off).</div>'; return; }
+        const v = (t.voltages || []).map((x) => `${x.label}: <b>${x.value} V</b>`).join(' · ');
+        const c = (t.currents || []).map((x) => `${x.label}: <b>${x.value} A</b>`).join(' · ');
+        $('test-sensors').innerHTML = `<div class="msg">Source: <b>${t.source}${t.ok ? '' : ' (no data)'}</b><br>${v}<br>${c}<br>${t.mah ?? 0} mAh${t.batteryPercent != null ? ' · ' + t.batteryPercent + '%' : ''}</div>`;
+      }
+      async function snapCameras() {
+        const base = ($('videoBaseUrl').value || 'http://' + location.hostname + ':1984').replace(/\/$/, '');
+        const names = cams.map((c) => c.name);
+        $('test-cams').innerHTML = names.length ? names.map((n) =>
+          `<div><div class="eyebrow2">${n}</div><img style="width:100%;border-radius:8px;border:1px solid var(--line)" src="${base}/api/frame.jpeg?src=${encodeURIComponent(n)}&t=${Date.now()}" onerror="this.parentNode.innerHTML='<div class=&quot;msg&quot;>${n}: no frame (is go2rtc running?)</div>'"/></div>`
+        ).join('') : '<div class="msg">Add a camera first.</div>';
       }
 
       loadConfig();

@@ -43,6 +43,7 @@ export class VehicleCore {
   private watchdogTimeoutMs: number;
   private failsafeUs: number[];
   private disarmedUs: number[];
+  private testOverride: { ch: number; us: number } | null = null;
   private throttleChannels: Set<number>;
 
   private commanded: number[];
@@ -149,6 +150,20 @@ export class VehicleCore {
     }
   }
 
+  /**
+   * Bench self-test override: force one channel to a value (all others held at
+   * failsafe), regardless of link state, but ONLY while disarmed. Used by the
+   * setup UI to sweep a channel and verify servo wiring. Returns false if armed.
+   */
+  setTestOverride(channel: number, us: number): boolean {
+    if (this.armed) return false;
+    this.testOverride = { ch: channel, us: clampChannelUs(us) };
+    return true;
+  }
+  clearTestOverride(): void {
+    this.testOverride = null;
+  }
+
   /** Update which channels are forced safe while disarmed (typically throttle). */
   setThrottleChannels(channels: number[]): void {
     this.throttleChannels = new Set(channels.filter((n) => Number.isInteger(n)));
@@ -166,6 +181,15 @@ export class VehicleCore {
    *  3. armed + linked → commanded values
    */
   private resolveOutput(): number[] {
+    // Bench self-test: one channel driven, everything else safe. Highest priority
+    // but gated on disarmed (setTestOverride refuses while armed).
+    if (this.testOverride && !this.armed) {
+      const out = this.failsafeUs.slice();
+      const { ch, us } = this.testOverride;
+      if (ch >= 0 && ch < out.length) out[ch] = us;
+      this.failsafeActive = false;
+      return out;
+    }
     // ESC calibration overrides everything: throttle channel gets the calibration
     // value, every other channel is held at failsafe, and the vehicle is disarmed.
     if (this.calibration.isActive) {

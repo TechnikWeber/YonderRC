@@ -1,6 +1,6 @@
 {
   "name": "yonderrc",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "description": "YonderRC \u2014 beyond-line-of-sight RC control over IP. One app for video, control and configuration.",
@@ -18,7 +18,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build -w @yonderrc/ground",
     "build:desktop": "npm run build -w @yonderrc/desktop",
-    "dev:video": "bash scripts/dev-video.sh"
+    "dev:video": "bash scripts/dev-video.sh",
+    "test": "tsx test/suite.mts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

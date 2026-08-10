@@ -7,6 +7,8 @@ import {
   type TelemetryMessage,
 } from '@yonderrc/protocol';
 import type { ControlPath, LinkState } from '../lib/transport';
+import type { InputManager } from '../lib/input/inputManager';
+import { useRecorder } from '../lib/recorder';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -146,6 +148,7 @@ export function VideoPanel({
   channels,
   profile,
   telemetry,
+  input,
 }: {
   videoBaseUrl: string | null;
   cameras: string[];
@@ -157,6 +160,7 @@ export function VideoPanel({
   channels: number[];
   profile: Profile;
   telemetry: TelemetryMessage | null;
+  input: InputManager;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -164,6 +168,8 @@ export function VideoPanel({
   const [play, setPlay] = useState<PlayState>('idle');
   const [showOsd, setShowOsd] = useState(true);
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
+  const [showRecSettings, setShowRecSettings] = useState(false);
+  const rec = useRecorder(videoRef);
 
   useEffect(() => {
     if (cameras.length && !cameras.includes(camera)) setCamera(cameras[0]);
@@ -210,6 +216,33 @@ export function VideoPanel({
     return () => clearInterval(id);
   }, [play]);
 
+  // Keyboard hotkeys for record / snapshot (ignored while typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      const k = e.key.toLowerCase();
+      if (k === rec.settings.recordKey.toLowerCase()) rec.toggleRecord();
+      else if (k === rec.settings.snapshotKey.toLowerCase()) rec.snapshot();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [rec]);
+
+  // Gamepad button hotkeys with rising-edge detection.
+  const prevButtons = useRef<boolean[]>([]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const btns = input.readGamepadButtons();
+      const rose = (i: number | null) => i != null && btns[i] && !prevButtons.current[i];
+      if (rose(rec.settings.recordButton)) rec.toggleRecord();
+      if (rose(rec.settings.snapshotButton)) rec.snapshot();
+      prevButtons.current = btns;
+    }, 80);
+    return () => clearInterval(id);
+  }, [input, rec]);
+
   const throttleCh = profile.throttleChannels[0] ?? 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
 
@@ -225,14 +258,56 @@ export function VideoPanel({
               ))}
             </select>
           )}
+          <button
+            className={`btn tiny${rec.recording ? ' rec-on' : ''}`}
+            onClick={rec.toggleRecord}
+            title={`Record (${rec.settings.recordKey.toUpperCase()})`}
+          >
+            {rec.recording ? '● REC' : 'Record'}
+          </button>
+          <button className="btn tiny" onClick={rec.snapshot} title={`Snapshot (${rec.settings.snapshotKey.toUpperCase()})`}>
+            Snapshot
+          </button>
+          <button className="btn tiny" onClick={() => setShowRecSettings((v) => !v)} title="Recording settings">
+            ⚙
+          </button>
           <button className="btn tiny" onClick={() => setShowOsd((v) => !v)}>
             OSD {showOsd ? 'on' : 'off'}
           </button>
         </div>
       </div>
 
+      {showRecSettings && (
+        <div className="rec-settings">
+          <div className="rec-row">
+            <button className="btn tiny" onClick={rec.pickFolder}>Choose folder</button>
+            <span className="rec-folder">{rec.folderName ? `${rec.folderName}/` : 'Downloads (fallback)'}</span>
+          </div>
+          <label className="rec-field">Filename prefix
+            <input value={rec.settings.prefix} onChange={(e) => rec.setSettings({ prefix: e.target.value })} />
+          </label>
+          <div className="rec-grid">
+            <label className="rec-field">Record key
+              <input maxLength={1} value={rec.settings.recordKey} onChange={(e) => rec.setSettings({ recordKey: e.target.value || 'r' })} />
+            </label>
+            <label className="rec-field">Snapshot key
+              <input maxLength={1} value={rec.settings.snapshotKey} onChange={(e) => rec.setSettings({ snapshotKey: e.target.value || 't' })} />
+            </label>
+            <label className="rec-field">Record button
+              <input type="number" placeholder="—" value={rec.settings.recordButton ?? ''} onChange={(e) => rec.setSettings({ recordButton: e.target.value === '' ? null : Number(e.target.value) })} />
+            </label>
+            <label className="rec-field">Snapshot button
+              <input type="number" placeholder="—" value={rec.settings.snapshotButton ?? ''} onChange={(e) => rec.setSettings({ snapshotButton: e.target.value === '' ? null : Number(e.target.value) })} />
+            </label>
+          </div>
+          <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Keys are ignored while typing. Gamepad button numbers are the raw indices (leave blank to disable).</p>
+        </div>
+      )}
+
       <div className="video-stage">
         <video ref={videoRef} autoPlay playsInline muted />
+        {rec.recording && <div className="rec-badge">● REC</div>}
+        {rec.lastAction && <div className="rec-toast">{rec.lastAction}</div>}
 
         {play !== 'playing' && (
           <div className="video-placeholder">

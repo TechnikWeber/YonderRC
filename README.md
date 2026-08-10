@@ -26,6 +26,8 @@ direkt die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst ausgeliefert
 
 **Neu in v1.5.1:** Der H.264-Encoder fürs Video wird jetzt **automatisch erkannt** — `libx264`, Ciscos `libopenh264` (in Fedoras `ffmpeg-free` enthalten) oder der Hardware-Encoder auf dem Pi. Kein RPM Fusion mehr nötig.
 
+**Neu in v1.6:** **Aufnahme & Standbild** im FPV-Panel (lokal speichern, Ordner einmal vorwählen, auf Taste/Controller-Button legbar). **Geführter Hardware-Selbsttest** im Setup (Kanal-Sweep, Sensoren lesen, Kamera-Standbild). Und eine **wiederholbare Testsuite** (`npm test`, 23 Checks).
+
 **Hardware:** Für den Aufbau auf echtem Raspberry Pi (Teileliste, Verkabelung,
 Schritt-für-Schritt zuerst im WLAN, dann per LTE/Tailscale) siehe
 [`docs/HARDWARE.md`](docs/HARDWARE.md).

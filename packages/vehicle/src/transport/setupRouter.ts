@@ -5,6 +5,8 @@ import type { VehicleConfig, PersistentConfig } from '../config.js';
 import { savePersisted } from '../config.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
+import type { VehicleCore } from '../core/VehicleCore.js';
+import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg } from '@yonderrc/protocol';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
@@ -13,6 +15,7 @@ export interface SetupContext {
   config: VehicleConfig;
   system: SystemManager;
   telemetry: TelemetryService;
+  core: VehicleCore;
   applyCameras: (cams: CameraCfg[]) => Promise<void>;
   /** Called after config is persisted so the caller can note "restart needed". */
   onConfigSaved?: (patch: PersistentConfig) => void;
@@ -138,6 +141,32 @@ export async function handleSetup(
   if (url === '/api/telemetry/reset' && method === 'POST') {
     ctx.telemetry.resetCapacity();
     json(res, 200, { ok: true, message: 'Coulomb counter reset.' });
+    return true;
+  }
+  // Live one-shot sensor read for the setup "Hardware test".
+  if (url === '/api/telemetry/live' && method === 'GET') {
+    json(res, 200, ctx.telemetry.message ?? { ok: false, note: 'no telemetry yet' });
+    return true;
+  }
+  // Channel sweep: min → max → center, to verify servo wiring. Disarmed only.
+  if (url === '/api/test/channel' && method === 'POST') {
+    const { channel } = (await readBody(req)) as { channel?: number };
+    const ch = Number(channel);
+    if (!Number.isInteger(ch) || ch < 0) {
+      json(res, 400, { ok: false, message: 'invalid channel' });
+      return true;
+    }
+    if (!ctx.core.setTestOverride(ch, CHANNEL_NEUTRAL_US)) {
+      json(res, 409, { ok: false, message: 'Disarm the vehicle before testing channels.' });
+      return true;
+    }
+    const seq = [CHANNEL_NEUTRAL_US, CHANNEL_MIN_US, CHANNEL_NEUTRAL_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US];
+    for (const us of seq) {
+      ctx.core.setTestOverride(ch, us);
+      await new Promise((r) => setTimeout(r, 450));
+    }
+    ctx.core.clearTestOverride();
+    json(res, 200, { ok: true, message: `Swept channel ${ch + 1} (min→max→center).` });
     return true;
   }
 
