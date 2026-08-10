@@ -3,6 +3,17 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.7.0
+- **Self-healing video**: the FPV stream now detects a frozen/dropped picture
+  (WebRTC state + a frame watchdog) and reconnects on its own with backoff, keeping
+  the last frame on screen and showing "Reconnecting…" instead of freezing.
+- **Live video quality from the ground** (High / Medium / Low): the ground sends a
+  command; the vehicle rescales resolution + caps bitrate and reloads go2rtc, then
+  the stream re-establishes automatically. Keeps the picture fluid on a poor link.
+- **Connection stats in the OSD**: bitrate, packet loss, FPS and video latency from
+  WebRTC stats (top-right). Armed/failsafe badge moved to top-center so it no longer
+  overlaps the REC indicator.
+
 ## v1.6.0
 - **Recording & snapshots** in the FPV panel: record the live video locally (WebM)
   and grab stills (PNG). Pick a target folder once before flight (File System

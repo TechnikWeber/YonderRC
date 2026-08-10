@@ -12,40 +12,85 @@ import { useRecorder } from '../lib/recorder';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
-type PlayState = 'idle' | 'connecting' | 'playing' | 'error';
+const QUALITY_KEY = 'yonderrc.videoQuality.v1';
+function loadQuality(): VideoQuality {
+  const v = (typeof localStorage !== 'undefined' && localStorage.getItem(QUALITY_KEY)) as VideoQuality | null;
+  return v === 'high' || v === 'medium' || v === 'low' ? v : 'high';
+}
+
+type PlayState = 'idle' | 'connecting' | 'playing' | 'reconnecting' | 'error';
+export type VideoQuality = 'high' | 'medium' | 'low';
+
+export interface VideoStats {
+  latencyMs: number | null;
+  bitrateKbps: number | null;
+  lossPct: number | null;
+  fps: number | null;
+  framesDecoded: number;
+}
 
 /**
- * Estimate glass-to-glass video latency from WebRTC stats: the jitter buffer
- * delay (how long frames wait to be played) plus half the round-trip time, plus a
- * small decode allowance. It's an estimate — a true glass-to-glass figure needs a
- * timestamp burned into the frame — but it tracks the real end-to-end delay well
- * and needs no special source.
+ * Read the useful inbound-video stats from WebRTC in one pass: an estimated
+ * glass-to-glass latency (jitter buffer + half RTT + decode), current bitrate,
+ * packet loss and framerate. Bitrate/loss/fps are computed as deltas against the
+ * previous sample, so the caller keeps the previous VideoStats around.
  */
-async function estimateVideoLatency(pc: RTCPeerConnection): Promise<number | null> {
+async function readVideoStats(pc: RTCPeerConnection, prev: VideoStats | null, dtMs: number): Promise<VideoStats | null> {
   const stats = await pc.getStats();
   let jbDelay = 0;
   let jbCount = 0;
   let rtt = 0;
   let decodeMs = 0;
+  let bytes = 0;
+  let framesDecoded = 0;
+  let packetsLost = 0;
+  let packetsReceived = 0;
+  let reportedFps: number | undefined;
+  let haveInbound = false;
+
   stats.forEach((r) => {
     if (r.type === 'inbound-rtp' && (r as RTCInboundRtpStreamStats & { kind?: string }).kind === 'video') {
+      haveInbound = true;
       const s = r as RTCInboundRtpStreamStats & {
         jitterBufferDelay?: number;
         jitterBufferEmittedCount?: number;
         totalDecodeTime?: number;
         framesDecoded?: number;
+        bytesReceived?: number;
+        packetsLost?: number;
+        packetsReceived?: number;
+        framesPerSecond?: number;
       };
       jbDelay = s.jitterBufferDelay ?? 0;
       jbCount = s.jitterBufferEmittedCount ?? 0;
       if (s.totalDecodeTime && s.framesDecoded) decodeMs = (s.totalDecodeTime / s.framesDecoded) * 1000;
+      bytes = s.bytesReceived ?? 0;
+      framesDecoded = s.framesDecoded ?? 0;
+      packetsLost = s.packetsLost ?? 0;
+      packetsReceived = s.packetsReceived ?? 0;
+      reportedFps = s.framesPerSecond;
     }
     if (r.type === 'candidate-pair' && (r as RTCIceCandidatePairStats).nominated) {
       rtt = (r as RTCIceCandidatePairStats).currentRoundTripTime ?? 0;
     }
   });
-  if (jbCount === 0) return null;
-  const jbMs = (jbDelay / jbCount) * 1000;
-  return Math.round(jbMs + (rtt * 1000) / 2 + decodeMs);
+  if (!haveInbound) return null;
+
+  const latencyMs = jbCount > 0 ? Math.round((jbDelay / jbCount) * 1000 + (rtt * 1000) / 2 + decodeMs) : prev?.latencyMs ?? null;
+  const totalPackets = packetsReceived + packetsLost;
+  const lossPct = totalPackets > 0 ? Math.max(0, Math.min(100, (packetsLost / totalPackets) * 100)) : null;
+
+  let bitrateKbps: number | null = prev?.bitrateKbps ?? null;
+  let fps: number | null = reportedFps != null ? Math.round(reportedFps) : prev?.fps ?? null;
+  if (prev && dtMs > 0) {
+    const dSec = dtMs / 1000;
+    const prevBytes = (prev as VideoStats & { _bytes?: number })._bytes ?? bytes;
+    bitrateKbps = Math.max(0, Math.round(((bytes - prevBytes) * 8) / 1000 / dSec));
+    if (reportedFps == null) fps = Math.max(0, Math.round((framesDecoded - prev.framesDecoded) / dSec));
+  }
+  const out: VideoStats & { _bytes?: number } = { latencyMs, bitrateKbps, lossPct: lossPct == null ? null : Math.round(lossPct * 10) / 10, fps, framesDecoded };
+  out._bytes = bytes;
+  return out;
 }
 
 /** Minimal WebRTC client for go2rtc: POST our offer, apply its answer. */
@@ -149,6 +194,7 @@ export function VideoPanel({
   profile,
   telemetry,
   input,
+  onQuality,
 }: {
   videoBaseUrl: string | null;
   cameras: string[];
@@ -161,6 +207,7 @@ export function VideoPanel({
   profile: Profile;
   telemetry: TelemetryMessage | null;
   input: InputManager;
+  onQuality: (q: VideoQuality) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -168,53 +215,110 @@ export function VideoPanel({
   const [play, setPlay] = useState<PlayState>('idle');
   const [showOsd, setShowOsd] = useState(true);
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
+  const [stats, setStats] = useState<VideoStats | null>(null);
+  const [quality, setQuality] = useState<VideoQuality>(loadQuality);
   const [showRecSettings, setShowRecSettings] = useState(false);
   const rec = useRecorder(videoRef);
+
+  // Reconnect bookkeeping (refs so the watchdog can act without re-subscribing).
+  const attemptRef = useRef(0);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statsRef = useRef<VideoStats | null>(null);
+  const lastFramesRef = useRef<{ frames: number; at: number }>({ frames: 0, at: 0 });
+  const wantVideo = !!videoBaseUrl && !!camera && linkState === 'connected';
 
   useEffect(() => {
     if (cameras.length && !cameras.includes(camera)) setCamera(cameras[0]);
   }, [cameras, camera]);
 
+  // Self-healing video: connect, watch for stalls/failures, reconnect with backoff.
   useEffect(() => {
     let cancelled = false;
-    pcRef.current?.close();
-    pcRef.current = null;
-    if (!videoBaseUrl || !camera || linkState !== 'connected') {
-      setPlay('idle');
-      return;
-    }
-    setPlay('connecting');
-    playWhep(videoBaseUrl, camera, videoRef.current!)
-      .then((pc) => {
+
+    const clearReconnect = () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled || !wantVideo) return;
+      clearReconnect();
+      const delay = Math.min(500 * 2 ** attemptRef.current, 5000);
+      attemptRef.current += 1;
+      setPlay('reconnecting');
+      reconnectTimer.current = setTimeout(connect, delay);
+    };
+
+    async function connect() {
+      if (cancelled || !wantVideo) return;
+      // Keep the last frame on screen; don't clear srcObject.
+      pcRef.current?.close();
+      pcRef.current = null;
+      setPlay((p) => (p === 'reconnecting' ? p : 'connecting'));
+      try {
+        const pc = await playWhep(videoBaseUrl!, camera, videoRef.current!);
         if (cancelled) {
           pc.close();
           return;
         }
         pcRef.current = pc;
-        setPlay('playing');
-      })
-      .catch(() => !cancelled && setPlay('error'));
+        lastFramesRef.current = { frames: 0, at: Date.now() };
+        pc.onconnectionstatechange = () => {
+          const st = pc.connectionState;
+          if (st === 'connected') {
+            attemptRef.current = 0;
+            setPlay('playing');
+          } else if (st === 'failed' || st === 'disconnected' || st === 'closed') {
+            if (!cancelled && wantVideo) scheduleReconnect();
+          }
+        };
+      } catch {
+        if (!cancelled && wantVideo) scheduleReconnect();
+      }
+    }
+
+    if (!wantVideo) {
+      setPlay('idle');
+      setStats(null);
+      pcRef.current?.close();
+      pcRef.current = null;
+      clearReconnect();
+      return;
+    }
+
+    attemptRef.current = 0;
+    connect();
+
+    // Watchdog: sample stats every second; detect a frozen picture (frames not
+    // advancing while nominally connected) and force a reconnect.
+    let lastAt = Date.now();
+    const watch = setInterval(async () => {
+      const pc = pcRef.current;
+      if (!pc) return;
+      const now = Date.now();
+      const dt = now - lastAt;
+      lastAt = now;
+      const s = await readVideoStats(pc, statsRef.current, dt).catch(() => null);
+      if (s) {
+        statsRef.current = s;
+        setStats(s);
+        setVideoLatency(s.latencyMs);
+        // Frame liveness check.
+        const lf = lastFramesRef.current;
+        if (s.framesDecoded > lf.frames) lastFramesRef.current = { frames: s.framesDecoded, at: now };
+        else if (play === 'playing' && now - lf.at > 2500) scheduleReconnect();
+      }
+    }, 1000);
+
     return () => {
       cancelled = true;
+      clearInterval(watch);
+      clearReconnect();
       pcRef.current?.close();
       pcRef.current = null;
     };
-  }, [videoBaseUrl, camera, linkState]);
-
-  // Poll WebRTC stats for a video-latency estimate while a stream is playing.
-  useEffect(() => {
-    if (play !== 'playing') {
-      setVideoLatency(null);
-      return;
-    }
-    const id = setInterval(async () => {
-      const pc = pcRef.current;
-      if (!pc) return;
-      const est = await estimateVideoLatency(pc).catch(() => null);
-      if (est !== null) setVideoLatency(est);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [play]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoBaseUrl, camera, linkState, quality]);
 
   // Keyboard hotkeys for record / snapshot (ignored while typing in a field).
   useEffect(() => {
@@ -246,6 +350,16 @@ export function VideoPanel({
   const throttleCh = profile.throttleChannels[0] ?? 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
 
+  function changeQuality(q: VideoQuality) {
+    setQuality(q);
+    try {
+      localStorage.setItem(QUALITY_KEY, q);
+    } catch {
+      /* ignore */
+    }
+    onQuality(q); // vehicle rescales + reloads go2rtc; the watchdog reconnects
+  }
+
   return (
     <section className="panel video">
       <div className="video-head">
@@ -258,6 +372,11 @@ export function VideoPanel({
               ))}
             </select>
           )}
+          <select value={quality} onChange={(e) => changeQuality(e.target.value as VideoQuality)} aria-label="Video quality" title="Video quality">
+            <option value="high">Quality: High</option>
+            <option value="medium">Quality: Medium</option>
+            <option value="low">Quality: Low</option>
+          </select>
           <button
             className={`btn tiny${rec.recording ? ' rec-on' : ''}`}
             onClick={rec.toggleRecord}
@@ -312,6 +431,7 @@ export function VideoPanel({
         {play !== 'playing' && (
           <div className="video-placeholder">
             {play === 'connecting' && 'Connecting to camera…'}
+            {play === 'reconnecting' && 'Reconnecting…'}
             {play === 'idle' &&
               (videoBaseUrl
                 ? 'Connect the vehicle to start video.'
@@ -323,7 +443,7 @@ export function VideoPanel({
 
         {showOsd && (
           <div className="osd">
-            <div className="osd-tl">
+            <div className="osd-tc">
               <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
                 {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
               </span>
@@ -332,6 +452,11 @@ export function VideoPanel({
               <span>{linkState === 'connected' ? controlPath.toUpperCase() : 'NO LINK'}</span>
               <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
               {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
+              {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
+              {stats?.fps != null && <span>{stats.fps} fps</span>}
+              {stats?.lossPct != null && (
+                <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
+              )}
             </div>
             <div className="osd-bl">
               <div className="osd-ch">

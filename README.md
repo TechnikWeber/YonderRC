@@ -28,6 +28,8 @@ direkt die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst ausgeliefert
 
 **Neu in v1.6:** **Aufnahme & Standbild** im FPV-Panel (lokal speichern, Ordner einmal vorwählen, auf Taste/Controller-Button legbar). **Geführter Hardware-Selbsttest** im Setup (Kanal-Sweep, Sensoren lesen, Kamera-Standbild). Und eine **wiederholbare Testsuite** (`npm test`, 23 Checks).
 
+**Neu in v1.7:** **Selbstheilendes Video** (erkennt eingefrorenes/abgerissenes Bild und verbindet automatisch neu, letzter Frame bleibt stehen). **Video-Qualität live von der Groundstation** (High/Medium/Low) — das Fahrzeug skaliert Auflösung/Bitrate und lädt go2rtc neu. **Verbindungsanzeige** im OSD (Bitrate, Paketverlust, FPS, Latenz); Armed-Anzeige jetzt oben mittig.
+
 **Hardware:** Für den Aufbau auf echtem Raspberry Pi (Teileliste, Verkabelung,
 Schritt-für-Schritt zuerst im WLAN, dann per LTE/Tailscale) siehe
 [`docs/HARDWARE.md`](docs/HARDWARE.md).

@@ -1012,3 +1012,14 @@ body {
   background: rgba(0,0,0,0.75); color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 6px;
 }
 @media (max-width: 640px) { .rec-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ---- OSD top-center armed + stats (v1.7) ---- */
+.osd-tc {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+.osd-warn { color: var(--bad); font-weight: 700; }

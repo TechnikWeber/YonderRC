@@ -44,7 +44,27 @@ function encoderArgs(encoder: string, fps: number, bitrateKbps?: number): string
   return `-c:v ${encoder} -g ${fps}` + (br ? ` -b:v ${br}k` : '');
 }
 
-/** Build the go2rtc source string for one camera. */
+/** Round to an even number ≥ 2 (H.264 needs even dimensions). */
+function even(n: number): number {
+  return Math.max(2, Math.round(n / 2) * 2);
+}
+
+/**
+ * Scale a camera's resolution/bitrate for a live quality level requested from the
+ * ground. 'high' keeps the configured values; lower levels shrink dimensions and
+ * cap bitrate so the picture stays fluid on a poor link.
+ */
+export function scaleCamera(cam: CameraCfg, quality: 'high' | 'medium' | 'low'): CameraCfg {
+  if (quality === 'high') return cam;
+  const factor = quality === 'medium' ? 0.66 : 0.5;
+  const cap = quality === 'medium' ? 1200 : 600;
+  return {
+    ...cam,
+    width: even(cam.width * factor),
+    height: even(cam.height * factor),
+    bitrateKbps: Math.min(cam.bitrateKbps ?? cap, cap),
+  };
+}
 export function cameraSource(cam: CameraCfg, encoder = 'libx264'): string {
   const { width: w, height: h, fps } = cam;
   const enc = encoderArgs(encoder, fps, cam.bitrateKbps);

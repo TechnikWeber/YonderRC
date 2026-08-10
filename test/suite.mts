@@ -5,7 +5,7 @@
  */
 import * as C from '../packages/vehicle/src/sensors/convert';
 import { TelemetryService } from '../packages/vehicle/src/sensors/TelemetryService';
-import { cameraSource } from '../packages/vehicle/src/video/cameraManager';
+import { cameraSource, scaleCamera } from '../packages/vehicle/src/video/cameraManager';
 import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents } from '../packages/ground/src/lib/templates';
 import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib/profiles';
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
@@ -96,6 +96,12 @@ async function main() {
   ok('libx264 source', cameraSource(cam, 'libx264').includes('-c:v libx264'));
   ok('libopenh264 source', cameraSource(cam, 'libopenh264').includes('libopenh264'));
   ok('rpicam uses libcamera', cameraSource({ ...cam, type: 'rpicam' }).includes('libcamera-vid'));
+
+  // ---- video quality scaling ----
+  const big: CameraCfg = { name: 'c', type: 'sim', width: 1280, height: 720, fps: 30, bitrateKbps: 2500 };
+  ok('quality high keeps size', scaleCamera(big, 'high').width === 1280);
+  ok('quality low shrinks + caps bitrate', scaleCamera(big, 'low').width === 640 && scaleCamera(big, 'low').bitrateKbps === 600);
+  ok('quality medium even dims', scaleCamera(big, 'medium').width % 2 === 0);
 
   // ---- binding engine: keyboard throttle with low detent springs to min ----
   const eng = new BindingEngine();

@@ -189,6 +189,13 @@ export class LinkClient {
     }
   }
 
+  /** Switch live video quality (reliable, over WS). */
+  sendVideoQuality(quality: 'high' | 'medium' | 'low'): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'video', quality }));
+    }
+  }
+
   /** ESC calibration control (reliable, over WS). */
   sendCalib(action: 'start' | 'next' | 'cancel', channel?: number, minUs?: number, maxUs?: number): void {
     if (this.ws?.readyState === WebSocket.OPEN) {

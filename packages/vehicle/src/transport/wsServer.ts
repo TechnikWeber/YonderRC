@@ -14,7 +14,7 @@ import { WebRtcControl } from './WebRtcControl.js';
 import { handleSetup, type SetupContext } from './setupRouter.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
-import { applyCameras } from '../video/cameraManager.js';
+import { applyCameras, scaleCamera } from '../video/cameraManager.js';
 import { serveGroundApp } from './staticServer.js';
 
 /**
@@ -90,6 +90,13 @@ export function startWsServer(
       }
       if (msg.type === 'rtc') {
         void rtc.onSignal(msg);
+        return;
+      }
+      if (msg.type === 'video') {
+        // Rescale all cameras for the requested quality and reload go2rtc.
+        const scaled = config.cameras.map((c) => scaleCamera(c, msg.quality));
+        void applyCameras(scaled, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder);
+        console.log(`[video] quality → ${msg.quality}`);
         return;
       }
       handleClientMessage(core, msg);

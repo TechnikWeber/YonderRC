@@ -16,7 +16,14 @@ export type ClientMessage =
   | ArmMessage
   | SetConfigMessage
   | CalibrationMessage
+  | VideoQualityMessage
   | RtcSignalMessage;
+
+/** Ground → Vehicle: switch live video quality (rescales cameras + reloads go2rtc). */
+export interface VideoQualityMessage {
+  type: 'video';
+  quality: 'high' | 'medium' | 'low';
+}
 
 export interface HelloMessage {
   type: 'hello';
