@@ -1,90 +1,66 @@
 # YonderRC
 
-Fernsteuerung jenseits der Sichtweite über IP. Eine App für Video, Steuerung und
-Konfiguration — Windows, Linux und Browser (inkl. Smartphone). Steuere Autos,
-Boote, Flugzeuge oder Drohnen über LTE mit niedriger Latenz.
+Fernsteuerung jenseits der Sichtweite über IP — eine App für **Video, Steuerung
+und Konfiguration** von Autos, Booten, Flugzeugen und Drohnen. Läuft im Browser
+(inkl. Smartphone), als Desktop-App (Windows/Linux) und auf einem Raspberry Pi als
+Fahrzeugrechner. Niedrige Latenz, ausgelegt für den Betrieb über LTE.
 
-**v1.1.0 — Modell-Profile & vollwertiger Touch-Joystick.** Alle geplanten Funktionen sind
-da und im Sim lauffähig; keine Hardware nötig. Die Hardware-Meilensteine (Video,
-Treiber, LTE) warten nur noch aufs reale Gegentesten. Der komplette Steuerpfad
-läuft auf einem PC (oder Handy im selben Netz), die 16 Kanäle reagieren live.
-
-**Neu in v1.4:** Sim-Telemetrie ist jetzt klar als **SIM** gekennzeichnet (im OSD
-und in der Statusleiste), damit man sie nie für echte Sensordaten hält. Das
-**Modell lässt sich nicht mehr im gearmten Zustand wechseln** und die Einstellungen
-sind dann gesperrt. Neue Sicherheitsregel: **jede neue Verbindung startet
-disarmed** (nach Link-Verlust bewusst neu armen). Und ein ausführlicher
-Hardware-Guide ist dazugekommen.
-
-**Neu in v1.5:** Sicherheit & Feld-Betrieb. **Disarmen und Failsafe sind jetzt
-getrennt** und modellabhängig (Drohne: Failsafe hält Gas mittig, Disarmen schaltet
-Motoren aus). **Auto-Disarm bei Reconnect abschaltbar** (für Flugzeug/Drohne).
-Telemetrie ohne Sim-Fallback: fehlt der Sensor, zeigt das OSD **rot „NO SENSOR"**
-statt heimlich Sim-Werte. Und der Pi ist jetzt **autark im Feld bedienbar**: bei
-fehlendem Netz startet ein WLAN-Hotspot, das **Handy öffnet per Captive Portal**
-direkt die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst ausgeliefert.
-
-**Neu in v1.5.1:** Der H.264-Encoder fürs Video wird jetzt **automatisch erkannt** — `libx264`, Ciscos `libopenh264` (in Fedoras `ffmpeg-free` enthalten) oder der Hardware-Encoder auf dem Pi. Kein RPM Fusion mehr nötig.
-
-**Neu in v1.6:** **Aufnahme & Standbild** im FPV-Panel (lokal speichern, Ordner einmal vorwählen, auf Taste/Controller-Button legbar). **Geführter Hardware-Selbsttest** im Setup (Kanal-Sweep, Sensoren lesen, Kamera-Standbild). Und eine **wiederholbare Testsuite** (`npm test`, 23 Checks).
-
-**Neu in v1.7:** **Selbstheilendes Video** (erkennt eingefrorenes/abgerissenes Bild und verbindet automatisch neu, letzter Frame bleibt stehen). **Video-Qualität live von der Groundstation** (High/Medium/Low) — das Fahrzeug skaliert Auflösung/Bitrate und lädt go2rtc neu. **Verbindungsanzeige** im OSD (Bitrate, Paketverlust, FPS, Latenz); Armed-Anzeige jetzt oben mittig.
-
-**Hardware:** Für den Aufbau auf echtem Raspberry Pi (Teileliste, Verkabelung,
-Schritt-für-Schritt zuerst im WLAN, dann per LTE/Tailscale) siehe
+Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Aufbau
+auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
-**Neu in v1.3:** Telemetrie-Rückkanal mit **Spannungs-/Stromsensoren** (Sim-Fallback,
-oder real ADS1115/1015, MCP3008/3208 für Spannung und INA219/226/260/3221 sowie
-ACS712/758 für Strom), **präzises Coulomb-Counting** (verbrauchte mAh) und
-**Batterie-Prozent** aus einer eingestellten Kapazität — alles im OSD, wahlweise
-„x/x mAh verbraucht" oder „…Rest". Kameras/Streams werden jetzt **grafisch** im
-Setup verwaltet (Typ, Auflösung, FPS, Bitrate) und generieren die go2rtc-Config
-automatisch. Dazu eine **Video-Latenz-Schätzung** (glass-to-glass) im OSD.
+---
 
-**Neu in v1.1:** Profile sind jetzt **Modelle** (Auto/Flugzeug/Drohne/Boot) mit
-passenden Demo-Kanälen. Innerhalb eines Modells wählst du die **Eingabemethode**
-(Keyboard / Gamepad / Touch); für die Sticks lässt sich das **Einrasten** pro
-Achse einstellen (Mitte / Minimum / frei), um Sender-Modi zu simulieren. Dazu ein
-vollwertiger **Touch-Joystick** (Multitouch, Deadzone, Federrücklauf) und global
-sowie pro Kanal einstellbare **Endpunkte (µs)**.
+## Was YonderRC kann
 
-## Was heute funktioniert
+**Steuerung**
+- 16 Kanäle über WebSocket oder WebRTC-Data-Channel; Tastatur, On-Screen-Buttons,
+  Gamepad oder vollwertiger Touch-Joystick (Multitouch, Deadzone, Federrücklauf).
+- **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
+  wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
+- Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 
-- **Fahrzeug-Dienst** (`packages/vehicle`) mit austauschbarem `OutputDriver`.
-  Vorerst existiert nur der `SimDriver` — er realisiert Kanäle, indem er sie sich
-  merkt, läuft also überall und wirft keine Fehler bei fehlender Hardware.
-- **Zeitbasierter Failsafe-Watchdog + Arming** im `VehicleCore`. Kommt innerhalb
-  des Watchdog-Fensters kein Steuer-Frame an, gehen alle Kanäle auf ihren
-  Failsafe-Wert. Gas-Kanäle bleiben im Disarmed-Zustand sicher. (Das ist der Fix
-  für das alte „Runaway bei Verbindungsabbruch".)
-- **Bodenstation** (`packages/ground`) — eine responsive React-Web-App. Steuern
-  per Tastatur + On-Screen-Buttons (kein Controller nötig), oder Gamepad
-  einstecken und die Sticks übernehmen die Achsen automatisch. Der Kanal-Monitor
-  zeigt die tatsächliche Ausgabe des Fahrzeugs.
-- **Geteiltes Protokoll** (`packages/protocol`) — ein Satz TypeScript-Typen für
-  Wire-Nachrichten, Kanal-Modell und Profil-Schema, von beiden Seiten importiert.
+**Sicherheit**
+- Zeitbasierter **Failsafe-Watchdog**: bleiben Steuer-Frames aus, gehen alle Kanäle
+  auf ihren Failsafe-Wert. **Modellabhängig und getrennt vom Disarmen** — eine
+  Drohne *hält* bei Link-Verlust (Gas mittig), Auto/Boot *stoppt*, Flugzeug geht
+  auf *Motor aus*.
+- **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect**
+  ist abschaltbar (für Flugzeug/Drohne, wo Disarmen im Flug die Motoren kappt).
+- Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
 
-## Architektur in einem Bild
+**Video (FPV)**
+- Latenzarmes Video über **go2rtc/WebRTC**; H.264-Encoder wird automatisch erkannt
+  (`libx264`, `libopenh264`, Pi-Hardware).
+- **Selbstheilend**: erkennt eingefrorenes/abgerissenes Bild und verbindet sich
+  automatisch neu; der letzte Frame bleibt stehen.
+- **Video-Qualität live umschaltbar** von der Groundstation (High/Medium/Low).
+- OSD mit Status, Kanälen, **Bitrate/Paketverlust/FPS/Video-Latenz** und Telemetrie.
+- **Aufnahme & Standbild** lokal (Ordner einmal vorwählen; auf Taste oder
+  Controller-Button legbar).
 
-```
-   Boden (Web / später Electron)          Fahrzeug (Pi, oder dein PC im Sim)
-   ┌───────────────────────────┐          ┌──────────────────────────────┐
-   │ Input: Tastatur / Touch /  │  Steuer- │ Transport (WS jetzt,          │
-   │        Gamepad             │  Frames  │            WebRTC später)     │
-   │  → InputManager (µs)       │ ───────► │  → VehicleCore               │
-   │ LinkClient  ◄──── Status ──│          │     · Arming                 │
-   │ ChannelMonitor             │          │     · Failsafe-Watchdog       │
-   └───────────────────────────┘          │  → OutputDriver (sim|pca9685  │
-                                           │       |gpio-pwm|sbus)         │
-                                           └──────────────────────────────┘
-```
+**Telemetrie**
+- Spannungs-/Stromsensoren (real: ADS1115/1015, MCP3008/3208, INA219/226/260/3221,
+  ACS712/758 — oder Sim), **präzises Coulomb-Counting** (verbrauchte mAh) und
+  **Batterie-Prozent** aus der eingestellten Kapazität. Sim-Werte sind klar als
+  **SIM** markiert; fehlt ein echter Sensor, zeigt das OSD **„NO SENSOR"** statt
+  gefälschter Werte.
 
-Alles oberhalb des Transports ist transport-unabhängig: v0.1 nutzt WebSocket
-(trivial zu betreiben, funktioniert PC↔Handy im LAN); WebRTC (Video + Data
-Channel) kommt in M2 dazu, ohne Protokoll oder App-Logik anzufassen.
+**Betrieb & Einrichtung**
+- Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
+  Telemetrie, Watchdog, LTE-APN, Tailscale — vom Handy/Laptop, ohne Bildschirm.
+- **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
+- **Autark im Feld**: ohne Netz startet der Pi einen WLAN-Hotspot und öffnet per
+  **Captive Portal** die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst
+  ausgeliefert, Steuern und Konfigurieren gehen also mit dem bloßen Handy.
+- Hardware-Treiber **PCA9685 / GPIO-PWM / SBUS** (native Libs sind optional),
+  nicht-blockierende **ESC-Kalibrierung**, LTE + **Tailscale** gegen CGNAT.
+- **Desktop-App** (Electron) mit nativem SDL2-Controller-Layer (Hot-Plug, Rumble)
+  und Fallback auf die Browser-Gamepad-API.
 
-## Starten
+---
+
+## Schnellstart
 
 Benötigt Node 20+.
 
@@ -93,134 +69,82 @@ npm install
 npm run dev
 ```
 
-- Fahrzeug-Dienst startet auf `ws://localhost:8080` (Sim-Treiber).
-- Bodenstation öffnet auf `http://localhost:5173`.
+- Fahrzeug-Dienst: `ws://localhost:8080` (Sim-Treiber), Setup unter `/setup`.
+- Bodenstation: `http://localhost:5173`.
 
-Bodenstation öffnen, **Connect** drücken, dann **Arm**, und mit `W A S D` /
-Pfeiltasten fahren, `Space` (Hupe), `L` (Licht). Zum Testen vom Handy
-`http://<PC-LAN-IP>:5173` öffnen — Dev-Server und Fahrzeug lauschen auf allen
-Interfaces.
+**Connect** drücken, dann **Arm**, und mit `W A S D` / Pfeiltasten fahren. Vom Handy
+`http://<PC-LAN-IP>:5173` öffnen (Dev-Server und Fahrzeug lauschen auf allen
+Interfaces).
 
-Beide Seiten getrennt starten, falls gewünscht:
-
-```bash
-npm run dev:vehicle
-npm run dev:ground
-```
-
-Nützliche Env-Variablen fürs Fahrzeug: `YRC_PORT`, `YRC_WATCHDOG_MS`,
-`YRC_THROTTLE_CH` (Komma-Liste), `YRC_SIM_LOG_MS` (Kanal-Logging im Terminal).
-
-### Desktop-App (M5)
-
-Dieselbe Boden-App läuft auch als Electron-Desktop-App für Windows und Linux — mit
-nativem SDL2-Controller-Layer (riesige Controller-DB, Hot-Plug, Rumble) und
-automatischem Fallback auf die Chromium-Gamepad-API, wenn SDL fehlt. Details und
-Build-Anleitung: `packages/desktop/README.md`.
+**Video im Sim** (synthetisches Testbild, braucht `ffmpeg`):
 
 ```bash
-npm run dev:ground     # Web-App
-npm run dev:vehicle    # Fahrzeug (Sim)
-npm run dev:desktop    # Electron-Shell
-# Installer bauen (Win + Linux):
-npm run build:desktop
-```
-
-### Setup-UI & headless Betrieb (M4)
-
-Der Fahrzeug-Dienst serviert eine eigene Konfigurationsseite unter
-`http://<vehicle>:8080/setup` — Fahrzeugname, Ausgangstreiber, Kameras, Watchdog,
-LTE-APN und Tailscale, alles vom Handy/Laptop aus, ganz ohne Bildschirm. Die
-Einstellungen landen in `yonderrc-config.json` und überleben Neustarts.
-
-Im Sim läuft die komplette Setup-UI mit gemocktem LTE/Tailscale (`SimSystem`), du
-kannst sie also lokal ausprobieren:
-
-```bash
-npm run dev:vehicle
-# → http://localhost:8080/setup
-```
-
-Für den echten Pi (LTE-Stick, Tailscale, WLAN-Hotspot-Fallback fürs Onboarding,
-systemd-Dienste, Image) liegt alles unter `provisioning/` — siehe
-`provisioning/README.md`. Auf dem Pi wird `YRC_SYSTEM=real` gesetzt, dann schaltet
-die Setup-UI auf echte `tailscale`/`mmcli`/`nmcli`-Befehle um.
-
-Robust by design: Schlägt ein per Setup gewählter Hardware-Treiber beim Start
-fehl (Lib/Hardware fehlt), fällt der Dienst automatisch auf `sim` zurück und
-bleibt erreichbar — ein headless Gerät wird nie tot und unkonfigurierbar.
-
-### Steuerung über WebRTC (M2)
-
-Im Drive-Tab „Control via WebRTC data channel" anhaken. Der WebSocket bleibt für
-Handshake, Status und Signalisierung; sobald der Data-Channel offen ist, laufen
-die Steuer-Frames darüber (Anzeige wechselt auf `WEBRTC`).
-
-### Video testen (M2) — im Sim ohne Kamera
-
-Das Video kommt von **go2rtc** (separates Programm). Im Sim gibt es ein
-synthetisches Testbild. Am einfachsten mit dem Helfer-Skript (lädt go2rtc einmalig
-herunter, braucht `ffmpeg`):
-
-```bash
-# Fedora: einmalig  sudo dnf install -y ffmpeg-free
 npm run dev            # Terminal 1: Fahrzeug + Boden-App
-npm run dev:video      # Terminal 2: go2rtc mit Testbild-Stream 'test'
+npm run dev:video      # Terminal 2: go2rtc mit Testbild
 ```
 
-Dann in der Boden-App **Connect** drücken — im FPV-Panel erscheint das Testbild mit
-OSD (Status, Round-trip, Kanäle). Bei mehreren Kameras zeigt das Panel einen
-Umschalter.
+Reihenfolge beachten: `npm run dev` erkennt den H.264-Encoder und schreibt die
+go2rtc-Config; danach `npm run dev:video`. Fedora: `sudo dnf install -y openh264 ffmpeg-free`.
 
-Die Boden-App spricht go2rtcs WebRTC-Endpoint `/api/webrtc?src=<name>` an
-(verifiziert mit go2rtc 1.9.14). Kameras/Streams konfigurierst du in
-`docker/go2rtc.yaml` — für echte Hardware kommentierst du dort die Pi-Cam- bzw.
-USB-Kamera-Zeile ein. Alternativ startet `docker compose -f docker/docker-compose.yml up`
-Fahrzeug + go2rtc zusammen.
+**Tests:**
 
-### Hardware-Treiber wählen (M3)
+```bash
+npm test               # Sicherheits-/Logik-Testsuite
+```
 
-Der Ausgang wird über `YRC_DRIVER` gewählt — im Sim ohne Hardware bleibt `sim`.
-Auf dem Pi:
+---
+
+## Auf echter Hardware
+
+Kompletter Aufbau auf dem Raspberry Pi — Teileliste, Verkabelung, Pi-Einrichtung,
+erst im WLAN, dann Umstellung auf LTE mit Tailscale — in
+**[`docs/HARDWARE.md`](docs/HARDWARE.md)**. Kurz:
+
+```bash
+sudo bash /opt/yonderrc/provisioning/install.sh   # Node, ffmpeg, go2rtc, systemd, I2C/UART
+# dann grafisch unter  http://<pi>:8080/setup  einrichten
+```
+
+Treiber-Auswahl per Env (Details in HARDWARE.md und `provisioning/README.md`):
 
 ```bash
 YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C-PWM, 16 Kanäle
-YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio, jitterarm
-YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS-UART an einen FC
+YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio
+YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS an einen Flight Controller
 ```
 
-Die nativen Libs (`i2c-bus`, `pigpio`, `serialport`) sind `optionalDependencies`
-und werden nur geladen, wenn der jeweilige Treiber gewählt ist — dein Nicht-Pi-
-`npm install` bleibt also sauber. Treiber-Optionen per Env: `YRC_I2C_BUS`,
-`YRC_I2C_ADDR`, `YRC_PWM_FREQ`, `YRC_GPIO_PINS`, `YRC_SBUS_PATH`.
+Schlägt ein Hardware-Treiber beim Start fehl, fällt der Dienst automatisch auf
+`sim` zurück und bleibt erreichbar — ein headless Gerät wird nie unkonfigurierbar.
 
-**ESC-Kalibrierung:** im Setup-Tab. Start legt Vollgas an (Propeller ab!), Next
-schaltet auf Minimum, nochmal Next beendet. Läuft nicht-blockierend; das Fahrzeug
-bleibt dabei disarmed und hält alle anderen Kanäle sicher.
+---
 
-## Roadmap
+## Projektstruktur
 
-- **v0.1** — Sim-Skelett: Protokoll, Sim-Fahrzeug, responsive Boden-App,
-  Kanal-Monitor, Failsafe + Arming, Tastatur/On-Screen/Basis-Gamepad. ✓
-- **M1** — Profile + Kanal-Bindings (Quelle/Modus/Trim/Expo/Reverse/EPA/
-  Failsafe), zum Fahrzeug gepusht und dort gespeichert. Plus virtueller Joystick. ✓
-- **M2** — Video (go2rtc + WHEP-Player, OSD-Overlay, Kamera-Umschaltung) und
-  Steuerung über WebRTC-Data-Channel (WS bleibt Signalisierung + Fallback). ✓
-- **M3** — Hardware-Treiber (PCA9685, GPIO-PWM, SBUS) + nicht-blockierende
-  ESC-Kalibrier-State-Machine. ✓
-- **M4** — LTE + Tailscale + headless Provisioning + Setup-Web-UI auf dem Pi. ✓
-- **M5** — Electron-Shell (Windows + Linux) + natives SDL2-Input mit Rumble;
-  Halte-Rampen-Buttons und virtueller Joystick sind bereits ab M1 dabei. ✓
-  ← Roadmap komplett (Hardware-Meilensteine M2–M4 warten aufs reale Gegentesten)
+```
+packages/
+  protocol/   geteilte TypeScript-Typen (Wire-Nachrichten, Kanäle, Profile, Telemetrie)
+  vehicle/    Fahrzeug-Dienst (Node/tsx): Core, Failsafe, Treiber, Sensoren, go2rtc, Setup
+  ground/     Bodenstation (React): Steuerung, FPV, OSD, Aufnahme, Setup-UI
+  desktop/    Electron-Shell mit nativem SDL2-Input
+docs/HARDWARE.md   Hardware-Guide
+provisioning/      Pi-Setup (systemd, LTE, Tailscale, Hotspot/Onboarding)
+test/              Testsuite (npm test)
+```
 
-### TODO-Parkplatz (für später vereinbart)
+Alles oberhalb des Transports ist transport-unabhängig; die Steuerung läuft über
+WebSocket (Fallback + Signalisierung) oder den WebRTC-Data-Channel.
 
-- ~~Proportional-über-Haltedauer-Buttons~~ ✓ (hold-ramp-Modus seit M1)
-- ~~Vollwertiger virtueller Joystick (Multitouch, Deadzone, Federrücklauf, Skalierung).~~ ✓ (v1.1)
-- Gamepad-Lern-/Kalibrier-UI („beweg jetzt den Gas-Stick") für beliebige Controller.
-- WebHID für exotische Controller.
-- Telemetrie-Rückkanal + OSD-Spannung (braucht Sensor); Protokoll reserviert ihn.
+---
+
+## Versionen
+
+Die aktuellen Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md) und in den
+[GitHub-Releases](https://github.com/TechnikWeber/YonderRC/releases). Diese README
+beschreibt immer den aktuellen Stand.
 
 ## Lizenz
 
-Noch nicht festgelegt.
+YonderRC ist **Freeware für den privaten, nicht-kommerziellen Gebrauch**.
+Verändern, kommerzielle Nutzung sowie jede militärische oder kriegerische
+Verwendung sind **nicht** gestattet. Es gelten die Bedingungen in
+[`LICENSE`](LICENSE).

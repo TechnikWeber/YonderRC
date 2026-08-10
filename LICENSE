@@ -1,0 +1,93 @@
+YonderRC License, Version 1.0
+Copyright (c) 2026 Philipp Weber. All rights reserved.
+
+================================================================================
+Kurzfassung (unverbindlich — es gelten allein die Bedingungen darunter)
+================================================================================
+YonderRC ist Freeware für den privaten, nicht-kommerziellen Gebrauch. Du darfst
+es kostenlos herunterladen, installieren, benutzen und unveränderte Kopien mit
+diesem Lizenztext weitergeben. Du darfst es NICHT verändern, NICHT kommerziell
+nutzen und NICHT für militärische oder kriegerische Zwecke einsetzen. Das
+normale Benutzen und Konfigurieren über die vorgesehenen Einstellungen gilt
+nicht als „Veränderung".
+
+================================================================================
+Terms and Conditions
+================================================================================
+
+1. Definitions
+   "Software" means the YonderRC source code, binaries, documentation, and
+   assets distributed under this License by the copyright holder. "You" means
+   the individual or entity exercising the rights granted below.
+
+2. Grant of License
+   Subject to full and continuing compliance with this License, the copyright
+   holder grants You a worldwide, royalty-free, non-exclusive, non-transferable,
+   revocable license to:
+   (a) download, install, and run the unmodified Software; and
+   (b) make and distribute verbatim, unmodified copies of the Software, provided
+       that this License and all copyright and attribution notices are kept
+       intact and included with every copy;
+   in each case solely for personal, private, non-commercial purposes.
+
+   Normal operation of the Software — including configuring it through its
+   intended settings, configuration files, environment variables, and user
+   interfaces — is permitted use and does not constitute a "modification" under
+   this License.
+
+3. Restrictions
+   You may NOT:
+   (a) modify, adapt, translate, or create derivative works of the Software, or
+       distribute any modified version of it;
+   (b) use the Software, in whole or in part, for any commercial purpose. This
+       includes selling, licensing, renting, or offering it (or any service or
+       product incorporating it) for payment or other commercial advantage, as
+       well as any advertising-supported or otherwise monetized use, and any use
+       by or for a business in furtherance of that business;
+   (c) use the Software, in whole or in part, for any military, defense,
+       warfare, weapons, or armed-conflict purpose. This includes the design,
+       development, testing, production, operation, guidance, or deployment of
+       weapons or military systems, and any use by or on behalf of armed forces,
+       intelligence services, or paramilitary organizations;
+   (d) remove, obscure, or alter any copyright, license, or attribution notice;
+       or
+   (e) sublicense the Software or purport to grant rights in it beyond those You
+       received under this License.
+
+4. Reservation of Rights
+   All rights not expressly granted in this License are reserved by the
+   copyright holder. No rights are granted by implication, estoppel, or
+   otherwise.
+
+5. Third-Party Components
+   The Software incorporates third-party components (for example libraries and
+   tools such as, without limitation, go2rtc and various npm packages) that are
+   licensed under their own separate terms. This License applies only to the
+   original YonderRC material created by the copyright holder and neither
+   modifies nor supersedes the licenses of those third-party components, which
+   continue to govern their respective parts.
+
+6. Disclaimer of Warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. YonderRC controls
+   physical vehicles and can cause property damage, injury, or death. You use it
+   entirely at Your own risk and are solely responsible for safe and lawful
+   operation.
+
+7. Limitation of Liability
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR
+   IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. Termination
+   This License and the rights granted under it terminate automatically and
+   immediately if You breach any of its terms. Upon termination You must cease
+   all use of the Software and destroy all copies in Your possession or control.
+
+9. Other Uses
+   Any use not expressly permitted by this License — including commercial
+   licensing or the right to create and distribute modified versions — requires
+   the prior separate written permission of the copyright holder. Contact the
+   copyright holder to request such permission.

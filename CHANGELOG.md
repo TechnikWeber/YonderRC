@@ -3,6 +3,12 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.7.2
+- Docs: README rewritten to be concise and describe the current feature set
+  (per-version notes moved to this changelog). Added a LICENSE — freeware for
+  private, non-commercial use; no modification, no commercial use, and no
+  military/warfare use.
+
 ## v1.7.1
 - Fix: live video quality change crashed the vehicle with ENOENT — the go2rtc
   config path is now absolute (resolved to the repo root) and writes create the

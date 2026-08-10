@@ -1,6 +1,6 @@
 {
   "name": "@yonderrc/vehicle",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "private": true,
   "type": "module",
   "description": "YonderRC vehicle service: owns the output driver, runs the failsafe watchdog and the control link.",
@@ -23,5 +23,7 @@
   "devDependencies": {
     "@types/ws": "^8.5.13",
     "tsx": "^4.19.2"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Philipp Weber"
 }
