@@ -1009,7 +1009,8 @@ body {
 @keyframes rec-pulse { 50% { opacity: 0.45; } }
 .rec-toast {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.75); color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 6px;
+  background: var(--bad); color: #fff; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 6px;
+  animation: rec-pulse 1s steps(1) infinite;
 }
 @media (max-width: 640px) { .rec-grid { grid-template-columns: 1fr 1fr; } }
 

@@ -3,6 +3,11 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.7.1
+- Fix: live video quality change crashed the vehicle with ENOENT — the go2rtc
+  config path is now absolute (resolved to the repo root) and writes create the
+  folder and never throw. REC toast in the OSD now blinks red.
+
 ## v1.7.0
 - **Self-healing video**: the FPV stream now detects a frozen/dropped picture
   (WebRTC state + a frame watchdog) and reconnects on its own with backoff, keeping

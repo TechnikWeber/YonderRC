@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
@@ -120,7 +121,9 @@ export function loadConfig(): VehicleConfig {
       displayMode: 'remaining',
     },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
-    go2rtcConfigPath: process.env.YRC_GO2RTC_CONFIG ?? 'docker/go2rtc.yaml',
+    go2rtcConfigPath:
+      process.env.YRC_GO2RTC_CONFIG ??
+      fileURLToPath(new URL('../../../docker/go2rtc.yaml', import.meta.url)),
     h264Encoder: 'libx264',
 
     // Env-only fields.

@@ -1,4 +1,5 @@
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { exec } from 'node:child_process';
 import type { CameraCfg } from '@yonderrc/protocol';
 
@@ -116,7 +117,13 @@ export async function applyCameras(
   videoBaseUrl: string | null,
   encoder = 'libx264',
 ): Promise<void> {
-  writeFileSync(configPath, generateGo2rtcYaml(cameras, encoder));
+  try {
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, generateGo2rtcYaml(cameras, encoder));
+  } catch (err) {
+    console.error(`[video] could not write ${configPath}: ${(err as Error).message}`);
+    return;
+  }
   if (!videoBaseUrl) return;
   try {
     await fetch(`${videoBaseUrl}/api/restart`, { method: 'POST' });

@@ -12,7 +12,7 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.7.0');
+  console.log('  YonderRC vehicle service  v1.7.1');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -56,7 +56,9 @@ async function main() {
   // Generate go2rtc.yaml from the graphical camera list (best effort at boot).
   config.h264Encoder = await detectH264Encoder();
   console.log(`  encoder   : ${config.h264Encoder} (auto-detected)`);
-  await applyCameras(config.cameras, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch(() => {});
+  await applyCameras(config.cameras, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch(
+    (e) => console.error('[video] initial camera generation failed:', (e as Error).message),
+  );
 
   startWsServer(core, config, system, telemetry);
   console.log(`  setup UI  : http://<vehicle>:${config.port}/setup  (system: ${config.systemKind})`);

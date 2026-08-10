@@ -95,7 +95,9 @@ export function startWsServer(
       if (msg.type === 'video') {
         // Rescale all cameras for the requested quality and reload go2rtc.
         const scaled = config.cameras.map((c) => scaleCamera(c, msg.quality));
-        void applyCameras(scaled, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder);
+        applyCameras(scaled, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch((e) =>
+          console.error('[video] quality change failed:', (e as Error).message),
+        );
         console.log(`[video] quality → ${msg.quality}`);
         return;
       }
