@@ -9,14 +9,33 @@ import {
 import type { ControlPath, LinkState } from '../lib/transport';
 import type { InputManager } from '../lib/input/inputManager';
 import { useRecorder } from '../lib/recorder';
+import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 const QUALITY_KEY = 'yonderrc.videoQuality.v1';
-function loadQuality(): VideoQuality {
-  const v = (typeof localStorage !== 'undefined' && localStorage.getItem(QUALITY_KEY)) as VideoQuality | null;
-  return v === 'high' || v === 'medium' || v === 'low' ? v : 'high';
+type QualitySel = 'auto' | VideoQuality;
+function loadQuality(): QualitySel {
+  const v = (typeof localStorage !== 'undefined' && localStorage.getItem(QUALITY_KEY)) as QualitySel | null;
+  return v === 'auto' || v === 'high' || v === 'medium' || v === 'low' ? v : 'high';
 }
+
+/**
+ * Auto-quality thresholds (ground-side). Defaults live in lib/autoQuality; they
+ * protect fluidity: step DOWN quickly when the link is bad, step UP slowly when
+ * it's clearly good, with a hysteresis gap between the up/down thresholds.
+ */
+const AUTO_KEY = 'yonderrc.autoQuality.v1';
+function loadAutoCfg(): AutoQualityCfg {
+  try {
+    const raw = localStorage.getItem(AUTO_KEY);
+    if (raw) return { ...AUTO_DEFAULTS, ...(JSON.parse(raw) as Partial<AutoQualityCfg>) };
+  } catch {
+    /* ignore */
+  }
+  return { ...AUTO_DEFAULTS };
+}
+
 
 type PlayState = 'idle' | 'connecting' | 'playing' | 'reconnecting' | 'error';
 export type VideoQuality = 'high' | 'medium' | 'low';
@@ -216,9 +235,19 @@ export function VideoPanel({
   const [showOsd, setShowOsd] = useState(true);
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
   const [stats, setStats] = useState<VideoStats | null>(null);
-  const [quality, setQuality] = useState<VideoQuality>(loadQuality);
+  const [quality, setQuality] = useState<QualitySel>(loadQuality);
+  const [effectiveQuality, setEffectiveQuality] = useState<VideoQuality>(() => {
+    const q = loadQuality();
+    return q === 'auto' ? 'high' : q;
+  });
+  const [autoCfg, setAutoCfg] = useState<AutoQualityCfg>(loadAutoCfg);
   const [showRecSettings, setShowRecSettings] = useState(false);
   const rec = useRecorder(videoRef);
+  const streakRef = useRef<AutoState>({ bad: 0, good: 0 });
+  const effRef = useRef<VideoQuality>(effectiveQuality);
+  effRef.current = effectiveQuality;
+  const autoCfgRef = useRef<AutoQualityCfg>(autoCfg);
+  autoCfgRef.current = autoCfg;
 
   // Reconnect bookkeeping (refs so the watchdog can act without re-subscribing).
   const attemptRef = useRef(0);
@@ -307,6 +336,23 @@ export function VideoPanel({
         const lf = lastFramesRef.current;
         if (s.framesDecoded > lf.frames) lastFramesRef.current = { frames: s.framesDecoded, at: now };
         else if (play === 'playing' && now - lf.at > 2500) scheduleReconnect();
+
+        // Auto-quality: nudge the effective level based on loss/latency, with
+        // hysteresis so a flaky link doesn't make it oscillate.
+        if (quality === 'auto' && play === 'playing') {
+          const r = autoQualityStep(
+            effRef.current,
+            s.lossPct ?? 0,
+            s.latencyMs ?? 0,
+            autoCfgRef.current,
+            streakRef.current,
+          );
+          streakRef.current = r.state;
+          if (r.changed) {
+            setEffectiveQuality(r.level);
+            onQuality(r.level);
+          }
+        }
       }
     }, 1000);
 
@@ -349,15 +395,34 @@ export function VideoPanel({
 
   const throttleCh = profile.throttleChannels[0] ?? 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
+  // Weak-link warning from control RTT or video packet loss.
+  const weakLink = (latencyMs != null && latencyMs > 300) || (stats?.lossPct != null && stats.lossPct >= 5);
 
-  function changeQuality(q: VideoQuality) {
+  function changeQuality(q: QualitySel) {
     setQuality(q);
     try {
       localStorage.setItem(QUALITY_KEY, q);
     } catch {
       /* ignore */
     }
-    onQuality(q); // vehicle rescales + reloads go2rtc; the watchdog reconnects
+    streakRef.current = { bad: 0, good: 0 };
+    if (q !== 'auto') {
+      setEffectiveQuality(q);
+      onQuality(q); // vehicle rescales + reloads go2rtc; the watchdog reconnects
+    }
+    // For 'auto', the controller in the watchdog takes over from the current level.
+  }
+
+  function saveAutoCfg(patch: Partial<AutoQualityCfg>) {
+    setAutoCfg((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem(AUTO_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   }
 
   return (
@@ -372,7 +437,8 @@ export function VideoPanel({
               ))}
             </select>
           )}
-          <select value={quality} onChange={(e) => changeQuality(e.target.value as VideoQuality)} aria-label="Video quality" title="Video quality">
+          <select value={quality} onChange={(e) => changeQuality(e.target.value as QualitySel)} aria-label="Video quality" title="Video quality">
+            <option value="auto">Quality: Auto{quality === 'auto' ? ` (${effectiveQuality})` : ''}</option>
             <option value="high">Quality: High</option>
             <option value="medium">Quality: Medium</option>
             <option value="low">Quality: Low</option>
@@ -420,6 +486,17 @@ export function VideoPanel({
             </label>
           </div>
           <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Keys are ignored while typing. Gamepad button numbers are the raw indices (leave blank to disable).</p>
+
+          <div className="eyebrow2" style={{ marginTop: 10 }}>Auto quality thresholds</div>
+          <p className="note">Used when quality is set to <b>Auto</b>. Step down if loss/latency exceed the "down" limits for the hold time; step up only when both are below the "up" limits for the (longer) up-hold.</p>
+          <div className="rec-grid">
+            <label className="rec-field">Loss down %<input type="number" value={autoCfg.lossDownPct} onChange={(e) => saveAutoCfg({ lossDownPct: Number(e.target.value) })} /></label>
+            <label className="rec-field">Latency down ms<input type="number" value={autoCfg.latDownMs} onChange={(e) => saveAutoCfg({ latDownMs: Number(e.target.value) })} /></label>
+            <label className="rec-field">Loss up %<input type="number" value={autoCfg.lossUpPct} onChange={(e) => saveAutoCfg({ lossUpPct: Number(e.target.value) })} /></label>
+            <label className="rec-field">Latency up ms<input type="number" value={autoCfg.latUpMs} onChange={(e) => saveAutoCfg({ latUpMs: Number(e.target.value) })} /></label>
+            <label className="rec-field">Down hold s<input type="number" value={autoCfg.downHoldS} onChange={(e) => saveAutoCfg({ downHoldS: Number(e.target.value) })} /></label>
+            <label className="rec-field">Up hold s<input type="number" value={autoCfg.upHoldS} onChange={(e) => saveAutoCfg({ upHoldS: Number(e.target.value) })} /></label>
+          </div>
         </div>
       )}
 
@@ -447,9 +524,13 @@ export function VideoPanel({
               <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
                 {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
               </span>
+              {linkState === 'connecting' && <span className="osd-badge idle">RECONNECTING…</span>}
+              {weakLink && linkState === 'connected' && <span className="osd-badge bad">⚠ WEAK LINK</span>}
             </div>
             <div className="osd-tr">
-              <span>{linkState === 'connected' ? controlPath.toUpperCase() : 'NO LINK'}</span>
+              <span>
+                {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
+              </span>
               <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
               {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
               {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}

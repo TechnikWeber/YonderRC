@@ -98,7 +98,24 @@ npm test               # Sicherheits-/Logik-Testsuite
 
 Kompletter Aufbau auf dem Raspberry Pi — Teileliste, Verkabelung, Pi-Einrichtung,
 erst im WLAN, dann Umstellung auf LTE mit Tailscale — in
-**[`docs/HARDWARE.md`](docs/HARDWARE.md)**. Kurz:
+**[`docs/HARDWARE.md`](docs/HARDWARE.md)**.
+
+**1. Repo auf den Pi kopieren** (`/opt/yonderrc`) — ein Weg genügt:
+
+```bash
+# a) git clone (wenn der Pi Internet hat)
+sudo mkdir -p /opt/yonderrc && sudo chown $USER /opt/yonderrc
+git clone https://github.com/TechnikWeber/YonderRC.git /opt/yonderrc
+
+# b) scp vom Laptop (dein lokales Repo auf den Pi kopieren) — auf dem LAPTOP ausführen:
+scp -r ~/YonderRC pi@yonderrc.local:/tmp/YonderRC
+ssh pi@yonderrc.local 'sudo mkdir -p /opt/yonderrc && sudo cp -a /tmp/YonderRC/. /opt/yonderrc/'
+
+# c) USB-Stick (Pi ohne Netz) — Stick einstecken, dann auf dem Pi:
+sudo mkdir -p /opt/yonderrc && sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # Pfad ggf. via lsblk prüfen
+```
+
+**2. Installieren und einrichten:**
 
 ```bash
 sudo bash /opt/yonderrc/provisioning/install.sh   # Node, ffmpeg, go2rtc, systemd, I2C/UART
@@ -144,7 +161,8 @@ beschreibt immer den aktuellen Stand.
 
 ## Lizenz
 
-YonderRC ist **Freeware für den privaten, nicht-kommerziellen Gebrauch**.
-Verändern, kommerzielle Nutzung sowie jede militärische oder kriegerische
-Verwendung sind **nicht** gestattet. Es gelten die Bedingungen in
-[`LICENSE`](LICENSE).
+YonderRC steht unter **CC BY-NC-ND 4.0** (Namensnennung – nicht kommerziell –
+keine Bearbeitung) **mit einem Zusatz: keine militärische oder kriegerische
+Nutzung**. Kurz: kostenlos nutzen und unveränderte Kopies mit Quellenangabe
+weitergeben; kein Verändern, keine kommerzielle und keine militärische Nutzung.
+Der volle Text steht in [`LICENSE`](LICENSE).

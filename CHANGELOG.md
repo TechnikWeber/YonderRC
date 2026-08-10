@@ -3,6 +3,17 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.8.0
+- **Auto video quality**: a new "Auto" mode steps the video quality down when the
+  link degrades (packet loss / latency) and back up when it recovers, with
+  hysteresis so it doesn't oscillate. Thresholds are adjustable in the FPV video
+  settings (⚙). Manual High/Medium/Low still available.
+- **Link robustness**: the OSD now shows "RECONNECTING…" during control-link
+  recovery and a "⚠ WEAK LINK" warning when control latency or video loss is high.
+- **License**: switched to CC BY-NC-ND 4.0 with an additional no-military-use
+  restriction. README gained the repo-copy instructions (git/scp/USB).
+
+
 ## v1.7.2
 - Docs: README rewritten to be concise and describe the current feature set
   (per-version notes moved to this changelog). Added a LICENSE — freeware for

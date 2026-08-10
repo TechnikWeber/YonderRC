@@ -9,6 +9,7 @@ import { cameraSource, scaleCamera } from '../packages/vehicle/src/video/cameraM
 import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents } from '../packages/ground/src/lib/templates';
 import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib/profiles';
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
+import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
 
 let pass = 0;
@@ -102,6 +103,30 @@ async function main() {
   ok('quality high keeps size', scaleCamera(big, 'high').width === 1280);
   ok('quality low shrinks + caps bitrate', scaleCamera(big, 'low').width === 640 && scaleCamera(big, 'low').bitrateKbps === 600);
   ok('quality medium even dims', scaleCamera(big, 'medium').width % 2 === 0);
+
+  // ---- auto video quality (hysteresis) ----
+  const acfg = AUTO_DEFAULTS;
+  // Sustained loss steps down after downHoldS ticks.
+  let lvl: 'low' | 'medium' | 'high' = 'high';
+  let stt = { bad: 0, good: 0 };
+  for (let i = 0; i < acfg.downHoldS; i++) {
+    const r = autoQualityStep(lvl, 10, 100, acfg, stt);
+    lvl = r.level;
+    stt = r.state;
+  }
+  ok('auto steps down under loss', lvl === 'medium', `=${lvl}`);
+  // A single good sample must NOT immediately step back up (hysteresis).
+  const oneGood = autoQualityStep(lvl, 0, 50, acfg, stt);
+  ok('auto does not step up instantly', oneGood.changed === false && oneGood.level === 'medium');
+  // Sustained good for upHoldS steps up.
+  lvl = 'medium';
+  stt = { bad: 0, good: 0 };
+  for (let i = 0; i < acfg.upHoldS; i++) {
+    const r = autoQualityStep(lvl, 0, 50, acfg, stt);
+    lvl = r.level;
+    stt = r.state;
+  }
+  ok('auto recovers up when good', lvl === 'high', `=${lvl}`);
 
   // ---- binding engine: keyboard throttle with low detent springs to min ----
   const eng = new BindingEngine();

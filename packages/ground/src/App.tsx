@@ -210,7 +210,7 @@ export function App() {
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.7.2</span>
+        <span className="ver">ground · v1.8.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
