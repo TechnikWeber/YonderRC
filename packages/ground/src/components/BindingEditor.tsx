@@ -18,8 +18,10 @@ const AXIS_ORDER: StickAxis[] = ['leftX', 'leftY', 'rightX', 'rightY'];
 const AXIS_LABEL: Record<StickAxis, string> = { leftX: 'Left ◀▶', leftY: 'Left ▲▼', rightX: 'Right ◀▶', rightY: 'Right ▲▼' };
 const SOURCES: ChannelBinding['source'][] = ['keyboard', 'gamepad', 'onscreen'];
 const MODES: BindingMode[] = ['proportional', 'momentary', 'toggle', 'hold-ramp'];
+const RESTS: Detent[] = ['center', 'low', 'free'];
+const REST_LABEL: Record<Detent, string> = { center: 'center', low: 'min', free: 'hold' };
 
-type Draft = { channel: number; label: string; source: ChannelBinding['source']; mode: BindingMode; element: string };
+type Draft = { channel: number; label: string; source: ChannelBinding['source']; mode: BindingMode; element: string; detent: Detent };
 
 export function BindingEditor({
   profile,
@@ -54,10 +56,35 @@ export function BindingEditor({
   const showDetents = profile.inputMethod !== 'gamepad'; // physical stick centers itself
   const mode = profile.stickMode ?? 2;
 
-  // ---- Add-channel form ----
+  // ---- Add / edit channel form ----
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState<Draft>({ channel: nextFreeChannel(profile), label: '', source: 'keyboard', mode: 'momentary', element: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const emptyDraft = (): Draft => ({ channel: nextFreeChannel(profile), label: '', source: 'keyboard', mode: 'momentary', element: '', detent: 'center' });
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [learning, setLearning] = useState(false);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setDraft(emptyDraft());
+    setAdding(true);
+  };
+  const openEdit = (b: ChannelBinding) => {
+    setEditingId(b.id);
+    setDraft({
+      channel: b.channel,
+      label: b.label ?? '',
+      source: b.source === 'virtual' ? 'onscreen' : b.source,
+      mode: b.mode,
+      element: b.element,
+      detent: b.detent ?? 'center',
+    });
+    setAdding(true);
+  };
+  const closeForm = () => {
+    setAdding(false);
+    setEditingId(null);
+    setLearning(false);
+  };
 
   // Capture a keyboard key or gamepad button/axis for the new binding's element.
   useEffect(() => {
@@ -94,19 +121,28 @@ export function BindingEditor({
     return;
   }, [learning, draft.source, input]);
 
-  const addChannel = () => {
+  const saveChannel = () => {
     const element = draft.source === 'onscreen' ? 'btn' : draft.element.trim();
     if (!element) return;
-    onChange({
-      ...profile,
-      bindings: [
-        ...profile.bindings,
-        createBinding({ channel: draft.channel, source: draft.source, element, mode: draft.mode, label: draft.label, endpoints: profile.endpoints }),
-      ],
-    });
-    setAdding(false);
-    setLearning(false);
-    setDraft({ channel: Math.min(CHANNEL_COUNT - 1, draft.channel + 1), label: '', source: draft.source, mode: draft.mode, element: '' });
+    if (editingId) {
+      onChange({
+        ...profile,
+        bindings: profile.bindings.map((b) =>
+          b.id === editingId
+            ? { ...b, channel: draft.channel, label: draft.label || b.label, source: draft.source, element, mode: draft.mode, detent: draft.detent }
+            : b,
+        ),
+      });
+    } else {
+      onChange({
+        ...profile,
+        bindings: [
+          ...profile.bindings,
+          createBinding({ channel: draft.channel, source: draft.source, element, mode: draft.mode, label: draft.label, endpoints: profile.endpoints, detent: draft.detent }),
+        ],
+      });
+    }
+    closeForm();
   };
 
   return (
@@ -212,10 +248,11 @@ export function BindingEditor({
             <div className="binding-top">
               <span className="ch-label">CH{String(b.channel + 1).padStart(2, '0')} · {b.label ?? '—'}</span>
               <span className="ch-mode">{b.source}/{b.mode}{b.element ? ` · ${b.element}` : ''}</span>
+              <button className="btn tiny" onClick={() => openEdit(b)} title="Edit channel">Edit</button>
               <button className="btn tiny danger" onClick={() => removeBinding(b.id)} title="Remove channel">Remove</button>
             </div>
             <details className="shaping">
-              <summary>trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}{b.shaping.reverse ? ' · rev' : ''}</summary>
+              <summary>trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}{b.shaping.reverse ? ' · rev' : ''}{b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}</summary>
               <div className="shaping-grid">
                 <label>trim µs<input type="number" value={b.shaping.trimUs} onChange={(e) => patchShaping(b.id, { trimUs: Number(e.target.value) })} /></label>
                 <label>expo<input type="number" step={0.05} min={0} max={1} value={b.shaping.expo} onChange={(e) => patchShaping(b.id, { expo: Number(e.target.value) })} /></label>
@@ -261,17 +298,23 @@ export function BindingEditor({
                   </div>
                 </label>
               )}
+              <label className="add-rest">Rest position
+                <select value={draft.detent} onChange={(e) => setDraft({ ...draft, detent: e.target.value as Detent })}>
+                  {RESTS.map((d) => <option key={d} value={d}>{REST_LABEL[d]}</option>)}
+                </select>
+              </label>
             </div>
             <div className="add-actions">
-              <button className="btn" onClick={addChannel}>Add</button>
-              <button className="btn ghost" onClick={() => { setAdding(false); setLearning(false); }}>Cancel</button>
+              <button className="btn" onClick={saveChannel}>{editingId ? 'Save' : 'Add'}</button>
+              <button className="btn ghost" onClick={closeForm}>Cancel</button>
             </div>
             <p className="note">
               proportional = axis (keyboard needs two keys like <code>a|d</code>) · momentary = while held · toggle = on/off · hold-ramp = ramps while held.
+              Rest position = where a switch/ramp sits when released: <b>center</b> (1500), <b>min</b> (1000) or <b>hold</b> (stays put). Independent of stick modes.
             </p>
           </div>
         ) : (
-          <button className="btn add-btn" onClick={() => { setDraft((d) => ({ ...d, channel: nextFreeChannel(profile) })); setAdding(true); }}>+ Add channel</button>
+          <button className="btn add-btn" onClick={openAdd}>+ Add channel</button>
         )}
 
         <p className="note">Up to {CHANNEL_COUNT} channels. Templates give you the model's default map; add or remove channels here for full flexibility.</p>

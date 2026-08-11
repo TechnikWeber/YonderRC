@@ -56,14 +56,14 @@ export function ChannelMonitor({
         const label = labels[i];
         const heldSafe = !armed && !failsafe && throttleSet.has(i);
         return (
-          <div className="chan" key={i}>
+          <div className={`chan${heldSafe ? ' safe' : ''}`} key={i}>
             <span className={`name${label ? ' bound' : ''}`}>
               {String(i + 1).padStart(2, '0')} {label ?? '—'}
-              {heldSafe && <span className="safe-tag">disarm</span>}
             </span>
             <div className="track">
               <div className="center" />
               <div className="fill" style={{ left: `${left}%`, width: `${width}%` }} />
+              {heldSafe && <span className="safe-overlay">held safe · disarmed</span>}
             </div>
             <span className="us">{Math.round(us)}</span>
           </div>

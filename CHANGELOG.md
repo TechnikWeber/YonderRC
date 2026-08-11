@@ -3,6 +3,17 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.11.0
+- OSD: link state moved to top-center, armed/failsafe to bottom-center; the
+  top-right stats and bottom-right telemetry now sit on a translucent panel so
+  they stay readable over bright video.
+- Channels: added an **Edit** button (alongside Add/Remove) and a per-channel
+  **rest position** (center / min / hold) so a hold-ramp, momentary or toggle can
+  settle at centre (1500) instead of min. Independent of stick modes.
+- Channel monitor: throttle-held-safe channels are now clearly tinted and labelled
+  "held safe · disarmed" instead of a truncated tag.
+
+
 ## v1.10.0
 - **Transmitter stick modes 1–4**: switch which stick controls throttle / elevator
   / aileron / rudder — for touch, gamepad and keyboard. Chosen per model in Setup

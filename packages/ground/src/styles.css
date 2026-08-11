@@ -687,6 +687,7 @@ body {
   padding: 3px 8px;
   border-radius: 4px;
   border: 1px solid currentColor;
+  background: rgba(8, 12, 16, 0.5);
 }
 .osd-badge.go { color: var(--arm); }
 .osd-badge.idle { color: var(--idle); }
@@ -890,17 +891,22 @@ body {
   background: var(--panel-2);
 }
 
-.safe-tag {
+.chan.safe .name,
+.chan.safe .us { color: var(--idle); }
+.chan.safe .track { position: relative; }
+.chan.safe .fill { background: var(--idle); opacity: 0.7; }
+.safe-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--mono);
   font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--idle);
-  border: 1px solid var(--idle);
-  border-radius: 3px;
-  padding: 0 4px;
-  margin-left: 6px;
-  vertical-align: middle;
+  pointer-events: none;
 }
 
 /* ---- telemetry OSD (v1.3) ---- */
@@ -1022,6 +1028,23 @@ body {
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
+}
+.osd-bc {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+/* translucent panels so OSD text stays legible over bright video */
+.osd-tr,
+.osd-br {
+  background: rgba(8, 12, 16, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
+  margin: 6px;
 }
 .osd-warn { color: var(--bad); font-weight: 700; }
 

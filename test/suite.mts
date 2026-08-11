@@ -169,6 +169,19 @@ async function main() {
   const removed2 = { ...added, bindings: added.bindings.filter((b) => b.label !== 'Winch') };
   ok('removed binding gone', !removed2.bindings.some((b) => b.label === 'Winch'));
 
+  // ---- per-channel rest position (hold-ramp / switch) ----
+  const { shapeSwitch } = await import('../packages/protocol/src/shaping');
+  const sh = added.bindings[0].shaping;
+  ok('shapeSwitch off = min by default', shapeSwitch(false, sh) === sh.minUs);
+  ok('shapeSwitch off = center rest', shapeSwitch(false, sh, 1500) === 1500);
+  const hr = createBinding({ channel: 15, source: 'keyboard', element: 'y', mode: 'hold-ramp', label: 'CH16', endpoints: carA.endpoints, detent: 'center' });
+  const hp = { ...carA, bindings: [...carA.bindings, hr] };
+  const engH = new BindingEngine();
+  ok('hold-ramp center rests at 1500', engH.compute(hp, snap({}), 50)[15] === 1500, `=${engH.compute(hp, snap({}), 50)[15]}`);
+  let up = 0;
+  for (let i = 0; i < 40; i++) up = engH.compute(hp, snap({ keys: new Set(['y']) }), 50)[15];
+  ok('hold-ramp center holds toward max', up > 1900, `=${up}`);
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

@@ -522,13 +522,14 @@ export function VideoPanel({
           <div className="osd">
             <div className="osd-tc">
               <span className={`osd-badge ${linkState === 'connected' ? 'go' : 'bad'}`}>
-                {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● …' : '● NO LINK'}
+                {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● RECONNECTING…' : '● NO LINK'}
               </span>
+              {weakLink && linkState === 'connected' && <span className="osd-badge bad">⚠ WEAK LINK</span>}
+            </div>
+            <div className="osd-bc">
               <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
                 {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
               </span>
-              {linkState === 'connecting' && <span className="osd-badge idle">RECONNECTING…</span>}
-              {weakLink && linkState === 'connected' && <span className="osd-badge bad">⚠ WEAK LINK</span>}
             </div>
             <div className="osd-tr">
               <span>

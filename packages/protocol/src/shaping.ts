@@ -43,7 +43,7 @@ export function shapeProportional(normalized: number, s: ChannelShaping): number
  * A switch/momentary output: off → one endpoint, on → the other. Reverse swaps
  * which endpoint is "on", so a channel can be inverted without rewiring.
  */
-export function shapeSwitch(on: boolean, s: ChannelShaping): number {
+export function shapeSwitch(on: boolean, s: ChannelShaping, restUs?: number): number {
   const active = s.reverse ? !on : on;
-  return clampChannelUs(active ? s.maxUs : s.minUs);
+  return clampChannelUs(active ? s.maxUs : restUs ?? s.minUs);
 }

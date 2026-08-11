@@ -351,6 +351,7 @@ export function createBinding(opts: {
   mode: ChannelBinding['mode'];
   label: string;
   endpoints: Endpoints;
+  detent?: Detent;
 }): ChannelBinding {
   return {
     id: `c_${Date.now().toString(36)}${(customCounter++).toString(36)}`,
@@ -358,8 +359,9 @@ export function createBinding(opts: {
     source: opts.source,
     element: opts.element,
     mode: opts.mode,
+    detent: opts.detent,
     label: opts.label || `Channel ${opts.channel + 1}`,
-    shaping: shaping(opts.endpoints, CHANNEL_NEUTRAL_US),
+    shaping: shaping(opts.endpoints, opts.detent === 'center' ? CHANNEL_NEUTRAL_US : failsafeFor(opts.channel, [], opts.endpoints, 'car')),
   };
 }
 

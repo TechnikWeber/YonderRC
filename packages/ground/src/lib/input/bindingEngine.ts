@@ -1,5 +1,6 @@
 import {
   CHANNEL_COUNT,
+  CHANNEL_NEUTRAL_US,
   clamp,
   clampChannelUs,
   neutralChannels,
@@ -60,13 +61,13 @@ export class BindingEngine {
       case 'proportional':
         return shapeProportional(this.readAxis(b, snap, dt), b.shaping);
       case 'momentary':
-        return shapeSwitch(this.readActive(b, snap), b.shaping);
+        return shapeSwitch(this.readActive(b, snap), b.shaping, restUsFor(b));
       case 'toggle': {
         const active = this.readActive(b, snap);
         const prev = this.prevActive.get(b.id) ?? false;
         if (active && !prev) this.flipToggle(b.id); // rising edge
         this.prevActive.set(b.id, active);
-        return shapeSwitch(this.getToggle(b.id), b.shaping);
+        return shapeSwitch(this.getToggle(b.id), b.shaping, restUsFor(b));
       }
       case 'hold-ramp':
         return this.readHoldRamp(b, snap, dt);
@@ -115,18 +116,26 @@ export class BindingEngine {
     }
   }
 
-  /** Hold-ramp: value climbs from min toward max while held, springs back on release. */
+  /** Hold-ramp: value climbs toward max while held, springs back to its rest. */
   private readHoldRamp(b: ChannelBinding, snap: InputSnapshot, dt: number): number {
     const held = this.readActive(b, snap);
     const perSec = 1 / Math.max(0.05, b.holdRampSeconds ?? 0.5);
-    let n = this.ramp.get(b.id) ?? 0; // normalized 0..1
-    n = held ? clamp(n + perSec * dt, 0, 1) : clamp(n - CENTER_SPRING_PER_SEC * dt, 0, 1);
+    const rest = b.detent === 'center' ? 0.5 : 0; // where it settles on release
+    let n = this.ramp.get(b.id) ?? rest;
+    if (held) n = clamp(n + perSec * dt, 0, 1);
+    else if (b.detent !== 'free') n = Math.max(rest, n - CENTER_SPRING_PER_SEC * dt);
     this.ramp.set(b.id, n);
     const { minUs, maxUs, trimUs, reverse } = b.shaping;
     const span = maxUs - minUs;
     const us = reverse ? maxUs - n * span : minUs + n * span;
     return clampChannelUs(us + trimUs);
   }
+}
+
+/** The µs a switch/ramp settles to when released, from its per-channel detent. */
+function restUsFor(b: ChannelBinding): number {
+  if (b.detent === 'center') return CHANNEL_NEUTRAL_US;
+  return b.shaping.minUs;
 }
 
 function rampAxis(current: number, dir: number, dt: number, detent: 'center' | 'low' | 'free' = 'center'): number {
