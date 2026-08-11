@@ -12,6 +12,11 @@ export function ControlsPanel({
   onPreArm,
   battery,
   onBattery,
+  logging,
+  onLogging,
+  logRows,
+  onDownloadLog,
+  onClearLog,
   input,
 }: {
   bindings: ActionBindings;
@@ -20,6 +25,11 @@ export function ControlsPanel({
   onPreArm: (v: boolean) => void;
   battery: BatteryWarnCfg;
   onBattery: (c: BatteryWarnCfg) => void;
+  logging: boolean;
+  onLogging: (v: boolean) => void;
+  logRows: number;
+  onDownloadLog: () => void;
+  onClearLog: () => void;
   input: InputManager;
 }) {
   const [learn, setLearn] = useState<{ id: ActionId; what: 'key' | 'button' } | null>(null);
@@ -102,24 +112,44 @@ export function ControlsPanel({
           </label>
         ))}
       </div>
-      <div className="batt-grid">
-        <label className="opt">
+      <div className="batt-thresholds">
+        <label className="batt-th">
           <input type="checkbox" checked={battery.usePct} onChange={(e) => setBat({ usePct: e.target.checked })} />
-          Percent ≤
+          <span>Percent ≤</span>
+          <input type="number" value={battery.pctThreshold} onChange={(e) => setBat({ pctThreshold: Number(e.target.value) })} />
+          <span className="unit">%</span>
         </label>
-        <input type="number" value={battery.pctThreshold} onChange={(e) => setBat({ pctThreshold: Number(e.target.value) })} /> %
-        <label className="opt">
+        <label className="batt-th">
           <input type="checkbox" checked={battery.useVolt} onChange={(e) => setBat({ useVolt: e.target.checked })} />
-          Voltage ≤
+          <span>Voltage ≤</span>
+          <input type="number" step={0.1} value={battery.voltThreshold} onChange={(e) => setBat({ voltThreshold: Number(e.target.value) })} />
+          <span className="unit">V</span>
         </label>
-        <input type="number" step={0.1} value={battery.voltThreshold} onChange={(e) => setBat({ voltThreshold: Number(e.target.value) })} /> V
+        <label className="batt-th">
+          <input type="checkbox" checked={battery.useMah} onChange={(e) => setBat({ useMah: e.target.checked })} />
+          <span>Consumed ≥</span>
+          <input type="number" step={50} value={battery.mahThreshold} onChange={(e) => setBat({ mahThreshold: Number(e.target.value) })} />
+          <span className="unit">mAh</span>
+        </label>
       </div>
       <div className="batt-alerts">
         <label className="opt"><input type="checkbox" checked={battery.osdBlink} onChange={(e) => setBat({ osdBlink: e.target.checked })} /> OSD blink</label>
         <label className="opt"><input type="checkbox" checked={battery.rumble} onChange={(e) => setBat({ rumble: e.target.checked })} /> Rumble</label>
         <label className="opt"><input type="checkbox" checked={battery.sound} onChange={(e) => setBat({ sound: e.target.checked })} /> Sound</label>
       </div>
-      <p className="note">Auto only warns when a real sensor delivers data. Voltage is a pack value — set it for your cell count (e.g. 3S ≈ 10.5 V). Alerts repeat every ~3 s while low.</p>
+      <p className="note">Auto only warns when a real sensor delivers data. Percent needs a battery capacity set on the vehicle (Setup › Telemetry). Voltage is a pack value — set it for your cell count (e.g. 3S ≈ 10.5 V). "Consumed" warns after using that many mAh — handy without a capacity set. Alerts repeat every ~3 s while low.</p>
+
+      <div className="eyebrow" style={{ marginTop: 14 }}>Blackbox logging</div>
+      <label className="opt big">
+        <input type="checkbox" checked={logging} onChange={(e) => onLogging(e.target.checked)} />
+        Record telemetry + link stats to a downloadable log
+      </label>
+      <div className="log-row">
+        <span className="log-status">{logging ? `● recording · ${logRows} rows` : 'off'}</span>
+        <button className="btn tiny" onClick={onDownloadLog} disabled={logRows === 0}>Download CSV</button>
+        <button className="btn tiny" onClick={onClearLog} disabled={logRows === 0}>Clear</button>
+      </div>
+      <p className="note">Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs stay in this browser tab until you download or clear them.</p>
     </section>
   );
 }

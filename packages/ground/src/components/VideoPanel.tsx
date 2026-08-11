@@ -219,6 +219,7 @@ export function VideoPanel({
   batteryLow,
   batteryReason,
   onQuality,
+  onStats,
 }: {
   videoBaseUrl: string | null;
   cameras: string[];
@@ -236,6 +237,7 @@ export function VideoPanel({
   batteryLow: boolean;
   batteryReason: string | null;
   onQuality: (q: VideoQuality) => void;
+  onStats?: (s: VideoStats | null) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -257,6 +259,8 @@ export function VideoPanel({
   effRef.current = effectiveQuality;
   const autoCfgRef = useRef<AutoQualityCfg>(autoCfg);
   autoCfgRef.current = autoCfg;
+  const playRef = useRef<PlayState>('idle');
+  playRef.current = play;
 
   // Reconnect bookkeeping (refs so the watchdog can act without re-subscribing).
   const attemptRef = useRef(0);
@@ -341,14 +345,24 @@ export function VideoPanel({
         statsRef.current = s;
         setStats(s);
         setVideoLatency(s.latencyMs);
-        // Frame liveness check.
+        onStats?.(s);
+        // Frame liveness: real decoded frames mean we're playing; a stall (no new
+        // frames for a few seconds, incl. a black/empty stream after a remount)
+        // forces a reconnect regardless of the WebRTC connectionState.
         const lf = lastFramesRef.current;
-        if (s.framesDecoded > lf.frames) lastFramesRef.current = { frames: s.framesDecoded, at: now };
-        else if (play === 'playing' && now - lf.at > 2500) scheduleReconnect();
+        if (s.framesDecoded > lf.frames) {
+          lastFramesRef.current = { frames: s.framesDecoded, at: now };
+          if (playRef.current !== 'playing') {
+            attemptRef.current = 0;
+            setPlay('playing');
+          }
+        } else if (now - lf.at > 4000) {
+          scheduleReconnect();
+        }
 
         // Auto-quality: nudge the effective level based on loss/latency, with
         // hysteresis so a flaky link doesn't make it oscillate.
-        if (quality === 'auto' && play === 'playing') {
+        if (quality === 'auto' && playRef.current === 'playing') {
           const r = autoQualityStep(
             effRef.current,
             s.lossPct ?? 0,

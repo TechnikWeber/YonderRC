@@ -13,6 +13,8 @@ export interface BatteryWarnCfg {
   pctThreshold: number;
   useVolt: boolean;
   voltThreshold: number;
+  useMah: boolean;
+  mahThreshold: number;
   osdBlink: boolean;
   rumble: boolean;
   sound: boolean;
@@ -25,6 +27,8 @@ export const BATTERY_DEFAULTS: BatteryWarnCfg = {
   pctThreshold: 20,
   useVolt: false,
   voltThreshold: 10.5,
+  useMah: false,
+  mahThreshold: 1800,
   osdBlink: true,
   rumble: true,
   sound: true,
@@ -73,6 +77,10 @@ export function evaluateBattery(cfg: BatteryWarnCfg, t: TelemetryMessage | null)
   if (cfg.useVolt && v != null && v <= cfg.voltThreshold) {
     low = true;
     reason = reason ? `${reason} · ${v.toFixed(1)}V` : `${v.toFixed(1)}V`;
+  }
+  if (cfg.useMah && t.mah >= cfg.mahThreshold) {
+    low = true;
+    reason = reason ? `${reason} · ${Math.round(t.mah)}mAh` : `${Math.round(t.mah)}mAh`;
   }
   return { active, low, reason };
 }

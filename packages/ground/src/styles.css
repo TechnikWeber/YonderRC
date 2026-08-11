@@ -1142,7 +1142,12 @@ input[type='range'] {
   animation: rec-pulse 0.7s steps(1) infinite;
 }
 .batt-mode { display: flex; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
-.batt-grid { display: grid; grid-template-columns: auto 70px auto 70px; gap: 8px; align-items: center; margin: 6px 0; }
-.batt-grid .opt { justify-content: flex-end; }
+.batt-thresholds { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.batt-th { display: grid; grid-template-columns: 20px 90px 90px auto; gap: 8px; align-items: center; font-size: 13px; }
+.batt-th .unit { color: var(--muted); }
 .batt-alerts { display: flex; gap: 14px; margin: 6px 0; flex-wrap: wrap; }
 @media (max-width: 560px) { .batt-grid { grid-template-columns: auto 1fr; } }
+
+/* ---- blackbox logging (v1.14) ---- */
+.log-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.log-status { font-family: var(--mono); font-size: 12px; color: var(--muted); }

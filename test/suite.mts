@@ -214,6 +214,15 @@ async function main() {
   const volt = { ...auto, useVolt: true, voltThreshold: 10.5, usePct: false };
   ok('voltage threshold triggers', evaluateBattery(volt, mk({ voltages: [{ label: 'V', value: 10.2 }] })).low === true);
   ok('voltage ok above threshold', evaluateBattery(volt, mk({ voltages: [{ label: 'V', value: 11.5 }] })).low === false);
+  const mahCfg = { ...auto, useMah: true, mahThreshold: 1800, usePct: false };
+  ok('mAh threshold triggers', evaluateBattery(mahCfg, mk({ mah: 1850 })).low === true);
+  ok('mAh below threshold ok', evaluateBattery(mahCfg, mk({ mah: 1000 })).low === false);
+
+  // ---- blackbox log CSV ----
+  const { logToCsv } = await import('../packages/ground/src/lib/logger');
+  const csv = logToCsv([{ t: 0, armed: 1, failsafe: 0, link: 'connected', rtt: 40, bitrate: 2500, loss: 0.5, fps: 30, vlat: 120, volt: 12.1, amp: 3.2, mah: 150, pct: 88 }]);
+  ok('csv has header + row', csv.split('\n').length === 2 && csv.includes('t_ms,armed'));
+  ok('csv null renders empty', logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1] === '5,0,0,connected,,,,,,,,,');
 
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);

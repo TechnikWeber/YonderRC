@@ -3,6 +3,17 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.14.0
+- **Blackbox logging** (opt-in, OFF by default): records telemetry + link stats
+  (RTT, bitrate, loss, fps, video latency, volts/amps/mAh/percent) at 2 Hz while
+  enabled and downloads as CSV. Costs nothing when off; buffer is capped. In
+  Setup › Controls.
+- **Low-battery warning** gained a **consumed-mAh** threshold (in addition to
+  percent and voltage), and the settings layout was tidied into aligned rows.
+- Fix: switching Setup → Drive could leave a frozen/black video with no recovery —
+  the frame watchdog used a stale state value; it now tracks live frames and
+  reconnects a black stream on its own.
+
 ## v1.13.0 — Low-battery warning
 - **Low-battery warning** with independent **percent** and **voltage** thresholds.
   "Auto" mode only warns when a real sensor is delivering data (no nagging in sim);

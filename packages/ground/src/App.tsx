@@ -23,13 +23,14 @@ import { ConnectionBar, StatusStrip } from './components/StatusStrip';
 import { ControlPad } from './components/ControlPad';
 import { ChannelMonitor } from './components/ChannelMonitor';
 import { BindingEditor } from './components/BindingEditor';
-import { VideoPanel } from './components/VideoPanel';
 import { CalibrationPanel } from './components/CalibrationPanel';
 import { ControlsPanel } from './components/ControlsPanel';
 import { loadActions, saveActions, useActionHotkeys, type ActionBindings } from './lib/actions';
 import { preArmCheck } from './lib/safety';
-import { loadBattery, saveBattery, evaluateBattery, type BatteryWarnCfg } from './lib/battery';
+import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWarnCfg } from './lib/battery';
 import { beep } from './lib/beep';
+import { logToCsv, downloadText, LOG_CAP, type LogRow } from './lib/logger';
+import { VideoPanel, type VideoStats } from './components/VideoPanel';
 import { buildProfile, vehicleTypes } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
@@ -211,6 +212,53 @@ export function App() {
   const telemetryRef = useRef(telemetry);
   telemetryRef.current = telemetry;
 
+  // Blackbox logging — OFF by default; only samples while explicitly enabled, so
+  // it costs nothing otherwise. Snapshot ref keeps the current values for the loop.
+  const [logging, setLogging] = useState(false);
+  const [logRows, setLogRows] = useState(0);
+  const logRef = useRef<LogRow[]>([]);
+  const logStartRef = useRef(0);
+  const videoStatsRef = useRef<VideoStats | null>(null);
+  const snapRef = useRef<{ armed: boolean; failsafe: boolean; link: LinkState; rtt: number | null }>({ armed: false, failsafe: false, link: 'disconnected', rtt: null });
+  useEffect(() => {
+    if (!logging) return;
+    logStartRef.current = Date.now();
+    logRef.current = [];
+    setLogRows(0);
+    const id = setInterval(() => {
+      const t = telemetryRef.current;
+      const vs = videoStatsRef.current;
+      const s = snapRef.current;
+      logRef.current.push({
+        t: Date.now() - logStartRef.current,
+        armed: s.armed ? 1 : 0,
+        failsafe: s.failsafe ? 1 : 0,
+        link: s.link,
+        rtt: s.rtt,
+        bitrate: vs?.bitrateKbps ?? null,
+        loss: vs?.lossPct ?? null,
+        fps: vs?.fps ?? null,
+        vlat: vs?.latencyMs ?? null,
+        volt: packVoltage(t),
+        amp: t?.currents?.[0]?.value ?? null,
+        mah: t?.mah ?? null,
+        pct: t?.batteryPercent ?? null,
+      });
+      if (logRef.current.length > LOG_CAP) logRef.current.shift();
+      setLogRows(logRef.current.length);
+    }, 500);
+    return () => clearInterval(id);
+  }, [logging]);
+  const downloadLog = () => {
+    if (!logRef.current.length) return;
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    downloadText(`yonderrc-log-${stamp}.csv`, logToCsv(logRef.current));
+  };
+  const clearLog = () => {
+    logRef.current = [];
+    setLogRows(0);
+  };
+
   // Low-battery warning: evaluate, then pulse rumble + beep while low.
   const battery = evaluateBattery(batteryCfg, connected ? telemetry : null);
   const batteryLowRef = useRef(false);
@@ -240,6 +288,7 @@ export function App() {
   // the way games display a stable ping.
   const rttEma = useRef<number | null>(null);
   const [rttDisplay, setRttDisplay] = useState<number | null>(null);
+  snapRef.current = { armed, failsafe, link: linkState, rtt: rttDisplay };
   useEffect(() => {
     const fresh =
       connected && status && !failsafe && status.lastClientT > 0 &&
@@ -305,7 +354,7 @@ export function App() {
       {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.13.0</span>
+        <span className="ver">ground · v1.14.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -354,7 +403,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} input={input} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} />
         </>
       ) : (
         <>
@@ -380,6 +429,9 @@ export function App() {
             batteryLow={battery.low && batteryCfg.osdBlink}
             batteryReason={battery.reason}
             onQuality={(q) => linkRef.current?.sendVideoQuality(q)}
+            onStats={(s) => {
+              videoStatsRef.current = s;
+            }}
           />
           <ControlPad
             profile={active}
