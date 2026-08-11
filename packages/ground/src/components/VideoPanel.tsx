@@ -9,6 +9,7 @@ import {
 import type { ControlPath, LinkState } from '../lib/transport';
 import type { InputManager } from '../lib/input/inputManager';
 import { useRecorder } from '../lib/recorder';
+import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -213,6 +214,10 @@ export function VideoPanel({
   profile,
   telemetry,
   input,
+  actions,
+  flightSeconds,
+  batteryLow,
+  batteryReason,
   onQuality,
 }: {
   videoBaseUrl: string | null;
@@ -226,6 +231,10 @@ export function VideoPanel({
   profile: Profile;
   telemetry: TelemetryMessage | null;
   input: InputManager;
+  actions: ActionBindings;
+  flightSeconds: number | null;
+  batteryLow: boolean;
+  batteryReason: string | null;
   onQuality: (q: VideoQuality) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -366,32 +375,17 @@ export function VideoPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoBaseUrl, camera, linkState, quality]);
 
-  // Keyboard hotkeys for record / snapshot (ignored while typing in a field).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-      const k = e.key.toLowerCase();
-      if (k === rec.settings.recordKey.toLowerCase()) rec.toggleRecord();
-      else if (k === rec.settings.snapshotKey.toLowerCase()) rec.snapshot();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [rec]);
-
-  // Gamepad button hotkeys with rising-edge detection.
-  const prevButtons = useRef<boolean[]>([]);
-  useEffect(() => {
-    const id = setInterval(() => {
-      const btns = input.readGamepadButtons();
-      const rose = (i: number | null) => i != null && btns[i] && !prevButtons.current[i];
-      if (rose(rec.settings.recordButton)) rec.toggleRecord();
-      if (rose(rec.settings.snapshotButton)) rec.snapshot();
-      prevButtons.current = btns;
-    }, 80);
-    return () => clearInterval(id);
-  }, [input, rec]);
+  // Record / snapshot / next-camera via the unified action bindings.
+  const nextCamera = () => {
+    if (cameras.length < 2) return;
+    const i = cameras.indexOf(camera);
+    setCamera(cameras[(i + 1) % cameras.length]);
+  };
+  useActionHotkeys(
+    actions,
+    { 'record-toggle': rec.toggleRecord, snapshot: rec.snapshot, 'next-camera': nextCamera },
+    input,
+  );
 
   const throttleCh = profile.throttleChannels[0] ?? 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
@@ -446,11 +440,11 @@ export function VideoPanel({
           <button
             className={`btn tiny${rec.recording ? ' rec-on' : ''}`}
             onClick={rec.toggleRecord}
-            title={`Record (${rec.settings.recordKey.toUpperCase()})`}
+            title="Record (bindable in Setup › Controls)"
           >
             {rec.recording ? '● REC' : 'Record'}
           </button>
-          <button className="btn tiny" onClick={rec.snapshot} title={`Snapshot (${rec.settings.snapshotKey.toUpperCase()})`}>
+          <button className="btn tiny" onClick={rec.snapshot} title="Snapshot (bindable in Setup › Controls)">
             Snapshot
           </button>
           <button className="btn tiny" onClick={() => setShowRecSettings((v) => !v)} title="Recording settings">
@@ -471,21 +465,7 @@ export function VideoPanel({
           <label className="rec-field">Filename prefix
             <input value={rec.settings.prefix} onChange={(e) => rec.setSettings({ prefix: e.target.value })} />
           </label>
-          <div className="rec-grid">
-            <label className="rec-field">Record key
-              <input maxLength={1} value={rec.settings.recordKey} onChange={(e) => rec.setSettings({ recordKey: e.target.value || 'r' })} />
-            </label>
-            <label className="rec-field">Snapshot key
-              <input maxLength={1} value={rec.settings.snapshotKey} onChange={(e) => rec.setSettings({ snapshotKey: e.target.value || 't' })} />
-            </label>
-            <label className="rec-field">Record button
-              <input type="number" placeholder="—" value={rec.settings.recordButton ?? ''} onChange={(e) => rec.setSettings({ recordButton: e.target.value === '' ? null : Number(e.target.value) })} />
-            </label>
-            <label className="rec-field">Snapshot button
-              <input type="number" placeholder="—" value={rec.settings.snapshotButton ?? ''} onChange={(e) => rec.setSettings({ snapshotButton: e.target.value === '' ? null : Number(e.target.value) })} />
-            </label>
-          </div>
-          <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Keys are ignored while typing. Gamepad button numbers are the raw indices (leave blank to disable).</p>
+          <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Record, snapshot and next-camera keys/buttons live in <b>Setup › Controls</b>.</p>
 
           <div className="eyebrow2" style={{ marginTop: 10 }}>Auto quality thresholds</div>
           <p className="note">Used when quality is set to <b>Auto</b>. Step down if loss/latency exceed the "down" limits for the hold time; step up only when both are below the "up" limits for the (longer) up-hold.</p>
@@ -503,6 +483,7 @@ export function VideoPanel({
       <div className="video-stage">
         <video ref={videoRef} autoPlay playsInline muted />
         {rec.recording && <div className="rec-badge">● REC</div>}
+        {batteryLow && <div className="batt-warn">⚠ BATTERY LOW{batteryReason ? ` · ${batteryReason}` : ''}</div>}
         {rec.lastAction && <div className="rec-toast">{rec.lastAction}</div>}
 
         {play !== 'playing' && (
@@ -520,6 +501,11 @@ export function VideoPanel({
 
         {showOsd && (
           <div className="osd">
+            {flightSeconds !== null && (
+              <div className="osd-tl">
+                <span className="osd-badge go">⏱ {Math.floor(flightSeconds / 60)}:{String(flightSeconds % 60).padStart(2, '0')}</span>
+              </div>
+            )}
             <div className="osd-tc">
               <span className={`osd-badge ${linkState === 'connected' ? 'go' : 'bad'}`}>
                 {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● RECONNECTING…' : '● NO LINK'}

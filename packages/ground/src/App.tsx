@@ -25,6 +25,11 @@ import { ChannelMonitor } from './components/ChannelMonitor';
 import { BindingEditor } from './components/BindingEditor';
 import { VideoPanel } from './components/VideoPanel';
 import { CalibrationPanel } from './components/CalibrationPanel';
+import { ControlsPanel } from './components/ControlsPanel';
+import { loadActions, saveActions, useActionHotkeys, type ActionBindings } from './lib/actions';
+import { preArmCheck } from './lib/safety';
+import { loadBattery, saveBattery, evaluateBattery, type BatteryWarnCfg } from './lib/battery';
+import { beep } from './lib/beep';
 import { buildProfile, vehicleTypes } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
@@ -71,6 +76,29 @@ export function App() {
   const active = profiles.find((p) => p.id === activeId) ?? profiles[0];
   const activeRef = useRef(active);
   activeRef.current = active;
+  const liveChannelsRef = useRef<number[]>(neutralChannels());
+
+  // Safety + action bindings.
+  const [preArm, setPreArm] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('yonderrc.preArm.v1') !== 'off' : true));
+  const [actions, setActionsState] = useState(loadActions);
+  const [preArmMsg, setPreArmMsg] = useState<string | null>(null);
+  const [batteryCfg, setBatteryCfgState] = useState(loadBattery);
+  const setBatteryCfg = (c: BatteryWarnCfg) => {
+    setBatteryCfgState(c);
+    saveBattery(c);
+  };
+  const setActions = (b: ActionBindings) => {
+    setActionsState(b);
+    saveActions(b);
+  };
+  const setPreArmPersist = (v: boolean) => {
+    setPreArm(v);
+    try {
+      localStorage.setItem('yonderrc.preArm.v1', v ? 'on' : 'off');
+    } catch {
+      /* ignore */
+    }
+  };
 
   if (linkRef.current === null) {
     linkRef.current = new LinkClient({
@@ -103,6 +131,7 @@ export function App() {
       setGamepad((prev) => (prev === name ? prev : name));
 
       const channels = engine.compute(activeRef.current, input.snapshot(), dt);
+      liveChannelsRef.current = channels;
       linkRef.current?.sendControl(channels);
 
       if (++n % 3 === 0) {
@@ -131,6 +160,71 @@ export function App() {
 
   const armed = status?.armed ?? false;
   const failsafe = connected ? status?.failsafeActive ?? false : false;
+
+  // Arming goes through the pre-arm check (unless disabled); disarming is always
+  // allowed. Panic disarms immediately, bypassing any check.
+  const requestArm = (want: boolean) => {
+    if (want && preArm) {
+      const r = preArmCheck(activeRef.current, liveChannelsRef.current);
+      if (!r.ok) {
+        setPreArmMsg(r.message ?? 'Pre-arm check failed.');
+        input.rumble(0.5, 0.5, 150);
+        window.setTimeout(() => setPreArmMsg(null), 3500);
+        return;
+      }
+    }
+    linkRef.current?.sendArm(want);
+  };
+  const panicDisarm = () => {
+    linkRef.current?.sendArm(false);
+    setPreArmMsg('PANIC — disarm sent');
+    window.setTimeout(() => setPreArmMsg((m) => (m === 'PANIC — disarm sent' ? null : m)), 2500);
+  };
+  useActionHotkeys(actions, { 'panic-disarm': panicDisarm, 'toggle-arm': () => requestArm(!armed) }, input);
+
+  // Flight timer + session: runs while armed; captures mAh consumed since arming.
+  const [flightSeconds, setFlightSeconds] = useState(0);
+  const armedSince = useRef<number | null>(null);
+  const mahAtArm = useRef<number | null>(null);
+  const [sessionMah, setSessionMah] = useState<number | null>(null);
+  useEffect(() => {
+    if (armed && armedSince.current === null) {
+      armedSince.current = Date.now();
+      mahAtArm.current = telemetry?.mah ?? null;
+    } else if (!armed) {
+      armedSince.current = null;
+    }
+  }, [armed, telemetry]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (armedSince.current) {
+        setFlightSeconds(Math.floor((Date.now() - armedSince.current) / 1000));
+        const cur = telemetryRef.current?.mah;
+        setSessionMah(cur != null && mahAtArm.current != null ? Math.max(0, Math.round(cur - mahAtArm.current)) : null);
+      } else {
+        setFlightSeconds(0);
+        setSessionMah(null);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+  const telemetryRef = useRef(telemetry);
+  telemetryRef.current = telemetry;
+
+  // Low-battery warning: evaluate, then pulse rumble + beep while low.
+  const battery = evaluateBattery(batteryCfg, connected ? telemetry : null);
+  const batteryLowRef = useRef(false);
+  batteryLowRef.current = battery.low;
+  const batteryCfgRef = useRef(batteryCfg);
+  batteryCfgRef.current = batteryCfg;
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!batteryLowRef.current) return;
+      if (batteryCfgRef.current.rumble) input.rumble(0.7, 0.9, 300);
+      if (batteryCfgRef.current.sound) beep(880, 180);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [input]);
 
   // Haptic alert when the vehicle drops into failsafe (link loss).
   const prevFailsafe = useRef(false);
@@ -208,9 +302,10 @@ export function App() {
 
   return (
     <div className="app">
+      {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.11.0</span>
+        <span className="ver">ground · v1.13.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -259,6 +354,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} input={input} />
         </>
       ) : (
         <>
@@ -279,6 +375,10 @@ export function App() {
             profile={active}
             telemetry={connected ? telemetry : null}
             input={input}
+            actions={actions}
+            flightSeconds={armed ? flightSeconds : null}
+            batteryLow={battery.low && batteryCfg.osdBlink}
+            batteryReason={battery.reason}
             onQuality={(q) => linkRef.current?.sendVideoQuality(q)}
           />
           <ControlPad
@@ -286,7 +386,7 @@ export function App() {
             input={input}
             engine={engine}
             armed={armed}
-            onToggleArm={() => linkRef.current?.sendArm(!armed)}
+            onToggleArm={() => requestArm(!armed)}
             connected={connected}
             calibrationActive={status?.calibration?.active ?? false}
             version={tick}
@@ -311,6 +411,8 @@ export function App() {
             latencyMs={rttDisplay}
             gamepad={gamepad}
             gamepadKind={input.gamepadKind}
+            flightSeconds={armed ? flightSeconds : null}
+            sessionMah={sessionMah}
             telemetrySource={
               !connected || !telemetry
                 ? null

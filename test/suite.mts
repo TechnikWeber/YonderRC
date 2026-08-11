@@ -182,6 +182,39 @@ async function main() {
   for (let i = 0; i < 40; i++) up = engH.compute(hp, snap({ keys: new Set(['y']) }), 50)[15];
   ok('hold-ramp center holds toward max', up > 1900, `=${up}`);
 
+  // ---- pre-arm safety check ----
+  const { preArmCheck, throttleSafeUs } = await import('../packages/ground/src/lib/safety');
+  const { neutralChannels } = await import('../packages/protocol/src/channels');
+  const carP = buildProfile('car'); // throttle detent center → safe at 1500
+  const cThr = carP.throttleChannels[0];
+  ok('car throttle safe = centre', throttleSafeUs(carP.bindings.find((b) => b.channel === cThr)) === 1500);
+  ok('car arms at centre throttle', preArmCheck(carP, neutralChannels()).ok);
+  const pushed = neutralChannels();
+  pushed[cThr] = 2000;
+  ok('car blocked with throttle up', !preArmCheck(carP, pushed).ok);
+  const planeP = buildProfile('plane'); // throttle detent free → safe at min
+  const pThr = planeP.throttleChannels[0];
+  ok('plane throttle safe = min', throttleSafeUs(planeP.bindings.find((b) => b.channel === pThr)) === 1000);
+  ok('plane blocked at centre throttle', !preArmCheck(planeP, neutralChannels()).ok);
+  const low = neutralChannels();
+  low[pThr] = 1000;
+  ok('plane arms at idle throttle', preArmCheck(planeP, low).ok);
+
+  // ---- low-battery warning ----
+  const { evaluateBattery, BATTERY_DEFAULTS } = await import('../packages/ground/src/lib/battery');
+  const mk = (over: Partial<import('@yonderrc/protocol').TelemetryMessage>): import('@yonderrc/protocol').TelemetryMessage => ({
+    type: 'telemetry', source: 'real', ok: true, voltages: [{ label: 'V', value: 12 }], currents: [], mah: 0, wh: 0, capacityMah: 2200, batteryPercent: 80, displayMode: 'remaining', ...over,
+  });
+  const auto = { ...BATTERY_DEFAULTS };
+  ok('auto inactive in sim', evaluateBattery(auto, mk({ source: 'sim' })).active === false);
+  ok('auto active with real sensor', evaluateBattery(auto, mk({})).active === true);
+  ok('not low at 80%', evaluateBattery(auto, mk({ batteryPercent: 80 })).low === false);
+  ok('low at 15%', evaluateBattery(auto, mk({ batteryPercent: 15 })).low === true);
+  ok('off mode never warns', evaluateBattery({ ...auto, mode: 'off' }, mk({ batteryPercent: 5 })).low === false);
+  const volt = { ...auto, useVolt: true, voltThreshold: 10.5, usePct: false };
+  ok('voltage threshold triggers', evaluateBattery(volt, mk({ voltages: [{ label: 'V', value: 10.2 }] })).low === true);
+  ok('voltage ok above threshold', evaluateBattery(volt, mk({ voltages: [{ label: 'V', value: 11.5 }] })).low === false);
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

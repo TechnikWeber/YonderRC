@@ -1,6 +1,6 @@
 {
   "name": "yonderrc",
-  "version": "1.11.0",
+  "version": "1.13.0",
   "private": true,
   "type": "module",
   "description": "YonderRC \u2014 beyond-line-of-sight RC control over IP. One app for video, control and configuration.",

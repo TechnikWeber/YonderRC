@@ -10,19 +10,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface RecorderSettings {
   prefix: string;
-  recordKey: string; // keyboard key for record toggle
-  snapshotKey: string; // keyboard key for snapshot
-  recordButton: number | null; // gamepad button index
-  snapshotButton: number | null;
 }
 
 const KEY = 'yonderrc.recorder.v1';
 const DEFAULTS: RecorderSettings = {
   prefix: 'yonderrc',
-  recordKey: 'r',
-  snapshotKey: 't',
-  recordButton: null,
-  snapshotButton: null,
 };
 
 function load(): RecorderSettings {

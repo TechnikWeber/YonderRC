@@ -3,6 +3,26 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.13.0 — Low-battery warning
+- **Low-battery warning** with independent **percent** and **voltage** thresholds.
+  "Auto" mode only warns when a real sensor is delivering data (no nagging in sim);
+  can be forced on/off. Alerts — **OSD red blink**, **rumble** and **sound** — are
+  each individually switchable and repeat every ~3 s while low. Settings live in
+  Setup › Controls.
+
+## v1.12.0 — Safety & controls
+- **Pre-arm check**: arming is refused while a throttle channel is off its rest
+  position (centre for reverse-capable cars/drones, idle for planes/boats — taken
+  from the channel's detent). Toggleable in Setup › Controls, on by default.
+- **Unified action bindings** (Setup › Controls): assign a keyboard key and/or a
+  controller button to Panic-disarm, Arm/disarm, Next-camera, Record and Snapshot,
+  each with a Learn button. Record/snapshot hotkeys moved here from the FPV panel.
+- **Panic disarm**: a bindable action that disarms immediately over the reliable link.
+- **React error boundary**: a UI fault shows a reload panel instead of a white screen.
+- **Flight timer + session**: runs while armed (OSD top-left and status strip), with
+  mAh consumed since arming when a real sensor is present.
+
+
 ## v1.11.0
 - OSD: link state moved to top-center, armed/failsafe to bottom-center; the
   top-right stats and bottom-right telemetry now sit on a translucent panel so
