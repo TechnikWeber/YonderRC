@@ -83,5 +83,12 @@ export interface Profile {
   endpoints: Endpoints;
   /** Channels forced safe while disarmed (typically throttle). */
   throttleChannels: number[];
+  /** Transmitter stick mode (1–4): which stick controls throttle/elevator/etc. */
+  stickMode?: StickMode;
   bindings: ChannelBinding[];
 }
+
+/** Transmitter mode 1–4 (which stick carries throttle vs elevator, etc.). */
+export type StickMode = 1 | 2 | 3 | 4;
+/** The four primary flight/drive functions that stick modes reassign. */
+export type StickFunction = 'throttle' | 'elevator' | 'aileron' | 'rudder';

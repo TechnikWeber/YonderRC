@@ -14,10 +14,18 @@
 
 export const CHANNEL_COUNT = 16;
 
-/** Conservative servo range. Endpoints (EPA) are refined per-channel later (M1). */
+/** Nominal servo range — the DEFAULT endpoint window and the -1..1 unit mapping. */
 export const CHANNEL_MIN_US = 1000;
 export const CHANNEL_MAX_US = 2000;
 export const CHANNEL_NEUTRAL_US = 1500;
+
+/**
+ * Absolute hard limits for a channel's µs value. Per-channel endpoints (EPA) may
+ * be widened up to this extended range (many servos/ESCs accept 500–2500 µs); the
+ * final safety clamp uses these bounds, not the nominal 1000–2000 window.
+ */
+export const CHANNEL_ABS_MIN_US = 500;
+export const CHANNEL_ABS_MAX_US = 2500;
 
 /** Control loop / send rate. RC standard is ~50 Hz, not the old 10 Hz poll. */
 export const CONTROL_RATE_HZ = 50;
@@ -37,9 +45,9 @@ export function clamp(value: number, min: number, max: number): number {
   return value;
 }
 
-/** Clamp a single channel to the safe µs window and round to an integer. */
+/** Clamp a single channel to the absolute safe µs window and round to an integer. */
 export function clampChannelUs(us: number): number {
-  return Math.round(clamp(us, CHANNEL_MIN_US, CHANNEL_MAX_US));
+  return Math.round(clamp(us, CHANNEL_ABS_MIN_US, CHANNEL_ABS_MAX_US));
 }
 
 /** A fresh channel array with every channel at neutral. */

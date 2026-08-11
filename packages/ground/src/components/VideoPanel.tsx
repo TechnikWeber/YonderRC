@@ -521,6 +521,9 @@ export function VideoPanel({
         {showOsd && (
           <div className="osd">
             <div className="osd-tc">
+              <span className={`osd-badge ${linkState === 'connected' ? 'go' : 'bad'}`}>
+                {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● …' : '● NO LINK'}
+              </span>
               <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
                 {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
               </span>

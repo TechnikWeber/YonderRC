@@ -6,7 +6,7 @@
 import * as C from '../packages/vehicle/src/sensors/convert';
 import { TelemetryService } from '../packages/vehicle/src/sensors/TelemetryService';
 import { cameraSource, scaleCamera } from '../packages/vehicle/src/video/cameraManager';
-import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents } from '../packages/ground/src/lib/templates';
+import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents, applyStickMode, createBinding, nextFreeChannel, funcFromLabel } from '../packages/ground/src/lib/templates';
 import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib/profiles';
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
@@ -41,6 +41,12 @@ async function main() {
   ok('ads1115 half-scale', near(C.ads1115Volts(16384, 4.096), 2.048, 1e-4));
   ok('mcp3208 half', near(C.mcp3208Volts(2048, 3.3), 1.65, 2e-3));
   ok('acs712 5A', near(C.acsAmps(2.83, 2.5, 66), 5, 1e-2));
+
+  // ---- extended endpoint range (500..2500) ----
+  const { clampChannelUs } = await import('../packages/protocol/src/channels');
+  ok('clamp allows 500', clampChannelUs(400) === 500, `=${clampChannelUs(400)}`);
+  ok('clamp allows 2500', clampChannelUs(2600) === 2500, `=${clampChannelUs(2600)}`);
+  ok('clamp keeps nominal', clampChannelUs(1500) === 1500);
 
   // ---- coulomb counting precision ----
   let mah = 0;
@@ -134,6 +140,34 @@ async function main() {
   let ch: number[] = [];
   for (let i = 0; i < 15; i++) ch = eng.compute(pk, snap({}), 100);
   ok('kbd low-throttle springs to min', ch[2] <= 1005, `=${ch[2]}`);
+
+  // ---- stick mode 1–4 remapping ----
+  const planeM = buildProfile('plane');
+  const axOf = (p: typeof planeM, label: string) => p.bindings.find((b) => b.label === label)?.stickAxis;
+  ok('plane default mode 2', planeM.stickMode === 2);
+  ok('mode2 throttle=leftY', axOf(planeM, 'Throttle') === 'leftY');
+  const pm1 = applyStickMode(planeM, 1);
+  ok('mode1 throttle=rightY', axOf(pm1, 'Throttle') === 'rightY');
+  ok('mode1 elevator=leftY', axOf(pm1, 'Elevator') === 'leftY');
+  ok('mode1 element re-derived (touch R stick)', pm1.bindings.find((b) => b.label === 'Throttle')?.element === 'joy:R:y');
+  ok('mode survives method switch', rebuildForMethod(pm1, 'gamepad').stickMode === 1 && axOf(rebuildForMethod(pm1, 'gamepad'), 'Throttle') === 'rightY');
+  ok('car defaults to mode 1', buildProfile('car').stickMode === 1);
+  ok('funcFromLabel maps steering→rudder', funcFromLabel('Steering') === 'rudder');
+
+  // ---- add / remove channels ----
+  const carA = buildProfile('car');
+  const freeCh = nextFreeChannel(carA);
+  ok('nextFreeChannel unused', !carA.bindings.some((b) => b.channel === freeCh));
+  const added = { ...carA, bindings: [...carA.bindings, createBinding({ channel: freeCh, source: 'keyboard', element: 'r', mode: 'toggle', label: 'Winch', endpoints: carA.endpoints })] };
+  ok('added binding present', added.bindings.some((b) => b.label === 'Winch'));
+  const engT = new BindingEngine();
+  let a0 = engT.compute(added, snap({}), 50)[freeCh];
+  engT.compute(added, snap({ pressed: new Set(['r']), keys: new Set(['r']) }), 50);
+  const a1 = engT.compute(added, snap({ keys: new Set(['r']) }), 50)[freeCh];
+  ok('toggle flips added channel', a0 !== a1, `${a0}->${a1}`);
+  ok('custom channel survives method switch', rebuildForMethod(added, 'gamepad').bindings.some((b) => b.label === 'Winch' && b.element === 'r'));
+  const removed2 = { ...added, bindings: added.bindings.filter((b) => b.label !== 'Winch') };
+  ok('removed binding gone', !removed2.bindings.some((b) => b.label === 'Winch'));
 
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);

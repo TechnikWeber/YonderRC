@@ -6,12 +6,20 @@ import {
   type Profile,
 } from '@yonderrc/protocol';
 
-/** Position of the fill for a value, measured from center as a % of the track. */
-function fillGeometry(us: number): { left: number; width: number } {
-  const span = CHANNEL_MAX_US - CHANNEL_MIN_US;
-  const pct = ((us - CHANNEL_NEUTRAL_US) / span) * 100; // -50 .. 50
-  if (pct >= 0) return { left: 50, width: pct };
-  return { left: 50 + pct, width: -pct };
+/** Position of the fill for a value within THIS channel's own endpoint range. */
+function fillGeometry(us: number, min: number, max: number): { left: number; width: number } {
+  const center = (min + max) / 2;
+  const half = Math.max(1, (max - min) / 2);
+  const pct = ((us - center) / half) * 50; // -50 .. 50 across the channel's range
+  if (pct >= 0) return { left: 50, width: Math.min(50, pct) };
+  return { left: 50 + Math.max(-50, pct), width: Math.min(50, -pct) };
+}
+
+/** Per-channel endpoint range, falling back to the profile default then nominal. */
+function rangeFor(profile: Profile, channel: number): { min: number; max: number } {
+  const b = profile.bindings.find((x) => x.channel === channel);
+  if (b) return { min: b.shaping.minUs, max: b.shaping.maxUs };
+  return { min: profile.endpoints?.minUs ?? CHANNEL_MIN_US, max: profile.endpoints?.maxUs ?? CHANNEL_MAX_US };
 }
 
 function labelsFor(profile: Profile): Record<number, string> {
@@ -43,7 +51,8 @@ export function ChannelMonitor({
       </div>
       {Array.from({ length: CHANNEL_COUNT }, (_, i) => {
         const us = channels[i] ?? CHANNEL_NEUTRAL_US;
-        const { left, width } = fillGeometry(us);
+        const { min, max } = rangeFor(profile, i);
+        const { left, width } = fillGeometry(us, min, max);
         const label = labels[i];
         const heldSafe = !armed && !failsafe && throttleSet.has(i);
         return (

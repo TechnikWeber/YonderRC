@@ -1,3 +1,4 @@
+import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type {
   ChannelBinding,
   ChannelShaping,
@@ -6,6 +7,8 @@ import type {
   InputMethod,
   Profile,
   StickAxis,
+  StickFunction,
+  StickMode,
   VehicleType,
 } from '@yonderrc/protocol';
 
@@ -35,6 +38,7 @@ interface VehicleTemplate {
   aux: AuxSpec[];
   defaultDetents: Record<StickAxis, Detent>;
   defaultInputMethod: InputMethod;
+  defaultStickMode: StickMode;
 }
 
 // Element mapping per input method (mode-2 stick layout by convention).
@@ -51,6 +55,66 @@ const TOUCH_AXIS: Record<StickAxis, string> = {
   rightX: 'joy:R:x',
   rightY: 'joy:R:y',
 };
+
+/**
+ * Transmitter modes 1–4: which stick axis carries each function. Mode 2 is the
+ * common default (throttle on the left stick). Switching mode reassigns the stick
+ * axes; the per-method element (keys / gamepad axis / touch stick) is then
+ * re-derived from the new axis.
+ */
+const MODE_TABLE: Record<StickMode, Record<StickFunction, StickAxis>> = {
+  1: { throttle: 'rightY', elevator: 'leftY', aileron: 'rightX', rudder: 'leftX' },
+  2: { throttle: 'leftY', elevator: 'rightY', aileron: 'rightX', rudder: 'leftX' },
+  3: { throttle: 'rightY', elevator: 'leftY', aileron: 'leftX', rudder: 'rightX' },
+  4: { throttle: 'leftY', elevator: 'rightY', aileron: 'leftX', rudder: 'rightX' },
+};
+
+/** Map a control label to its stick function (for mode remapping). */
+export function funcFromLabel(label?: string): StickFunction | null {
+  switch ((label ?? '').toLowerCase()) {
+    case 'throttle':
+      return 'throttle';
+    case 'elevator':
+    case 'pitch':
+      return 'elevator';
+    case 'aileron':
+    case 'roll':
+      return 'aileron';
+    case 'rudder':
+    case 'yaw':
+    case 'steering':
+      return 'rudder';
+    default:
+      return null;
+  }
+}
+
+const AXIS_ELEMENT: Record<InputMethod, Record<StickAxis, string>> = {
+  keyboard: KB_AXIS,
+  gamepad: GP_AXIS,
+  touch: TOUCH_AXIS,
+};
+
+export function stickModes(): StickMode[] {
+  return [1, 2, 3, 4];
+}
+
+/**
+ * Reassign the primary stick-axis bindings to a transmitter mode (1–4), then
+ * re-derive each one's input element for the profile's current method. Aux
+ * channels and custom channels are untouched.
+ */
+export function applyStickMode(profile: Profile, mode: StickMode): Profile {
+  const map = MODE_TABLE[mode];
+  const bindings = profile.bindings.map((b) => {
+    const fn = b.stickAxis ? funcFromLabel(b.label) : null;
+    if (!fn) return b;
+    const stickAxis = map[fn];
+    const element = AXIS_ELEMENT[profile.inputMethod][stickAxis];
+    return { ...b, stickAxis, element };
+  });
+  return { ...profile, stickMode: mode, bindings };
+}
 const KB_AUX = ['g', 'h', 'b', 'n', 'm', 'v'];
 
 const CENTER: Record<StickAxis, Detent> = { leftX: 'center', leftY: 'center', rightX: 'center', rightY: 'center' };
@@ -71,6 +135,7 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
     // Car throttle centers (neutral = stop, allows reverse).
     defaultDetents: { ...CENTER },
     defaultInputMethod: 'keyboard',
+    defaultStickMode: 1,
   },
   boat: {
     vehicleType: 'boat',
@@ -86,6 +151,7 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
     ],
     defaultDetents: { ...CENTER, rightY: 'free' },
     defaultInputMethod: 'keyboard',
+    defaultStickMode: 1,
   },
   plane: {
     vehicleType: 'plane',
@@ -104,6 +170,7 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
     // Throttle (left Y) stays where set (ratcheted); control surfaces center.
     defaultDetents: { ...CENTER, leftY: 'free' },
     defaultInputMethod: 'touch',
+    defaultStickMode: 2,
   },
   drone: {
     vehicleType: 'drone',
@@ -122,6 +189,7 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
     // Drone: both sticks center (altitude-hold style).
     defaultDetents: { ...CENTER },
     defaultInputMethod: 'touch',
+    defaultStickMode: 2,
   },
 };
 
@@ -229,6 +297,7 @@ export function buildProfile(
     inputMethod: method,
     endpoints,
     throttleChannels: t.throttleChannels,
+    stickMode: t.defaultStickMode,
     bindings: buildBindings(t, method, endpoints, detents),
   };
 }
@@ -255,7 +324,43 @@ export function rebuildForMethod(profile: Profile, method: InputMethod): Profile
       if (ob.holdRampSeconds != null) nb.holdRampSeconds = ob.holdRampSeconds;
     }
   }
-  return { ...profile, inputMethod: method, bindings: fresh };
+  // Preserve user-added channels (those not produced by the template) unchanged —
+  // they carry their own source/element and aren't tied to the input method.
+  const freshChannels = new Set(fresh.map((b) => b.channel));
+  const custom = profile.bindings.filter((b) => !freshChannels.has(b.channel));
+  const rebuilt: Profile = { ...profile, inputMethod: method, bindings: [...fresh, ...custom] };
+  // Preserve the transmitter mode across a method switch (fresh bindings come out
+  // in the template's default-mode layout).
+  return applyStickMode(rebuilt, profile.stickMode ?? TEMPLATES[profile.vehicleType].defaultStickMode);
+}
+
+let customCounter = 0;
+
+/** The lowest channel index (0-based) not yet used by any binding. */
+export function nextFreeChannel(profile: Profile): number {
+  const used = new Set(profile.bindings.map((b) => b.channel));
+  for (let i = 0; i < CHANNEL_COUNT; i++) if (!used.has(i)) return i;
+  return CHANNEL_COUNT - 1;
+}
+
+/** Build a fresh custom binding (used by the Add-channel UI). */
+export function createBinding(opts: {
+  channel: number;
+  source: ChannelBinding['source'];
+  element: string;
+  mode: ChannelBinding['mode'];
+  label: string;
+  endpoints: Endpoints;
+}): ChannelBinding {
+  return {
+    id: `c_${Date.now().toString(36)}${(customCounter++).toString(36)}`,
+    channel: opts.channel,
+    source: opts.source,
+    element: opts.element,
+    mode: opts.mode,
+    label: opts.label || `Channel ${opts.channel + 1}`,
+    shaping: shaping(opts.endpoints, CHANNEL_NEUTRAL_US),
+  };
 }
 
 /** Apply a new global endpoint range to every channel (per-channel edits come after). */

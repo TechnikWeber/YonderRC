@@ -1024,3 +1024,66 @@ body {
   gap: 6px;
 }
 .osd-warn { color: var(--bad); font-weight: 700; }
+
+/* ---- unified dark form controls (v1.9) ---- */
+select,
+input[type='number'],
+input[type='text'],
+input[type='search'],
+input:not([type]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--panel-2);
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 6px 9px;
+  border-radius: 8px;
+}
+select {
+  cursor: pointer;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7986' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+option { background: var(--panel); color: var(--text); }
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* keep checkboxes/radios/range native */
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  appearance: auto;
+  -webkit-appearance: auto;
+  background: initial;
+  border: initial;
+  padding: initial;
+}
+
+/* ---- add/remove channels (v1.10) ---- */
+.binding-top { display: flex; align-items: center; gap: 8px; }
+.binding-top .ch-mode { margin-left: auto; }
+.btn.tiny.danger { border-color: #6b2b2b; color: #e08a8a; }
+.btn.tiny.danger:hover { background: #2a1518; }
+.btn.add-btn { margin-top: 8px; }
+.btn.ghost { background: transparent; }
+.add-channel {
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  background: var(--panel-2);
+}
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.add-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.add-grid .add-element { grid-column: 1 / -1; }
+.learn-row { display: flex; gap: 6px; }
+.learn-row input { flex: 1 1 auto; min-width: 0; }
+.add-actions { display: flex; gap: 8px; margin-top: 10px; }
+.add-channel code { font-family: var(--mono); background: var(--panel); padding: 1px 4px; border-radius: 3px; }
+@media (max-width: 560px) { .add-grid { grid-template-columns: 1fr; } }

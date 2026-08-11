@@ -210,7 +210,7 @@ export function App() {
     <div className="app">
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.8.0</span>
+        <span className="ver">ground · v1.10.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -225,47 +225,27 @@ export function App() {
         onDisconnect={() => linkRef.current?.disconnect()}
       />
 
-      <div className="profile-bar">
-        <span className="eyebrow">Model</span>
-        <select value={active.id} onChange={(e) => selectProfile(e.target.value)} disabled={armed}>
-          {profiles.map((p) => (
-            <option key={p.id} value={p.id}>{p.name} · {p.vehicleType}</option>
-          ))}
-        </select>
-        <select className="new-model" value="" onChange={(e) => newFromTemplate(e.target.value)} aria-label="New model from template" disabled={armed}>
-          <option value="">+ New…</option>
-          {vehicleTypes().map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        {armed && <span className="lock-hint">🔒 disarm to change model</span>}
-      </div>
-
-      <StatusStrip
-        linkState={linkState}
-        vehicleName={welcome?.vehicleName ?? ''}
-        driver={welcome?.driver ?? ''}
-        armed={armed}
-        failsafe={failsafe}
-        latencyMs={rttDisplay}
-        gamepad={gamepad}
-        gamepadKind={input.gamepadKind}
-        telemetrySource={
-          !connected || !telemetry
-            ? null
-            : telemetry.source === 'sim'
-              ? 'sim'
-              : telemetry.ok
-                ? 'real'
-                : 'nodata'
-        }
-      />
-
       {setupMode ? (
         <>
+          <div className="profile-bar">
+            <span className="eyebrow">Model</span>
+            <select value={active.id} onChange={(e) => selectProfile(e.target.value)} disabled={armed}>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} · {p.vehicleType}</option>
+              ))}
+            </select>
+            <select className="new-model" value="" onChange={(e) => newFromTemplate(e.target.value)} aria-label="New model from template" disabled={armed}>
+              <option value="">+ New…</option>
+              {vehicleTypes().map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            {armed && <span className="lock-hint">🔒 disarm to change model</span>}
+          </div>
           <BindingEditor
             profile={active}
             locked={armed}
+            input={input}
             onChange={updateProfile}
             onRename={(name) => updateProfile({ ...active, name })}
             onDelete={deleteActive}
@@ -301,6 +281,16 @@ export function App() {
             input={input}
             onQuality={(q) => linkRef.current?.sendVideoQuality(q)}
           />
+          <ControlPad
+            profile={active}
+            input={input}
+            engine={engine}
+            armed={armed}
+            onToggleArm={() => linkRef.current?.sendArm(!armed)}
+            connected={connected}
+            calibrationActive={status?.calibration?.active ?? false}
+            version={tick}
+          />
           <div className="link-opts">
             <label className="opt">
               <input
@@ -312,19 +302,26 @@ export function App() {
             </label>
             <span className={`path-tag ${controlPath}`}>{controlPath.toUpperCase()}</span>
           </div>
-          <div className="columns">
-            <ControlPad
-              profile={active}
-              input={input}
-              engine={engine}
-              armed={armed}
-              onToggleArm={() => linkRef.current?.sendArm(!armed)}
-              connected={connected}
-              calibrationActive={status?.calibration?.active ?? false}
-              version={tick}
-            />
-            <ChannelMonitor channels={monitorChannels} failsafe={failsafe} profile={active} armed={armed} />
-          </div>
+          <StatusStrip
+            linkState={linkState}
+            vehicleName={welcome?.vehicleName ?? ''}
+            driver={welcome?.driver ?? ''}
+            armed={armed}
+            failsafe={failsafe}
+            latencyMs={rttDisplay}
+            gamepad={gamepad}
+            gamepadKind={input.gamepadKind}
+            telemetrySource={
+              !connected || !telemetry
+                ? null
+                : telemetry.source === 'sim'
+                  ? 'sim'
+                  : telemetry.ok
+                    ? 'real'
+                    : 'nodata'
+            }
+          />
+          <ChannelMonitor channels={monitorChannels} failsafe={failsafe} profile={active} armed={armed} />
         </>
       )}
 

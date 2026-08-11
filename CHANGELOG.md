@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.10.0
+- **Transmitter stick modes 1–4**: switch which stick controls throttle / elevator
+  / aileron / rudder — for touch, gamepad and keyboard. Chosen per model in Setup
+  and preserved across input-method switches (car/boat default to Mode 1, plane/
+  drone to Mode 2).
+- **Add / remove channels**: build your own channel map in Setup. "+ Add channel"
+  with a channel number, label, source (keyboard / gamepad / on-screen), mode
+  (proportional / momentary / toggle / hold-ramp) and a "Learn" button to capture a
+  key or gamepad button/axis; each channel has a Remove button. Custom channels now
+  survive input-method and stick-mode switches.
+
+
+## v1.9.0
+- Fix: per-channel and global endpoints (µs) now actually apply beyond 1000–2000 —
+  the hard clamp was widened to an absolute 500–2500 range (nominal default stays
+  1000–2000). The channel monitor scales each bar to that channel's own endpoints.
+- UI: dark, consistent styling for all dropdowns and number fields. Layout
+  reorganised — model selection now lives under Setup only; Drive view is
+  Vehicle-Link → FPV+control → status info → servo outputs. The OSD now shows the
+  link state (LINK / NO LINK) alongside armed/failsafe.
+
+
 ## v1.8.0
 - **Auto video quality**: a new "Auto" mode steps the video quality down when the
   link degrades (packet loss / latency) and back up when it recovers, with
