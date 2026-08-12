@@ -3,6 +3,12 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.16.0
+- **OSD layout swapped** for a more intuitive read: battery/power block (charge bar,
+  voltage, current, capacity) now sits **top-right**, phone-style, with the charge
+  bar on top; link/latency data (control path, ctrl/video ms, bitrate, fps, loss)
+  moved to the **bottom-right**.
+
 ## v1.15.0
 - Fix: battery %/mAh now appears **without a vehicle restart** — telemetry config
   hot-applies (`/api/telemetry` reconfigures the running service). Set the capacity

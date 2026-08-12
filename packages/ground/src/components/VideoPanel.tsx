@@ -179,14 +179,7 @@ function TelemetryOsd({ t }: { t: TelemetryMessage }) {
       : `${Math.round(t.mah)} mAh`;
   return (
     <div className="osd-tel">
-      {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">SIM DATA</span>}
-      {t.voltages.map((v, i) => (
-        <span key={`v${i}`} className="osd-batt">{v.value.toFixed(2)} V</span>
-      ))}
-      {t.currents.map((c, i) => (
-        <span key={`c${i}`}>{c.value.toFixed(1)} A</span>
-      ))}
-      <span>{capLine}</span>
+      {/* Battery bar first — top-right, phone-like (see order request in v1.16). */}
       {pct != null && (
         <div className="osd-batt-bar" title={`${pct}%`}>
           <i
@@ -198,6 +191,14 @@ function TelemetryOsd({ t }: { t: TelemetryMessage }) {
           <span className="osd-batt-pct">{Math.round(pct)}%</span>
         </div>
       )}
+      {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">SIM DATA</span>}
+      {t.voltages.map((v, i) => (
+        <span key={`v${i}`} className="osd-batt">{v.value.toFixed(2)} V</span>
+      ))}
+      {t.currents.map((c, i) => (
+        <span key={`c${i}`}>{c.value.toFixed(1)} A</span>
+      ))}
+      <span>{capLine}</span>
     </div>
   );
 }
@@ -561,16 +562,7 @@ export function VideoPanel({
               </span>
             </div>
             <div className="osd-tr">
-              <span>
-                {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
-              </span>
-              <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
-              {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
-              {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
-              {stats?.fps != null && <span>{stats.fps} fps</span>}
-              {stats?.lossPct != null && (
-                <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
-              )}
+              {telemetry ? <TelemetryOsd t={telemetry} /> : <span className="osd-batt">-- V</span>}
             </div>
             <div className="osd-bl">
               <div className="osd-ch">
@@ -583,7 +575,16 @@ export function VideoPanel({
               </div>
             </div>
             <div className="osd-br">
-              {telemetry ? <TelemetryOsd t={telemetry} /> : <span className="osd-batt">-- V</span>}
+              <span>
+                {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
+              </span>
+              <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
+              {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
+              {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
+              {stats?.fps != null && <span>{stats.fps} fps</span>}
+              {stats?.lossPct != null && (
+                <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
+              )}
             </div>
           </div>
         )}
