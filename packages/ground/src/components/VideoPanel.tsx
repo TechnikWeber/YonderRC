@@ -160,17 +160,40 @@ function bar(us: number): number {
   return ((us - CHANNEL_MIN_US) / (CHANNEL_MAX_US - CHANNEL_MIN_US)) * 100;
 }
 
-/** Battery/telemetry block for the OSD: voltages, currents, capacity, percent. */
-function TelemetryOsd({ t }: { t: TelemetryMessage }) {
+/**
+ * Battery charge bar for the OSD — shown alone top-right, phone-style. Returns
+ * null when there's no real sensor or no percentage, so nothing floats up there.
+ */
+function TelemetryBar({ t }: { t: TelemetryMessage }) {
+  if (t.source === 'real' && !t.ok) return null;
+  const pct = t.batteryPercent;
+  if (pct == null) return null;
+  return (
+    <div className="osd-batt-bar" title={`${pct}%`}>
+      <i
+        style={{
+          width: `${pct}%`,
+          background: pct < 15 ? 'var(--bad)' : pct < 35 ? 'var(--idle)' : 'var(--go)',
+        }}
+      />
+      <span className="osd-batt-pct">{Math.round(pct)}%</span>
+    </div>
+  );
+}
+
+/**
+ * Battery data block: voltages, currents, capacity. Shown bottom-right as its own
+ * panel under the link/latency block.
+ */
+function TelemetryData({ t }: { t: TelemetryMessage }) {
   // Real source but no sensor → make it unmistakable, never show fake numbers.
   if (t.source === 'real' && !t.ok) {
     return (
-      <div className="osd-tel">
+      <div className="osd-block osd-tel">
         <span className="osd-nodata">⚠ NO SENSOR</span>
       </div>
     );
   }
-  const pct = t.batteryPercent;
   const capLine =
     t.capacityMah != null
       ? t.displayMode === 'remaining'
@@ -178,19 +201,7 @@ function TelemetryOsd({ t }: { t: TelemetryMessage }) {
         : `${Math.round(t.mah)}/${t.capacityMah} mAh used`
       : `${Math.round(t.mah)} mAh`;
   return (
-    <div className="osd-tel">
-      {/* Battery bar first — top-right, phone-like (see order request in v1.16). */}
-      {pct != null && (
-        <div className="osd-batt-bar" title={`${pct}%`}>
-          <i
-            style={{
-              width: `${pct}%`,
-              background: pct < 15 ? 'var(--bad)' : pct < 35 ? 'var(--idle)' : 'var(--go)',
-            }}
-          />
-          <span className="osd-batt-pct">{Math.round(pct)}%</span>
-        </div>
-      )}
+    <div className="osd-block osd-tel">
       {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">SIM DATA</span>}
       {t.voltages.map((v, i) => (
         <span key={`v${i}`} className="osd-batt">{v.value.toFixed(2)} V</span>
@@ -562,7 +573,7 @@ export function VideoPanel({
               </span>
             </div>
             <div className="osd-tr">
-              {telemetry ? <TelemetryOsd t={telemetry} /> : <span className="osd-batt">-- V</span>}
+              {telemetry && <TelemetryBar t={telemetry} />}
             </div>
             <div className="osd-bl">
               <div className="osd-ch">
@@ -575,16 +586,19 @@ export function VideoPanel({
               </div>
             </div>
             <div className="osd-br">
-              <span>
-                {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
-              </span>
-              <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
-              {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
-              {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
-              {stats?.fps != null && <span>{stats.fps} fps</span>}
-              {stats?.lossPct != null && (
-                <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
-              )}
+              <div className="osd-block">
+                <span>
+                  {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
+                </span>
+                <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
+                {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
+                {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
+                {stats?.fps != null && <span>{stats.fps} fps</span>}
+                {stats?.lossPct != null && (
+                  <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
+                )}
+              </div>
+              {telemetry ? <TelemetryData t={telemetry} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>}
             </div>
           </div>
         )}

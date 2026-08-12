@@ -1037,14 +1037,21 @@ body {
   display: flex;
   gap: 6px;
 }
-/* translucent panels so OSD text stays legible over bright video */
 .osd-tr,
-.osd-br {
+.osd-br { margin: 6px; }
+/* bottom-right stacks two separate panels (link block + battery data) */
+.osd-br { padding: 0; gap: 6px; }
+/* translucent panels so OSD text stays legible over bright video */
+.osd-block {
   background: rgba(8, 12, 16, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   backdrop-filter: blur(2px);
-  margin: 6px;
+  padding: 6px 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
 }
 .osd-warn { color: var(--bad); font-weight: 700; }
 

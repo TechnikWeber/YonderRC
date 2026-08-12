@@ -3,6 +3,11 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.16.1
+- **OSD refinement**: the battery **charge bar stands alone top-right** (phone-style),
+  and the numeric battery data (voltage, current, mAh) moves to the **bottom-right as
+  its own panel under the link/latency block**, so the two are cleanly separated.
+
 ## v1.16.0
 - **OSD layout swapped** for a more intuitive read: battery/power block (charge bar,
   voltage, current, capacity) now sits **top-right**, phone-style, with the charge
