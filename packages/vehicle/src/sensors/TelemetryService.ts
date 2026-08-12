@@ -119,6 +119,18 @@ export class TelemetryService {
     this.timer = null;
     await this.reader.close();
   }
+
+  /** Apply a new config live: stop, swap the reader, reset counters, restart. */
+  async reconfigure(cfg: TelemetryConfig): Promise<void> {
+    await this.stop();
+    this.cfg = cfg;
+    this.reader = createReader(cfg);
+    this.degraded = false;
+    this.mah = 0;
+    this.wh = 0;
+    this.latest = null;
+    await this.start();
+  }
 }
 
 function round(v: number, dp: number): number {

@@ -3,6 +3,17 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.15.0
+- Fix: battery %/mAh now appears **without a vehicle restart** — telemetry config
+  hot-applies (`/api/telemetry` reconfigures the running service). Set the capacity
+  in the vehicle's Setup › Telemetry.
+- Fix: switching Setup → Drive could show a black picture every other time — the
+  WHEP stream now attaches only for the latest connection attempt (generation guard)
+  and force-plays, so overlapping attempts can't leave a dead stream.
+- **Fullscreen** button on the FPV panel (OSD stays overlaid).
+- Vehicle Setup: camera W/H/FPS/kbps fields no longer overflow their box.
+- Added `CLAUDE.md` for local development handoff.
+
 ## v1.14.0
 - **Blackbox logging** (opt-in, OFF by default): records telemetry + link stats
   (RTT, bitrate, loss, fps, video latency, volts/amps/mAh/percent) at 2 Hz while

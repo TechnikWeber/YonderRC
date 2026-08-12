@@ -7,7 +7,7 @@ import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
-import type { CameraCfg } from '@yonderrc/protocol';
+import type { CameraCfg, TelemetryConfig } from '@yonderrc/protocol';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -135,7 +135,14 @@ export async function handleSetup(
     const telemetry = (await readBody(req)) as PersistentConfig['telemetry'];
     savePersisted(ctx.config.configPath, { telemetry });
     ctx.onConfigSaved?.({ telemetry });
-    json(res, 200, { ok: true, note: 'Telemetry saved. Restart the vehicle to apply.' });
+    // Apply live so battery %/mAh appears without a restart.
+    let note = 'Telemetry applied.';
+    try {
+      await ctx.telemetry.reconfigure(telemetry as unknown as TelemetryConfig);
+    } catch (e) {
+      note = `Saved, but live apply failed (${(e as Error).message}). Restart to apply.`;
+    }
+    json(res, 200, { ok: true, note });
     return true;
   }
   if (url === '/api/telemetry/reset' && method === 'POST') {

@@ -117,13 +117,13 @@ async function readVideoStats(pc: RTCPeerConnection, prev: VideoStats | null, dt
 async function playWhep(
   baseUrl: string,
   src: string,
-  video: HTMLVideoElement,
+  onStream: (stream: MediaStream) => void,
 ): Promise<RTCPeerConnection> {
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   pc.addTransceiver('video', { direction: 'recvonly' });
   pc.addTransceiver('audio', { direction: 'recvonly' });
   pc.ontrack = (e) => {
-    if (e.streams[0]) video.srcObject = e.streams[0];
+    if (e.streams[0]) onStream(e.streams[0]);
   };
 
   const offer = await pc.createOffer();
@@ -240,6 +240,8 @@ export function VideoPanel({
   onStats?: (s: VideoStats | null) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [isFull, setIsFull] = useState(false);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [camera, setCamera] = useState(cameras[0] ?? '');
   const [play, setPlay] = useState<PlayState>('idle');
@@ -261,6 +263,7 @@ export function VideoPanel({
   autoCfgRef.current = autoCfg;
   const playRef = useRef<PlayState>('idle');
   playRef.current = play;
+  const genRef = useRef(0);
 
   // Reconnect bookkeeping (refs so the watchdog can act without re-subscribing).
   const attemptRef = useRef(0);
@@ -297,9 +300,21 @@ export function VideoPanel({
       pcRef.current?.close();
       pcRef.current = null;
       setPlay((p) => (p === 'reconnecting' ? p : 'connecting'));
+      const myGen = ++genRef.current;
       try {
-        const pc = await playWhep(videoBaseUrl!, camera, videoRef.current!);
-        if (cancelled) {
+        // Attach the stream only if this attempt is still the latest one, so a
+        // superseded attempt (e.g. StrictMode double-mount, or a fast Setup→Drive
+        // toggle) can't leave a dead stream on the element. Also force play() —
+        // autoplay can stall on remount.
+        const onStream = (stream: MediaStream) => {
+          if (cancelled || myGen !== genRef.current) return;
+          const v = videoRef.current;
+          if (!v) return;
+          if (v.srcObject !== stream) v.srcObject = stream;
+          v.play().catch(() => {});
+        };
+        const pc = await playWhep(videoBaseUrl!, camera, onStream);
+        if (cancelled || myGen !== genRef.current) {
           pc.close();
           return;
         }
@@ -389,6 +404,17 @@ export function VideoPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoBaseUrl, camera, linkState, quality]);
 
+  // Fullscreen the whole stage (video + OSD overlays stay together).
+  useEffect(() => {
+    const onFs = () => setIsFull(document.fullscreenElement === stageRef.current);
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void stageRef.current?.requestFullscreen?.();
+  };
+
   // Record / snapshot / next-camera via the unified action bindings.
   const nextCamera = () => {
     if (cameras.length < 2) return;
@@ -464,6 +490,9 @@ export function VideoPanel({
           <button className="btn tiny" onClick={() => setShowRecSettings((v) => !v)} title="Recording settings">
             ⚙
           </button>
+          <button className="btn tiny" onClick={toggleFullscreen} title="Fullscreen">
+            {isFull ? '⤢ Exit' : '⛶ Full'}
+          </button>
           <button className="btn tiny" onClick={() => setShowOsd((v) => !v)}>
             OSD {showOsd ? 'on' : 'off'}
           </button>
@@ -494,7 +523,7 @@ export function VideoPanel({
         </div>
       )}
 
-      <div className="video-stage">
+      <div className="video-stage" ref={stageRef}>
         <video ref={videoRef} autoPlay playsInline muted />
         {rec.recording && <div className="rec-badge">● REC</div>}
         {batteryLow && <div className="batt-warn">⚠ BATTERY LOW{batteryReason ? ` · ${batteryReason}` : ''}</div>}

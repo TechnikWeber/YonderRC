@@ -1151,3 +1151,10 @@ input[type='range'] {
 /* ---- blackbox logging (v1.14) ---- */
 .log-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .log-status { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* ---- fullscreen video (v1.15) ---- */
+.video-stage:fullscreen {
+  width: 100vw; height: 100vh; aspect-ratio: auto; border-radius: 0;
+  background: #000; display: flex; align-items: center; justify-content: center;
+}
+.video-stage:fullscreen video { width: 100%; height: 100%; object-fit: contain; }

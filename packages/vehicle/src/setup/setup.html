@@ -26,7 +26,9 @@
       input, select {
         background: var(--panel-2); border: 1px solid var(--line-b); color: var(--text);
         font-family: var(--mono); font-size: 14px; padding: 10px 12px; border-radius: 8px;
+        width: 100%; min-width: 0;
       }
+      .grid2 > label, .grid3 > label, .grid4 > label { min-width: 0; }
       input:focus, select:focus { outline: 2px solid var(--accent); }
       .btn {
         appearance: none; border: 1px solid var(--line-b); background: var(--panel-2); color: var(--text);
