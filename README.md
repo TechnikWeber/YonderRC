@@ -9,6 +9,11 @@ Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Au
 auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
+![Bodenstation im Fahrbetrieb: FPV-Video mit OSD — Akku-Ladebalken oben rechts, Link/Latenz und Akkudaten unten rechts, Kanalbalken unten links](docs/screenshots/Overview_OSD.png)
+
+*Bodenstation im Fahrbetrieb: latenzarmes FPV-Video mit OSD — Akku-Ladebalken oben
+rechts, Link/Latenz-Daten und Spannung/Strom/Kapazität unten rechts.*
+
 ---
 
 ## Was YonderRC kann
@@ -20,6 +25,11 @@ auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
   wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 
+![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png)
+
+*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons) mit Status-Leiste:
+Link, Zustand, Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
+
 **Sicherheit**
 - Zeitbasierter **Failsafe-Watchdog**: bleiben Steuer-Frames aus, gehen alle Kanäle
   auf ihren Failsafe-Wert. **Modellabhängig und getrennt vom Disarmen** — eine
@@ -28,6 +38,11 @@ auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 - **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect**
   ist abschaltbar (für Flugzeug/Drohne, wo Disarmen im Flug die Motoren kappt).
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
+
+![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png)
+
+*Kanal-Monitor: zeigt die **echte** Fahrzeug-Ausgabe in µs inklusive Failsafe und
+Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
 
 **Video (FPV)**
 - Latenzarmes Video über **go2rtc/WebRTC**; H.264-Encoder wird automatisch erkannt
@@ -49,6 +64,11 @@ auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 **Betrieb & Einrichtung**
 - Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
   Telemetrie, Watchdog, LTE-APN, Tailscale — vom Handy/Laptop, ohne Bildschirm.
+
+  ![Setup-Seite des Fahrzeugs: System-Status, LTE-APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
+
+  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE, Tailscale, WiFi),
+  LTE-APN und Tailscale-Fernzugriff — bedienbar vom Handy ohne Bildschirm.*
 - **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
 - **Autark im Feld**: ohne Netz startet der Pi einen WLAN-Hotspot und öffnet per
   **Captive Portal** die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst
