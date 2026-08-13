@@ -698,6 +698,9 @@ export function VideoPanel({
                       <span className="osd-home-arrow" style={{ transform: `rotate(${Math.round(gpsHome.arrowDeg)}deg)` }}>↑</span>
                     </div>
                     <span className="osd-odo" title="Distance travelled (odometer)">⟳ {fmtDist(odoMeters)}</span>
+                    {gps?.speedMs != null && (
+                      <span className="osd-odo" title="Ground speed (GPS)">▸ {(gps.speedMs * 3.6).toFixed(1)} km/h</span>
+                    )}
                   </div>
                 )}
               </div>

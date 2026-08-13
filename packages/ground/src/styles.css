@@ -721,7 +721,7 @@ body {
 .osd-home {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 2px;
   margin-top: 2px;
 }

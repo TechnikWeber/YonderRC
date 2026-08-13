@@ -13,7 +13,7 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.20.3');
+  console.log('  YonderRC vehicle service  v1.20.4');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);

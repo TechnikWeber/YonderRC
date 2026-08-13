@@ -3,6 +3,15 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.20.4
+**English**
+- OSD: **GPS ground speed** (km/h) now shown under the home compass, next to the trip
+  odometer; the compass column is left-aligned so speed/odometer sit flush left.
+
+**Deutsch**
+- OSD: **GPS-Geschwindigkeit** (km/h) jetzt unter dem Home-Kompass, neben dem
+  Trip-Odometer; die Kompass-Spalte ist linksbündig, sodass Speed/Odometer links stehen.
+
 ## v1.20.3
 **English**
 - **Trip odometer** under the home compass in the OSD — accumulated ground distance
