@@ -11,7 +11,7 @@ Everything runs **in a simulator — with no hardware at all**. For the real bui
 the Pi (parts list, wiring, step by step from Wi-Fi → LTE) see
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
-![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, link signal and stats bottom right](docs/screenshots/Overview_OSD.png)
+![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, link signal and stats bottom right](docs/screenshots/Overview_OSD.png?v=2)
 
 *Ground station while driving: low-latency FPV with a full OSD — GPS fix + **home
 compass, distance, odometer and speed** (top left), battery bar (top right), and the
@@ -29,7 +29,7 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
   selectable input method, and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
 
-![Touch control with throttle/steering joysticks, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png)
+![Touch control with throttle/steering joysticks, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png?v=2)
 
 *Touch control (multitouch joysticks, bindable buttons), the optional **WebRTC control
 channel** toggle, and a status strip: link, state, round-trip, input method,
@@ -49,7 +49,7 @@ vehicle/driver, telemetry.*
 - **Optional shared secret** (off by default): when set, the control link and the
   setup API require it — quick to connect the first time, lockable when you want it.
 
-![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png)
+![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png?v=2)
 
 *Channel monitor: shows the **real** vehicle output in µs including failsafe and
 disarm — the throttle channel is visibly held safe while disarmed.*
@@ -89,7 +89,7 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   needed. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
   vehicle (works over LAN, the Pi's AP, or a VPN address).
 
-  ![Vehicle setup page: system status (LTE modem, operator, Tailscale, Wi-Fi) and the LTE section with APN, SIM PIN, APN auth and network mode](docs/screenshots/VehicleConfig_Setup.png)
+  ![Vehicle setup page: system status (LTE modem, operator, Tailscale, Wi-Fi) and the LTE section with APN, SIM PIN, APN auth and network mode](docs/screenshots/VehicleConfig_Setup.png?v=2)
 
   *Setup page served by the vehicle: system status (mode, LTE modem/operator, remote
   access, Wi-Fi) and the robust **LTE** section — APN, SIM PIN, APN username/password

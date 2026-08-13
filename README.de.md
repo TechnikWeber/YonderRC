@@ -11,7 +11,7 @@ Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Au
 auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.de.md`](docs/HARDWARE.de.md).
 
-![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png)
+![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png?v=2)
 
 *Bodenstation im Fahrbetrieb: latenzarmes FPV mit vollem OSD — GPS-Fix + **Home-Kompass,
 Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
@@ -29,7 +29,7 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
   wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 
-![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png)
+![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=2)
 
 *Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons), der optionale
 **WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Round-Trip,
@@ -50,7 +50,7 @@ Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
   Steuer-Link und die Setup-API es — erster Verbindungsaufbau bleibt schnell, bei
   Bedarf abschließbar.
 
-![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png)
+![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=2)
 
 *Kanal-Monitor: zeigt die **echte** Fahrzeug-Ausgabe in µs inklusive Failsafe und
 Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
@@ -91,7 +91,7 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Bildschirm. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
   verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
-  ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png)
+  ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png?v=2)
 
   *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE-Modem/Betreiber,
   Fernzugriff, WiFi) und der robuste **LTE**-Bereich — APN, SIM-PIN, APN-Benutzer/Passwort
