@@ -3,6 +3,23 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.20.1
+**English**
+- **Home compass/arrow in the OSD** — a rotating arrow that points the way back to
+  home. It rotates relative to your travel direction (course) so "up = forward", with
+  the distance next to it (falls back to north-relative when stationary).
+- **OSD field toggles** in the gear (⚙) menu — show/hide individual OSD blocks: flight
+  timer, GPS, home arrow, channel bars, link block (WS/ms/fps/loss), battery bar, and
+  battery data (V/A/mAh). Saved per browser.
+
+**Deutsch**
+- **Home-Kompass/-Pfeil im OSD** — ein drehender Pfeil, der den Weg zurück zum Home
+  zeigt. Er dreht relativ zur Fahrtrichtung (Kurs), also „oben = vorne", mit der Distanz
+  daneben (fällt bei Stillstand auf Nord-Bezug zurück).
+- **OSD-Feld-Schalter** im Zahnrad-(⚙-)Menü — einzelne OSD-Blöcke ein-/ausblenden:
+  Flug-Timer, GPS, Home-Pfeil, Kanal-Balken, Link-Block (WS/ms/fps/loss), Akku-Balken
+  und Akku-Daten (V/A/mAh). Pro Browser gespeichert.
+
 ## v1.20.0
 **English**
 - **GPS (local, source-selectable).** A new GPS subsystem with a pluggable source —

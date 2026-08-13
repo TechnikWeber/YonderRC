@@ -42,6 +42,30 @@ function loadAutoCfg(): AutoQualityCfg {
 }
 
 
+/** Which OSD blocks are shown — toggled in the gear (⚙) settings, persisted. */
+export interface OsdFields {
+  timer: boolean;
+  gps: boolean;
+  homeArrow: boolean;
+  channels: boolean;
+  link: boolean;
+  batteryBar: boolean;
+  batteryData: boolean;
+}
+const OSD_FIELDS_KEY = 'yonderrc.osdFields.v1';
+const OSD_FIELDS_DEFAULT: OsdFields = {
+  timer: true, gps: true, homeArrow: true, channels: true, link: true, batteryBar: true, batteryData: true,
+};
+function loadOsdFields(): OsdFields {
+  try {
+    const raw = localStorage.getItem(OSD_FIELDS_KEY);
+    if (raw) return { ...OSD_FIELDS_DEFAULT, ...(JSON.parse(raw) as Partial<OsdFields>) };
+  } catch {
+    /* ignore */
+  }
+  return { ...OSD_FIELDS_DEFAULT };
+}
+
 type PlayState = 'idle' | 'connecting' | 'playing' | 'reconnecting' | 'error';
 export type VideoQuality = 'high' | 'medium' | 'low';
 
@@ -284,6 +308,18 @@ export function VideoPanel({
   const [camera, setCamera] = useState(cameras[0] ?? '');
   const [play, setPlay] = useState<PlayState>('idle');
   const [showOsd, setShowOsd] = useState(true);
+  const [osdFields, setOsdFieldsState] = useState<OsdFields>(loadOsdFields);
+  const setOsdField = (key: keyof OsdFields, v: boolean) => {
+    setOsdFieldsState((prev) => {
+      const next = { ...prev, [key]: v };
+      try {
+        localStorage.setItem(OSD_FIELDS_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
   const [stats, setStats] = useState<VideoStats | null>(null);
   const [quality, setQuality] = useState<QualitySel>(loadQuality);
@@ -474,12 +510,21 @@ export function VideoPanel({
     (linkSignal?.quality != null && linkSignal.quality < 25);
 
   // Distance + direction to home, when we have both a fix and a home point.
+  // arrowDeg points at home relative to the vehicle's travel direction (course),
+  // so on an FPV view "up = forward" and the arrow shows which way home is. With no
+  // course (stationary) it falls back to absolute bearing (up = north).
   const gpsHome =
     gps?.hasFix && gps.home && gps.lat != null && gps.lon != null
-      ? {
-          dist: fmtDist(distanceMeters(gps.home.lat, gps.home.lon, gps.lat, gps.lon)),
-          dir: compass(bearingDeg(gps.lat, gps.lon, gps.home.lat, gps.home.lon)),
-        }
+      ? (() => {
+          const brg = bearingDeg(gps.lat, gps.lon, gps.home.lat, gps.home.lon);
+          const arrowDeg = ((brg - (gps.courseDeg ?? 0)) % 360 + 360) % 360;
+          return {
+            dist: fmtDist(distanceMeters(gps.home.lat, gps.home.lon, gps.lat, gps.lon)),
+            dir: compass(brg),
+            arrowDeg,
+            relative: gps.courseDeg != null,
+          };
+        })()
       : null;
 
   function changeQuality(q: QualitySel) {
@@ -551,6 +596,26 @@ export function VideoPanel({
 
       {showRecSettings && (
         <div className="rec-settings">
+          <div className="eyebrow2">OSD fields</div>
+          <p className="note">Show or hide OSD blocks. Kept per browser.</p>
+          <div className="osd-fields">
+            {([
+              ['timer', 'Flight timer'],
+              ['gps', 'GPS (fix / sats / home)'],
+              ['homeArrow', 'Home arrow / compass'],
+              ['channels', 'Channel bars (THR/STR)'],
+              ['link', 'Link block (WS / ms / fps / loss)'],
+              ['batteryBar', 'Battery bar (%)'],
+              ['batteryData', 'Battery data (V / A / mAh)'],
+            ] as [keyof OsdFields, string][]).map(([key, label]) => (
+              <label key={key} className="opt">
+                <input type="checkbox" checked={osdFields[key]} onChange={(e) => setOsdField(key, e.target.checked)} />
+                {label}
+              </label>
+            ))}
+          </div>
+
+          <div className="eyebrow2" style={{ marginTop: 10 }}>Recording</div>
           <div className="rec-row">
             <button className="btn tiny" onClick={rec.pickFolder}>Choose folder</button>
             <span className="rec-folder">{rec.folderName ? `${rec.folderName}/` : 'Downloads (fallback)'}</span>
@@ -594,18 +659,29 @@ export function VideoPanel({
 
         {showOsd && (
           <div className="osd">
-            {(flightSeconds !== null || (gps && gps.source !== 'off')) && (
+            {((osdFields.timer && flightSeconds !== null) ||
+              (osdFields.gps && gps && gps.source !== 'off') ||
+              (osdFields.homeArrow && gpsHome)) && (
               <div className="osd-tl">
-                {flightSeconds !== null && (
+                {osdFields.timer && flightSeconds !== null && (
                   <span className="osd-badge go">⏱ {Math.floor(flightSeconds / 60)}:{String(flightSeconds % 60).padStart(2, '0')}</span>
                 )}
-                {gps && gps.source !== 'off' && (
+                {osdFields.gps && gps && gps.source !== 'off' && (
                   <span className={`osd-badge ${gps.hasFix ? 'go' : 'idle'}`}>
                     ⌖ {gps.hasFix ? `${gps.fixType.toUpperCase()} ${gps.satellites ?? ''}` : 'NO FIX'}
                   </span>
                 )}
-                {gpsHome && (
+                {osdFields.gps && gpsHome && (
                   <span className={`osd-badge ${weakLink ? 'idle' : 'go'}`}>⌂ {gpsHome.dist} {gpsHome.dir}</span>
+                )}
+                {osdFields.homeArrow && gpsHome && (
+                  <div className="osd-home" title={`Home ${gpsHome.dist} ${gpsHome.dir}${gpsHome.relative ? ' (relative to heading)' : ' (relative to north)'}`}>
+                    <div className="osd-home-rose">
+                      <span className="osd-home-ref">{gpsHome.relative ? 'FWD' : 'N'}</span>
+                      <span className="osd-home-arrow" style={{ transform: `rotate(${Math.round(gpsHome.arrowDeg)}deg)` }}>↑</span>
+                    </div>
+                    <span className="osd-home-dist">⌂ {gpsHome.dist}</span>
+                  </div>
                 )}
               </div>
             )}
@@ -620,36 +696,42 @@ export function VideoPanel({
                 {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
               </span>
             </div>
-            <div className="osd-tr">
-              {telemetry && <TelemetryBar t={telemetry} />}
-            </div>
-            <div className="osd-bl">
-              <div className="osd-ch">
-                <span>THR</span>
-                <div className="osd-bar"><i style={{ width: `${bar(channels[throttleCh] ?? CHANNEL_NEUTRAL_US)}%` }} /></div>
+            {osdFields.batteryBar && (
+              <div className="osd-tr">
+                {telemetry && <TelemetryBar t={telemetry} />}
               </div>
-              <div className="osd-ch">
-                <span>STR</span>
-                <div className="osd-bar"><i style={{ width: `${bar(channels[steerCh] ?? CHANNEL_NEUTRAL_US)}%` }} /></div>
+            )}
+            {osdFields.channels && (
+              <div className="osd-bl">
+                <div className="osd-ch">
+                  <span>THR</span>
+                  <div className="osd-bar"><i style={{ width: `${bar(channels[throttleCh] ?? CHANNEL_NEUTRAL_US)}%` }} /></div>
+                </div>
+                <div className="osd-ch">
+                  <span>STR</span>
+                  <div className="osd-bar"><i style={{ width: `${bar(channels[steerCh] ?? CHANNEL_NEUTRAL_US)}%` }} /></div>
+                </div>
               </div>
-            </div>
+            )}
             <div className="osd-br">
-              <div className="osd-block">
-                <span>
-                  {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
-                </span>
-                {linkSignal && linkSignal.kind !== 'none' && (
-                  <span className={linkSignal.quality != null && linkSignal.quality < 25 ? 'osd-warn' : undefined}>{linkSignal.label}</span>
-                )}
-                <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
-                {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
-                {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
-                {stats?.fps != null && <span>{stats.fps} fps</span>}
-                {stats?.lossPct != null && (
-                  <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
-                )}
-              </div>
-              {telemetry ? <TelemetryData t={telemetry} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>}
+              {osdFields.link && (
+                <div className="osd-block">
+                  <span>
+                    {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
+                  </span>
+                  {linkSignal && linkSignal.kind !== 'none' && (
+                    <span className={linkSignal.quality != null && linkSignal.quality < 25 ? 'osd-warn' : undefined}>{linkSignal.label}</span>
+                  )}
+                  <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
+                  {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
+                  {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
+                  {stats?.fps != null && <span>{stats.fps} fps</span>}
+                  {stats?.lossPct != null && (
+                    <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
+                  )}
+                </div>
+              )}
+              {osdFields.batteryData && (telemetry ? <TelemetryData t={telemetry} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>)}
             </div>
           </div>
         )}
