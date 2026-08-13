@@ -3,6 +3,15 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.20.2
+**English**
+- OSD polish: bigger **battery bar** and **home compass**; dropped the distance label
+  next to the compass (it's already shown in the home badge just above it).
+
+**Deutsch**
+- OSD-Feinschliff: größerer **Akku-Balken** und **Home-Kompass**; die Distanz-Anzeige
+  neben dem Kompass entfällt (sie steht bereits im Home-Badge direkt darüber).
+
 ## v1.20.1
 **English**
 - **Home compass/arrow in the OSD** — a rotating arrow that points the way back to

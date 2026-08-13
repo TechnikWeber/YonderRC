@@ -680,7 +680,6 @@ export function VideoPanel({
                       <span className="osd-home-ref">{gpsHome.relative ? 'FWD' : 'N'}</span>
                       <span className="osd-home-arrow" style={{ transform: `rotate(${Math.round(gpsHome.arrowDeg)}deg)` }}>↑</span>
                     </div>
-                    <span className="osd-home-dist">⌂ {gpsHome.dist}</span>
                   </div>
                 )}
               </div>
