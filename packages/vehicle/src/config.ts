@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
-import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
+import type { TelemetryConfig, CameraCfg, GpsConfig } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig } from './system/SystemManager.js';
@@ -45,6 +45,8 @@ export interface VehicleConfig {
   apiSecret: string | null;
   /** Telemetry (sensors, coulomb counting, battery). */
   telemetry: TelemetryConfig;
+  /** GPS (source, home, auto-home). */
+  gps: GpsConfig;
   /** Cameras (graphical); generates go2rtc.yaml. */
   cameras: CameraCfg[];
   /** Path of the generated go2rtc config. */
@@ -69,6 +71,7 @@ export interface PersistentConfig {
   apiSecret?: string | null;
   remoteAccess?: RemoteAccessConfig;
   telemetry?: TelemetryConfig;
+  gps?: GpsConfig;
   cameras?: CameraCfg[];
 }
 
@@ -142,6 +145,7 @@ export function loadConfig(): VehicleConfig {
       displayMode: 'remaining',
       percentSource: 'clamp',
     },
+    gps: p.gps ?? { source: 'off', device: '/dev/ttyAMA0', baud: 9600, autoHome: true, minSats: 6, home: null },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
     go2rtcConfigPath:
       process.env.YRC_GO2RTC_CONFIG ??

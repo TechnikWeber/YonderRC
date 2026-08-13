@@ -226,6 +226,35 @@
       </section>
 
       <section class="panel">
+        <div class="eyebrow">GPS</div>
+        <div class="grid2">
+          <label>Source
+            <select id="gpsSource" onchange="renderGps()">
+              <option value="off">off</option>
+              <option value="sim">sim (synthetic)</option>
+              <option value="serial-nmea">local NMEA (serial)</option>
+              <option value="gpsd">gpsd (USB dongle / daemon)</option>
+              <option value="mavlink">MAVLink (coming soon)</option>
+            </select>
+          </label>
+          <label>Min. satellites (good fix)<input id="gpsMinSats" type="number" placeholder="6" /></label>
+        </div>
+        <div id="gps-serial" class="grid2" style="display:none">
+          <label>Serial device<input id="gpsDevice" placeholder="/dev/ttyAMA0" /></label>
+          <label>Baud<input id="gpsBaud" type="number" placeholder="9600" /></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="gpsAutoHome" checked /> Auto-set home on first good fix (session)</label>
+        <div class="btns">
+          <button class="btn primary" onclick="saveGps()">Save</button>
+          <button class="btn" onclick="gpsHome('set')">Set home now</button>
+          <button class="btn" onclick="gpsHome('clear')">Clear home</button>
+        </div>
+        <p class="msg">Common receivers: Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880 — most speak NMEA at 9600 baud over UART (use /dev/ttyAMA0 or /dev/serial0). USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
+        <div id="gps-status"></div>
+        <div class="msg" id="gps-msg"></div>
+      </section>
+
+      <section class="panel">
         <div class="eyebrow">Hardware test — RÄDER HOCH / PROPS AB</div>
         <div class="grid2">
           <label>Channel to sweep<input id="testCh" type="number" placeholder="1" /></label>
@@ -302,15 +331,62 @@
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
         updateSecState(!!c.authRequired);
       }
+      // ---- GPS ----
+      function renderGps() {
+        $('gps-serial').style.display = $('gpsSource').value === 'serial-nmea' ? 'grid' : 'none';
+      }
+      async function loadGps() {
+        try {
+          const r = await getJSON('/api/gps');
+          const c = r.config || {};
+          $('gpsSource').value = c.source || 'off';
+          $('gpsDevice').value = c.device || '';
+          $('gpsBaud').value = c.baud || 9600;
+          $('gpsMinSats').value = c.minSats ?? 6;
+          $('gpsAutoHome').checked = c.autoHome !== false;
+          renderGps();
+          renderGpsStatus(r.status, c.home);
+        } catch {}
+      }
+      function renderGpsStatus(s, home) {
+        if (!s || s.source === 'off') { $('gps-status').innerHTML = ''; return; }
+        const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
+        let html = row('fix', s.hasFix ? `${s.fixType.toUpperCase()} · ${s.satellites ?? '?'} sats` : 'no fix', s.hasFix ? 'go' : 'warn');
+        if (s.lat != null) html += row('position', `${s.lat.toFixed(6)}, ${s.lon.toFixed(6)}`);
+        if (s.altM != null) html += row('altitude', `${Math.round(s.altM)} m`);
+        if (s.speedMs != null) html += row('speed', `${(s.speedMs * 3.6).toFixed(1)} km/h`);
+        const h = home || (s.home);
+        if (h) html += row('home', `${h.lat.toFixed(6)}, ${h.lon.toFixed(6)}`, 'go');
+        $('gps-status').innerHTML = html;
+      }
+      async function saveGps() {
+        const body = {
+          source: $('gpsSource').value,
+          device: $('gpsDevice').value.trim() || null,
+          baud: Number($('gpsBaud').value) || 9600,
+          minSats: Number($('gpsMinSats').value) || 6,
+          autoHome: $('gpsAutoHome').checked,
+        };
+        const r = await post('/api/gps', body);
+        $('gps-msg').textContent = r.note || 'Saved.';
+        setTimeout(loadGps, 800);
+      }
+      async function gpsHome(action) {
+        const r = await post('/api/gps/home', { action });
+        $('gps-msg').textContent = r.message || '';
+        setTimeout(loadGps, 300);
+      }
+
       async function detectHw() {
         $('detect-out').innerHTML = '<div class="msg">Probing hardware…</div>';
         try {
           const d = await getJSON('/api/detect');
           const i2c = (d.i2c || []).map((x) => `<div class="row"><span class="k">${x.address}</span><span class="v">${x.hint}</span></div>`).join('') || '<div class="msg">no I²C devices</div>';
           const cams = (d.cameras || []).length ? (d.cameras).map((c) => `<div class="row"><span class="k">camera</span><span class="v">${c}</span></div>`).join('') : '';
+          const serial = (d.serial || []).map((s) => `<div class="row"><span class="k">serial (GPS?)</span><span class="v">${s}</span></div>`).join('');
           const modem = `<div class="row"><span class="k">LTE modem</span><span class="v ${d.modemPresent ? 'go' : 'warn'}">${d.modemPresent ? 'present' : 'not found'}</span></div>`;
           const notes = (d.notes || []).map((n) => `<div class="msg">• ${n}</div>`).join('');
-          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${modem}${notes}<div class="msg">Suggestions only — set the driver/sensors above accordingly, then Save.</div>`;
+          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${serial}${modem}${notes}<div class="msg">Suggestions only — set the driver/sensors above accordingly, then Save.</div>`;
         } catch {
           $('detect-out').innerHTML = '<div class="msg">Detection failed.</div>';
         }
@@ -587,8 +663,11 @@
       loadCameras();
       loadTelemetry();
       loadRemote();
+      loadGps();
       refresh();
       setInterval(refresh, 3000);
+      // Poll GPS status while a source is active (fix/sats/home change over time).
+      setInterval(async () => { if ($('gpsSource').value !== 'off') { try { const r = await getJSON('/api/gps'); renderGpsStatus(r.status, r.config && r.config.home); } catch {} } }, 2000);
     </script>
   </body>
 </html>

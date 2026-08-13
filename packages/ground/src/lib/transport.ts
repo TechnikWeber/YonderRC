@@ -5,6 +5,7 @@ import {
   type ServerMessage,
   type StatusMessage,
   type TelemetryMessage,
+  type GpsMessage,
   type WelcomeMessage,
 } from '@yonderrc/protocol';
 
@@ -16,6 +17,7 @@ export interface LinkCallbacks {
   onWelcome?: (msg: WelcomeMessage) => void;
   onStatus?: (msg: StatusMessage) => void;
   onTelemetry?: (msg: TelemetryMessage) => void;
+  onGps?: (msg: GpsMessage) => void;
   onControlPath?: (path: ControlPath) => void;
   /** The vehicle rejected the shared secret (WS close 4001). */
   onAuthFail?: () => void;
@@ -133,6 +135,8 @@ export class LinkClient {
         this.cbs.onStatus?.(msg);
       } else if (msg.type === 'telemetry') {
         this.cbs.onTelemetry?.(msg);
+      } else if (msg.type === 'gps') {
+        this.cbs.onGps?.(msg);
       } else if (msg.type === 'rtc') {
         void this.onSignal(msg);
       }

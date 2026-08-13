@@ -5,6 +5,7 @@ import {
   type Profile,
   type StatusMessage,
   type TelemetryMessage,
+  type GpsMessage,
   type WelcomeMessage,
 } from '@yonderrc/protocol';
 import { LinkClient, setupUrlFromWs, type ControlPath, type LinkState } from './lib/transport';
@@ -70,6 +71,7 @@ export function App() {
   const [welcome, setWelcome] = useState<WelcomeMessage | null>(null);
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryMessage | null>(null);
+  const [gps, setGps] = useState<GpsMessage | null>(null);
   const [gamepad, setGamepad] = useState<string | null>(null);
   const [previewChannels, setPreviewChannels] = useState<number[]>(neutralChannels());
   const [tick, setTick] = useState(0);
@@ -124,6 +126,7 @@ export function App() {
         lastTelemetryAt.current = Date.now();
         setTelemetry(m);
       },
+      onGps: setGps,
       onControlPath: setControlPath,
       onAuthFail: () => {
         setAuthMsg('Vehicle rejected the secret — check the API secret and Connect again.');
@@ -404,7 +407,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.19.0</span>
+        <span className="ver">ground · v1.20.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -487,6 +490,7 @@ export function App() {
             batteryLow={battery.low && batteryCfg.osdBlink}
             batteryReason={battery.reason}
             linkSignal={connected ? status?.link ?? null : null}
+            gps={connected ? gps : null}
             onQuality={(q) => linkRef.current?.sendVideoQuality(q)}
             onStats={(s) => {
               videoStatsRef.current = s;

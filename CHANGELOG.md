@@ -3,6 +3,31 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.20.0
+**English**
+- **GPS (local, source-selectable).** A new GPS subsystem with a pluggable source —
+  **local NMEA** over serial (Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880…),
+  **gpsd** (USB dongles), a **sim** source, and a **MAVLink** slot for later — all
+  normalized to one fix and streamed to the ground at ~1 Hz.
+- **Home point**: set it manually or **auto-home** on the first good fix (session /
+  takeoff point). The OSD shows fix type + satellites and, with home set, **distance
+  and direction back to home**.
+- Setup › GPS (source, serial device/baud, min-sats, auto-home, live status, set/clear
+  home); "Detect hardware" now also lists serial GPS candidates; the installer adds
+  `gpsd`. HARDWARE docs (EN+DE) cover common modules and wiring.
+
+**Deutsch**
+- **GPS (lokal, Quelle wählbar).** Ein neues GPS-Subsystem mit austauschbarer Quelle —
+  **lokales NMEA** über Serial (Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880…),
+  **gpsd** (USB-Dongles), eine **Sim**-Quelle und ein **MAVLink**-Slot für später — alles
+  zu einem Fix normalisiert und ~1 Hz an die Ground gestreamt.
+- **Home-Punkt**: manuell setzen oder **Auto-Home** beim ersten guten Fix (Session /
+  Startpunkt). Das OSD zeigt Fix-Typ + Satelliten und, mit gesetztem Home, **Distanz und
+  Richtung zurück zum Home**.
+- Setup › GPS (Quelle, Serial-Device/Baud, Min-Sats, Auto-Home, Live-Status, Home
+  setzen/löschen); „Detect hardware" listet jetzt auch serielle GPS-Kandidaten; der
+  Installer bringt `gpsd` mit. HARDWARE-Docs (EN+DE) mit gängigen Modulen und Verkabelung.
+
 ## v1.19.0
 **English**
 - **Link health in the OSD** — the vehicle now reports its uplink signal (LTE % or

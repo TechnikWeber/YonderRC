@@ -72,6 +72,14 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   OSD labels which source it's using; the mAh readout is shown independently.
 - A single INA sensor can provide **both voltage and current**.
 
+**GPS & navigation**
+- **Selectable GPS source**: a local NMEA receiver over serial (Adafruit Ultimate GPS,
+  u-blox NEO-6/7/8/M9, BN-880…), a USB dongle via **gpsd**, a **sim** source, or (later)
+  **MAVLink** from a flight controller — all normalized to one fix.
+- **Home point**: set it manually, or **auto-home** on the first good fix (takeoff
+  point). The OSD shows fix type + satellites and, once home is set, **distance and
+  direction back to home** — the essentials for beyond-line-of-sight.
+
 **Operation & setup**
 - Graphical **setup page** served by the vehicle itself (`/setup`): driver, cameras,
   telemetry, watchdog, LTE, remote access, security — from a phone/laptop, no screen

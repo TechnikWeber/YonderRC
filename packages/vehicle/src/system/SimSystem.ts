@@ -167,6 +167,7 @@ export class SimSystem implements SystemManager {
       ],
       modemPresent: this.lte.present,
       cameras: ['/dev/video0 (simulated)'],
+      serial: ['/dev/ttyAMA0 (simulated)'],
       notes: ['Simulated detection — real probe runs on the Pi.'],
     };
   }

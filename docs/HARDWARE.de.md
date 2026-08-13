@@ -100,6 +100,26 @@ Fahrakku ──► BEC 5V/3A ──► Pi (5V/GND, z. B. GPIO Pin 2/6 oder USB-C
   Signal; wenn dein FC kein internes Invert hat, brauchst du einen kleinen
   Inverter (Transistor) zwischen Pi-TX und FC.
 
+### 2.6 GPS (optional)
+
+Gängige Empfänger, die am Pi problemlos laufen: **Adafruit Ultimate GPS** (MTK3339),
+**u-blox NEO-6M/7M/8M/M9N**, **Beitian BN-220/BN-880** — die meisten sprechen **NMEA mit
+9600 Baud** über UART. Verkabelung:
+
+| GPS | Raspberry Pi | Pin |
+|---|---|---|
+| VCC | 3V3 (oder 5V je Modul) | Pin 1 / 2 |
+| GND | GND | Pin 6 |
+| TX  | GPIO15 / RXD | Pin 10 |
+| RX  | GPIO14 / TXD | Pin 8 |
+
+- Den Hardware-UART des Pi nutzen (`/dev/ttyAMA0` bzw. `/dev/serial0`; Serial-Console
+  deaktivieren). Unter Setup › GPS **local NMEA (serial)** wählen, Device `/dev/ttyAMA0`, 9600.
+- **USB-GPS-Dongles** (u-blox VK-172, GlobalSat BU-353): einstecken und stattdessen die
+  **gpsd**-Quelle wählen — `gpsd` installiert das Setup-Skript, es übernimmt das Gerät.
+- Die **Mindest-Satelliten** für einen guten Fix setzen (6 ist ein guter Default) und
+  **Auto-Home** aktivieren, um den Startpunkt automatisch zu erfassen.
+
 ---
 
 ## 3. Software — Schritt für Schritt (zuerst WLAN)

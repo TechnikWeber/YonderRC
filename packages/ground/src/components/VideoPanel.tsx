@@ -6,6 +6,9 @@ import {
   type Profile,
   type TelemetryMessage,
   type LinkSignal,
+  type GpsMessage,
+  distanceMeters,
+  bearingDeg,
 } from '@yonderrc/protocol';
 import type { ControlPath, LinkState } from '../lib/transport';
 import type { InputManager } from '../lib/input/inputManager';
@@ -161,6 +164,14 @@ function bar(us: number): number {
   return ((us - CHANNEL_MIN_US) / (CHANNEL_MAX_US - CHANNEL_MIN_US)) * 100;
 }
 
+const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+function compass(deg: number): string {
+  return COMPASS8[Math.round(deg / 45) % 8];
+}
+function fmtDist(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+}
+
 /**
  * Battery charge bar for the OSD — shown alone top-right, phone-style. Returns
  * null when there's no real sensor or no percentage, so nothing floats up there.
@@ -242,6 +253,7 @@ export function VideoPanel({
   batteryLow,
   batteryReason,
   linkSignal,
+  gps,
   onQuality,
   onStats,
 }: {
@@ -261,6 +273,7 @@ export function VideoPanel({
   batteryLow: boolean;
   batteryReason: string | null;
   linkSignal: LinkSignal | null;
+  gps: GpsMessage | null;
   onQuality: (q: VideoQuality) => void;
   onStats?: (s: VideoStats | null) => void;
 }) {
@@ -460,6 +473,15 @@ export function VideoPanel({
     (stats?.lossPct != null && stats.lossPct >= 5) ||
     (linkSignal?.quality != null && linkSignal.quality < 25);
 
+  // Distance + direction to home, when we have both a fix and a home point.
+  const gpsHome =
+    gps?.hasFix && gps.home && gps.lat != null && gps.lon != null
+      ? {
+          dist: fmtDist(distanceMeters(gps.home.lat, gps.home.lon, gps.lat, gps.lon)),
+          dir: compass(bearingDeg(gps.lat, gps.lon, gps.home.lat, gps.home.lon)),
+        }
+      : null;
+
   function changeQuality(q: QualitySel) {
     setQuality(q);
     try {
@@ -572,9 +594,19 @@ export function VideoPanel({
 
         {showOsd && (
           <div className="osd">
-            {flightSeconds !== null && (
+            {(flightSeconds !== null || (gps && gps.source !== 'off')) && (
               <div className="osd-tl">
-                <span className="osd-badge go">⏱ {Math.floor(flightSeconds / 60)}:{String(flightSeconds % 60).padStart(2, '0')}</span>
+                {flightSeconds !== null && (
+                  <span className="osd-badge go">⏱ {Math.floor(flightSeconds / 60)}:{String(flightSeconds % 60).padStart(2, '0')}</span>
+                )}
+                {gps && gps.source !== 'off' && (
+                  <span className={`osd-badge ${gps.hasFix ? 'go' : 'idle'}`}>
+                    ⌖ {gps.hasFix ? `${gps.fixType.toUpperCase()} ${gps.satellites ?? ''}` : 'NO FIX'}
+                  </span>
+                )}
+                {gpsHome && (
+                  <span className={`osd-badge ${weakLink ? 'idle' : 'go'}`}>⌂ {gpsHome.dist} {gpsHome.dir}</span>
+                )}
               </div>
             )}
             <div className="osd-tc">

@@ -6,6 +6,8 @@ export interface DetectResult {
   i2c: I2cSuggestion[];
   modemPresent: boolean;
   cameras: string[];
+  /** Serial device candidates for a GPS receiver (/dev/ttyAMA0, ttyUSB*, ttyACM*). */
+  serial: string[];
   notes: string[];
 }
 

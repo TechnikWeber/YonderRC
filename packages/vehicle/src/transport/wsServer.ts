@@ -14,6 +14,7 @@ import { WebRtcControl } from './WebRtcControl.js';
 import { handleSetup, type SetupContext } from './setupRouter.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
+import type { GpsService } from '../sensors/GpsService.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { serveGroundApp } from './staticServer.js';
 import { secretOk, readSecretFromUrl } from './auth.js';
@@ -29,11 +30,13 @@ export function startWsServer(
   config: VehicleConfig,
   system: SystemManager,
   telemetry: TelemetryService,
+  gps: GpsService,
 ) {
   const setupCtx: SetupContext = {
     config,
     system,
     telemetry,
+    gps,
     core,
     applyCameras: (cams) => applyCameras(cams, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder),
     onConfigSaved: (patch) => console.log('[setup] config saved:', Object.keys(patch).join(', ')),
@@ -100,6 +103,10 @@ export function startWsServer(
       const t = telemetry.message;
       if (t && ws.readyState === ws.OPEN) ws.send(JSON.stringify(t));
     }, 200);
+    // GPS at ~1 Hz (most receivers update at 1 Hz).
+    const gpsTimer = setInterval(() => {
+      if (config.gps.source !== 'off' && ws.readyState === ws.OPEN) ws.send(JSON.stringify(gps.message));
+    }, 1000);
 
     ws.on('message', (raw) => {
       let msg: ClientMessage;
@@ -127,6 +134,7 @@ export function startWsServer(
     ws.on('close', () => {
       clearInterval(statusTimer);
       clearInterval(telemetryTimer);
+      clearInterval(gpsTimer);
       rtc.close();
       console.log(`[link] ground disconnected (${who}); watchdog will hold failsafe`);
     });

@@ -5,9 +5,10 @@ import type { VehicleConfig, PersistentConfig } from '../config.js';
 import { savePersisted, resetPersisted } from '../config.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
+import type { GpsService } from '../sensors/GpsService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
-import type { CameraCfg, TelemetryConfig } from '@yonderrc/protocol';
+import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { secretOk, readSecretFromReq } from './auth.js';
 import {
@@ -26,6 +27,7 @@ export interface SetupContext {
   config: VehicleConfig;
   system: SystemManager;
   telemetry: TelemetryService;
+  gps: GpsService;
   core: VehicleCore;
   applyCameras: (cams: CameraCfg[]) => Promise<void>;
   /** Called after config is persisted so the caller can note "restart needed". */
@@ -264,6 +266,49 @@ export async function handleSetup(
   if (url === '/api/telemetry/reset' && method === 'POST') {
     ctx.telemetry.resetCapacity();
     json(res, 200, { ok: true, message: 'Coulomb counter reset.' });
+    return true;
+  }
+
+  // --- GPS ---
+  if (url === '/api/gps' && method === 'GET') {
+    json(res, 200, { config: ctx.config.gps, status: ctx.gps.message });
+    return true;
+  }
+  if (url === '/api/gps' && method === 'POST') {
+    const body = (await readBody(req)) as Partial<GpsConfig>;
+    const cur = ctx.config.gps;
+    const cfg: GpsConfig = {
+      source: body.source ?? cur.source,
+      device: body.device !== undefined ? body.device || null : cur.device ?? null,
+      baud: body.baud ?? cur.baud ?? 9600,
+      autoHome: body.autoHome ?? cur.autoHome,
+      minSats: body.minSats ?? cur.minSats,
+      home: cur.home ?? null, // home is changed only via /api/gps/home
+    };
+    savePersisted(ctx.config.configPath, { gps: cfg });
+    ctx.config.gps = cfg;
+    let note = 'GPS applied.';
+    try { await ctx.gps.reconfigure(cfg); } catch (e) { note = `Saved, but apply failed (${(e as Error).message}).`; }
+    json(res, 200, { ok: true, note });
+    return true;
+  }
+  if (url === '/api/gps/home' && method === 'POST') {
+    const { action } = (await readBody(req)) as { action?: 'set' | 'clear' };
+    if (action === 'clear') {
+      ctx.gps.clearHome();
+      ctx.config.gps = { ...ctx.config.gps, home: null };
+      savePersisted(ctx.config.configPath, { gps: ctx.config.gps });
+      json(res, 200, { ok: true, message: 'Home cleared.' });
+      return true;
+    }
+    const home = ctx.gps.setHomeNow();
+    if (!home) {
+      json(res, 400, { ok: false, message: 'No position yet — wait for a GPS fix.' });
+      return true;
+    }
+    ctx.config.gps = { ...ctx.config.gps, home };
+    savePersisted(ctx.config.configPath, { gps: ctx.config.gps });
+    json(res, 200, { ok: true, message: `Home set at ${home.lat.toFixed(6)}, ${home.lon.toFixed(6)}.`, home });
     return true;
   }
   // Live one-shot sensor read for the setup "Hardware test".

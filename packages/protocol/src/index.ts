@@ -3,3 +3,4 @@ export * from './shaping';
 export * from './types/messages';
 export * from './types/profile';
 export * from './types/telemetry';
+export * from './types/gps';

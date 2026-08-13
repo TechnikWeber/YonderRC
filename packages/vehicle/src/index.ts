@@ -5,6 +5,7 @@ import { VehicleCore } from './core/VehicleCore.js';
 import { startWsServer } from './transport/wsServer.js';
 import { createSystem } from './system/index.js';
 import { TelemetryService } from './sensors/TelemetryService.js';
+import { GpsService } from './sensors/GpsService.js';
 import { applyCameras, detectH264Encoder } from './video/cameraManager.js';
 import { startCaptivePortal } from './transport/captivePortal.js';
 
@@ -12,7 +13,7 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.19.0');
+  console.log('  YonderRC vehicle service  v1.20.0');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -54,6 +55,10 @@ async function main() {
   const telemetry = new TelemetryService(config.telemetry);
   await telemetry.start();
 
+  // GPS (selectable source → normalized fix + home). Off by default.
+  const gps = new GpsService(config.gps);
+  await gps.start().catch((e) => console.warn(`[gps] start failed: ${(e as Error).message}`));
+
   // Generate go2rtc.yaml from the graphical camera list (best effort at boot).
   config.h264Encoder = await detectH264Encoder();
   console.log(`  encoder   : ${config.h264Encoder} (auto-detected)`);
@@ -61,7 +66,7 @@ async function main() {
     (e) => console.error('[video] initial camera generation failed:', (e as Error).message),
   );
 
-  startWsServer(core, config, system, telemetry);
+  startWsServer(core, config, system, telemetry, gps);
   console.log(`  setup UI  : http://<vehicle>:${config.port}/setup  (system: ${config.systemKind})`);
   console.log(`  control   : http://<vehicle>:${config.port}/  (ground app, if built)`);
   console.log(`  telemetry : ${config.telemetry.source} · ${config.telemetry.enabled ? 'on' : 'off'}`);
@@ -85,6 +90,7 @@ async function main() {
   const shutdown = async () => {
     console.log('\n[core] shutting down, holding failsafe…');
     await telemetry.stop();
+    await gps.stop();
     await core.stop();
     process.exit(0);
   };

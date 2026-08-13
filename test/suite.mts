@@ -188,6 +188,40 @@ async function main() {
   ok('i2c suggest PCA9685 @0x40', sugg[0].address === '0x40' && /PCA9685/.test(sugg[0].hint));
   ok('i2c suggest ADS @0x48', sugg[2].hint.includes('ADS'));
   ok('sim detect finds 0x40', (await sys.detectHardware()).i2c.some((x) => x.address === '0x40'));
+  ok('sim detect lists serial', (await sys.detectHardware()).serial.length > 0);
+
+  // ---- GPS: NMEA parsing + geo (distance/bearing) + sim service + home ----
+  const { parseNmea, nmeaChecksumOk } = await import('../packages/vehicle/src/sensors/nmea');
+  const { distanceMeters, bearingDeg } = await import('../packages/protocol/src/types/gps');
+  // Real GGA/RMC/GSA lines (checksums valid).
+  const gga = '$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47';
+  const rmc = '$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A';
+  const gsa = '$GPGSA,A,3,04,05,,09,12,,,24,,,,,2.5,1.3,2.1*39';
+  ok('nmea checksum ok', nmeaChecksumOk(gga) === true);
+  ok('nmea checksum bad', nmeaChecksumOk('$GPGGA,123519,4807.038,N*00') === false);
+  const nf = parseNmea([gga, rmc, gsa].join('\n'));
+  ok('nmea lat parsed', near(nf.lat!, 48.1173, 1e-3), `=${nf.lat}`);
+  ok('nmea lon parsed', near(nf.lon!, 11.5167, 1e-3), `=${nf.lon}`);
+  ok('nmea sats + fix', nf.satellites === 8 && nf.hasFix === true && nf.fixType === '3d');
+  ok('nmea altitude', near(nf.altM!, 545.4, 0.1));
+  ok('nmea speed m/s', nf.speedMs != null && nf.speedMs > 0);
+  ok('nmea garbage ignored', parseNmea('hello\n$GPXXX,bad').hasFix === false);
+  // Geo: ~157 km between two points 1° apart in latitude near the equator... use known pair.
+  ok('distance ~1.11km per 0.01°', near(distanceMeters(52.0, 13.0, 52.01, 13.0), 1112, 5), `=${Math.round(distanceMeters(52.0, 13.0, 52.01, 13.0))}`);
+  ok('bearing north', Math.abs(bearingDeg(52.0, 13.0, 52.1, 13.0) - 0) < 1);
+  ok('bearing east', Math.abs(bearingDeg(52.0, 13.0, 52.0, 13.1) - 90) < 1);
+  const { GpsService } = await import('../packages/vehicle/src/sensors/GpsService');
+  const gsvc = new GpsService({ source: 'sim', autoHome: true, minSats: 4, home: null });
+  await gsvc.start();
+  await new Promise((r) => setTimeout(r, 1200));
+  const gm = gsvc.message;
+  ok('sim gps emits fix over time', gm.type === 'gps' && gm.lat != null);
+  const setHome = gsvc.setHomeNow();
+  ok('gps set home returns point', setHome != null && typeof setHome.lat === 'number');
+  ok('gps message carries home', gsvc.message.home != null);
+  gsvc.clearHome();
+  ok('gps clear home', gsvc.message.home === null);
+  await gsvc.stop();
 
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');

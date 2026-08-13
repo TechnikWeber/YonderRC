@@ -74,6 +74,14 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   100 % zeigt). Das OSD beschriftet die Quelle; die mAh-Anzeige läuft unabhängig.
 - Ein einzelner INA-Sensor kann **Spannung und Strom** liefern.
 
+**GPS & Navigation**
+- **Wählbare GPS-Quelle**: lokaler NMEA-Empfänger über Serial (Adafruit Ultimate GPS,
+  u-blox NEO-6/7/8/M9, BN-880…), ein USB-Dongle über **gpsd**, eine **Sim**-Quelle oder
+  (später) **MAVLink** vom Flight Controller — alles zu einem Fix normalisiert.
+- **Home-Punkt**: manuell setzen oder **Auto-Home** beim ersten guten Fix (Startpunkt).
+  Das OSD zeigt Fix-Typ + Satelliten und, sobald Home gesetzt ist, **Distanz und
+  Richtung zurück zum Home** — das Wesentliche für den Betrieb außerhalb der Sichtweite.
+
 **Betrieb & Einrichtung**
 - Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
   Telemetrie, Watchdog, LTE, Fernzugriff, Sicherheit — vom Handy/Laptop, ohne

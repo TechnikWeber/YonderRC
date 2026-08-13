@@ -101,6 +101,26 @@ Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB
   if your FC has no internal invert, you need a small inverter (transistor) between the
   Pi TX and the FC.
 
+### 2.6 GPS (optional)
+
+Common receivers that just work on a Pi: **Adafruit Ultimate GPS** (MTK3339),
+**u-blox NEO-6M/7M/8M/M9N**, **Beitian BN-220/BN-880** — most speak **NMEA at 9600 baud**
+over UART. Wiring:
+
+| GPS | Raspberry Pi | Pin |
+|---|---|---|
+| VCC | 3V3 (or 5V per module) | Pin 1 / 2 |
+| GND | GND | Pin 6 |
+| TX  | GPIO15 / RXD | Pin 10 |
+| RX  | GPIO14 / TXD | Pin 8 |
+
+- Use the Pi's hardware UART (`/dev/ttyAMA0` or `/dev/serial0`; disable the serial
+  console). In Setup › GPS pick **local NMEA (serial)**, device `/dev/ttyAMA0`, 9600.
+- **USB GPS dongles** (u-blox VK-172, GlobalSat BU-353): plug in and pick the **gpsd**
+  source instead — `gpsd` is installed by the setup script and handles the device.
+- Set the **min. satellites** for a good fix (6 is a good default) and enable
+  **auto-home** to capture the takeoff point automatically.
+
 ---
 
 ## 3. Software — step by step (Wi-Fi first)

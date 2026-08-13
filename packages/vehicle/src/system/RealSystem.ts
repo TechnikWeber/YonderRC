@@ -331,7 +331,13 @@ export class RealSystem implements SystemManager {
     }
     if (cams.length === 0) notes.push('No cameras detected (libcamera / /dev/video*).');
 
-    return { i2c, modemPresent, cameras: cams, notes };
+    // Serial candidates for a GPS receiver.
+    const serial: string[] = [];
+    const ser = await sh('ls /dev/ttyAMA0 /dev/ttyUSB* /dev/ttyACM* /dev/serial0 2>/dev/null');
+    for (const d of ser.out.split(/\s+/)) if (d.startsWith('/dev/')) serial.push(d);
+    if ((await sh('systemctl is-active gpsd')).out.trim() === 'active') notes.push('gpsd is running — you can use the "gpsd" GPS source.');
+
+    return { i2c, modemPresent, cameras: cams, serial, notes };
   }
 
   async reboot(): Promise<ActionResult> {

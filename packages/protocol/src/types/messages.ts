@@ -79,7 +79,8 @@ export type ServerMessage =
   | WelcomeMessage
   | StatusMessage
   | RtcSignalMessage
-  | import('./telemetry').TelemetryMessage;
+  | import('./telemetry').TelemetryMessage
+  | import('./gps').GpsMessage;
 
 export interface WelcomeMessage {
   type: 'welcome';
