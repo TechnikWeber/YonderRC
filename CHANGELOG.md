@@ -3,6 +3,50 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.21.1
+**English**
+- **Documentation pass over all four docs** (EN + DE), correcting what had gone stale:
+  auto-disarm on reconnect is **vehicle-type coupled** (the setup checkbox is only the
+  fallback until a ground station connects — the old "turn it off for plane/drone by
+  hand" advice was wrong); the installer's real package list (Node 22, `usb-modeswitch`,
+  `i2c-tools`, `gpsd`, `wireguard-tools`, ZeroTier); the native driver libs are
+  **optional dependencies** skipped by `npm install --omit=optional`; serial GPS needs
+  `serialport` too; Pi OS is no longer pinned to Bookworm in the text.
+- **New in `HARDWARE.md` §6.1: the trust model** — the service listens on `0.0.0.0`, so
+  the network is the security boundary; when to set an API secret, what it does and does
+  not protect (plaintext in the config, traffic unencrypted), `YRC_API_SECRET`, and
+  `YRC_HOST` for binding to a single address.
+- Setup steps now cover **Detect hardware**, the **battery-% source** and the **Security**
+  panel; the LTE section explains the **uplink signal in the OSD** (`mmcli` %, else the
+  `wlan0` RSSI). New troubleshooting rows for a set API secret, no GPS fix and a missing
+  signal value.
+- README (EN + DE): **mobile view** with a collapsible screenshot, plus the features that
+  were missing — **Auto** video quality, per-block OSD toggles, low-battery warning and
+  **blackbox logging**.
+- Setup page: the last German string ("RÄDER HOCH / PROPS AB") is now English.
+
+**Deutsch**
+- **Doku-Durchgang über alle vier Dokumente** (EN + DE), veraltete Stellen korrigiert:
+  Auto-Disarm bei Reconnect ist **an den Fahrzeugtyp gekoppelt** (die Checkbox im Setup
+  ist nur der Fallback, bis sich eine Bodenstation verbindet — der alte Hinweis „für
+  Flugzeug/Drohne von Hand ausschalten" war falsch); die echte Paketliste des Installers
+  (Node 22, `usb-modeswitch`, `i2c-tools`, `gpsd`, `wireguard-tools`, ZeroTier); die
+  nativen Treiber-Libs sind **optionale Abhängigkeiten**, die `npm install
+  --omit=optional` überspringt; serielles GPS braucht ebenfalls `serialport`; Pi OS ist
+  im Text nicht mehr auf Bookworm festgenagelt.
+- **Neu in `HARDWARE.de.md` §6.1: das Vertrauensmodell** — der Dienst lauscht auf
+  `0.0.0.0`, das Netz ist also die Sicherheitsgrenze; wann ein API-Secret sinnvoll ist,
+  was es schützt und was nicht (Klartext in der Config, Verkehr unverschlüsselt),
+  `YRC_API_SECRET` sowie `YRC_HOST` zum Binden auf eine einzelne Adresse.
+- Die Setup-Schritte decken jetzt **Detect hardware**, die **Akku-%-Quelle** und das
+  **Security**-Panel ab; der LTE-Abschnitt erklärt das **Uplink-Signal im OSD**
+  (`mmcli`-%, sonst der `wlan0`-RSSI). Neue Fehlersuche-Zeilen für gesetztes API-Secret,
+  fehlenden GPS-Fix und fehlenden Signalwert.
+- README (EN + DE): **mobile Ansicht** mit aufklappbarem Screenshot, dazu die bisher
+  fehlenden Funktionen — **Auto**-Videoqualität, einzeln abschaltbare OSD-Blöcke,
+  Akku-Warnung und **Blackbox-Logging**.
+- Setup-Seite: der letzte deutsche String („RÄDER HOCH / PROPS AB") ist jetzt englisch.
+
 ## v1.21.0
 **English**
 - **Mobile layout fixes** — nothing widens the page any more, so mobile Safari can't

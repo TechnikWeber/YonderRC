@@ -35,6 +35,29 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
 **WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Round-Trip,
 Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
 
+**Am Handy**
+- Die Boden-App ist eine normale Webseite — vom Handy über das LAN, den eigenen
+  Hotspot des Pi oder eine VPN-Adresse öffnen. Keine Installation nötig, und das
+  Fahrzeug kann sie selbst ausliefern.
+- **Responsives Layout**: Bedienelemente brechen um, statt die Seite breiter zu
+  machen — der Browser verschiebt oder zoomt die Ansicht also nicht mehr weg,
+  während du fährst.
+- **Kompaktes OSD**: am Handy schrumpft die Einblendung automatisch und blendet
+  sekundäre Werte aus, damit sie das Bild nicht mehr verdeckt. Umschaltbar unter
+  FPV › ⚙ › *OSD size* (Auto / Compact / Full).
+
+<details>
+<summary><b>Mobile Ansicht — hier klicken</b></summary>
+
+![YonderRC am Handy: FPV mit kompaktem OSD, umgebrochene Tool-Buttons, Arm-Button und Touch-Joysticks](docs/screenshots/Mobile_FPV.jpeg?v=1)
+
+*Dieselbe App auf einem iPhone: FPV mit kompaktem OSD (GPS, Home-Kompass, Odometer
+und Speed links, Akku-Balken rechts, Link/Latenz in einer Zeile), die FPV-Buttons in
+einer zweiten Reihe und darunter der Arm-Button mit Touch-Joysticks und belegbaren
+Buttons.*
+
+</details>
+
 **Sicherheit**
 - Zeitbasierter **Failsafe-Watchdog**: bleiben Steuer-Frames aus, gehen alle Kanäle
   auf ihren Failsafe-Wert. **Modellabhängig und getrennt vom Disarmen** — eine
@@ -60,8 +83,12 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   (`libx264`, `libopenh264`, Pi-Hardware).
 - **Selbstheilend**: erkennt eingefrorenes/abgerissenes Bild und verbindet sich
   automatisch neu; der letzte Frame bleibt stehen.
-- **Video-Qualität live umschaltbar** von der Groundstation (High/Medium/Low).
+- **Video-Qualität live umschaltbar** von der Groundstation (High/Medium/Low) oder
+  **Auto**: schaltet bei steigendem Verlust/Latenz schnell herunter und erst wieder
+  hoch, wenn die Verbindung klar gut ist (Schwellen einstellbar).
 - OSD mit Status, Kanälen, **Bitrate/Paketverlust/FPS/Video-Latenz** und Telemetrie.
+  Jeder Block ist **einzeln abschaltbar**, und die ganze Einblendung hat einen
+  **Kompakt-Modus** fürs Handy.
 - **Aufnahme & Standbild** lokal (Ordner einmal vorwählen; auf Taste oder
   Controller-Button legbar).
 
@@ -76,6 +103,11 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   kurve oder **clamp** (der niedrigere von beiden, damit ein nicht-voller Pack nicht
   100 % zeigt). Das OSD beschriftet die Quelle; die mAh-Anzeige läuft unabhängig.
 - Ein einzelner INA-Sensor kann **Spannung und Strom** liefern.
+- **Akku-Warnung** über Prozent / Spannung / verbrauchte mAh, mit blinkender
+  OSD-Markierung, Controller-Rumble und Ton.
+- **Blackbox-Logging** (optional, standardmäßig aus): 2-Hz-CSV mit Arm-/Failsafe-
+  Zustand, Link, Round-Trip, Bitrate, Loss, FPS, Video-Latenz, Spannung, Strom, mAh
+  und Prozent — bis ca. 5 h, herunterladbar unter Setup › Controls.
 
 **GPS & Navigation**
 - **Wählbare GPS-Quelle**: lokaler NMEA-Empfänger über Serial (Adafruit Ultimate GPS,

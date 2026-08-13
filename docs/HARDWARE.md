@@ -116,6 +116,8 @@ over UART. Wiring:
 
 - Use the Pi's hardware UART (`/dev/ttyAMA0` or `/dev/serial0`; disable the serial
   console). In Setup › GPS pick **local NMEA (serial)**, device `/dev/ttyAMA0`, 9600.
+  The serial source needs the optional `serialport` package (see 3.3) — without it the
+  service says so and stays on the previous source.
 - **USB GPS dongles** (u-blox VK-172, GlobalSat BU-353): plug in and pick the **gpsd**
   source instead — `gpsd` is installed by the setup script and handles the device.
 - Set the **min. satellites** for a good fix (6 is a good default) and enable
@@ -127,7 +129,9 @@ over UART. Wiring:
 
 ### 3.1 Flash Raspberry Pi OS
 
-1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit, Bookworm)**.
+1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit)**. The install script is
+   written and tested against **Bookworm**; newer releases should work (it only uses
+   apt, systemd and NetworkManager), but that isn't verified.
 2. In the Imager settings (gear icon): **enable SSH**, set a user, enter your
    **Wi-Fi credentials**, hostname e.g. `yonderrc`.
 3. Flash the SD card, put it in the Pi, power on.
@@ -173,20 +177,25 @@ Then install:
 sudo bash /opt/yonderrc/provisioning/install.sh
 ```
 
-`install.sh` installs Node, ffmpeg, NetworkManager, ModemManager, Tailscale and
-go2rtc, sets up the three systemd services (`yonderrc-vehicle`, `go2rtc`,
-`yonderrc-onboard`) and enables **I2C** and **UART**.
+`install.sh` installs Node 22, ffmpeg, NetworkManager, ModemManager, `usb-modeswitch`,
+`i2c-tools`, `gpsd`, `wireguard-tools`, Tailscale, ZeroTier and go2rtc, sets up the
+three systemd services (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`) and enables
+**I2C** and **UART**.
 
 > The Fedora note for your laptop does not apply here — on the Pi the script brings
 > the right ffmpeg with H.264.
 
 ### 3.3 Hardware driver dependencies (only what you use)
 
+The native libraries are **optional dependencies** and the installer deliberately runs
+`npm install --omit=optional`, so a Pi without any of that hardware still installs
+cleanly. Add the one you need:
+
 ```bash
 cd /opt/yonderrc
 npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA226
 npm install pigpio     -w @yonderrc/vehicle    # (only for GPIO-PWM instead of PCA9685)
-npm install serialport -w @yonderrc/vehicle    # (only for SBUS/drone)
+npm install serialport -w @yonderrc/vehicle    # (only for SBUS/drone, and serial GPS)
 sudo systemctl restart yonderrc-vehicle
 ```
 
@@ -195,14 +204,23 @@ sudo systemctl restart yonderrc-vehicle
 From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`**
 (or `http://<pi-ip>:8080/setup`).
 
+0. **Detect hardware** (in *Vehicle configuration*) scans the I²C bus, `mmcli` and the
+   camera devices and suggests a driver/sensors — a good starting point before you fill
+   anything in by hand.
 1. **Vehicle:** set the name, **Output driver = `pca9685`** (drone: `sbus`), check the
-   throttle channel.
+   throttle channel. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
+   — as soon as a ground station connects, it pushes the setting that matches the model
+   type (car/boat on, plane/drone off).
 2. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
    **Save & apply**. go2rtc reloads.
 3. **Telemetry:** source **`real`**, current sensor **`ina226`**, enter `Shunt Ω`
    (e.g. 0.002), voltage label "Voltage 1", enter the battery capacity (mAh), choose
-   consumed/remaining display → **Save**. Then restart the vehicle
-   (`sudo systemctl restart yonderrc-vehicle`).
+   consumed/remaining display, and pick what drives the **battery %** (coulomb counting,
+   the voltage curve, or *clamp* = the lower of the two) → **Save**. Then restart the
+   vehicle (`sudo systemctl restart yonderrc-vehicle`).
+4. **Security (optional):** set an **API secret** if the vehicle sits on a network you
+   don't fully trust — see 6.1. Leave it empty for the first bench tests; it's off by
+   default.
 
 ### 3.5 First function test (WHEELS UP / PROPS OFF!)
 
@@ -241,6 +259,10 @@ ground device on the same private network — reachable anywhere.
    **network mode** (4G-only for lower latency), toggle **data roaming**, **change or
    remove the SIM's PIN lock**, and run **Diagnostics** (raw `mmcli` output) to see
    exactly what the Pi detects.
+3. Once connected, the **uplink signal shows up in the ground station's OSD** (LTE
+   signal % from ModemManager, otherwise the Wi-Fi RSSI from `iw dev wlan0 link`), and
+   the OSD marks the link as weak below 25 %. If your Wi-Fi interface isn't `wlan0`,
+   the Wi-Fi reading stays empty — LTE is unaffected.
 
 ### 4.2 Tailscale
 
@@ -300,8 +322,13 @@ automatically to the same host (the Pi), including video. That makes the Pi
 self-sufficient in the field; once Wi-Fi/LTE is back, you use the laptop or the
 Tailscale address as usual.
 
-> **Safety in AP mode:** the watchdog, arming and (if enabled) auto-disarm on reconnect
-> apply here too. For plane/drone, turn off auto-disarm in the setup.
+> **Safety in AP mode:** the watchdog, arming and auto-disarm on reconnect apply here
+> too. You don't have to switch auto-disarm off for a plane/drone by hand — the ground
+> app sets it from the model type (car/boat on, plane/drone off).
+
+> **Who can reach it:** the hotspot is WPA2-protected, but anyone joined to it can talk
+> to the vehicle unless you set an **API secret** (6.1). The same applies on a shared
+> Wi-Fi.
 
 ---
 
@@ -316,11 +343,42 @@ Tailscale address as usual.
   (drone/plane = minimum, car/boat = stop) — independent of the failsafe value.
 - **Arming:** the throttle channel stays at idle while disarmed; the motor only runs
   after a deliberate arm.
-- **Auto-disarm on reconnect:** every new connection starts disarmed — after a link
-  loss you must deliberately re-arm.
+- **Arming is per connection:** a newly connected ground station is always disarmed and
+  has to arm deliberately. Whether an *existing* arm survives a reconnect is
+  **vehicle-type dependent**: for a car/boat the vehicle disarms on reconnect, for a
+  plane/drone it does **not** — a brief link drop must not cut an aircraft's motors in
+  flight. The ground app pushes this from the model type; the checkbox in the setup page
+  is only the fallback used until a ground station connects.
+- **Pre-arm check:** arming is refused while the throttle isn't at its rest position
+  (centre or idle, depending on the channel's detent).
 - **Driver fallback:** if the hardware driver fails to start, the service keeps running
   in sim and the setup UI stays reachable.
 - **systemd `Restart=always`:** if the service crashes, systemd restarts it.
+
+### 6.1 Trust model (who can control the vehicle)
+
+The vehicle service listens on **all interfaces** (`0.0.0.0:8080`) and, out of the box,
+**anyone who can reach that port can control and reconfigure it**. That is deliberate —
+a headless vehicle must never lock you out — but it means the network *is* the security
+boundary:
+
+- **Home Wi-Fi / bench:** fine as-is.
+- **The Pi's own hotspot:** WPA2 keeps strangers off the air; everyone on the hotspot is
+  trusted.
+- **LTE:** with Tailscale/ZeroTier/WireGuard the vehicle is only reachable inside your
+  private network. CGNAT additionally means it has no public IP.
+- **Shared or public Wi-Fi:** set an **API secret** under *Setup › Security*. Once set,
+  mutating `/api/*` calls need the `x-yonderrc-secret` header (or `?secret=`) and the
+  control WebSocket needs `?secret=` — a wrong one is rejected with close code 4001. The
+  ground app has a secret field next to the address, and the setup page prompts for it.
+  It can also come from the `YRC_API_SECRET` environment variable. The secret is stored
+  in plain text in the vehicle's config file, so treat it as a lock on the door, not as
+  encryption; the traffic itself is not encrypted (use a VPN for that).
+- A **factory reset** (*Setup › System*) clears the secret along with everything else.
+- To narrow it down further you can bind the service to a single address instead of
+  every interface — e.g. `YRC_HOST=100.x.y.z` (its Tailscale IP) in the systemd unit's
+  `Environment=`. There's no UI for it, and it locks you out of the hotspot/LAN path, so
+  only do this once remote access provably works.
 
 ---
 
@@ -334,3 +392,6 @@ Tailscale address as usual.
 | No video | Is `go2rtc` running? `systemctl status go2rtc`. Camera detected? |
 | LTE won't connect | `mmcli -L`, APN correct? Signal? |
 | No connection from the field | Are both devices on the same tailnet? Using the Tailscale IP? |
+| Link drops immediately / setup asks for a password | An **API secret** is set — enter it next to the address in the ground app (WS close code 4001 = wrong secret, HTTP 401 on the setup API). |
+| No GPS fix | Right source and device in *Setup › GPS*? Serial needs the optional `serialport` package; USB dongles need the **gpsd** source. Outdoors, first fix can take minutes. |
+| No signal value in the OSD | LTE must be connected (`mmcli`), or the Wi-Fi interface must be `wlan0` — other interface names aren't read. |

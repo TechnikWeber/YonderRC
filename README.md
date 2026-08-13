@@ -35,6 +35,26 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
 channel** toggle, and a status strip: link, state, round-trip, input method,
 vehicle/driver, telemetry.*
 
+**On a phone**
+- The ground app is a normal web page — open it from a phone over the LAN, the Pi's
+  own hotspot, or a VPN address. No install, and the vehicle can serve it itself.
+- **Responsive layout**: controls wrap instead of pushing the page sideways, so the
+  browser never pans or zooms the view away while you're driving.
+- **Compact OSD**: on a phone the overlay automatically shrinks and drops secondary
+  readouts so it stops covering the picture. Switchable under FPV › ⚙ › *OSD size*
+  (Auto / Compact / Full).
+
+<details>
+<summary><b>Mobile view — click to expand</b></summary>
+
+![YonderRC on a phone: FPV with the compact OSD, wrapped tool buttons, arm button and touch joysticks](docs/screenshots/Mobile_FPV.jpeg?v=1)
+
+*Same app on an iPhone: FPV with the compact OSD (GPS, home compass, odometer and
+speed left, battery bar right, link/latency in one line), the FPV tools wrapped onto a
+second row, and below it the arm button with the touch joysticks and bindable buttons.*
+
+</details>
+
 **Safety**
 - Time-based **failsafe watchdog**: if control frames stop arriving, every channel
   goes to its failsafe value. **Vehicle-type aware and separate from disarming** —
@@ -59,8 +79,12 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   (`libx264`, `libopenh264`, Pi hardware).
 - **Self-healing**: detects a frozen/dropped picture and reconnects automatically;
   the last frame stays on screen.
-- **Video quality switchable live** from the ground station (high/medium/low).
+- **Video quality switchable live** from the ground station (high/medium/low) or
+  **Auto**: it steps down quickly when loss/latency rise and back up slowly when the
+  link is clearly good again (thresholds are editable).
 - OSD with status, channels, **bitrate/packet loss/FPS/video latency** and telemetry.
+  Every block can be **switched off individually**, and the whole overlay has a
+  **compact mode** for phones.
 - **Recording & snapshots** locally (pick a folder once; bindable to a key or a
   controller button).
 
@@ -74,6 +98,11 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   or **clamp** (the lower of the two, so a not-actually-full pack can't read 100%). The
   OSD labels which source it's using; the mAh readout is shown independently.
 - A single INA sensor can provide **both voltage and current**.
+- **Low-battery warning** on percent / voltage / consumed mAh, with a blinking OSD
+  marker, controller rumble and a beep.
+- **Blackbox logging** (optional, off by default): 2 Hz CSV of arm/failsafe state,
+  link, round-trip, bitrate, loss, FPS, video latency, voltage, current, mAh and
+  percent — up to ~5 h, downloadable from Setup › Controls.
 
 **GPS & navigation**
 - **Selectable GPS source**: a local NMEA receiver over serial (Adafruit Ultimate GPS,

@@ -82,14 +82,16 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   When set it gates mutating `/api/*` POSTs (`x-yonderrc-secret` / `?secret=`) and the
   control WS (`?secret=`, close 4001 on mismatch). Pure check in `vehicle/transport/auth.ts`
   (`secretOk`). Ground has a secret field; setup UI has a Security panel + 401 prompt.
-  Still open: a bind-to-localhost/Tailscale-only mode, and documenting the trust model
-  more fully in `HARDWARE.md`.
+  The trust model is documented in `HARDWARE.md` §6.1 (both languages). Still open: a
+  UI for a bind-to-localhost/Tailscale-only mode — the env var `YRC_HOST` already works.
 - **English-first docs — DONE (v1.17.0)**: `README.md`/`docs/HARDWARE.md` are English,
-  German in `README.de.md`/`docs/HARDWARE.de.md` with switchers. Still TODO: set the
-  GitHub "About" + topics (needs `gh repo edit`), and UI-copy i18n can follow later.
-- **LTE/WiFi signal in the OSD** (RSSI / quality %): needs vehicle-side reading
-  (`iw`/`/proc/net/wireless` for WiFi, ModemManager/`mmcli` or AT for LTE) — device
-  specific, best done on real hardware. Add a status field + OSD display when present.
+  German in `README.de.md`/`docs/HARDWARE.de.md` with switchers. GitHub "About" +
+  topics are set. The setup page is fully English since v1.21.1. Still open: UI-copy
+  i18n (the ground app + setup page are English-only, no language switch).
+- **LTE/WiFi signal in the OSD — DONE (v1.19.0)**: `RealSystem.linkSignal()` prefers the
+  LTE signal % from `mmcli`, else parses the WiFi RSSI from `iw dev wlan0 link` (pure
+  helpers + tests in `vehicle/system/signal.ts`); shown in the OSD link block, with the
+  weak-link warning below 25 %. Interface name is hardcoded to `wlan0`.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 
