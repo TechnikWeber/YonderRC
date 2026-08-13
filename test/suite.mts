@@ -83,6 +83,20 @@ async function main() {
   ok('config stays on WS', prefersDataChannel('config') === false);
   ok('hello stays on WS', prefersDataChannel('hello') === false);
 
+  // ---- optional shared secret (off by default, exact match when set) ----
+  const { secretOk, readSecretFromUrl } = await import('../packages/vehicle/src/transport/auth');
+  ok('secret off (null) → allow', secretOk(null, undefined) === true);
+  ok('secret off (empty) → allow', secretOk('', 'whatever') === true);
+  ok('secret set + match → allow', secretOk('s3cr3t', 's3cr3t') === true);
+  ok('secret set + wrong → deny', secretOk('s3cr3t', 'nope') === false);
+  ok('secret set + missing → deny', secretOk('s3cr3t', undefined) === false);
+  ok('readSecretFromUrl parses query', readSecretFromUrl('/?secret=abc') === 'abc');
+  ok('readSecretFromUrl none → null', readSecretFromUrl('/') === null);
+  const { withSecret } = await import('../packages/ground/src/lib/transport');
+  ok('withSecret off → unchanged', withSecret('ws://h:8080', '') === 'ws://h:8080');
+  ok('withSecret appends encoded', withSecret('ws://h:8080', 'a b') === 'ws://h:8080?secret=a%20b');
+  ok('withSecret respects existing query', withSecret('ws://h:8080?x=1', 'a') === 'ws://h:8080?x=1&secret=a');
+
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');
   const dch = drone.throttleChannels[0];

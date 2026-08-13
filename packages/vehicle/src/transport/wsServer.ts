@@ -16,6 +16,7 @@ import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { serveGroundApp } from './staticServer.js';
+import { secretOk, readSecretFromUrl } from './auth.js';
 
 /**
  * v0.1 control link over WebSocket, now doubling as the WebRTC signaling channel
@@ -46,6 +47,14 @@ export function startWsServer(
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const who = req.socket.remoteAddress ?? 'unknown';
+    // Optional shared secret: when configured, the control link must present it as
+    // `?secret=` (browsers can't set WS headers). Close 4001 so the ground can tell
+    // an auth failure from a normal drop and stop retrying. OFF by default → no-op.
+    if (!secretOk(config.apiSecret, readSecretFromUrl(req.url))) {
+      console.warn(`[link] rejected ${who}: missing/invalid API secret`);
+      ws.close(4001, 'auth required');
+      return;
+    }
     console.log(`[link] ground connected from ${who}`);
     // Fresh ground session: its seq restarts at 0, so forget the old high-water
     // mark or every new frame would be dropped as "stale".

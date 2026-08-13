@@ -3,12 +3,16 @@ import type { LinkState } from '../lib/transport';
 export function ConnectionBar({
   url,
   setUrl,
+  secret,
+  setSecret,
   linkState,
   onConnect,
   onDisconnect,
 }: {
   url: string;
   setUrl: (v: string) => void;
+  secret: string;
+  setSecret: (v: string) => void;
   linkState: LinkState;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -27,6 +31,17 @@ export function ConnectionBar({
           autoCorrect="off"
           aria-label="Vehicle WebSocket address"
           placeholder="ws://vehicle-host:8080"
+        />
+        <input
+          className="secret"
+          type="password"
+          value={secret}
+          onChange={(e) => setSecret(e.target.value)}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          aria-label="API secret (optional)"
+          placeholder="secret (optional)"
         />
         {connected || linkState === 'connecting' ? (
           <button className="btn" onClick={onDisconnect}>

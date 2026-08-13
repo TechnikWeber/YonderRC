@@ -9,6 +9,7 @@ import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
+import { secretOk, readSecretFromReq } from './auth.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -72,6 +73,15 @@ export async function handleSetup(
     return true;
   }
 
+  // Auth gate: only MUTATING calls (POST) are protected, and only when a secret is
+  // configured. GET status stays open (read-only) and the /setup page above is open
+  // so the operator can always reach the UI to enter the secret. When no secret is
+  // set this is a no-op — first-time connect/setup needs nothing.
+  if (method === 'POST' && url.startsWith('/api/') && !secretOk(ctx.config.apiSecret, readSecretFromReq(req))) {
+    json(res, 401, { ok: false, message: 'Unauthorized — provide the API secret.' });
+    return true;
+  }
+
   if (url === '/api/system' && method === 'GET') {
     json(res, 200, await ctx.system.status());
     return true;
@@ -89,16 +99,24 @@ export async function handleSetup(
       apn: c.apn,
       disarmOnReconnect: c.disarmOnReconnect,
       systemKind: c.systemKind,
+      // Never return the secret itself — only whether one is required.
+      authRequired: !!c.apiSecret,
     });
     return true;
   }
 
   if (url === '/api/config' && method === 'POST') {
     const patch = (await readBody(req)) as PersistentConfig;
+    // Normalise an empty secret to null (= OFF) so clearing it is unambiguous.
+    if (patch.apiSecret !== undefined) patch.apiSecret = patch.apiSecret || null;
     const saved = savePersisted(ctx.config.configPath, patch);
     if (typeof patch.disarmOnReconnect === 'boolean') ctx.config.disarmOnReconnect = patch.disarmOnReconnect;
+    // Apply the secret live so the gate takes effect immediately (no restart).
+    if (patch.apiSecret !== undefined) ctx.config.apiSecret = patch.apiSecret;
     ctx.onConfigSaved?.(patch);
-    json(res, 200, { ok: true, saved, note: 'Saved. Some changes apply after a restart.' });
+    // Don't echo the secret back in `saved`.
+    const { apiSecret: _omit, ...safeSaved } = saved;
+    json(res, 200, { ok: true, saved: safeSaved, note: 'Saved. Some changes apply after a restart.' });
     return true;
   }
 

@@ -104,6 +104,17 @@
       </section>
 
       <section class="panel">
+        <div class="eyebrow">Security (optional)</div>
+        <p class="msg">Optional shared secret. When set, saving settings here and the control link both require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted. <b>Off by default</b>, so first-time connect and setup need nothing.</p>
+        <label>API secret<input id="apiSecret" type="password" placeholder="leave empty = off" autocomplete="new-password" /></label>
+        <div class="btns">
+          <button class="btn primary" onclick="applySecret()">Apply secret</button>
+          <button class="btn" onclick="clearSecret()">Disable</button>
+        </div>
+        <div class="msg" id="sec-msg"></div>
+      </section>
+
+      <section class="panel">
         <div class="eyebrow">Cameras</div>
         <div id="cam-list"></div>
         <div class="btns">
@@ -173,9 +184,20 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
+      // Optional shared secret for mutating calls; kept in sessionStorage for this tab.
+      let apiSecret = sessionStorage.getItem('yrc_secret') || '';
       async function getJSON(u) { const r = await fetch(u); return r.json(); }
       async function post(u, body) {
-        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+        const send = () => fetch(u, {
+          method: 'POST',
+          headers: Object.assign({ 'content-type': 'application/json' }, apiSecret ? { 'x-yonderrc-secret': apiSecret } : {}),
+          body: JSON.stringify(body || {}),
+        });
+        let r = await send();
+        if (r.status === 401) {
+          const s = prompt('API secret required:');
+          if (s != null) { apiSecret = s; sessionStorage.setItem('yrc_secret', s); r = await send(); }
+        }
         return r.json();
       }
 
@@ -205,6 +227,28 @@
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
         $('apn').value = c.apn || '';
+        updateSecState(!!c.authRequired);
+      }
+
+      function updateSecState(authRequired) {
+        $('sec-msg').textContent = authRequired ? 'A secret is currently required.' : 'No secret set (open).';
+      }
+      async function applySecret() {
+        const v = $('apiSecret').value;
+        if (!v) { $('sec-msg').textContent = 'Enter a secret first, or use Disable.'; return; }
+        const r = await post('/api/config', { apiSecret: v });
+        apiSecret = v; sessionStorage.setItem('yrc_secret', v); // stay authed after setting
+        $('apiSecret').value = '';
+        $('sec-msg').textContent = 'Secret set — the ground app must now use it too.';
+        void r;
+        updateSecState(true);
+      }
+      async function clearSecret() {
+        const r = await post('/api/config', { apiSecret: null });
+        apiSecret = ''; sessionStorage.removeItem('yrc_secret');
+        $('sec-msg').textContent = 'Secret disabled (open).';
+        void r;
+        updateSecState(false);
       }
 
       async function saveConfig() {

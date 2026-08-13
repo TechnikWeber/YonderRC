@@ -34,6 +34,12 @@ export interface VehicleConfig {
    * turn OFF for aircraft, where disarming in flight would cut the motors.
    */
   disarmOnReconnect: boolean;
+  /**
+   * Optional shared secret. When set (non-empty), mutating setup-API calls and the
+   * control WebSocket must present it (header `x-yonderrc-secret` / `?secret=`).
+   * null = OFF (default), so first-time connect/setup needs nothing.
+   */
+  apiSecret: string | null;
   /** Telemetry (sensors, coulomb counting, battery). */
   telemetry: TelemetryConfig;
   /** Cameras (graphical); generates go2rtc.yaml. */
@@ -55,6 +61,7 @@ export interface PersistentConfig {
   videoBaseUrl?: string | null;
   apn?: string | null;
   disarmOnReconnect?: boolean;
+  apiSecret?: string | null;
   telemetry?: TelemetryConfig;
   cameras?: CameraCfg[];
 }
@@ -110,6 +117,7 @@ export function loadConfig(): VehicleConfig {
           : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:1984`,
     apn: p.apn ?? process.env.YRC_APN ?? null,
     disarmOnReconnect: p.disarmOnReconnect ?? true,
+    apiSecret: (p.apiSecret ?? process.env.YRC_API_SECRET ?? null) || null,
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

@@ -56,7 +56,17 @@ function effectiveVideoBase(reported: string | null | undefined, wsUrl: string):
 
 export function App() {
   const [url, setUrl] = useState(DEFAULT_URL);
+  const [secret, setSecretState] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('yonderrc.secret.v1') ?? '' : ''));
+  const setSecret = (v: string) => {
+    setSecretState(v);
+    try {
+      localStorage.setItem('yonderrc.secret.v1', v);
+    } catch {
+      /* ignore */
+    }
+  };
   const [linkState, setLinkState] = useState<LinkState>('disconnected');
+  const [authMsg, setAuthMsg] = useState<string | null>(null);
   const [welcome, setWelcome] = useState<WelcomeMessage | null>(null);
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryMessage | null>(null);
@@ -111,6 +121,10 @@ export function App() {
       onStatus: setStatus,
       onTelemetry: setTelemetry,
       onControlPath: setControlPath,
+      onAuthFail: () => {
+        setAuthMsg('Vehicle rejected the secret — check the API secret and Connect again.');
+        window.setTimeout(() => setAuthMsg(null), 6000);
+      },
     });
   }
 
@@ -352,9 +366,10 @@ export function App() {
   return (
     <div className="app">
       {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
+      {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.17.0</span>
+        <span className="ver">ground · v1.17.1</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -364,8 +379,10 @@ export function App() {
       <ConnectionBar
         url={url}
         setUrl={setUrl}
+        secret={secret}
+        setSecret={setSecret}
         linkState={linkState}
-        onConnect={() => linkRef.current?.connect(url)}
+        onConnect={() => linkRef.current?.connect(url, secret)}
         onDisconnect={() => linkRef.current?.disconnect()}
       />
 

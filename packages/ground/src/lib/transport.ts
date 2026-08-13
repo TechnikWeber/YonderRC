@@ -17,6 +17,15 @@ export interface LinkCallbacks {
   onStatus?: (msg: StatusMessage) => void;
   onTelemetry?: (msg: TelemetryMessage) => void;
   onControlPath?: (path: ControlPath) => void;
+  /** The vehicle rejected the shared secret (WS close 4001). */
+  onAuthFail?: () => void;
+}
+
+/** Append an optional shared secret as a `?secret=` query to the WS URL. */
+export function withSecret(url: string, secret?: string | null): string {
+  if (!secret) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}secret=${encodeURIComponent(secret)}`;
 }
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -42,6 +51,7 @@ export function prefersDataChannel(type: ClientMessage['type']): boolean {
 export class LinkClient {
   private ws: WebSocket | null = null;
   private url = '';
+  private secret: string | null = null;
   private seq = 0;
   private wantConnected = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -55,8 +65,9 @@ export class LinkClient {
     this.cbs = cbs;
   }
 
-  connect(url: string): void {
+  connect(url: string, secret?: string | null): void {
     this.url = url;
+    this.secret = secret ?? null;
     this.wantConnected = true;
     this.open();
   }
@@ -83,7 +94,7 @@ export class LinkClient {
   private open(): void {
     this.cbs.onState?.('connecting');
     try {
-      this.ws = new WebSocket(this.url);
+      this.ws = new WebSocket(withSecret(this.url, this.secret));
     } catch {
       this.scheduleReconnect();
       return;
@@ -113,10 +124,17 @@ export class LinkClient {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (ev) => {
       this.teardownRtc();
       this.cbs.onState?.('disconnected');
       this.cbs.onControlPath?.('ws');
+      // 4001 = the vehicle rejected our secret. Don't loop-reconnect on bad auth —
+      // stay down and let the operator fix the secret, then Connect again.
+      if (ev.code === 4001) {
+        this.wantConnected = false;
+        this.cbs.onAuthFail?.();
+        return;
+      }
       this.scheduleReconnect();
     };
     this.ws.onerror = () => {};

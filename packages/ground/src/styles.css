@@ -101,6 +101,10 @@ body {
   padding: 10px 12px;
   border-radius: 8px;
 }
+/* optional shared secret — kept narrow so it doesn't crowd the address */
+.conn input.secret {
+  flex: 0 1 170px;
+}
 .conn input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;

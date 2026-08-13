@@ -3,6 +3,25 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.17.1
+**English**
+- **Optional shared secret (off by default).** Set an "API secret" in the vehicle's
+  Setup › Security. While unset, nothing changes — first-time connect and setup need
+  no password. Once set, it's required for **saving settings** (mutating `/api/*`
+  POSTs, via header `x-yonderrc-secret` or `?secret=`) **and for the control link**
+  (the ground app's new "secret" field, sent as `?secret=`; a wrong/missing secret is
+  rejected with WS close 4001). The secret is never returned by the API. Set/clear it
+  live without a restart.
+
+**Deutsch**
+- **Optionales Shared Secret (standardmäßig aus).** Unter Setup › Security am Fahrzeug
+  ein „API secret" setzen. Solange keins gesetzt ist, ändert sich nichts — der erste
+  Verbindungsaufbau und das Setup brauchen kein Passwort. Einmal gesetzt, ist es nötig
+  zum **Speichern von Einstellungen** (mutierende `/api/*`-POSTs, per Header
+  `x-yonderrc-secret` oder `?secret=`) **und für den Steuer-Link** (neues „secret"-Feld
+  in der Ground-App, als `?secret=`; falsches/fehlendes Secret → WS-Close 4001). Das
+  Secret wird von der API nie zurückgegeben. Setzen/Löschen live ohne Neustart.
+
 ## v1.17.0
 **English**
 - **English-first documentation.** `README.md` and `docs/HARDWARE.md` are now
