@@ -3,6 +3,23 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.18.1
+**English**
+- **Auto-disarm on reconnect is now coupled to the vehicle type** — the ground derives
+  it from the active profile (car/boat = ON, plane/drone = OFF) and pushes it to the
+  vehicle, so a brief reconnect can no longer cut an aircraft's motors in flight. The
+  Controls (Safety) panel shows the current policy and why; the vehicle's manual toggle
+  is now just a fallback used until a ground connects. Failsafe is unchanged and remains
+  the primary link-loss safety.
+
+**Deutsch**
+- **Auto-Disarm bei Reconnect ist jetzt an den Fahrzeugtyp gekoppelt** — der Ground
+  leitet es aus dem aktiven Profil ab (Auto/Boot = AN, Flugzeug/Drohne = AUS) und pusht
+  es ans Fahrzeug, sodass ein kurzer Reconnect einem Luftfahrzeug nicht mehr im Flug die
+  Motoren kappen kann. Das Controls-(Safety-)Panel zeigt die aktuelle Politik und warum;
+  der manuelle Schalter am Fahrzeug ist nur noch ein Fallback, bis ein Ground verbindet.
+  Failsafe bleibt unverändert die primäre Sicherheit bei Link-Verlust.
+
 ## v1.18.0
 **English**
 - **Selectable remote access** (Setup › Remote access) — pick one method to reach the

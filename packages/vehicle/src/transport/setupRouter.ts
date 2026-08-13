@@ -117,7 +117,10 @@ export async function handleSetup(
     // Normalise an empty secret to null (= OFF) so clearing it is unambiguous.
     if (patch.apiSecret !== undefined) patch.apiSecret = patch.apiSecret || null;
     const saved = savePersisted(ctx.config.configPath, patch);
-    if (typeof patch.disarmOnReconnect === 'boolean') ctx.config.disarmOnReconnect = patch.disarmOnReconnect;
+    if (typeof patch.disarmOnReconnect === 'boolean') {
+      ctx.config.disarmOnReconnect = patch.disarmOnReconnect;
+      ctx.core.setDisarmOnReconnect(patch.disarmOnReconnect); // keep the live flag in sync
+    }
     // Apply the secret live so the gate takes effect immediately (no restart).
     if (patch.apiSecret !== undefined) ctx.config.apiSecret = patch.apiSecret;
     ctx.onConfigSaved?.(patch);

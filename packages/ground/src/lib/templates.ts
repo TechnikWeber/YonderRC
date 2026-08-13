@@ -235,6 +235,17 @@ export function disarmedThrottleUs(vehicleType: VehicleType, endpoints: Endpoint
   return vehicleType === 'car' || vehicleType === 'boat' ? centerUs(endpoints) : endpoints.minUs;
 }
 
+/**
+ * Should the vehicle auto-disarm when a new ground connects? Vehicle-type policy:
+ * car/boat → YES (stopping is always safe; prevents runaway on reconnect), but
+ * plane/drone → NO, because disarming in flight cuts the motors and it falls. The
+ * ground derives this from the active profile and pushes it, so it can't be
+ * mis-set independently of the vehicle type.
+ */
+export function disarmOnReconnectForType(vehicleType: VehicleType): boolean {
+  return vehicleType === 'car' || vehicleType === 'boat';
+}
+
 function buildBindings(
   t: VehicleTemplate,
   method: InputMethod,

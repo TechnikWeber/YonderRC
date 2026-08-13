@@ -60,9 +60,10 @@ export function startWsServer(
     // mark or every new frame would be dropped as "stale".
     core.resetControlLink();
     // Safety: by default every new connection starts DISARMED, so after a link
-    // loss + reconnect the operator must re-arm deliberately. Disabled for aircraft
-    // (config.disarmOnReconnect = false), where cutting motors in flight would crash.
-    if (config.disarmOnReconnect) core.setArmed(false);
+    // loss + reconnect the operator must re-arm deliberately. The flag lives on the
+    // core (seeded from config, then overridden per vehicle type by the ground), so
+    // it's OFF for aircraft where cutting motors in flight would crash.
+    if (core.shouldDisarmOnReconnect) core.setArmed(false);
 
     const sendSignal = (msg: RtcSignalMessage) => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));

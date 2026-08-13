@@ -18,6 +18,8 @@ export function ControlsPanel({
   onDownloadLog,
   onClearLog,
   input,
+  autoDisarm,
+  vehicleType,
 }: {
   bindings: ActionBindings;
   onBindings: (b: ActionBindings) => void;
@@ -31,6 +33,8 @@ export function ControlsPanel({
   onDownloadLog: () => void;
   onClearLog: () => void;
   input: InputManager;
+  autoDisarm: boolean;
+  vehicleType: string;
 }) {
   const [learn, setLearn] = useState<{ id: ActionId; what: 'key' | 'button' } | null>(null);
 
@@ -70,6 +74,11 @@ export function ControlsPanel({
         Pre-arm check — refuse to arm unless throttle is at its rest position
       </label>
       <p className="note">Uses each throttle channel's detent: centre for reverse-capable cars and drones, idle (min) for planes/boats. Prevents a lurch on arming.</p>
+
+      <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>
+        Auto-disarm on reconnect: <b>{autoDisarm ? 'ON' : 'OFF'}</b>
+        <span className="info-sub"> — set automatically from vehicle type (<b>{vehicleType}</b>): on for car/boat, off for plane/drone (so a reconnect can't cut motors in flight). Pushed to the vehicle on connect.</span>
+      </div>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Action bindings</div>
       <p className="note">Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over the reliable link.</p>

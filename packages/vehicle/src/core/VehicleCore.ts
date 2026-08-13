@@ -26,6 +26,11 @@ export interface VehicleCoreOptions {
    * (typically throttle). Prevents a motor spinning up on connect/boot.
    */
   throttleChannels?: number[];
+  /**
+   * Auto-disarm when a new ground connects. Default true (safe for cars/boats). The
+   * ground overrides this per vehicle type (false for aircraft) via a config frame.
+   */
+  disarmOnReconnect?: boolean;
 }
 
 /**
@@ -45,6 +50,7 @@ export class VehicleCore {
   private disarmedUs: number[];
   private testOverride: { ch: number; us: number } | null = null;
   private throttleChannels: Set<number>;
+  private disarmOnReconnect: boolean;
 
   private commanded: number[];
   private armed = false;
@@ -63,6 +69,7 @@ export class VehicleCore {
     this.failsafeUs = (opts.failsafeUs ?? neutralChannels()).slice(0, this.channelCount);
     this.disarmedUs = this.failsafeUs.slice();
     this.throttleChannels = new Set(opts.throttleChannels ?? []);
+    this.disarmOnReconnect = opts.disarmOnReconnect ?? true;
     this.commanded = this.failsafeUs.slice();
   }
 
@@ -167,6 +174,14 @@ export class VehicleCore {
   /** Update which channels are forced safe while disarmed (typically throttle). */
   setThrottleChannels(channels: number[]): void {
     this.throttleChannels = new Set(channels.filter((n) => Number.isInteger(n)));
+  }
+
+  /** Vehicle-type policy pushed from the ground: auto-disarm on a new connection? */
+  setDisarmOnReconnect(v: boolean): void {
+    this.disarmOnReconnect = v;
+  }
+  get shouldDisarmOnReconnect(): boolean {
+    return this.disarmOnReconnect;
   }
 
   /** True while no fresh frame has arrived within the watchdog window. */

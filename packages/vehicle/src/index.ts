@@ -12,7 +12,7 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.18.0');
+  console.log('  YonderRC vehicle service  v1.18.1');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -31,6 +31,7 @@ async function main() {
     driver: await createDriver(config.driver, driverOpts),
     watchdogTimeoutMs: config.watchdogTimeoutMs,
     throttleChannels: config.throttleChannels,
+    disarmOnReconnect: config.disarmOnReconnect,
   });
   try {
     await core.start();

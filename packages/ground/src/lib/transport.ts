@@ -229,10 +229,10 @@ export class LinkClient {
     // so a panic-disarm can't be dropped on a lossy data channel.
     this.send({ type: 'arm', armed });
   }
-  sendConfig(failsafeUs: number[], throttleChannels: number[], disarmedUs?: number[]): void {
+  sendConfig(failsafeUs: number[], throttleChannels: number[], disarmedUs?: number[], disarmOnReconnect?: boolean): void {
     // Config always goes over WS (reliable) regardless of control path.
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: 'config', failsafeUs, throttleChannels, disarmedUs }));
+      this.ws.send(JSON.stringify({ type: 'config', failsafeUs, throttleChannels, disarmedUs, disarmOnReconnect }));
     }
   }
 

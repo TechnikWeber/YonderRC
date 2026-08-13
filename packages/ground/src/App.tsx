@@ -31,7 +31,7 @@ import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWar
 import { beep } from './lib/beep';
 import { logToCsv, downloadText, LOG_CAP, type LogRow } from './lib/logger';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
-import { buildProfile, vehicleTypes } from './lib/templates';
+import { buildProfile, vehicleTypes, disarmOnReconnectForType } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -133,7 +133,12 @@ export function App() {
   }
 
   function pushConfig(p: Profile) {
-    linkRef.current?.sendConfig(profileFailsafeUs(p), p.throttleChannels, profileDisarmedUs(p));
+    linkRef.current?.sendConfig(
+      profileFailsafeUs(p),
+      p.throttleChannels,
+      profileDisarmedUs(p),
+      disarmOnReconnectForType(p.vehicleType), // vehicle-type policy: car/boat on, aircraft off
+    );
   }
 
   // Ground factory reset: wipe every `yonderrc.*` key (models, bindings, actions,
@@ -399,7 +404,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.18.0</span>
+        <span className="ver">ground · v1.18.1</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -451,7 +456,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} autoDisarm={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>

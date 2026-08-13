@@ -6,7 +6,7 @@
 import * as C from '../packages/vehicle/src/sensors/convert';
 import { TelemetryService } from '../packages/vehicle/src/sensors/TelemetryService';
 import { cameraSource, scaleCamera } from '../packages/vehicle/src/video/cameraManager';
-import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents, applyStickMode, createBinding, nextFreeChannel, funcFromLabel } from '../packages/ground/src/lib/templates';
+import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents, applyStickMode, createBinding, nextFreeChannel, funcFromLabel, disarmOnReconnectForType } from '../packages/ground/src/lib/templates';
 import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib/profiles';
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
@@ -146,6 +146,11 @@ async function main() {
   const plane = buildProfile('plane');
   const pch = plane.throttleChannels[0];
   ok('plane failsafe throttle = min', profileFailsafeUs(plane)[pch] === 1000);
+  // auto-disarm on reconnect is coupled to vehicle type (aircraft = OFF)
+  ok('car auto-disarm on reconnect', disarmOnReconnectForType('car') === true);
+  ok('boat auto-disarm on reconnect', disarmOnReconnectForType('boat') === true);
+  ok('plane NO auto-disarm (motors)', disarmOnReconnectForType('plane') === false);
+  ok('drone NO auto-disarm (motors)', disarmOnReconnectForType('drone') === false);
   // endpoints change must NOT clobber failsafe
   const droneEp = applyEndpoints(drone, { minUs: 1100, maxUs: 1900 });
   ok('applyEndpoints keeps drone failsafe', droneEp.bindings.find((b) => b.channel === dch)?.shaping.failsafeUs === 1500);

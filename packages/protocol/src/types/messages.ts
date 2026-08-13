@@ -66,6 +66,12 @@ export interface SetConfigMessage {
    * holds at center. Defaults to failsafe if omitted.
    */
   disarmedUs?: number[];
+  /**
+   * Whether the vehicle should auto-disarm when a new ground connects. Derived by
+   * the ground from the vehicle type (car/boat = true, plane/drone = false) so a
+   * reconnect can't cut an aircraft's motors in flight. Applies to the NEXT connect.
+   */
+  disarmOnReconnect?: boolean;
 }
 
 /** Vehicle → Ground */

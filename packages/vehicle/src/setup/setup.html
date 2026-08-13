@@ -118,7 +118,7 @@
           <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
           <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
         </div>
-        <label class="chk"><input type="checkbox" id="disarmOnReconnect" /> Auto-disarm on reconnect <span style="color:var(--muted)">— turn OFF for aircraft (disarming in flight cuts motors)</span></label>
+        <label class="chk"><input type="checkbox" id="disarmOnReconnect" /> Auto-disarm on reconnect <span style="color:var(--muted)">— fallback only; the ground app sets this automatically from the vehicle type (car/boat = on, plane/drone = off). Used until a ground connects.</span></label>
         <div class="btns"><button class="btn primary" onclick="saveConfig()">Save</button></div>
         <div class="msg" id="cfg-msg"></div>
       </section>

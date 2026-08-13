@@ -27,10 +27,12 @@ export function handleClientMessage(core: VehicleCore, msg: ClientMessage): void
       if (msg.failsafeUs) core.setFailsafe(msg.failsafeUs);
       if (msg.disarmedUs) core.setDisarmedUs(msg.disarmedUs);
       if (msg.throttleChannels) core.setThrottleChannels(msg.throttleChannels);
+      if (typeof msg.disarmOnReconnect === 'boolean') core.setDisarmOnReconnect(msg.disarmOnReconnect);
       console.log(
         `[link] config updated: failsafe=${msg.failsafeUs ? 'yes' : 'no'} ` +
           `disarmed=${msg.disarmedUs ? 'yes' : 'no'} ` +
-          `throttle=[${msg.throttleChannels?.join(',') ?? 'unchanged'}]`,
+          `throttle=[${msg.throttleChannels?.join(',') ?? 'unchanged'}] ` +
+          `disarmOnReconnect=${typeof msg.disarmOnReconnect === 'boolean' ? msg.disarmOnReconnect : 'unchanged'}`,
       );
       break;
     case 'rtc':
