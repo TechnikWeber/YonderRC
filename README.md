@@ -181,6 +181,22 @@ The current changes are in [`CHANGELOG.md`](CHANGELOG.md) and in the
 [GitHub releases](https://github.com/TechnikWeber/YonderRC/releases). This README
 always describes the current state.
 
+## Disclaimer — safety & legal
+
+YonderRC controls **physical vehicles** and can cause property damage, injury or
+death. It is provided **"as is", without any warranty**, and the author accepts
+**no liability** for any damage or loss arising from its use.
+
+- **FPV and beyond-visual-line-of-sight (BVLOS) operation is restricted or outright
+  prohibited in many countries** and may require registration, a licence, a spotter
+  or special authorisation. **Check and comply with your local laws** (aviation/drone,
+  radio/spectrum, privacy) **before you use it.**
+- Always fly/drive **responsibly**: keep the failsafe and arming safeguards enabled,
+  test everything in the simulator and on the bench first, keep away from people and
+  property, and never rely on the link alone.
+- You use YonderRC **entirely at your own risk.** See [`LICENSE`](LICENSE) for the
+  full no-warranty / liability terms.
+
 ## License
 
 YonderRC is licensed under **CC BY-NC-ND 4.0** (Attribution – NonCommercial –

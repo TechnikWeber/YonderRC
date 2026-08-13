@@ -181,6 +181,24 @@ Die aktuellen Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md) und in den
 [GitHub-Releases](https://github.com/TechnikWeber/YonderRC/releases). Diese README
 beschreibt immer den aktuellen Stand.
 
+## Haftungsausschluss — Sicherheit & Recht
+
+YonderRC steuert **echte Fahrzeuge** und kann Sach-, Personen- oder tödliche Schäden
+verursachen. Die Software wird **„wie besehen", ohne jede Gewährleistung**
+bereitgestellt, und der Autor übernimmt **keinerlei Haftung** für Schäden oder
+Verluste, die aus der Nutzung entstehen.
+
+- **FPV und der Betrieb außerhalb der Sichtweite (BVLOS) sind in vielen Ländern
+  eingeschränkt oder ganz verboten** und können Registrierung, eine Lizenz, einen
+  Beobachter (Spotter) oder eine Sondergenehmigung erfordern. **Informiere dich und
+  halte die für dich geltenden Gesetze ein** (Luftfahrt/Drohnen, Funk/Frequenzen,
+  Datenschutz) **bevor du es einsetzt.**
+- Setze es immer **verantwortungsvoll** ein: Failsafe und Arming aktiviert lassen,
+  alles zuerst im Simulator und auf der Werkbank testen, Abstand zu Menschen und
+  Sachwerten halten und dich nie allein auf die Funkverbindung verlassen.
+- Die Nutzung erfolgt **vollständig auf eigenes Risiko.** Der volle
+  Gewährleistungs-/Haftungsausschluss steht in [`LICENSE`](LICENSE).
+
 ## Lizenz
 
 YonderRC steht unter **CC BY-NC-ND 4.0** (Namensnennung – nicht kommerziell –
