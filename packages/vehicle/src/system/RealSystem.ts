@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type {
   ActionResult,
+  LteConfig,
   LteStatus,
   RemoteAccessConfig,
   RemoteAccessStatus,
@@ -14,6 +15,7 @@ import type {
   WifiStatus,
 } from './SystemManager.js';
 import { normaliseWireguardConf } from './SystemManager.js';
+import { parseModemId, parseModemInfo, lteStateLabel } from './lte.js';
 
 const run = promisify(exec);
 const runFile = promisify(execFile);
@@ -90,31 +92,35 @@ export class RealSystem implements SystemManager {
   }
 
   private async lteStatus(): Promise<LteStatus> {
-    const list = await sh('mmcli -L');
     const empty: LteStatus = {
-      present: false,
-      connected: false,
-      operator: null,
-      signal: null,
-      apn: null,
-      iface: null,
-      ip: null,
+      present: false, connected: false, operator: null, signal: null,
+      apn: null, iface: null, ip: null, state: 'no-modem', modemModel: null, pinRequired: false,
     };
-    if (!list.ok || !/Modem\/\d+/.test(list.out)) return empty;
-    const m = list.out.match(/Modem\/(\d+)/);
-    if (!m) return empty;
-    const info = await sh(`mmcli -m ${m[1]}`);
-    const operator = info.out.match(/operator name:\s*'?([^'\n]+)'?/i)?.[1]?.trim() ?? null;
-    const signalStr = info.out.match(/signal quality:\s*'?(\d+)/i)?.[1];
-    const state = info.out.match(/state:\s*'?(\w+)/i)?.[1] ?? '';
+    const list = await sh('mmcli -L');
+    const id = list.ok ? parseModemId(list.out) : null;
+    if (!id) return empty;
+
+    const info = await sh(`mmcli -m ${id}`);
+    const parsed = parseModemInfo(info.out);
+    const hasSim = !/SIM\s*\|\s*primary sim path:\s*none/i.test(info.out) && !/sim-missing/i.test(info.out);
+
+    // Pull the live APN/iface/IP from our NM connection when it's up.
+    const nm = await sh("nmcli -t -f GENERAL.STATE,IP4.ADDRESS,connection.id connection show yonderrc-lte");
+    const apn = (await sh("nmcli -t -f gsm.apn connection show yonderrc-lte")).out.split(':')[1]?.trim() || null;
+    const ip = nm.out.match(/IP4\.ADDRESS\[1]:\s*([\d.]+)/)?.[1] ?? null;
+    const iface = (await sh("nmcli -t -f connection.interface-name connection show yonderrc-lte")).out.split(':')[1]?.trim() || 'wwan0';
+
     return {
       present: true,
-      connected: /connected/i.test(state),
-      operator,
-      signal: signalStr ? Number(signalStr) : null,
-      apn: null,
-      iface: 'wwan0',
-      ip: null,
+      connected: parsed.state === 'connected',
+      operator: parsed.operator,
+      signal: parsed.signal,
+      apn,
+      iface,
+      ip,
+      state: lteStateLabel(parsed, hasSim),
+      modemModel: parsed.model,
+      pinRequired: parsed.pinRequired,
     };
   }
 
@@ -129,19 +135,32 @@ export class RealSystem implements SystemManager {
     };
   }
 
-  async lteConnect(apn: string): Promise<ActionResult> {
-    // Create/activate an NM GSM connection for the modem. execFile (no shell) so
-    // the APN can't inject commands even with quotes/semicolons in it.
-    const del = await shArgs('nmcli', ['connection', 'delete', 'yonderrc-lte']);
-    void del; // ignore if it didn't exist
-    const add = await shArgs('nmcli', [
-      'connection', 'add', 'type', 'gsm', 'ifname', '*',
-      'con-name', 'yonderrc-lte', 'apn', apn,
-    ]);
+  async lteConnect(cfg: LteConfig): Promise<ActionResult> {
+    const apn = cfg.apn ?? '';
+    // 1) Unlock the SIM first if a PIN is configured (no shell → PIN can't inject).
+    if (cfg.pin) {
+      const id = parseModemId((await sh('mmcli -L')).out);
+      if (id) {
+        const unlock = await shArgs('sudo', ['mmcli', '-m', id, `--pin=${cfg.pin}`]);
+        if (!unlock.ok && /incorrect|failure|error/i.test(unlock.out)) {
+          return { ok: false, message: `SIM PIN rejected: ${unlock.out}` };
+        }
+      }
+    }
+    // 2) (Re)create the NM GSM connection. execFile (no shell) so APN/user/password
+    //    can't be interpreted as shell syntax. autoconnect=yes so NM redials itself.
+    await shArgs('nmcli', ['connection', 'delete', 'yonderrc-lte']); // ignore if absent
+    const args = [
+      'connection', 'add', 'type', 'gsm', 'ifname', '*', 'con-name', 'yonderrc-lte',
+      'connection.autoconnect', 'yes', 'gsm.apn', apn,
+    ];
+    if (cfg.username) args.push('gsm.username', cfg.username);
+    if (cfg.password) args.push('gsm.password', cfg.password);
+    const add = await shArgs('nmcli', args);
     if (!add.ok) return { ok: false, message: `nmcli add failed: ${add.out}` };
     const up = await shArgs('nmcli', ['connection', 'up', 'yonderrc-lte']);
     return up.ok
-      ? { ok: true, message: `LTE connecting on APN "${apn}".` }
+      ? { ok: true, message: `LTE connecting on APN "${apn}"${cfg.username ? ' (with auth)' : ''}.` }
       : { ok: false, message: `nmcli up failed: ${up.out}` };
   }
 

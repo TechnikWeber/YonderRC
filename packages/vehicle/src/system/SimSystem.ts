@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import type {
   ActionResult,
+  LteConfig,
   LteStatus,
   RemoteAccessConfig,
   RemoteAccessStatus,
@@ -25,6 +26,9 @@ export class SimSystem implements SystemManager {
     apn: null,
     iface: 'wwan0',
     ip: null,
+    state: 'registered',
+    modemModel: 'SimModem LTE-1',
+    pinRequired: false,
   };
   private tailscale: TailscaleStatus = {
     installed: true,
@@ -45,14 +49,15 @@ export class SimSystem implements SystemManager {
     };
   }
 
-  async lteConnect(apn: string): Promise<ActionResult> {
-    this.lte = { ...this.lte, connected: true, apn, ip: '10.64.12.34' };
+  async lteConnect(cfg: LteConfig): Promise<ActionResult> {
+    const apn = cfg.apn ?? '';
+    this.lte = { ...this.lte, connected: true, apn, ip: '10.64.12.34', state: 'connected' };
     this.wifi = { mode: 'client', ssid: null, ip: null };
-    return { ok: true, message: `LTE connected on APN "${apn}" (simulated).` };
+    return { ok: true, message: `LTE connected on APN "${apn}"${cfg.username ? ' (with auth)' : ''} (simulated).` };
   }
 
   async lteDisconnect(): Promise<ActionResult> {
-    this.lte = { ...this.lte, connected: false, ip: null };
+    this.lte = { ...this.lte, connected: false, ip: null, state: 'registered' };
     return { ok: true, message: 'LTE disconnected (simulated).' };
   }
 

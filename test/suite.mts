@@ -135,6 +135,29 @@ async function main() {
   const ztDown = await sys.remoteDown({ kind: 'zerotier', zerotierNetworkId: '8056c2e21c000001' });
   ok('sim remote down ok', ztDown.ok === true);
 
+  // ---- LTE: mmcli parsing + secret redaction + sim dial ----
+  const LTE = await import('../packages/vehicle/src/system/lte');
+  const mmA = [
+    '  Hardware |          model: Quectel EG25-G',
+    '  Status   |          state: registered',
+    '           |    power state: on',
+    '           | signal quality: 71% (recent)',
+    '  3GPP     |  operator name: Telekom.de',
+  ].join('\n');
+  const iA = LTE.parseModemInfo(mmA);
+  ok('mmcli state parsed (not power state)', iA.state === 'registered', `=${iA.state}`);
+  ok('mmcli operator parsed', iA.operator === 'Telekom.de', `=${iA.operator}`);
+  ok('mmcli signal parsed', iA.signal === 71);
+  ok('mmcli model parsed', iA.model === 'Quectel EG25-G', `=${iA.model}`);
+  ok('mmcli no pin needed', iA.pinRequired === false);
+  const mmB = '  Status   |          state: locked\n           | unlock required: sim-pin';
+  ok('mmcli pin required', LTE.parseModemInfo(mmB).pinRequired === true);
+  ok('mmcli modem id', LTE.parseModemId('  /org/freedesktop/ModemManager1/Modem/2 [Quectel]') === '2');
+  const rl = LTE.redactLteConfig({ apn: 'internet', pin: '1234', username: 'u', password: 'p' });
+  ok('lte redact hides pin+pass', !('pin' in rl) && !('password' in rl) && rl.hasPin === true && rl.hasPassword === true && rl.apn === 'internet' && rl.username === 'u');
+  const lteUp = await sys.lteConnect({ apn: 'internet', pin: '1234' });
+  ok('sim lte connect ok', lteUp.ok === true);
+
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');
   const dch = drone.throttleChannels[0];

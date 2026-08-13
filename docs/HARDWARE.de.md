@@ -211,7 +211,13 @@ legt Pi und Boden-Gerät ins selbe private Netz — überall erreichbar.
    mmcli -L
    ```
 2. Im Setup unter **LTE** die **APN** deines Anbieters eintragen → **Connect**.
-   Die APN wird gespeichert und verbindet künftig automatisch beim Booten.
+   Die APN wird gespeichert und verbindet künftig automatisch beim Booten (mit
+   `autoconnect`, NetworkManager wählt also selbst neu). Hat deine SIM eine **PIN**
+   oder braucht dein Anbieter **APN-Benutzer/Passwort**, trage das ebenfalls ein —
+   PIN/Passwort werden am Fahrzeug gespeichert und nie wieder angezeigt. Das
+   Status-Panel zeigt Modem-Modell, Registrierungsstatus und markiert „SIM PIN
+   required", wenn nötig. Dongles im „Zero-CD"/Speichermodus übernimmt
+   `usb-modeswitch` (vom Setup-Skript installiert).
 
 ### 4.2 Tailscale
 

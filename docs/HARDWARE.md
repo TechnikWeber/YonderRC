@@ -212,7 +212,12 @@ ground device on the same private network — reachable anywhere.
    mmcli -L
    ```
 2. In the setup under **LTE**, enter your provider's **APN** → **Connect**. The APN is
-   saved and will connect automatically at boot from then on.
+   saved and will connect automatically at boot from then on (with `autoconnect`, so
+   NetworkManager redials by itself). If your SIM has a **PIN**, or your carrier needs
+   **APN username/password**, fill those in too — PIN/password are stored on the vehicle
+   and never shown again. The status panel shows the modem model, registration state and
+   flags "SIM PIN required" when relevant. Dongles that boot in "Zero-CD"/storage mode are
+   handled by `usb-modeswitch` (installed by the setup script).
 
 ### 4.2 Tailscale
 

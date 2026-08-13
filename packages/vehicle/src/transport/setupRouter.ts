@@ -16,7 +16,9 @@ import {
   looksLikeWireguardConf,
   isZerotierNetworkId,
   type RemoteAccessConfig,
+  type LteConfig,
 } from '../system/SystemManager.js';
+import { redactLteConfig } from '../system/lte.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -103,7 +105,7 @@ export async function handleSetup(
       throttleChannels: c.throttleChannels,
       cameras: c.cameras,
       videoBaseUrl: c.videoBaseUrl,
-      apn: c.apn,
+      apn: c.lte.apn,
       disarmOnReconnect: c.disarmOnReconnect,
       systemKind: c.systemKind,
       // Never return the secret itself — only whether one is required.
@@ -130,9 +132,23 @@ export async function handleSetup(
     return true;
   }
 
+  if (url === '/api/lte' && method === 'GET') {
+    json(res, 200, { config: redactLteConfig(ctx.config.lte) });
+    return true;
+  }
   if (url === '/api/lte' && method === 'POST') {
-    const { apn } = (await readBody(req)) as { apn?: string };
-    json(res, 200, await ctx.system.lteConnect(apn ?? ''));
+    const body = (await readBody(req)) as Partial<LteConfig>;
+    const cur = ctx.config.lte;
+    // Merge onto the stored config so unspecified secrets (PIN, password) survive.
+    const cfg: LteConfig = {
+      apn: body.apn !== undefined ? body.apn || null : cur.apn,
+      pin: body.pin !== undefined ? body.pin || null : cur.pin ?? null,
+      username: body.username !== undefined ? body.username || null : cur.username ?? null,
+      password: body.password !== undefined ? body.password || null : cur.password ?? null,
+    };
+    savePersisted(ctx.config.configPath, { lte: cfg });
+    ctx.config.lte = cfg;
+    json(res, 200, await ctx.system.lteConnect(cfg));
     return true;
   }
   if (url === '/api/lte/disconnect' && method === 'POST') {

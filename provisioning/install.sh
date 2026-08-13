@@ -10,7 +10,9 @@ echo "== YonderRC provisioning =="
 echo "-- packages"
 apt-get update
 # wireguard-tools = wg / wg-quick for the WireGuard remote-access option (e.g. FritzBox).
-apt-get install -y curl git ffmpeg network-manager modemmanager wireguard-tools
+# usb-modeswitch = flips "Zero-CD" LTE dongles from storage mode into modem mode so
+# ModemManager can see them (many Huawei/ZTE sticks need this).
+apt-get install -y curl git ffmpeg network-manager modemmanager wireguard-tools usb-modeswitch
 
 echo "-- Node.js 22"
 if ! command -v node >/dev/null || [ "$(node -v | cut -c2-3)" -lt 20 ]; then

@@ -3,6 +3,27 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.18.2
+**English**
+- **Much better LTE stick setup** (Setup › LTE) — no longer assumes pure plug-and-play:
+  - **SIM PIN** unlock (`mmcli --pin`) for locked SIMs.
+  - **APN username/password** for carriers that require APN auth.
+  - **Richer status/diagnostics**: real modem model, registration state, live APN/IP,
+    and a clear "SIM PIN required" flag (instead of just "idle").
+  - The NM connection is created with **`autoconnect`** so it redials itself.
+  - PIN/password are stored on the vehicle and **never returned** by the API.
+  - The install script now adds **`usb-modeswitch`** for "Zero-CD" dongles.
+
+**Deutsch**
+- **Deutlich besseres LTE-Stick-Setup** (Setup › LTE) — nicht mehr reines Plug-and-Play:
+  - **SIM-PIN**-Entsperrung (`mmcli --pin`) für gesperrte SIMs.
+  - **APN-Benutzer/Passwort** für Anbieter mit APN-Auth.
+  - **Reichere Statusanzeige/Diagnose**: echtes Modem-Modell, Registrierungsstatus, live
+    APN/IP und eine klare „SIM PIN required"-Markierung (statt nur „idle").
+  - Die NM-Verbindung wird mit **`autoconnect`** angelegt, wählt sich also selbst neu.
+  - PIN/Passwort werden am Fahrzeug gespeichert und von der API **nie zurückgegeben**.
+  - Das Install-Skript bringt jetzt **`usb-modeswitch`** für „Zero-CD"-Dongles mit.
+
 ## v1.18.1
 **English**
 - **Auto-disarm on reconnect is now coupled to the vehicle type** — the ground derives

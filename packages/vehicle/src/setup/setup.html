@@ -61,10 +61,16 @@
       <section class="panel">
         <div class="eyebrow">LTE</div>
         <label>APN<input id="apn" placeholder="internet" /></label>
+        <div class="grid2">
+          <label>SIM PIN (optional)<input id="ltePin" type="password" autocomplete="off" placeholder="leave empty if none" /></label>
+          <label>APN username (optional)<input id="lteUser" placeholder="usually empty" /></label>
+        </div>
+        <label>APN password (optional)<input id="ltePass" type="password" autocomplete="new-password" placeholder="usually empty" /></label>
         <div class="btns">
           <button class="btn primary" onclick="lteConnect()">Connect</button>
           <button class="btn" onclick="post('/api/lte/disconnect')">Disconnect</button>
         </div>
+        <p class="msg">Most data SIMs need only the APN. Add a PIN if your SIM is locked, and username/password only if your carrier requires APN auth. PIN/password are stored on the vehicle and never shown again.</p>
         <div class="msg" id="lte-msg"></div>
       </section>
 
@@ -244,8 +250,11 @@
         $('status').innerHTML =
           row('hostname', s.hostname) +
           row('mode', s.kind === 'real' ? 'real (Pi)' : 'sim', s.kind === 'real' ? 'go' : 'warn') +
-          row('LTE', lte.present ? (lte.connected ? 'connected' : 'idle') : 'no modem', lte.connected ? 'go' : (lte.present ? 'warn' : 'bad')) +
+          row('LTE', lte.present ? (lte.connected ? 'connected' : (lte.state || 'idle')) : 'no modem', lte.connected ? 'go' : (lte.pinRequired ? 'bad' : (lte.present ? 'warn' : 'bad'))) +
+          (lte.pinRequired ? row('· ⚠', 'SIM PIN required — enter it below', 'bad') : '') +
+          (lte.present && lte.modemModel ? row('· modem', lte.modemModel) : '') +
           (lte.present ? row('· operator', (lte.operator || '—') + (lte.signal != null ? ` · ${lte.signal}%` : '')) : '') +
+          (lte.apn ? row('· APN', lte.apn) : '') +
           (lte.ip ? row('· IP', lte.ip) : '') +
           row('Tailscale', ts.backendState, ts.running ? 'go' : 'warn') +
           (ts.ip ? row('· IP', ts.ip) : '') +
@@ -263,8 +272,17 @@
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
-        $('apn').value = c.apn || '';
         updateSecState(!!c.authRequired);
+      }
+      async function loadLte() {
+        try {
+          const r = await getJSON('/api/lte');
+          const c = r.config || {};
+          $('apn').value = c.apn || '';
+          $('lteUser').value = c.username || '';
+          if (c.hasPin) $('ltePin').placeholder = 'stored — leave empty to keep';
+          if (c.hasPassword) $('ltePass').placeholder = 'stored — leave empty to keep';
+        } catch {}
       }
 
       function updateSecState(authRequired) {
@@ -303,8 +321,14 @@
 
       async function lteConnect() {
         $('lte-msg').textContent = 'Connecting…';
-        const r = await post('/api/lte', { apn: $('apn').value.trim() });
+        // apn + username are always sent (clearable); pin/password only when typed
+        // (empty = keep the stored secret).
+        const body = { apn: $('apn').value.trim() || null, username: $('lteUser').value.trim() || null };
+        if ($('ltePin').value) body.pin = $('ltePin').value;
+        if ($('ltePass').value) body.password = $('ltePass').value;
+        const r = await post('/api/lte', body);
         $('lte-msg').textContent = r.message || '';
+        $('ltePin').value = ''; $('ltePass').value = '';
         refresh();
       }
       // ---- Remote access (Tailscale / ZeroTier / WireGuard) ----
@@ -497,6 +521,7 @@
       }
 
       loadConfig();
+      loadLte();
       loadCameras();
       loadTelemetry();
       loadRemote();

@@ -4,7 +4,7 @@ import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
-import type { RemoteAccessConfig } from './system/SystemManager.js';
+import type { RemoteAccessConfig, LteConfig } from './system/SystemManager.js';
 
 /**
  * Config is env-defaulted and file-persisted. The on-Pi setup UI writes a small
@@ -28,8 +28,8 @@ export interface VehicleConfig {
   driverOptions: DriverOptions;
   /** 'sim' (default) or 'real' networking (Pi). */
   systemKind: SystemKind;
-  /** LTE APN to auto-connect at boot, if set. */
-  apn: string | null;
+  /** LTE dial settings (APN, optional PIN/user/pass); auto-connected at boot if apn set. */
+  lte: LteConfig;
   /** Remote access (Tailscale / ZeroTier / WireGuard); brought up at boot if kind≠none. */
   remoteAccess: RemoteAccessConfig;
   /**
@@ -62,7 +62,9 @@ export interface PersistentConfig {
   watchdogTimeoutMs?: number;
   throttleChannels?: number[];
   videoBaseUrl?: string | null;
+  /** @deprecated migrated into `lte.apn`; still read for backward compatibility. */
   apn?: string | null;
+  lte?: LteConfig;
   disarmOnReconnect?: boolean;
   apiSecret?: string | null;
   remoteAccess?: RemoteAccessConfig;
@@ -124,7 +126,8 @@ export function loadConfig(): VehicleConfig {
         : process.env.YRC_VIDEO_URL === ''
           ? null
           : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:1984`,
-    apn: p.apn ?? process.env.YRC_APN ?? null,
+    // Migrate the old flat `apn` into the richer lte config if present.
+    lte: p.lte ?? { apn: p.apn ?? process.env.YRC_APN ?? null },
     disarmOnReconnect: p.disarmOnReconnect ?? true,
     apiSecret: (p.apiSecret ?? process.env.YRC_API_SECRET ?? null) || null,
     remoteAccess: p.remoteAccess ?? { kind: 'none' },

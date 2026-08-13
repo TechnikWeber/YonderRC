@@ -12,7 +12,7 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.18.1');
+  console.log('  YonderRC vehicle service  v1.18.2');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -70,8 +70,8 @@ async function main() {
   if (config.systemKind === 'real') startCaptivePortal(config.port);
 
   // Auto-connect LTE at boot if an APN was configured via the setup UI.
-  if (config.apn) {
-    system.lteConnect(config.apn).then((r) => console.log(`[lte] ${r.message}`));
+  if (config.lte.apn) {
+    system.lteConnect(config.lte).then((r) => console.log(`[lte] ${r.message}`));
   }
 
   // Bring the configured remote-access method up at boot so the vehicle is reachable.

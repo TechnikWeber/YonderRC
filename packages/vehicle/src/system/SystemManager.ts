@@ -23,6 +23,22 @@ export interface LteStatus {
   apn: string | null;
   iface: string | null;
   ip: string | null;
+  /** Human-readable modem state: 'connected','registered','searching','locked','sim-missing','no-modem',… */
+  state?: string;
+  /** Modem model, e.g. "Quectel EG25-G". */
+  modemModel?: string | null;
+  /** SIM PIN needed before it can register. */
+  pinRequired?: boolean;
+}
+
+/** LTE dial settings. apn is the minimum; the rest cover non-plug-and-play sticks. */
+export interface LteConfig {
+  apn: string | null;
+  /** SIM PIN (secret) — unlocked before dialing. */
+  pin?: string | null;
+  /** APN username/password (secret) for carriers that require PAP/CHAP auth. */
+  username?: string | null;
+  password?: string | null;
 }
 
 export interface WifiStatus {
@@ -78,7 +94,7 @@ export interface RemoteAccessStatus {
 export interface SystemManager {
   readonly kind: string;
   status(): Promise<SystemStatus>;
-  lteConnect(apn: string): Promise<ActionResult>;
+  lteConnect(cfg: LteConfig): Promise<ActionResult>;
   lteDisconnect(): Promise<ActionResult>;
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */
   tailscaleUp(authKey?: string): Promise<ActionResult>;
