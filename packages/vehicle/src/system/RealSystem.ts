@@ -199,7 +199,7 @@ export class RealSystem implements SystemManager {
     if (cfg.kind === 'tailscale') return this.tailscaleUp(cfg.tailscaleAuthKey ?? undefined);
     if (cfg.kind === 'zerotier') {
       if (!cfg.zerotierNetworkId) return { ok: false, message: 'ZeroTier network ID required.' };
-      const r = await shArgs('zerotier-cli', ['join', cfg.zerotierNetworkId]);
+      const r = await shArgs('sudo', ['zerotier-cli', 'join', cfg.zerotierNetworkId]);
       return r.ok
         ? { ok: true, message: `Joined ZeroTier ${cfg.zerotierNetworkId}. Authorize the node in your ZeroTier Central.` }
         : { ok: false, message: `zerotier join failed: ${r.out}` };
@@ -226,7 +226,7 @@ export class RealSystem implements SystemManager {
   async remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult> {
     if (cfg.kind === 'tailscale') return this.tailscaleDown();
     if (cfg.kind === 'zerotier') {
-      if (cfg.zerotierNetworkId) await shArgs('zerotier-cli', ['leave', cfg.zerotierNetworkId]);
+      if (cfg.zerotierNetworkId) await shArgs('sudo', ['zerotier-cli', 'leave', cfg.zerotierNetworkId]);
       return { ok: true, message: 'Left ZeroTier network.' };
     }
     if (cfg.kind === 'wireguard') {
@@ -242,7 +242,7 @@ export class RealSystem implements SystemManager {
       return { kind: 'tailscale', running: t.running, address: t.ip, detail: t.backendState, loginUrl: t.loginUrl };
     }
     if (cfg.kind === 'zerotier') {
-      const j = await shArgs('zerotier-cli', ['-j', 'listnetworks']);
+      const j = await shArgs('sudo', ['zerotier-cli', '-j', 'listnetworks']);
       if (!j.ok) return { kind: 'zerotier', running: false, address: null, detail: 'zerotier-cli not available' };
       try {
         const nets = JSON.parse(j.out) as Array<{ nwid?: string; id?: string; status?: string; assignedAddresses?: string[] }>;

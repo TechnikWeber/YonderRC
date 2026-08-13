@@ -3,6 +3,24 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.18.3
+**English**
+- **Non-root operation**: added a ready-made minimal sudoers policy
+  (`provisioning/yonderrc.sudoers`) for running the vehicle service as a non-root
+  user — it grants passwordless sudo only for the privileged helpers (mmcli PIN,
+  wg/wg-quick, zerotier-cli, install of the WireGuard conf, reboot). The default
+  systemd unit runs as root, where it isn't needed. `zerotier-cli` is now invoked via
+  sudo too, so ZeroTier works under a non-root user. Documented in provisioning/README.
+
+**Deutsch**
+- **Nicht-Root-Betrieb**: eine fertige, minimale sudoers-Policy
+  (`provisioning/yonderrc.sudoers`) für den Betrieb des Fahrzeugdienstes als
+  Nicht-Root-User — sie gewährt passwortloses sudo nur für die privilegierten Helfer
+  (mmcli-PIN, wg/wg-quick, zerotier-cli, install der WireGuard-Conf, reboot). Die
+  Standard-systemd-Unit läuft als root, dort ist sie nicht nötig. `zerotier-cli` wird
+  jetzt ebenfalls via sudo aufgerufen, damit ZeroTier auch als Nicht-Root funktioniert.
+  Dokumentiert in provisioning/README.
+
 ## v1.18.2
 **English**
 - **Much better LTE stick setup** (Setup › LTE) — no longer assumes pure plug-and-play:

@@ -1,0 +1,38 @@
+# YonderRC — passwordless sudo for the vehicle service's privileged helpers.
+# ---------------------------------------------------------------------------
+# WHEN YOU NEED THIS
+#   Only if you run the yonderrc-vehicle service as a NON-ROOT user.
+#   The shipped systemd unit runs as `User=root` (pigpio needs root for PWM),
+#   and then this file is NOT needed — root already has these rights.
+#
+# WHAT IT ALLOWS (and why)
+#   mmcli        — unlock a PIN-locked SIM               (Setup › LTE)
+#   wg, wg-quick — bring the WireGuard tunnel up/down    (Setup › Remote access)
+#   install      — place the uploaded WireGuard .conf into /etc/wireguard
+#   zerotier-cli — join/leave a ZeroTier network         (Setup › Remote access)
+#   reboot       — the "Reboot vehicle" button           (Setup › System)
+#   (NetworkManager/`nmcli` is NOT listed — grant it to the user via polkit or
+#    the `netdev` group instead of sudo.)
+#
+# INSTALL (replace "yonderrc" with your actual service user)
+#   sudo cp provisioning/yonderrc.sudoers /etc/sudoers.d/yonderrc
+#   sudo sed -i 's/^yonderrc /YOURUSER /' /etc/sudoers.d/yonderrc   # if not "yonderrc"
+#   sudo chmod 0440 /etc/sudoers.d/yonderrc
+#   sudo visudo -cf /etc/sudoers.d/yonderrc      # must print ": parsed OK"
+#
+# SECURITY NOTE
+#   Granting `install` effectively allows writing files as root (it is what
+#   places the WireGuard conf). If you want stricter isolation, drop `install`
+#   here and instead install a tiny fixed wrapper script that copies the conf to
+#   the one allowed path, and grant sudo only to that wrapper.
+# ---------------------------------------------------------------------------
+
+Cmnd_Alias YONDERRC = \
+    /usr/bin/mmcli, \
+    /usr/bin/wg, \
+    /usr/bin/wg-quick, \
+    /usr/bin/install, \
+    /usr/sbin/zerotier-cli, /usr/bin/zerotier-cli, \
+    /usr/sbin/reboot, /sbin/reboot
+
+yonderrc ALL=(root) NOPASSWD: YONDERRC

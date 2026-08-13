@@ -71,6 +71,28 @@ npm install pigpio       -w @yonderrc/vehicle   # GPIO PWM (also: sudo apt insta
 npm install serialport   -w @yonderrc/vehicle   # SBUS
 ```
 
+## 7. Running as a non-root user (optional hardening)
+
+The shipped `yonderrc-vehicle.service` runs as **`User=root`** (pigpio needs root
+for DMA PWM). If you instead run it as a **non-root user**, the vehicle's privileged
+helpers — SIM-PIN unlock (`mmcli`), WireGuard (`wg`/`wg-quick`), ZeroTier
+(`zerotier-cli`), placing the WireGuard conf (`install`) and the reboot button —
+need passwordless sudo. A ready-made, minimal policy ships in
+[`provisioning/yonderrc.sudoers`](yonderrc.sudoers):
+
+```bash
+sudo cp /opt/yonderrc/provisioning/yonderrc.sudoers /etc/sudoers.d/yonderrc
+# replace "yonderrc" with your service user if different:
+sudo sed -i 's/^yonderrc /YOURUSER /' /etc/sudoers.d/yonderrc
+sudo chmod 0440 /etc/sudoers.d/yonderrc
+sudo visudo -cf /etc/sudoers.d/yonderrc      # must print ": parsed OK"
+```
+
+It grants NOPASSWD only for that fixed command set. NetworkManager (`nmcli`) is
+deliberately not in it — grant that to the user via polkit or the `netdev` group.
+When running as root (the default) this file is not needed. See the header of the
+file for the security note about `install`.
+
 ## Building a ready-made image (optional)
 
 For flashing many vehicles, bake the above into a `.img` with
