@@ -354,7 +354,7 @@ export function App() {
       {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.16.2</span>
+        <span className="ver">ground · v1.16.3</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>

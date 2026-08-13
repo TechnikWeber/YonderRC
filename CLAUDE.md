@@ -78,6 +78,15 @@ entry. Locally you can just commit + tag + `gh release create`. README describes
 current feature set; detailed history lives in `CHANGELOG.md` + releases.
 
 ## Open / next
+- **Auth for the setup/`/api/*` surface** (from the v1.16.2 review): the setup UI and
+  all `/api/*` endpoints are unauthenticated by design (trusted-network assumption).
+  Injection was closed in v1.16.2, but `/api/reboot`, `/api/lte`, `/api/tailscale`,
+  camera/telemetry writes are still open to anyone on the network. Add an optional
+  shared secret (header/token) and/or a bind-to-localhost+Tailscale-only mode; document
+  the trust model in `HARDWARE.md`.
+- **English-first docs (i18n)**: make `README.md` English, add `README.de.md` (German)
+  with a language switcher line at the top of each; optionally `HARDWARE.de.md`. Update
+  the GitHub "About" + topics. UI copy can follow later.
 - **LTE/WiFi signal in the OSD** (RSSI / quality %): needs vehicle-side reading
   (`iw`/`/proc/net/wireless` for WiFi, ModemManager/`mmcli` or AT for LTE) — device
   specific, best done on real hardware. Add a status field + OSD display when present.

@@ -3,6 +3,21 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.16.3
+- **Camera setup hardening**: stream names are restricted to a safe charset (they
+  become go2rtc stream keys *and* the ground's stream id), USB device paths are
+  validated, and dimensions/fps are coerced to safe integers — a crafted camera
+  name or device path can no longer break the generated `go2rtc.yaml` or inject
+  into its `exec:` command lines. Names are normalised on save so config, welcome
+  and YAML stay in sync.
+- **INA sensors can now provide pack voltage too**: `ina219/226/260/3221` are
+  selectable as voltage channels and read from their bus-voltage register, so a
+  single INA battery monitor delivers both voltage and current (no extra divider).
+  *(Register conversions are unit-tested; the I²C read path is hardware-verified only.)*
+- **Fix — per-axis detent could be mis-assigned after a transmitter-mode change**:
+  detents are now preserved per channel (not per stick axis), so switching input
+  method after changing the stick mode keeps each channel's centering correct.
+
 ## v1.16.2
 - **Safety fix — arm/disarm now always travels over the reliable WebSocket.**
   Previously, when the opt-in "Control via WebRTC data channel" mode was active,

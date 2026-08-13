@@ -305,10 +305,13 @@ export function buildProfile(
 /** Regenerate bindings for a new input method, preserving detents + per-channel shaping. */
 export function rebuildForMethod(profile: Profile, method: InputMethod): Profile {
   const t = TEMPLATES[profile.vehicleType];
-  const detents = { ...t.defaultDetents };
-  for (const b of profile.bindings) if (b.stickAxis && b.detent) detents[b.stickAxis] = b.detent;
+  // A detent belongs to a CHANNEL, not a stick axis. Keying it by axis breaks
+  // once a transmitter mode has moved an axis to a different channel, so capture
+  // it per channel and re-apply after buildBindings (which seeds template defaults).
+  const detentByChannel = new Map<number, Detent>();
+  for (const b of profile.bindings) if (b.stickAxis && b.detent) detentByChannel.set(b.channel, b.detent);
 
-  const fresh = buildBindings(t, method, profile.endpoints, detents);
+  const fresh = buildBindings(t, method, profile.endpoints, t.defaultDetents);
   for (const nb of fresh) {
     const ob = profile.bindings.find((o) => o.channel === nb.channel);
     if (ob) {
@@ -323,6 +326,8 @@ export function rebuildForMethod(profile: Profile, method: InputMethod): Profile
       };
       if (ob.holdRampSeconds != null) nb.holdRampSeconds = ob.holdRampSeconds;
     }
+    const d = detentByChannel.get(nb.channel);
+    if (d) nb.detent = d;
   }
   // Preserve user-added channels (those not produced by the template) unchanged —
   // they carry their own source/element and aren't tied to the input method.

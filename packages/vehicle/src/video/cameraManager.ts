@@ -51,6 +51,28 @@ function even(n: number): number {
 }
 
 /**
+ * A camera name becomes a go2rtc stream key (YAML) AND the stream id the ground
+ * requests — restrict it to a safe charset so a crafted name can't break the YAML
+ * or inject a second stream. Empty/garbage falls back to "cam".
+ */
+export function safeStreamName(name: string): string {
+  const cleaned = (name ?? '').replace(/[^A-Za-z0-9_-]/g, '_').replace(/^_+|_+$/g, '');
+  return cleaned || 'cam';
+}
+
+/** A V4L2 device path lands inside an `exec:` command line — allow only /dev/<safe>. */
+function safeDevice(dev: string | undefined): string {
+  const d = dev ?? '/dev/video0';
+  return /^\/dev\/[A-Za-z0-9_-]+$/.test(d) ? d : '/dev/video0';
+}
+
+/** Positive integer with a floor (dimensions/fps go into shell command lines). */
+function posInt(n: number, min: number, fallback: number): number {
+  const v = Math.round(Number(n));
+  return Number.isFinite(v) && v >= min ? v : fallback;
+}
+
+/**
  * Scale a camera's resolution/bitrate for a live quality level requested from the
  * ground. 'high' keeps the configured values; lower levels shrink dimensions and
  * cap bitrate so the picture stays fluid on a poor link.
@@ -67,21 +89,26 @@ export function scaleCamera(cam: CameraCfg, quality: 'high' | 'medium' | 'low'):
   };
 }
 export function cameraSource(cam: CameraCfg, encoder = 'libx264'): string {
-  const { width: w, height: h, fps } = cam;
-  const enc = encoderArgs(encoder, fps, cam.bitrateKbps);
+  // Coerce everything that lands in a shell command line to safe numeric/string
+  // values — these come from the setup UI and must never inject.
+  const w = even(posInt(cam.width, 2, 1280));
+  const h = even(posInt(cam.height, 2, 720));
+  const fps = posInt(cam.fps, 1, 25);
+  const br = cam.bitrateKbps != null ? posInt(cam.bitrateKbps, 1, 0) : undefined;
+  const enc = encoderArgs(encoder, fps, br);
   if (cam.type === 'sim') {
     return `exec:ffmpeg -re -f lavfi -i testsrc=size=${w}x${h}:rate=${fps} ${enc} -f rtsp {output}`;
   }
   if (cam.type === 'rpicam') {
-    const br = cam.bitrateKbps ? ` --bitrate ${cam.bitrateKbps * 1000}` : '';
+    const brArg = br ? ` --bitrate ${br * 1000}` : '';
     return (
       `exec:libcamera-vid -t 0 --inline --nopreview --codec h264 ` +
-      `--width ${w} --height ${h} --framerate ${fps} --intra ${fps}${br} -o - | ` +
+      `--width ${w} --height ${h} --framerate ${fps} --intra ${fps}${brArg} -o - | ` +
       `ffmpeg -fflags nobuffer -i - -c copy -f rtsp {output}`
     );
   }
   // usb (V4L2): transcode to H.264 with the detected encoder.
-  const dev = cam.device ?? '/dev/video0';
+  const dev = safeDevice(cam.device);
   return `exec:ffmpeg -f v4l2 -framerate ${fps} -video_size ${w}x${h} -i ${dev} ${enc} -f rtsp {output}`;
 }
 
@@ -104,7 +131,7 @@ export function generateGo2rtcYaml(cameras: CameraCfg[], encoder = 'libx264'): s
     lines.push('  {}');
   } else {
     for (const cam of cameras) {
-      lines.push(`  ${cam.name}: ${JSON.stringify(cameraSource(cam, encoder))}`);
+      lines.push(`  ${safeStreamName(cam.name)}: ${JSON.stringify(cameraSource(cam, encoder))}`);
     }
   }
   return lines.join('\n') + '\n';

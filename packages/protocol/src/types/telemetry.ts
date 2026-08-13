@@ -36,7 +36,18 @@ export interface TelemetryMessage {
 
 // ---- configuration (edited graphically in the setup UI) ----
 
-export type VoltageSensorKind = 'sim' | 'mcp3008' | 'mcp3208' | 'ads1115' | 'ads1015';
+export type VoltageSensorKind =
+  | 'sim'
+  | 'mcp3008'
+  | 'mcp3208'
+  | 'ads1115'
+  | 'ads1015'
+  // INA2xx expose a bus-voltage register too, so a single INA can provide BOTH
+  // pack voltage (here) and current (as a CurrentChannelCfg) — no extra divider.
+  | 'ina219'
+  | 'ina226'
+  | 'ina260'
+  | 'ina3221';
 export type CurrentSensorKind =
   | 'sim'
   | 'ina219'

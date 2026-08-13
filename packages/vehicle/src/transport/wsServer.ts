@@ -14,7 +14,7 @@ import { WebRtcControl } from './WebRtcControl.js';
 import { handleSetup, type SetupContext } from './setupRouter.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
-import { applyCameras, scaleCamera } from '../video/cameraManager.js';
+import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { serveGroundApp } from './staticServer.js';
 
 /**
@@ -68,7 +68,7 @@ export function startWsServer(
       driver: config.driver,
       watchdogTimeoutMs: config.watchdogTimeoutMs,
       videoBaseUrl: config.videoBaseUrl,
-      cameras: config.cameras.map((c) => c.name),
+      cameras: config.cameras.map((c) => safeStreamName(c.name)),
     };
     ws.send(JSON.stringify(welcome));
 

@@ -111,6 +111,17 @@ async function main() {
   ok('libopenh264 source', cameraSource(cam, 'libopenh264').includes('libopenh264'));
   ok('rpicam uses libcamera', cameraSource({ ...cam, type: 'rpicam' }).includes('libcamera-vid'));
 
+  // ---- camera name / device sanitisation (no YAML break, no shell injection) ----
+  const { safeStreamName, generateGo2rtcYaml } = await import('../packages/vehicle/src/video/cameraManager');
+  ok('safeStreamName charset only', /^[A-Za-z0-9_-]+$/.test(safeStreamName('cam 1: $(reboot)')));
+  ok('safeStreamName empty → cam', safeStreamName('') === 'cam');
+  const evilCam: CameraCfg = { name: 'bad name!', type: 'usb', device: '/dev/video0; rm -rf /', width: 1281, height: 721, fps: 30 };
+  const evilSrc = cameraSource(evilCam, 'libx264');
+  ok('device injection neutralised', !evilSrc.includes('rm -rf') && evilSrc.includes('-i /dev/video0 '));
+  const dims = evilSrc.match(/-video_size (\d+)x(\d+)/);
+  ok('usb dims coerced even', !!dims && Number(dims[1]) % 2 === 0 && Number(dims[2]) % 2 === 0);
+  ok('yaml stream key sanitised', /\n {2}bad_name:/.test(generateGo2rtcYaml([{ name: 'bad name!', type: 'sim', width: 320, height: 240, fps: 10 }], 'libx264')));
+
   // ---- video quality scaling ----
   const big: CameraCfg = { name: 'c', type: 'sim', width: 1280, height: 720, fps: 30, bitrateKbps: 2500 };
   ok('quality high keeps size', scaleCamera(big, 'high').width === 1280);
@@ -160,6 +171,11 @@ async function main() {
   ok('mode survives method switch', rebuildForMethod(pm1, 'gamepad').stickMode === 1 && axOf(rebuildForMethod(pm1, 'gamepad'), 'Throttle') === 'rightY');
   ok('car defaults to mode 1', buildProfile('car').stickMode === 1);
   ok('funcFromLabel maps steering→rudder', funcFromLabel('Steering') === 'rudder');
+  // Detents follow the CHANNEL, not the stick axis, across a mode + method change.
+  const pMode1 = applyStickMode(buildProfile('plane'), 1); // throttle→rightY, elevator→leftY
+  const pRebuilt = rebuildForMethod(pMode1, 'keyboard');
+  ok('detent follows channel: throttle stays free', pRebuilt.bindings.find((b) => b.channel === pRebuilt.throttleChannels[0])?.detent === 'free', `=${pRebuilt.bindings.find((b) => b.channel === pRebuilt.throttleChannels[0])?.detent}`);
+  ok('detent follows channel: elevator stays center', pRebuilt.bindings.find((b) => b.channel === 1)?.detent === 'center');
 
   // ---- add / remove channels ----
   const carA = buildProfile('car');

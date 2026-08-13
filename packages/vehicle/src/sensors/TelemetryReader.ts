@@ -116,6 +116,20 @@ export class RealReader implements TelemetryReader {
       const v = c.kind === 'mcp3008' ? C.mcp3008Volts(raw, c.vref ?? 3.3) : C.mcp3208Volts(raw, c.vref ?? 3.3);
       return v * scale;
     }
+    // INA2xx bus-voltage register (0x02; INA3221 has one per channel at 0x02/04/06).
+    if (c.kind === 'ina219' || c.kind === 'ina226' || c.kind === 'ina260' || c.kind === 'ina3221') {
+      const addr = c.address ?? 0x40;
+      if (c.kind === 'ina3221') {
+        const ch = (c.channel ?? 1) - 1;
+        return C.ina3221BusVolts(await this.readWord(addr, 0x02 + ch * 2)) * scale;
+      }
+      const raw = await this.readWord(addr, 0x02);
+      const v =
+        c.kind === 'ina219' ? C.ina219BusVolts(raw)
+        : c.kind === 'ina226' ? C.ina226BusVolts(raw)
+        : C.ina260BusVolts(raw);
+      return v * scale;
+    }
     return 0;
   }
 

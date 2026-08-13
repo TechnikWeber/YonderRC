@@ -276,7 +276,7 @@
 
       // ---- Telemetry ----
       let volts = [], currs = [];
-      const V_KINDS = ['sim', 'mcp3008', 'mcp3208', 'ads1115', 'ads1015'];
+      const V_KINDS = ['sim', 'mcp3008', 'mcp3208', 'ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221'];
       const C_KINDS = ['sim', 'ina219', 'ina226', 'ina260', 'ina3221', 'acs712', 'acs758'];
       function renderVolts() {
         $('volt-list').innerHTML = volts.map((v, i) => `

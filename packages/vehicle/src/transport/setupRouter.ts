@@ -8,6 +8,7 @@ import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig } from '@yonderrc/protocol';
+import { safeStreamName } from '../video/cameraManager.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -184,7 +185,9 @@ export async function handleSetup(
   }
   if (url === '/api/cameras' && method === 'POST') {
     const body = (await readBody(req)) as { cameras?: CameraCfg[] };
-    const cameras = body.cameras ?? [];
+    // Normalise stream names on save so the stored config, the welcome message and
+    // the generated go2rtc.yaml all agree on the same safe stream id.
+    const cameras = (body.cameras ?? []).map((c) => ({ ...c, name: safeStreamName(c.name) }));
     savePersisted(ctx.config.configPath, { cameras });
     ctx.config.cameras = cameras;
     await ctx.applyCameras(cameras);
