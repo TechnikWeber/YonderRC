@@ -11,10 +11,12 @@ Everything runs **in a simulator — with no hardware at all**. For the real bui
 the Pi (parts list, wiring, step by step from Wi-Fi → LTE) see
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
-![Ground station while driving: FPV video with OSD — battery charge bar top right, link/latency and battery data bottom right, channel bars bottom left](docs/screenshots/Overview_OSD.png)
+![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, link signal and stats bottom right](docs/screenshots/Overview_OSD.png)
 
-*Ground station while driving: low-latency FPV video with OSD — battery charge bar
-top right, link/latency data and voltage/current/capacity bottom right.*
+*Ground station while driving: low-latency FPV with a full OSD — GPS fix + **home
+compass, distance, odometer and speed** (top left), battery bar (top right), and the
+**link signal** + control/video latency, bitrate, FPS and loss (bottom right). A
+**Setup ↗** shortcut opens the vehicle's setup page.*
 
 ---
 
@@ -27,10 +29,11 @@ top right, link/latency data and voltage/current/capacity bottom right.*
   selectable input method, and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
 
-![Touch control with throttle/steering joysticks, Lights/Horn buttons and a status strip](docs/screenshots/TouchInputs_and_Status.png)
+![Touch control with throttle/steering joysticks, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png)
 
-*Touch control (multitouch joysticks, bindable buttons) with a status strip:
-link, state, round-trip, input method, vehicle/driver, telemetry.*
+*Touch control (multitouch joysticks, bindable buttons), the optional **WebRTC control
+channel** toggle, and a status strip: link, state, round-trip, input method,
+vehicle/driver, telemetry.*
 
 **Safety**
 - Time-based **failsafe watchdog**: if control frames stop arriving, every channel
@@ -86,10 +89,11 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   needed. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
   vehicle (works over LAN, the Pi's AP, or a VPN address).
 
-  ![Vehicle setup page: system status, LTE APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
+  ![Vehicle setup page: system status (LTE modem, operator, Tailscale, Wi-Fi) and the LTE section with APN, SIM PIN, APN auth and network mode](docs/screenshots/VehicleConfig_Setup.png)
 
-  *Setup page served by the vehicle: system status (mode, LTE, remote access, Wi-Fi)
-  and all configuration — usable from a phone with no screen.*
+  *Setup page served by the vehicle: system status (mode, LTE modem/operator, remote
+  access, Wi-Fi) and the robust **LTE** section — APN, SIM PIN, APN username/password
+  and network mode. Usable from a phone with no screen.*
 - **Remote access, pick one method**: **Tailscale** or **ZeroTier** (zero-config mesh
   VPNs) or **WireGuard** — just **upload the `.conf`** exported by your own server or a
   **FritzBox**. Brought up automatically at boot.

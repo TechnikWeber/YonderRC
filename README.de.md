@@ -11,10 +11,12 @@ Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Au
 auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.de.md`](docs/HARDWARE.de.md).
 
-![Bodenstation im Fahrbetrieb: FPV-Video mit OSD — Akku-Ladebalken oben rechts, Link/Latenz und Akkudaten unten rechts, Kanalbalken unten links](docs/screenshots/Overview_OSD.png)
+![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png)
 
-*Bodenstation im Fahrbetrieb: latenzarmes FPV-Video mit OSD — Akku-Ladebalken oben
-rechts, Link/Latenz-Daten und Spannung/Strom/Kapazität unten rechts.*
+*Bodenstation im Fahrbetrieb: latenzarmes FPV mit vollem OSD — GPS-Fix + **Home-Kompass,
+Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
+**Link-Signal** + Steuer-/Video-Latenz, Bitrate, FPS und Loss (unten rechts). Ein
+**Setup ↗**-Shortcut öffnet die Setup-Seite des Fahrzeugs.*
 
 ---
 
@@ -27,10 +29,11 @@ rechts, Link/Latenz-Daten und Spannung/Strom/Kapazität unten rechts.*
   wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 
-![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png)
+![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png)
 
-*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons) mit Status-Leiste:
-Link, Zustand, Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
+*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons), der optionale
+**WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Round-Trip,
+Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
 
 **Sicherheit**
 - Zeitbasierter **Failsafe-Watchdog**: bleiben Steuer-Frames aus, gehen alle Kanäle
@@ -88,10 +91,11 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Bildschirm. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
   verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
-  ![Setup-Seite des Fahrzeugs: System-Status, LTE-APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
+  ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png)
 
-  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE, Fernzugriff, WiFi)
-  und die gesamte Konfiguration — bedienbar vom Handy ohne Bildschirm.*
+  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE-Modem/Betreiber,
+  Fernzugriff, WiFi) und der robuste **LTE**-Bereich — APN, SIM-PIN, APN-Benutzer/Passwort
+  und Netzmodus. Bedienbar vom Handy ohne Bildschirm.*
 - **Fernzugriff, eine Methode wählen**: **Tailscale** oder **ZeroTier** (Zero-Config-
   Mesh-VPNs) oder **WireGuard** — einfach die von deinem eigenen Server oder einer
   **FritzBox** exportierte **`.conf` hochladen**. Kommt beim Boot automatisch hoch.
