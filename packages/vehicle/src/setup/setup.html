@@ -152,6 +152,11 @@
           </label>
         </div>
         <label class="chk"><input type="checkbox" id="countCapacity" /> Count consumed capacity (coulomb counting)</label>
+        <div class="grid2">
+          <label>Full pack voltage (V, optional)<input id="voltageFullV" type="number" step="0.1" placeholder="e.g. 16.8" /></label>
+          <label>Empty pack voltage (V, optional)<input id="voltageEmptyV" type="number" step="0.1" placeholder="e.g. 13.2" /></label>
+        </div>
+        <p class="msg">Set both to clamp the battery % by voltage — so a not-actually-full pack can't read 100%. Leave empty to use coulomb counting only.</p>
         <div class="btns">
           <button class="btn primary" onclick="saveTelemetry()">Save</button>
           <button class="btn" onclick="resetCapacity()">Reset mAh</button>
@@ -176,7 +181,11 @@
 
       <section class="panel">
         <div class="eyebrow">System</div>
-        <div class="btns"><button class="btn bad" onclick="reboot()">Reboot vehicle</button></div>
+        <div class="btns">
+          <button class="btn bad" onclick="reboot()">Reboot vehicle</button>
+          <button class="btn bad" onclick="factoryReset()">Factory reset</button>
+        </div>
+        <p class="msg">Factory reset clears all saved vehicle settings (incl. the API secret) — restart to apply defaults.</p>
         <div class="msg" id="sys-msg"></div>
       </section>
 
@@ -282,6 +291,13 @@
         const r = await post('/api/reboot');
         $('sys-msg').textContent = r.message || '';
       }
+      async function factoryReset() {
+        if (!confirm('Factory reset: clear ALL saved vehicle settings (name, driver, cameras, telemetry, LTE APN, API secret)? Restart is needed to apply.')) return;
+        const r = await post('/api/factory-reset');
+        // The secret was cleared on the vehicle — forget ours too so the UI isn't stuck on 401.
+        apiSecret = ''; sessionStorage.removeItem('yrc_secret');
+        $('sys-msg').textContent = r.message || 'Factory reset done.';
+      }
 
       // ---- Cameras (graphical) ----
       let cams = [];
@@ -356,6 +372,8 @@
         $('capacity').value = t.batteryCapacityMah ?? '';
         $('displayMode').value = t.displayMode || 'remaining';
         $('countCapacity').checked = !!t.countCapacity;
+        $('voltageFullV').value = t.voltageFullV ?? '';
+        $('voltageEmptyV').value = t.voltageEmptyV ?? '';
         volts = t.voltages || [];
         currs = t.currents || [];
         renderVolts(); renderCurrs();
@@ -371,6 +389,8 @@
           countCapacity: $('countCapacity').checked,
           batteryCapacityMah: $('capacity').value ? Number($('capacity').value) : null,
           displayMode: $('displayMode').value,
+          voltageFullV: $('voltageFullV').value ? Number($('voltageFullV').value) : null,
+          voltageEmptyV: $('voltageEmptyV').value ? Number($('voltageEmptyV').value) : null,
         };
         const r = await post('/api/telemetry', body);
         $('tel-msg').textContent = r.note || 'Saved.';

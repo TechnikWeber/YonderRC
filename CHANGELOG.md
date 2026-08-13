@@ -3,6 +3,33 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.17.3
+**English**
+- **Factory reset** — vehicle and ground. Vehicle: Setup › System → "Factory reset"
+  clears the saved config file (incl. the API secret, dropped live so you're not
+  locked out); restart to apply defaults. Ground: Setup → "Reset app settings" wipes
+  all `yonderrc.*` browser storage (models, bindings, actions, battery, secret) and
+  reloads with the demo models.
+- **Voltage sanity floor for battery %** — set an optional full/empty pack voltage in
+  Setup › Telemetry; the battery percentage is then clamped so it can't read higher
+  than the voltage suggests (coulomb counting alone would show ~100% on a
+  not-actually-full pack). Also yields a % from voltage when no capacity is set.
+- **SBUS driver**: a serial error is now logged instead of surfacing as an unhandled
+  crash; the fixed-rate frames keep trying and the watchdog holds failsafe.
+
+**Deutsch**
+- **Werksreset** — Fahrzeug und Ground. Fahrzeug: Setup › System → „Factory reset"
+  leert die gespeicherte Config-Datei (inkl. API-Secret, live gelöscht, damit man
+  sich nicht aussperrt); Neustart übernimmt die Defaults. Ground: Setup → „Reset app
+  settings" löscht den gesamten `yonderrc.*`-Browser-Speicher (Modelle, Bindings,
+  Aktionen, Akku, Secret) und lädt mit den Demo-Modellen neu.
+- **Spannungs-Sicherheits-Floor für Akku-%** — optional volle/leere Pack-Spannung
+  unter Setup › Telemetry setzen; der Akku-Prozentwert wird dann so begrenzt, dass er
+  nicht höher als die Spannung anzeigt (reines Coulomb-Counting würde bei nicht-voll
+  gestartetem Pack ~100 % zeigen). Liefert auch ohne Kapazität einen %-Wert.
+- **SBUS-Treiber**: ein Serial-Fehler wird jetzt geloggt statt als unbehandelter
+  Absturz; die Frames laufen weiter und der Watchdog hält Failsafe.
+
 ## v1.17.2
 **English**
 - **Telemetry can be turned OFF** (Setup › Telemetry → source "off"). Default stays

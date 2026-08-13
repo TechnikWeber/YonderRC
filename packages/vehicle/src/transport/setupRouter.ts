@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { VehicleConfig, PersistentConfig } from '../config.js';
-import { savePersisted } from '../config.js';
+import { savePersisted, resetPersisted } from '../config.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
@@ -142,6 +142,15 @@ export async function handleSetup(
 
   if (url === '/api/reboot' && method === 'POST') {
     json(res, 200, await ctx.system.reboot());
+    return true;
+  }
+
+  if (url === '/api/factory-reset' && method === 'POST') {
+    resetPersisted(ctx.config.configPath);
+    // Drop the secret live so the operator isn't locked out after a reset; the rest
+    // (driver, telemetry, cameras) reverts to defaults on the next restart.
+    ctx.config.apiSecret = null;
+    json(res, 200, { ok: true, message: 'Factory reset — restart the vehicle to apply defaults.' });
     return true;
   }
 

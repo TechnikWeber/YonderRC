@@ -76,3 +76,28 @@ export function accumulateMah(prevMah: number, amps: number, dtSeconds: number):
 export function accumulateWh(prevWh: number, volts: number, amps: number, dtSeconds: number): number {
   return prevWh + volts * amps * (dtSeconds / 3600);
 }
+
+/**
+ * Voltage sanity-clamp for battery percentage. Coulomb counting assumes a FULL pack
+ * at start, so a half-charged pack would read ~100%. Given a configured full/empty
+ * pack voltage, this derives a voltage-based SoC and returns the LOWER of the two:
+ * voltage can only pull the reading DOWN (safe side, so an actually-empty pack can't
+ * hide behind a wrong coulomb start), never inflate it. With no coulomb value it
+ * returns the voltage estimate on its own; with no usable curve it passes the
+ * coulomb value through unchanged.
+ *
+ * Note: under heavy load the pack voltage sags, so this reads conservatively (a bit
+ * low) mid-throttle — deliberately on the safe side.
+ */
+export function batteryPercentWithVoltage(
+  coulombPct: number | null,
+  voltage: number | null | undefined,
+  vFull: number | null | undefined,
+  vEmpty: number | null | undefined,
+): number | null {
+  const haveCurve = voltage != null && vFull != null && vEmpty != null && vFull > vEmpty;
+  if (!haveCurve) return coulombPct;
+  const vPct = Math.max(0, Math.min(100, ((voltage - vEmpty) / (vFull - vEmpty)) * 100));
+  if (coulombPct == null) return vPct;
+  return Math.min(coulombPct, vPct);
+}

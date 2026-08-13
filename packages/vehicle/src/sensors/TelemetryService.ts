@@ -1,5 +1,5 @@
 import type { TelemetryConfig, TelemetryMessage } from '@yonderrc/protocol';
-import { accumulateMah, accumulateWh } from './convert.js';
+import { accumulateMah, accumulateWh, batteryPercentWithVoltage } from './convert.js';
 import { createReader, type TelemetryReader } from './TelemetryReader.js';
 
 /**
@@ -84,8 +84,15 @@ export class TelemetryService {
       }
 
       const cap = this.cfg.batteryCapacityMah;
-      const batteryPercent =
+      const coulombPct =
         cap && cap > 0 ? Math.max(0, Math.min(100, ((cap - this.mah) / cap) * 100)) : null;
+      // Clamp/derive from pack voltage when a full/empty curve is configured.
+      const batteryPercent = batteryPercentWithVoltage(
+        coulombPct,
+        s.voltages[0],
+        this.cfg.voltageFullV ?? null,
+        this.cfg.voltageEmptyV ?? null,
+      );
 
       this.latest = {
         type: 'telemetry',

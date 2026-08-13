@@ -53,6 +53,13 @@ async function main() {
   for (let i = 0; i < 3600; i++) mah = C.accumulateMah(mah, 10, 0.1);
   ok('coulomb 10A·360s = 1000mAh', near(mah, 1000, 1e-3), `=${mah}`);
 
+  // ---- battery %: voltage sanity clamp ----
+  ok('no voltage curve → coulomb unchanged', C.batteryPercentWithVoltage(100, 3.7, null, null) === 100);
+  ok('voltage clamps coulomb down', near(C.batteryPercentWithVoltage(100, 3.75, 4.2, 3.3)!, 50, 0.5), `=${C.batteryPercentWithVoltage(100, 3.75, 4.2, 3.3)}`);
+  ok('no coulomb → voltage estimate', C.batteryPercentWithVoltage(null, 4.2, 4.2, 3.3) === 100);
+  ok('voltage never inflates coulomb', C.batteryPercentWithVoltage(50, 4.5, 4.2, 3.3) === 50);
+  ok('invalid curve (full<=empty) ignored', C.batteryPercentWithVoltage(80, 3.5, 3.3, 3.3) === 80);
+
   // ---- sim telemetry service ----
   const tcfg: TelemetryConfig = {
     enabled: true, source: 'sim', sampleHz: 50,

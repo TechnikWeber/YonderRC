@@ -93,6 +93,11 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 
+Done in the v1.16.2–v1.17.3 review pass: arm-over-WS, no-shell-injection, camera
+name/device hardening, INA voltage, per-channel detents, optional shared secret,
+telemetry OFF, Setup↗ shortcut, factory reset (vehicle + ground), battery voltage
+floor, SBUS error handler.
+
 ## Style
 German UI copy is fine in chat with the owner; **code, comments and identifiers stay
 in English**. Keep responses about verified-vs-needs-hardware honest.

@@ -92,6 +92,11 @@ export function savePersisted(path: string, patch: PersistentConfig): Persistent
   return merged;
 }
 
+/** Factory reset: empty the persisted file so the next start uses env/defaults. */
+export function resetPersisted(path: string): void {
+  writeFileSync(path, JSON.stringify({}, null, 2));
+}
+
 export function loadConfig(): VehicleConfig {
   const configPath = process.env.YRC_CONFIG ?? 'yonderrc-config.json';
   const p = loadPersisted(configPath);

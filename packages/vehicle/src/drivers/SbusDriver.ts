@@ -46,6 +46,10 @@ export class SbusDriver implements OutputDriver {
       stopBits: 2,
       autoOpen: true,
     });
+    // A serial error (unplugged adapter, I/O failure) must not crash the process as
+    // an unhandled 'error' event — log it; the fixed-rate timer keeps trying and the
+    // core's watchdog holds failsafe if output stops.
+    this.port.on('error', (err: Error) => console.warn(`[sbus] serial error: ${err.message}`));
 
     // SBUS is continuous: retransmit the latest frame on a fixed cadence so the
     // receiver never times out even if channel values are unchanged.

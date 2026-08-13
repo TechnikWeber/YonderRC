@@ -92,6 +92,13 @@ export interface TelemetryConfig {
   countCapacity: boolean;
   batteryCapacityMah: number | null;
   displayMode: 'consumed' | 'remaining';
+  /**
+   * Optional full/empty PACK voltage. When both are set, the battery % is clamped
+   * so it can't exceed what the voltage suggests (sanity floor against coulomb
+   * counting from a not-actually-full pack). Also yields a % when no capacity is set.
+   */
+  voltageFullV?: number | null;
+  voltageEmptyV?: number | null;
 }
 
 // ---- camera configuration (graphical, generates go2rtc.yaml) ----
