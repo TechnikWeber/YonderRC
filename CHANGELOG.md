@@ -3,6 +3,22 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.18.4
+**English**
+- **More LTE control** (Setup › LTE): force the **network mode** (4G/LTE-only or 3G)
+  for lower latency, toggle **data roaming** (home-only), a **Diagnostics** button
+  that shows the raw `mmcli` output so you can see what the Pi detects, and **SIM PIN
+  management** — change the PIN or **remove the PIN lock** entirely (empty new PIN =
+  no PIN). PIN operations act on the SIM itself and require the current PIN.
+
+**Deutsch**
+- **Mehr LTE-Kontrolle** (Setup › LTE): **Netzmodus** erzwingen (nur 4G/LTE oder 3G)
+  für niedrigere Latenz, **Daten-Roaming** umschalten (home-only), ein **Diagnose**-
+  Button mit der rohen `mmcli`-Ausgabe (du siehst, was der Pi erkennt) und
+  **SIM-PIN-Verwaltung** — PIN ändern oder die **PIN-Sperre ganz entfernen** (leere
+  neue PIN = keine PIN). PIN-Aktionen wirken auf die SIM selbst und brauchen die
+  aktuelle PIN.
+
 ## v1.18.3
 **English**
 - **Non-root operation**: added a ready-made minimal sudoers policy

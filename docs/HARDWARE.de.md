@@ -217,7 +217,10 @@ legt Pi und Boden-Gerät ins selbe private Netz — überall erreichbar.
    PIN/Passwort werden am Fahrzeug gespeichert und nie wieder angezeigt. Das
    Status-Panel zeigt Modem-Modell, Registrierungsstatus und markiert „SIM PIN
    required", wenn nötig. Dongles im „Zero-CD"/Speichermodus übernimmt
-   `usb-modeswitch` (vom Setup-Skript installiert).
+   `usb-modeswitch` (vom Setup-Skript installiert). Du kannst zudem den **Netzmodus**
+   erzwingen (nur 4G für niedrigere Latenz), **Daten-Roaming** umschalten, die
+   **SIM-PIN ändern oder entfernen** und eine **Diagnose** (rohe `mmcli`-Ausgabe)
+   laufen lassen, um genau zu sehen, was der Pi erkennt.
 
 ### 4.2 Tailscale
 

@@ -18,7 +18,7 @@ import {
   type RemoteAccessConfig,
   type LteConfig,
 } from '../system/SystemManager.js';
-import { redactLteConfig } from '../system/lte.js';
+import { redactLteConfig, isValidPin } from '../system/lte.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -145,10 +145,33 @@ export async function handleSetup(
       pin: body.pin !== undefined ? body.pin || null : cur.pin ?? null,
       username: body.username !== undefined ? body.username || null : cur.username ?? null,
       password: body.password !== undefined ? body.password || null : cur.password ?? null,
+      networkMode: body.networkMode ?? cur.networkMode ?? 'auto',
+      allowRoaming: body.allowRoaming !== undefined ? body.allowRoaming : cur.allowRoaming,
     };
     savePersisted(ctx.config.configPath, { lte: cfg });
     ctx.config.lte = cfg;
     json(res, 200, await ctx.system.lteConnect(cfg));
+    return true;
+  }
+  if (url === '/api/lte/pin' && method === 'POST') {
+    const body = (await readBody(req)) as { action?: 'change' | 'disable'; currentPin?: string; newPin?: string };
+    if (!body.currentPin) {
+      json(res, 400, { ok: false, message: 'Current PIN is required.' });
+      return true;
+    }
+    if (body.action === 'change' && !(body.newPin && isValidPin(body.newPin))) {
+      json(res, 400, { ok: false, message: 'New PIN must be 4–8 digits (or use Remove to disable the lock).' });
+      return true;
+    }
+    json(res, 200, await ctx.system.lteSetPin({
+      action: body.action === 'disable' ? 'disable' : 'change',
+      currentPin: body.currentPin,
+      newPin: body.newPin,
+    }));
+    return true;
+  }
+  if (url === '/api/lte/diagnostics' && method === 'POST') {
+    json(res, 200, await ctx.system.lteDiagnostics());
     return true;
   }
   if (url === '/api/lte/disconnect' && method === 'POST') {

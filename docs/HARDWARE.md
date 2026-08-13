@@ -217,7 +217,10 @@ ground device on the same private network — reachable anywhere.
    **APN username/password**, fill those in too — PIN/password are stored on the vehicle
    and never shown again. The status panel shows the modem model, registration state and
    flags "SIM PIN required" when relevant. Dongles that boot in "Zero-CD"/storage mode are
-   handled by `usb-modeswitch` (installed by the setup script).
+   handled by `usb-modeswitch` (installed by the setup script). You can also force the
+   **network mode** (4G-only for lower latency), toggle **data roaming**, **change or
+   remove the SIM's PIN lock**, and run **Diagnostics** (raw `mmcli` output) to see
+   exactly what the Pi detects.
 
 ### 4.2 Tailscale
 

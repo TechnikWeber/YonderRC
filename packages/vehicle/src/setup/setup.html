@@ -66,12 +66,36 @@
           <label>APN username (optional)<input id="lteUser" placeholder="usually empty" /></label>
         </div>
         <label>APN password (optional)<input id="ltePass" type="password" autocomplete="new-password" placeholder="usually empty" /></label>
+        <div class="grid2">
+          <label>Network mode
+            <select id="lteMode">
+              <option value="auto">auto (2G/3G/4G)</option>
+              <option value="4g">4G / LTE only</option>
+              <option value="3g">3G only</option>
+            </select>
+          </label>
+          <label class="chk" style="align-self:end"><input type="checkbox" id="lteRoam" checked /> Allow data roaming</label>
+        </div>
         <div class="btns">
           <button class="btn primary" onclick="lteConnect()">Connect</button>
           <button class="btn" onclick="post('/api/lte/disconnect')">Disconnect</button>
         </div>
         <p class="msg">Most data SIMs need only the APN. Add a PIN if your SIM is locked, and username/password only if your carrier requires APN auth. PIN/password are stored on the vehicle and never shown again.</p>
         <div class="msg" id="lte-msg"></div>
+
+        <div class="eyebrow2" style="margin-top:12px">SIM PIN management</div>
+        <div class="grid2">
+          <label>Current PIN<input id="pinCur" type="password" autocomplete="off" placeholder="current SIM PIN" /></label>
+          <label>New PIN<input id="pinNew" type="password" autocomplete="off" placeholder="empty = remove PIN lock" /></label>
+        </div>
+        <div class="btns">
+          <button class="btn" onclick="changePin()">Change / remove PIN</button>
+        </div>
+        <p class="msg">Changes the PIN on the SIM itself. Leave "New PIN" empty to <b>remove</b> the PIN lock (no PIN). This is separate from the stored PIN above (used only to auto-unlock at connect).</p>
+        <div class="msg" id="pin-msg"></div>
+
+        <div class="btns" style="margin-top:8px"><button class="btn" onclick="lteDiag()">Diagnostics (detect modem)</button></div>
+        <pre id="lte-diag" style="white-space:pre-wrap;overflow-x:auto;font-size:12px;color:var(--muted)"></pre>
       </section>
 
       <section class="panel">
@@ -280,9 +304,25 @@
           const c = r.config || {};
           $('apn').value = c.apn || '';
           $('lteUser').value = c.username || '';
+          $('lteMode').value = c.networkMode || 'auto';
+          $('lteRoam').checked = c.allowRoaming !== false;
           if (c.hasPin) $('ltePin').placeholder = 'stored — leave empty to keep';
           if (c.hasPassword) $('ltePass').placeholder = 'stored — leave empty to keep';
         } catch {}
+      }
+      async function changePin() {
+        const currentPin = $('pinCur').value.trim();
+        if (!currentPin) { $('pin-msg').textContent = 'Enter the current PIN.'; return; }
+        const newPin = $('pinNew').value.trim();
+        const action = newPin ? 'change' : 'disable';
+        const r = await post('/api/lte/pin', { action, currentPin, newPin: newPin || undefined });
+        $('pin-msg').textContent = r.message || '';
+        $('pinCur').value = ''; $('pinNew').value = '';
+      }
+      async function lteDiag() {
+        $('lte-diag').textContent = 'Reading modem…';
+        const r = await post('/api/lte/diagnostics');
+        $('lte-diag').textContent = r.output || '(no output)';
       }
 
       function updateSecState(authRequired) {
@@ -323,7 +363,12 @@
         $('lte-msg').textContent = 'Connecting…';
         // apn + username are always sent (clearable); pin/password only when typed
         // (empty = keep the stored secret).
-        const body = { apn: $('apn').value.trim() || null, username: $('lteUser').value.trim() || null };
+        const body = {
+          apn: $('apn').value.trim() || null,
+          username: $('lteUser').value.trim() || null,
+          networkMode: $('lteMode').value,
+          allowRoaming: $('lteRoam').checked,
+        };
         if ($('ltePin').value) body.pin = $('ltePin').value;
         if ($('ltePass').value) body.password = $('ltePass').value;
         const r = await post('/api/lte', body);

@@ -2,6 +2,7 @@ import { hostname } from 'node:os';
 import type {
   ActionResult,
   LteConfig,
+  LtePinChange,
   LteStatus,
   RemoteAccessConfig,
   RemoteAccessStatus,
@@ -53,12 +54,33 @@ export class SimSystem implements SystemManager {
     const apn = cfg.apn ?? '';
     this.lte = { ...this.lte, connected: true, apn, ip: '10.64.12.34', state: 'connected' };
     this.wifi = { mode: 'client', ssid: null, ip: null };
-    return { ok: true, message: `LTE connected on APN "${apn}"${cfg.username ? ' (with auth)' : ''} (simulated).` };
+    const extra = `${cfg.username ? ' (with auth)' : ''}${cfg.networkMode && cfg.networkMode !== 'auto' ? ` [${cfg.networkMode}]` : ''}${cfg.allowRoaming === false ? ' [home-only]' : ''}`;
+    return { ok: true, message: `LTE connected on APN "${apn}"${extra} (simulated).` };
   }
 
   async lteDisconnect(): Promise<ActionResult> {
     this.lte = { ...this.lte, connected: false, ip: null, state: 'registered' };
     return { ok: true, message: 'LTE disconnected (simulated).' };
+  }
+
+  async lteSetPin(change: LtePinChange): Promise<ActionResult> {
+    return { ok: true, message: change.action === 'disable' ? 'SIM PIN lock removed (simulated).' : 'SIM PIN changed (simulated).' };
+  }
+
+  async lteDiagnostics(): Promise<{ ok: boolean; output: string }> {
+    return {
+      ok: true,
+      output: [
+        'mmcli -L:',
+        '    /org/freedesktop/ModemManager1/Modem/0 [SimModem] LTE-1',
+        '',
+        'mmcli -m 0:',
+        '  Hardware |          model: SimModem LTE-1',
+        '  Status   |          state: connected',
+        '           | signal quality: 68% (recent)',
+        '  3GPP     |  operator name: SimTel',
+      ].join('\n'),
+    };
   }
 
   async tailscaleUp(authKey?: string): Promise<ActionResult> {

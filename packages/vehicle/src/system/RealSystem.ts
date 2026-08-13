@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import type {
   ActionResult,
   LteConfig,
+  LtePinChange,
   LteStatus,
   RemoteAccessConfig,
   RemoteAccessStatus,
@@ -15,7 +16,7 @@ import type {
   WifiStatus,
 } from './SystemManager.js';
 import { normaliseWireguardConf } from './SystemManager.js';
-import { parseModemId, parseModemInfo, lteStateLabel } from './lte.js';
+import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 
 const run = promisify(exec);
 const runFile = promisify(execFile);
@@ -137,22 +138,25 @@ export class RealSystem implements SystemManager {
 
   async lteConnect(cfg: LteConfig): Promise<ActionResult> {
     const apn = cfg.apn ?? '';
+    const modemId = parseModemId((await sh('mmcli -L')).out);
     // 1) Unlock the SIM first if a PIN is configured (no shell → PIN can't inject).
-    if (cfg.pin) {
-      const id = parseModemId((await sh('mmcli -L')).out);
-      if (id) {
-        const unlock = await shArgs('sudo', ['mmcli', '-m', id, `--pin=${cfg.pin}`]);
-        if (!unlock.ok && /incorrect|failure|error/i.test(unlock.out)) {
-          return { ok: false, message: `SIM PIN rejected: ${unlock.out}` };
-        }
+    if (cfg.pin && modemId) {
+      const unlock = await shArgs('sudo', ['mmcli', '-m', modemId, `--pin=${cfg.pin}`]);
+      if (!unlock.ok && /incorrect|failure|error/i.test(unlock.out)) {
+        return { ok: false, message: `SIM PIN rejected: ${unlock.out}` };
       }
     }
-    // 2) (Re)create the NM GSM connection. execFile (no shell) so APN/user/password
+    // 2) Force the radio mode if requested (4g-only lowers latency where LTE exists).
+    if (cfg.networkMode && cfg.networkMode !== 'auto' && modemId) {
+      await shArgs('sudo', ['mmcli', '-m', modemId, `--set-allowed-modes=${cfg.networkMode}`]);
+    }
+    // 3) (Re)create the NM GSM connection. execFile (no shell) so APN/user/password
     //    can't be interpreted as shell syntax. autoconnect=yes so NM redials itself.
     await shArgs('nmcli', ['connection', 'delete', 'yonderrc-lte']); // ignore if absent
     const args = [
       'connection', 'add', 'type', 'gsm', 'ifname', '*', 'con-name', 'yonderrc-lte',
       'connection.autoconnect', 'yes', 'gsm.apn', apn,
+      'gsm.home-only', cfg.allowRoaming === false ? 'yes' : 'no',
     ];
     if (cfg.username) args.push('gsm.username', cfg.username);
     if (cfg.password) args.push('gsm.password', cfg.password);
@@ -160,8 +164,31 @@ export class RealSystem implements SystemManager {
     if (!add.ok) return { ok: false, message: `nmcli add failed: ${add.out}` };
     const up = await shArgs('nmcli', ['connection', 'up', 'yonderrc-lte']);
     return up.ok
-      ? { ok: true, message: `LTE connecting on APN "${apn}"${cfg.username ? ' (with auth)' : ''}.` }
+      ? { ok: true, message: `LTE connecting on APN "${apn}"${cfg.username ? ' (with auth)' : ''}${cfg.networkMode && cfg.networkMode !== 'auto' ? ` [${cfg.networkMode}]` : ''}.` }
       : { ok: false, message: `nmcli up failed: ${up.out}` };
+  }
+
+  async lteSetPin(change: LtePinChange): Promise<ActionResult> {
+    const modemId = parseModemId((await sh('mmcli -L')).out);
+    if (!modemId) return { ok: false, message: 'No modem found.' };
+    const simId = parseSimId((await sh(`mmcli -m ${modemId}`)).out) ?? '0';
+    // mmcli operates on the SIM object; current PIN is required for both actions.
+    const base = ['mmcli', '-i', simId, `--pin=${change.currentPin}`];
+    const args =
+      change.action === 'disable'
+        ? [...base, '--disable-pin']
+        : [...base, `--change-pin=${change.newPin ?? ''}`];
+    const r = await shArgs('sudo', args);
+    if (!r.ok) return { ok: false, message: `PIN ${change.action} failed: ${r.out}` };
+    return { ok: true, message: change.action === 'disable' ? 'SIM PIN lock removed.' : 'SIM PIN changed.' };
+  }
+
+  async lteDiagnostics(): Promise<{ ok: boolean; output: string }> {
+    const list = await sh('mmcli -L');
+    const id = parseModemId(list.out);
+    if (!id) return { ok: false, output: `mmcli -L:\n${list.out || '(no output — is ModemManager running / dongle plugged in?)'}` };
+    const info = await sh(`mmcli -m ${id}`);
+    return { ok: true, output: `mmcli -L:\n${list.out}\n\nmmcli -m ${id}:\n${info.out}` };
   }
 
   async lteDisconnect(): Promise<ActionResult> {

@@ -18,6 +18,16 @@ export function parseModemId(listOut: string): string | null {
   return listOut.match(/Modem\/(\d+)/)?.[1] ?? null;
 }
 
+/** Find the primary SIM index from `mmcli -m <n>` output, or null. */
+export function parseSimId(modemOut: string): string | null {
+  return modemOut.match(/(?:primary sim path|sim):[^\n]*\/SIM\/(\d+)/i)?.[1] ?? null;
+}
+
+/** A SIM PIN is 4–8 digits. */
+export function isValidPin(pin: string): boolean {
+  return /^\d{4,8}$/.test(pin);
+}
+
 export function parseModemInfo(text: string): ModemInfo {
   // The modem "state:" field, excluding "power state:" via a negative lookbehind.
   const state = text.match(/(?<!power )state:\s*'?([\w-]+)/i)?.[1]?.toLowerCase() ?? 'unknown';
@@ -48,5 +58,7 @@ export function redactLteConfig(cfg: LteConfig): Record<string, unknown> {
     username: cfg.username ?? null,
     hasPin: !!cfg.pin,
     hasPassword: !!cfg.password,
+    networkMode: cfg.networkMode ?? 'auto',
+    allowRoaming: cfg.allowRoaming !== false,
   };
 }

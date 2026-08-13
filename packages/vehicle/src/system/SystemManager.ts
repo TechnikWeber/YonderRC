@@ -39,6 +39,19 @@ export interface LteConfig {
   /** APN username/password (secret) for carriers that require PAP/CHAP auth. */
   username?: string | null;
   password?: string | null;
+  /** Allowed radio modes: 'auto' (default) or force '4g' / '3g'. */
+  networkMode?: 'auto' | '4g' | '3g';
+  /** Allow data roaming. Undefined/true = NM default (roam ok); false = home-only. */
+  allowRoaming?: boolean;
+}
+
+/** Change or remove the SIM's PIN lock (operates on the SIM itself, not the config). */
+export interface LtePinChange {
+  /** 'change' the PIN to newPin, or 'disable' the PIN lock entirely. */
+  action: 'change' | 'disable';
+  currentPin: string;
+  /** New PIN for action 'change'. */
+  newPin?: string;
 }
 
 export interface WifiStatus {
@@ -96,6 +109,10 @@ export interface SystemManager {
   status(): Promise<SystemStatus>;
   lteConnect(cfg: LteConfig): Promise<ActionResult>;
   lteDisconnect(): Promise<ActionResult>;
+  /** Change or remove the SIM's PIN lock. */
+  lteSetPin(change: LtePinChange): Promise<ActionResult>;
+  /** Raw modem diagnostics (mmcli) for troubleshooting a non-plug-and-play stick. */
+  lteDiagnostics(): Promise<{ ok: boolean; output: string }>;
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */
   tailscaleUp(authKey?: string): Promise<ActionResult>;
   tailscaleDown(): Promise<ActionResult>;
