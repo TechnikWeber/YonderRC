@@ -1,14 +1,19 @@
 import { exec, execFile } from 'node:child_process';
-import { hostname } from 'node:os';
+import { writeFileSync } from 'node:fs';
+import { hostname, tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type {
   ActionResult,
   LteStatus,
+  RemoteAccessConfig,
+  RemoteAccessStatus,
   SystemManager,
   SystemStatus,
   TailscaleStatus,
   WifiStatus,
 } from './SystemManager.js';
+import { normaliseWireguardConf } from './SystemManager.js';
 
 const run = promisify(exec);
 const runFile = promisify(execFile);
@@ -165,6 +170,83 @@ export class RealSystem implements SystemManager {
   async tailscaleDown(): Promise<ActionResult> {
     const r = await sh('tailscale down');
     return { ok: r.ok, message: r.ok ? 'Tailscale stopped.' : r.out };
+  }
+
+  // --- generic remote access (dispatch by kind) ---
+  private readonly wgIface = 'yonderrc';
+  private readonly wgConfPath = '/etc/wireguard/yonderrc.conf';
+
+  async remoteUp(cfg: RemoteAccessConfig): Promise<ActionResult> {
+    if (cfg.kind === 'tailscale') return this.tailscaleUp(cfg.tailscaleAuthKey ?? undefined);
+    if (cfg.kind === 'zerotier') {
+      if (!cfg.zerotierNetworkId) return { ok: false, message: 'ZeroTier network ID required.' };
+      const r = await shArgs('zerotier-cli', ['join', cfg.zerotierNetworkId]);
+      return r.ok
+        ? { ok: true, message: `Joined ZeroTier ${cfg.zerotierNetworkId}. Authorize the node in your ZeroTier Central.` }
+        : { ok: false, message: `zerotier join failed: ${r.out}` };
+    }
+    if (cfg.kind === 'wireguard') {
+      if (!cfg.wireguardConf) return { ok: false, message: 'Upload a WireGuard .conf first.' };
+      try {
+        // Write to a temp file we can create as a normal user, then install it to
+        // /etc/wireguard with root perms (no shell, so the conf can't inject).
+        const tmp = join(tmpdir(), 'yonderrc-wg.conf');
+        writeFileSync(tmp, normaliseWireguardConf(cfg.wireguardConf), { mode: 0o600 });
+        const cp = await shArgs('sudo', ['install', '-m', '600', tmp, this.wgConfPath]);
+        if (!cp.ok) return { ok: false, message: `could not install WireGuard conf: ${cp.out}` };
+      } catch (e) {
+        return { ok: false, message: `write failed: ${(e as Error).message}` };
+      }
+      await shArgs('sudo', ['wg-quick', 'down', this.wgIface]); // ignore if it wasn't up
+      const up = await shArgs('sudo', ['wg-quick', 'up', this.wgIface]);
+      return up.ok ? { ok: true, message: 'WireGuard up.' } : { ok: false, message: `wg-quick up failed: ${up.out}` };
+    }
+    return { ok: true, message: 'Remote access off.' };
+  }
+
+  async remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult> {
+    if (cfg.kind === 'tailscale') return this.tailscaleDown();
+    if (cfg.kind === 'zerotier') {
+      if (cfg.zerotierNetworkId) await shArgs('zerotier-cli', ['leave', cfg.zerotierNetworkId]);
+      return { ok: true, message: 'Left ZeroTier network.' };
+    }
+    if (cfg.kind === 'wireguard') {
+      const r = await shArgs('sudo', ['wg-quick', 'down', this.wgIface]);
+      return { ok: r.ok, message: r.ok ? 'WireGuard down.' : r.out };
+    }
+    return { ok: true, message: 'Remote access off.' };
+  }
+
+  async remoteStatus(cfg: RemoteAccessConfig): Promise<RemoteAccessStatus> {
+    if (cfg.kind === 'tailscale') {
+      const t = await this.tailscaleStatus();
+      return { kind: 'tailscale', running: t.running, address: t.ip, detail: t.backendState, loginUrl: t.loginUrl };
+    }
+    if (cfg.kind === 'zerotier') {
+      const j = await shArgs('zerotier-cli', ['-j', 'listnetworks']);
+      if (!j.ok) return { kind: 'zerotier', running: false, address: null, detail: 'zerotier-cli not available' };
+      try {
+        const nets = JSON.parse(j.out) as Array<{ nwid?: string; id?: string; status?: string; assignedAddresses?: string[] }>;
+        const net = nets.find((n) => (n.nwid || n.id) === cfg.zerotierNetworkId) ?? nets[0];
+        const addr = net?.assignedAddresses?.[0]?.split('/')[0] ?? null;
+        return { kind: 'zerotier', running: net?.status === 'OK', address: addr, detail: net?.status ?? 'unknown' };
+      } catch {
+        return { kind: 'zerotier', running: false, address: null, detail: 'parse error' };
+      }
+    }
+    if (cfg.kind === 'wireguard') {
+      const w = await shArgs('sudo', ['wg', 'show', this.wgIface, 'latest-handshakes']);
+      if (!w.ok) return { kind: 'wireguard', running: false, address: null, detail: 'not up' };
+      const now = Date.now() / 1000;
+      const running = w.out.split('\n').some((l) => {
+        const ts = Number(l.trim().split(/\s+/)[1]);
+        return ts > 0 && now - ts < 180; // a handshake within 3 min = live
+      });
+      const addr = await shArgs('ip', ['-4', '-o', 'addr', 'show', 'dev', this.wgIface]);
+      const ip = addr.ok ? addr.out.match(/inet (\d+\.\d+\.\d+\.\d+)/)?.[1] ?? null : null;
+      return { kind: 'wireguard', running, address: ip, detail: running ? 'handshake ok' : 'no recent handshake' };
+    }
+    return { kind: 'none', running: false, address: null, detail: 'off' };
   }
 
   async reboot(): Promise<ActionResult> {

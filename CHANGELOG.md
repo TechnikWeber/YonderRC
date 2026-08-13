@@ -3,6 +3,33 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.18.0
+**English**
+- **Selectable remote access** (Setup › Remote access) — pick one method to reach the
+  vehicle behind CGNAT/LTE:
+  - **Tailscale** and **ZeroTier** — zero-config mesh VPNs (ZeroTier: enter the 16-hex
+    network ID, then authorize the node).
+  - **WireGuard** — **upload a `.conf`** (e.g. exported by a FritzBox) and the vehicle
+    applies it with `wg-quick`; comes up automatically at boot.
+  - The chosen method is persisted and brought up at boot; secrets (auth key, WG conf)
+    are never returned by the API. Setup gates all of this behind the optional shared
+    secret. *(ZeroTier/WireGuard were validated in the simulator and via unit tests; the
+    real `wg-quick`/`zerotier-cli` paths are hardware-verified only — test on your Pi.)*
+- The Pi install script now also installs `wireguard-tools` and ZeroTier.
+
+**Deutsch**
+- **Wählbarer Remote-Zugang** (Setup › Remote access) — eine Methode, um das Fahrzeug
+  hinter CGNAT/LTE zu erreichen:
+  - **Tailscale** und **ZeroTier** — Zero-Config-Mesh-VPNs (ZeroTier: 16-stellige
+    Network-ID eintragen, dann Node autorisieren).
+  - **WireGuard** — eine **`.conf` hochladen** (z. B. FritzBox-Export); das Fahrzeug
+    wendet sie mit `wg-quick` an; kommt beim Boot automatisch hoch.
+  - Die gewählte Methode wird gespeichert und beim Boot hochgefahren; Secrets (Auth-Key,
+    WG-Conf) gibt die API nie zurück. Alles hinter dem optionalen Shared Secret. *(ZeroTier/
+    WireGuard sind im Simulator und per Unit-Tests geprüft; die echten `wg-quick`/
+    `zerotier-cli`-Pfade sind nur auf Hardware verifizierbar — bitte am Pi testen.)*
+- Das Pi-Install-Skript installiert jetzt zusätzlich `wireguard-tools` und ZeroTier.
+
 ## v1.17.4
 **English**
 - **Choose what drives the battery % gauge.** Setup › Telemetry now has a "Battery %

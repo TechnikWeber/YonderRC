@@ -9,7 +9,8 @@ echo "== YonderRC provisioning =="
 
 echo "-- packages"
 apt-get update
-apt-get install -y curl git ffmpeg network-manager modemmanager
+# wireguard-tools = wg / wg-quick for the WireGuard remote-access option (e.g. FritzBox).
+apt-get install -y curl git ffmpeg network-manager modemmanager wireguard-tools
 
 echo "-- Node.js 22"
 if ! command -v node >/dev/null || [ "$(node -v | cut -c2-3)" -lt 20 ]; then
@@ -20,6 +21,11 @@ fi
 echo "-- Tailscale"
 if ! command -v tailscale >/dev/null; then
   curl -fsSL https://tailscale.com/install.sh | sh
+fi
+
+echo "-- ZeroTier (optional remote-access method)"
+if ! command -v zerotier-cli >/dev/null; then
+  curl -fsSL https://install.zerotier.com | bash || echo "   (ZeroTier install skipped/failed — only needed if you pick ZeroTier)"
 fi
 
 echo "-- go2rtc"

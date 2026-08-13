@@ -12,7 +12,7 @@ async function main() {
   const config = loadConfig();
 
   console.log('');
-  console.log('  YonderRC vehicle service  v1.17.4');
+  console.log('  YonderRC vehicle service  v1.18.0');
   console.log('  ────────────────────────────────');
   console.log(`  vehicle   : ${config.vehicleName}`);
   console.log(`  driver    : ${config.driver}`);
@@ -71,6 +71,14 @@ async function main() {
   // Auto-connect LTE at boot if an APN was configured via the setup UI.
   if (config.apn) {
     system.lteConnect(config.apn).then((r) => console.log(`[lte] ${r.message}`));
+  }
+
+  // Bring the configured remote-access method up at boot so the vehicle is reachable.
+  if (config.remoteAccess.kind !== 'none') {
+    system
+      .remoteUp(config.remoteAccess)
+      .then((r) => console.log(`[remote] ${config.remoteAccess.kind}: ${r.message}`))
+      .catch((e) => console.warn(`[remote] up failed: ${(e as Error).message}`));
   }
 
   const shutdown = async () => {

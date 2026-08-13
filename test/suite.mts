@@ -113,6 +113,28 @@ async function main() {
   ok('setupUrl from tailscale ws', setupUrlFromWs('ws://100.64.0.1:8080') === 'http://100.64.0.1:8080/setup');
   ok('setupUrl wss → https', setupUrlFromWs('wss://host:8080') === 'https://host:8080/setup');
 
+  // ---- remote access: pure validators + redaction + sim transitions ----
+  const RA = await import('../packages/vehicle/src/system/SystemManager');
+  ok('zerotier id valid', RA.isZerotierNetworkId('8056c2e21c000001') === true);
+  ok('zerotier id rejects junk', RA.isZerotierNetworkId('nope') === false);
+  const wgConf = '[Interface]\nPrivateKey = abc=\nAddress = 192.168.178.2/24\n[Peer]\nPublicKey = def=\nEndpoint = home.myfritz.net:51820\nAllowedIPs = 0.0.0.0/0';
+  ok('wg conf recognised', RA.looksLikeWireguardConf(wgConf) === true);
+  ok('wg conf rejects non-conf', RA.looksLikeWireguardConf('hello world') === false);
+  ok('wg conf normalises CRLF', RA.normaliseWireguardConf('a\r\nb\r\n') === 'a\nb\n');
+  const red = RA.redactRemoteConfig({ kind: 'wireguard', wireguardConf: 'secret', tailscaleAuthKey: 'tskey', zerotierNetworkId: '8056c2e21c000001' });
+  ok('redact hides secrets', !('wireguardConf' in red) && !('tailscaleAuthKey' in red) && red.hasWireguardConf === true && red.hasTailscaleAuthKey === true && red.zerotierNetworkId === '8056c2e21c000001');
+  const { SimSystem } = await import('../packages/vehicle/src/system/SimSystem');
+  const sys = new SimSystem();
+  const ztUp = await sys.remoteUp({ kind: 'zerotier', zerotierNetworkId: '8056c2e21c000001' });
+  ok('sim zerotier up ok', ztUp.ok === true);
+  const ztSt = await sys.remoteStatus({ kind: 'zerotier', zerotierNetworkId: '8056c2e21c000001' });
+  ok('sim zerotier running', ztSt.kind === 'zerotier' && ztSt.running === true && ztSt.address !== null);
+  const wgUp = await sys.remoteUp({ kind: 'wireguard', wireguardConf: wgConf });
+  ok('sim wireguard up ok', wgUp.ok === true);
+  ok('sim wireguard needs conf', (await sys.remoteUp({ kind: 'wireguard' })).ok === false);
+  const ztDown = await sys.remoteDown({ kind: 'zerotier', zerotierNetworkId: '8056c2e21c000001' });
+  ok('sim remote down ok', ztDown.ok === true);
+
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');
   const dch = drone.throttleChannels[0];

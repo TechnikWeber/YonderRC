@@ -10,6 +10,13 @@ import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/pr
 import type { CameraCfg, TelemetryConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { secretOk, readSecretFromReq } from './auth.js';
+import {
+  redactRemoteConfig,
+  normaliseWireguardConf,
+  looksLikeWireguardConf,
+  isZerotierNetworkId,
+  type RemoteAccessConfig,
+} from '../system/SystemManager.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -130,13 +137,47 @@ export async function handleSetup(
     return true;
   }
 
-  if (url === '/api/tailscale' && method === 'POST') {
-    const { authKey } = (await readBody(req)) as { authKey?: string };
-    json(res, 200, await ctx.system.tailscaleUp(authKey));
+  // --- remote access (Tailscale / ZeroTier / WireGuard), one active at a time ---
+  if (url === '/api/remote' && method === 'GET') {
+    json(res, 200, {
+      config: redactRemoteConfig(ctx.config.remoteAccess),
+      status: await ctx.system.remoteStatus(ctx.config.remoteAccess),
+    });
     return true;
   }
-  if (url === '/api/tailscale/down' && method === 'POST') {
-    json(res, 200, await ctx.system.tailscaleDown());
+  if (url === '/api/remote' && method === 'POST') {
+    const body = (await readBody(req)) as Partial<RemoteAccessConfig>;
+    const cur = ctx.config.remoteAccess;
+    // Merge onto the current config so unspecified secrets (auth key, WG conf) survive.
+    const cfg: RemoteAccessConfig = {
+      kind: body.kind ?? 'none',
+      tailscaleAuthKey: body.tailscaleAuthKey !== undefined ? body.tailscaleAuthKey || null : cur.tailscaleAuthKey ?? null,
+      zerotierNetworkId: body.zerotierNetworkId !== undefined ? body.zerotierNetworkId || null : cur.zerotierNetworkId ?? null,
+      wireguardConf: body.wireguardConf !== undefined ? body.wireguardConf || null : cur.wireguardConf ?? null,
+    };
+    if (cfg.kind === 'zerotier' && !(cfg.zerotierNetworkId && isZerotierNetworkId(cfg.zerotierNetworkId))) {
+      json(res, 400, { ok: false, message: 'ZeroTier needs a 16-hex network ID.' });
+      return true;
+    }
+    if (cfg.kind === 'wireguard') {
+      if (!cfg.wireguardConf) {
+        json(res, 400, { ok: false, message: 'Upload a WireGuard .conf first.' });
+        return true;
+      }
+      cfg.wireguardConf = normaliseWireguardConf(cfg.wireguardConf);
+      if (!looksLikeWireguardConf(cfg.wireguardConf)) {
+        json(res, 400, { ok: false, message: "That doesn't look like a WireGuard .conf ([Interface]/[Peer]/PrivateKey missing)." });
+        return true;
+      }
+    }
+    savePersisted(ctx.config.configPath, { remoteAccess: cfg });
+    ctx.config.remoteAccess = cfg;
+    const r = await ctx.system.remoteUp(cfg);
+    json(res, r.ok ? 200 : 500, r);
+    return true;
+  }
+  if (url === '/api/remote/down' && method === 'POST') {
+    json(res, 200, await ctx.system.remoteDown(ctx.config.remoteAccess));
     return true;
   }
 

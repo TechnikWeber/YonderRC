@@ -233,6 +233,27 @@ legt Pi und Boden-Gerät ins selbe private Netz — überall erreichbar.
 > Tailscale allein gibt dir aber bereits eine funktionierende, verschlüsselte
 > Verbindung und ist der einfachste Weg, der zuverlässig klappt.
 
+### 4.4 Weitere Remote-Access-Methoden (Setup › Remote access)
+
+Unter **Setup › Remote access** wählst du **eine** Methode:
+
+- **Tailscale** / **ZeroTier** — Zero-Config-Mesh-VPNs, ganz ohne eigenen Server. Bei
+  ZeroTier: unter my.zerotier.com ein Netzwerk anlegen, die 16-stellige **Network ID**
+  eintragen, *Bring up* drücken und den Pi in ZeroTier Central autorisieren. Die
+  Ground-App dann auf die ZeroTier-IP des Pi verbinden.
+- **WireGuard (eigener Server / FritzBox)** — wenn du bereits einen WireGuard-Server
+  betreibst, füge den Pi als Peer hinzu und **lade die exportierte `.conf` hoch**. Bei
+  einer **FritzBox**: *Internet › Freigaben › VPN (WireGuard) › Verbindung hinzufügen*,
+  eine Verbindung für den Pi anlegen, die Konfigurationsdatei herunterladen und unter
+  *Setup › Remote access › WireGuard* hochladen, dann *Bring up*. Das Fahrzeug speichert
+  die Datei, wendet sie mit `wg-quick` an und ist danach unter seiner WireGuard-Adresse
+  erreichbar (z. B. aus dem Heimnetz / über MyFRITZ!). Beim nächsten Boot kommt sie
+  automatisch hoch.
+
+> ZeroTier/WireGuard brauchen ihre Tools auf dem Pi (`zerotier-cli`, `wireguard-tools`)
+> — das Install-Skript bringt sie mit; WireGuard wird als root via `wg-quick` angewandt.
+> Prüfe die Methode auf deinem Pi, bevor du dich im Feld darauf verlässt.
+
 ---
 
 ## 5. Lokal ohne Netz betreiben (AP-Modus + Handy)

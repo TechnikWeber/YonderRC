@@ -4,6 +4,7 @@ import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
+import type { RemoteAccessConfig } from './system/SystemManager.js';
 
 /**
  * Config is env-defaulted and file-persisted. The on-Pi setup UI writes a small
@@ -29,6 +30,8 @@ export interface VehicleConfig {
   systemKind: SystemKind;
   /** LTE APN to auto-connect at boot, if set. */
   apn: string | null;
+  /** Remote access (Tailscale / ZeroTier / WireGuard); brought up at boot if kind≠none. */
+  remoteAccess: RemoteAccessConfig;
   /**
    * Auto-disarm whenever a new ground connects. Safe for cars (prevents runaway);
    * turn OFF for aircraft, where disarming in flight would cut the motors.
@@ -62,6 +65,7 @@ export interface PersistentConfig {
   apn?: string | null;
   disarmOnReconnect?: boolean;
   apiSecret?: string | null;
+  remoteAccess?: RemoteAccessConfig;
   telemetry?: TelemetryConfig;
   cameras?: CameraCfg[];
 }
@@ -123,6 +127,7 @@ export function loadConfig(): VehicleConfig {
     apn: p.apn ?? process.env.YRC_APN ?? null,
     disarmOnReconnect: p.disarmOnReconnect ?? true,
     apiSecret: (p.apiSecret ?? process.env.YRC_API_SECRET ?? null) || null,
+    remoteAccess: p.remoteAccess ?? { kind: 'none' },
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

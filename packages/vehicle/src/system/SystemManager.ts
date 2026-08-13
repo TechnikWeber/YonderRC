@@ -46,6 +46,35 @@ export interface ActionResult {
   loginUrl?: string;
 }
 
+/**
+ * Remote access = how the vehicle stays reachable behind CGNAT/LTE. One method is
+ * active at a time. Mesh VPNs (Tailscale, ZeroTier) need no VPS; WireGuard connects
+ * the Pi as a peer to a WireGuard server you already run — e.g. a FritzBox, whose
+ * exported `.conf` you upload here.
+ */
+export type RemoteAccessKind = 'none' | 'tailscale' | 'zerotier' | 'wireguard';
+
+export interface RemoteAccessConfig {
+  kind: RemoteAccessKind;
+  /** Tailscale: optional pre-auth key (non-interactive up). */
+  tailscaleAuthKey?: string | null;
+  /** ZeroTier: the 16-hex network ID to join. */
+  zerotierNetworkId?: string | null;
+  /** WireGuard: the full `.conf` text (e.g. a FritzBox export), applied verbatim. */
+  wireguardConf?: string | null;
+}
+
+export interface RemoteAccessStatus {
+  kind: RemoteAccessKind;
+  running: boolean;
+  /** VPN-assigned address, when known. */
+  address: string | null;
+  /** Short human-readable state. */
+  detail: string;
+  /** Present when an interactive login is required (Tailscale). */
+  loginUrl?: string | null;
+}
+
 export interface SystemManager {
   readonly kind: string;
   status(): Promise<SystemStatus>;
@@ -54,5 +83,34 @@ export interface SystemManager {
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */
   tailscaleUp(authKey?: string): Promise<ActionResult>;
   tailscaleDown(): Promise<ActionResult>;
+  /** Generic remote-access control (dispatches by cfg.kind). */
+  remoteUp(cfg: RemoteAccessConfig): Promise<ActionResult>;
+  remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult>;
+  remoteStatus(cfg: RemoteAccessConfig): Promise<RemoteAccessStatus>;
   reboot(): Promise<ActionResult>;
+}
+
+/** Strip secrets (auth key, WG conf) from a remote config for safe display. */
+export function redactRemoteConfig(cfg: RemoteAccessConfig): Record<string, unknown> {
+  return {
+    kind: cfg.kind,
+    zerotierNetworkId: cfg.zerotierNetworkId ?? null,
+    hasTailscaleAuthKey: !!cfg.tailscaleAuthKey,
+    hasWireguardConf: !!cfg.wireguardConf,
+  };
+}
+
+/** Normalise an uploaded WireGuard conf: LF line endings, single trailing newline. */
+export function normaliseWireguardConf(conf: string): string {
+  return conf.replace(/\r\n?/g, '\n').trim() + '\n';
+}
+
+/** A plausible WireGuard conf has an [Interface] section with a PrivateKey. */
+export function looksLikeWireguardConf(conf: string): boolean {
+  return /\[Interface\]/i.test(conf) && /PrivateKey\s*=/.test(conf) && /\[Peer\]/i.test(conf);
+}
+
+/** A ZeroTier network ID is 16 hex chars. */
+export function isZerotierNetworkId(id: string): boolean {
+  return /^[0-9a-fA-F]{16}$/.test(id.trim());
 }

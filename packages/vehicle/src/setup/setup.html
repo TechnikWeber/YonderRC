@@ -69,13 +69,33 @@
       </section>
 
       <section class="panel">
-        <div class="eyebrow">Tailscale (remote access over LTE)</div>
-        <label>Auth key (optional — leave blank for browser login)
-          <input id="authkey" placeholder="tskey-auth-…" />
+        <div class="eyebrow">Remote access (reach the vehicle over LTE / behind CGNAT)</div>
+        <label>Method
+          <select id="remoteKind" onchange="renderRemote()">
+            <option value="none">none</option>
+            <option value="tailscale">Tailscale (mesh VPN, no server)</option>
+            <option value="zerotier">ZeroTier (mesh VPN, no server)</option>
+            <option value="wireguard">WireGuard (connect to your own server / FritzBox)</option>
+          </select>
         </label>
+        <div id="remote-tailscale" class="remote-fields" style="display:none">
+          <label>Auth key (optional — leave blank for browser login)
+            <input id="authkey" placeholder="tskey-auth-…" />
+          </label>
+        </div>
+        <div id="remote-zerotier" class="remote-fields" style="display:none">
+          <label>Network ID (16 hex)<input id="ztNetwork" placeholder="8056c2e21c000001" /></label>
+          <p class="msg">After bring-up, authorize this node in your ZeroTier Central.</p>
+        </div>
+        <div id="remote-wireguard" class="remote-fields" style="display:none">
+          <label>WireGuard .conf (e.g. exported by your FritzBox)
+            <input id="wgFile" type="file" accept=".conf,text/plain" onchange="loadWgFile(event)" />
+          </label>
+          <p class="msg" id="wg-file-msg">Upload the .conf file; it's stored on the vehicle and applied with wg-quick.</p>
+        </div>
         <div class="btns">
-          <button class="btn primary" onclick="tsUp()">Bring up</button>
-          <button class="btn" onclick="post('/api/tailscale/down')">Stop</button>
+          <button class="btn primary" onclick="remoteUp()">Bring up</button>
+          <button class="btn" onclick="remoteDown()">Stop</button>
         </div>
         <div class="msg" id="ts-msg"></div>
       </section>
@@ -287,10 +307,54 @@
         $('lte-msg').textContent = r.message || '';
         refresh();
       }
-      async function tsUp() {
+      // ---- Remote access (Tailscale / ZeroTier / WireGuard) ----
+      let wgConf = null; // holds an uploaded WireGuard .conf until Bring up
+      function renderRemote() {
+        const k = $('remoteKind').value;
+        for (const kind of ['tailscale', 'zerotier', 'wireguard']) {
+          $('remote-' + kind).style.display = k === kind ? 'block' : 'none';
+        }
+      }
+      function loadWgFile(ev) {
+        const f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => { wgConf = String(reader.result || ''); $('wg-file-msg').textContent = `Loaded ${f.name} (${wgConf.split('\n').length} lines). Press Bring up to apply.`; };
+        reader.readAsText(f);
+      }
+      async function loadRemote() {
+        try {
+          const r = await getJSON('/api/remote');
+          const c = r.config || {};
+          $('remoteKind').value = c.kind || 'none';
+          if (c.zerotierNetworkId) $('ztNetwork').value = c.zerotierNetworkId;
+          if (c.hasWireguardConf) $('wg-file-msg').textContent = 'A WireGuard .conf is stored. Upload a new file only to replace it.';
+          renderRemote();
+          showRemoteStatus(r.status);
+        } catch {}
+      }
+      function showRemoteStatus(s) {
+        if (!s) return;
+        if (s.loginUrl) { $('ts-msg').innerHTML = `Login: <a href="${s.loginUrl}" target="_blank" rel="noreferrer">${s.loginUrl}</a>`; return; }
+        $('ts-msg').textContent = `${s.kind}: ${s.running ? 'up' : 'down'}${s.address ? ' · ' + s.address : ''} · ${s.detail || ''}`;
+      }
+      async function remoteUp() {
+        const kind = $('remoteKind').value;
+        const body = { kind };
+        if (kind === 'tailscale') body.tailscaleAuthKey = $('authkey').value.trim() || null;
+        if (kind === 'zerotier') body.zerotierNetworkId = $('ztNetwork').value.trim() || null;
+        if (kind === 'wireguard' && wgConf) body.wireguardConf = wgConf;
         $('ts-msg').textContent = 'Starting…';
-        const r = await post('/api/tailscale', { authKey: $('authkey').value.trim() || undefined });
-        $('ts-msg').innerHTML = r.loginUrl ? `Login: <a href="${r.loginUrl}" target="_blank" rel="noreferrer">${r.loginUrl}</a>` : (r.message || '');
+        const r = await post('/api/remote', body);
+        if (r.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${r.loginUrl}" target="_blank" rel="noreferrer">${r.loginUrl}</a>`;
+        else $('ts-msg').textContent = r.message || '';
+        setTimeout(loadRemote, 800);
+        refresh();
+      }
+      async function remoteDown() {
+        const r = await post('/api/remote/down');
+        $('ts-msg').textContent = r.message || '';
+        setTimeout(loadRemote, 500);
         refresh();
       }
       async function reboot() {
@@ -435,6 +499,7 @@
       loadConfig();
       loadCameras();
       loadTelemetry();
+      loadRemote();
       refresh();
       setInterval(refresh, 3000);
     </script>

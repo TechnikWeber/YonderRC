@@ -233,6 +233,26 @@ ground device on the same private network — reachable anywhere.
 > add your own **TURN server (coturn)** on a cheap VPS. Tailscale alone already gives
 > you a working, encrypted connection and is the simplest path that reliably works.
 
+### 4.4 Other remote-access methods (Setup › Remote access)
+
+Under **Setup › Remote access** you pick **one** method:
+
+- **Tailscale** / **ZeroTier** — zero-config mesh VPNs, no server of your own. For
+  ZeroTier: create a network at my.zerotier.com, enter its 16-hex **Network ID**, press
+  *Bring up*, then authorize the Pi in ZeroTier Central. Connect the ground app to the
+  Pi's ZeroTier IP.
+- **WireGuard (your own server / FritzBox)** — if you already run a WireGuard server,
+  add the Pi as a peer and **upload the exported `.conf`**. On a **FritzBox**: *Internet
+  › Permit Access › VPN (WireGuard) › Add connection*, create a connection for the Pi,
+  download the config file, then upload it under *Setup › Remote access › WireGuard* and
+  press *Bring up*. The vehicle stores the file, applies it with `wg-quick`, and is then
+  reachable at its WireGuard address (e.g. from your home network / via MyFRITZ!). It
+  comes up automatically on the next boot.
+
+> ZeroTier/WireGuard need their tools on the Pi (`zerotier-cli`, `wireguard-tools`) —
+> the install script adds them; WireGuard applies as root via `wg-quick`. Verify the
+> method on your Pi before relying on it in the field.
+
 ---
 
 ## 5. Operate locally with no network (AP mode + phone)

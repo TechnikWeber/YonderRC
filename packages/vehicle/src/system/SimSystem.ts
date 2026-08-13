@@ -2,6 +2,8 @@ import { hostname } from 'node:os';
 import type {
   ActionResult,
   LteStatus,
+  RemoteAccessConfig,
+  RemoteAccessStatus,
   SystemManager,
   SystemStatus,
   TailscaleStatus,
@@ -84,6 +86,43 @@ export class SimSystem implements SystemManager {
   async tailscaleDown(): Promise<ActionResult> {
     this.tailscale = { installed: true, running: false, ip: null, loginUrl: null, backendState: 'Stopped' };
     return { ok: true, message: 'Tailscale stopped (simulated).' };
+  }
+
+  // --- generic remote access (mock) ---
+  private remote: RemoteAccessStatus = { kind: 'none', running: false, address: null, detail: 'off' };
+
+  async remoteUp(cfg: RemoteAccessConfig): Promise<ActionResult> {
+    if (cfg.kind === 'tailscale') {
+      const r = await this.tailscaleUp(cfg.tailscaleAuthKey ?? undefined);
+      this.remote = { kind: 'tailscale', running: this.tailscale.running, address: this.tailscale.ip, detail: this.tailscale.backendState, loginUrl: r.loginUrl ?? null };
+      return r;
+    }
+    if (cfg.kind === 'zerotier') {
+      if (!cfg.zerotierNetworkId) return { ok: false, message: 'ZeroTier network ID required.' };
+      this.remote = { kind: 'zerotier', running: true, address: '10.147.20.42', detail: `joined ${cfg.zerotierNetworkId}`, loginUrl: null };
+      return { ok: true, message: `Joined ZeroTier network ${cfg.zerotierNetworkId} (simulated).` };
+    }
+    if (cfg.kind === 'wireguard') {
+      if (!cfg.wireguardConf) return { ok: false, message: 'Upload a WireGuard .conf first.' };
+      this.remote = { kind: 'wireguard', running: true, address: '192.168.178.120', detail: 'handshake ok', loginUrl: null };
+      return { ok: true, message: 'WireGuard up (simulated).' };
+    }
+    this.remote = { kind: 'none', running: false, address: null, detail: 'off' };
+    return { ok: true, message: 'Remote access off.' };
+  }
+
+  async remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult> {
+    if (cfg.kind === 'tailscale') await this.tailscaleDown();
+    this.remote = { kind: cfg.kind, running: false, address: null, detail: 'stopped' };
+    return { ok: true, message: 'Remote access stopped (simulated).' };
+  }
+
+  async remoteStatus(cfg: RemoteAccessConfig): Promise<RemoteAccessStatus> {
+    if (cfg.kind === 'tailscale') {
+      return { kind: 'tailscale', running: this.tailscale.running, address: this.tailscale.ip, detail: this.tailscale.backendState, loginUrl: this.tailscale.loginUrl };
+    }
+    // Reflect the last mock action if it matches the requested kind, else "off".
+    return this.remote.kind === cfg.kind ? { ...this.remote } : { kind: cfg.kind, running: false, address: null, detail: 'off' };
   }
 
   async reboot(): Promise<ActionResult> {
