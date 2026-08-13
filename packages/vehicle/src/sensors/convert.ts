@@ -77,27 +77,51 @@ export function accumulateWh(prevWh: number, volts: number, amps: number, dtSeco
   return prevWh + volts * amps * (dtSeconds / 3600);
 }
 
+import type { BatteryPercentSource } from '@yonderrc/protocol';
+
+/** Voltage-based state-of-charge %, or null when no usable full/empty curve. */
+export function voltagePercent(
+  voltage: number | null | undefined,
+  vFull: number | null | undefined,
+  vEmpty: number | null | undefined,
+): number | null {
+  if (voltage == null || vFull == null || vEmpty == null || vFull <= vEmpty) return null;
+  return Math.max(0, Math.min(100, ((voltage - vEmpty) / (vFull - vEmpty)) * 100));
+}
+
 /**
- * Voltage sanity-clamp for battery percentage. Coulomb counting assumes a FULL pack
- * at start, so a half-charged pack would read ~100%. Given a configured full/empty
- * pack voltage, this derives a voltage-based SoC and returns the LOWER of the two:
- * voltage can only pull the reading DOWN (safe side, so an actually-empty pack can't
- * hide behind a wrong coulomb start), never inflate it. With no coulomb value it
- * returns the voltage estimate on its own; with no usable curve it passes the
- * coulomb value through unchanged.
- *
- * Note: under heavy load the pack voltage sags, so this reads conservatively (a bit
- * low) mid-throttle — deliberately on the safe side.
+ * Resolve the battery percentage and report which method produced it, so the OSD can
+ * label it clearly. Modes:
+ *  - coulomb : consumed-mAh vs capacity (assumes a full pack at start)
+ *  - voltage : the full/empty voltage curve only
+ *  - clamp   : the LOWER of the two — voltage can pull it down (safe: an empty pack
+ *              can't hide behind a wrong coulomb start) but never inflate it
+ * Each mode falls back to whichever value actually exists. Under heavy load the pack
+ * voltage sags, so voltage/clamp read a bit conservatively mid-throttle — on purpose.
  */
+export function computeBatteryPercent(
+  mode: BatteryPercentSource,
+  coulombPct: number | null,
+  voltage: number | null | undefined,
+  vFull: number | null | undefined,
+  vEmpty: number | null | undefined,
+): { pct: number | null; source: BatteryPercentSource | null } {
+  const vPct = voltagePercent(voltage, vFull, vEmpty);
+  if (mode === 'coulomb') return { pct: coulombPct, source: coulombPct == null ? null : 'coulomb' };
+  if (mode === 'voltage') return { pct: vPct, source: vPct == null ? null : 'voltage' };
+  // clamp
+  if (coulombPct == null && vPct == null) return { pct: null, source: null };
+  if (vPct == null) return { pct: coulombPct, source: 'coulomb' };
+  if (coulombPct == null) return { pct: vPct, source: 'voltage' };
+  return { pct: Math.min(coulombPct, vPct), source: 'clamp' };
+}
+
+/** Backwards-compatible clamp helper (lower of coulomb/voltage). */
 export function batteryPercentWithVoltage(
   coulombPct: number | null,
   voltage: number | null | undefined,
   vFull: number | null | undefined,
   vEmpty: number | null | undefined,
 ): number | null {
-  const haveCurve = voltage != null && vFull != null && vEmpty != null && vFull > vEmpty;
-  if (!haveCurve) return coulombPct;
-  const vPct = Math.max(0, Math.min(100, ((voltage - vEmpty) / (vFull - vEmpty)) * 100));
-  if (coulombPct == null) return vPct;
-  return Math.min(coulombPct, vPct);
+  return computeBatteryPercent('clamp', coulombPct, voltage, vFull, vEmpty).pct;
 }

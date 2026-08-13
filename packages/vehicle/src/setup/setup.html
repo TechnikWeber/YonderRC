@@ -156,7 +156,14 @@
           <label>Full pack voltage (V, optional)<input id="voltageFullV" type="number" step="0.1" placeholder="e.g. 16.8" /></label>
           <label>Empty pack voltage (V, optional)<input id="voltageEmptyV" type="number" step="0.1" placeholder="e.g. 13.2" /></label>
         </div>
-        <p class="msg">Set both to clamp the battery % by voltage — so a not-actually-full pack can't read 100%. Leave empty to use coulomb counting only.</p>
+        <label>Battery % source (drives the top-right % display; mAh is always shown)
+          <select id="percentSource">
+            <option value="clamp">clamp — lower of coulomb &amp; voltage (safe)</option>
+            <option value="coulomb">coulomb — consumed mAh vs capacity</option>
+            <option value="voltage">voltage — from the full/empty curve</option>
+          </select>
+        </label>
+        <p class="msg">"voltage"/"clamp" need the full &amp; empty voltage above. mAh (consumed/remaining) is unaffected — this only changes what the % gauge uses.</p>
         <div class="btns">
           <button class="btn primary" onclick="saveTelemetry()">Save</button>
           <button class="btn" onclick="resetCapacity()">Reset mAh</button>
@@ -374,6 +381,7 @@
         $('countCapacity').checked = !!t.countCapacity;
         $('voltageFullV').value = t.voltageFullV ?? '';
         $('voltageEmptyV').value = t.voltageEmptyV ?? '';
+        $('percentSource').value = t.percentSource || 'clamp';
         volts = t.voltages || [];
         currs = t.currents || [];
         renderVolts(); renderCurrs();
@@ -391,6 +399,7 @@
           displayMode: $('displayMode').value,
           voltageFullV: $('voltageFullV').value ? Number($('voltageFullV').value) : null,
           voltageEmptyV: $('voltageEmptyV').value ? Number($('voltageEmptyV').value) : null,
+          percentSource: $('percentSource').value,
         };
         const r = await post('/api/telemetry', body);
         $('tel-msg').textContent = r.note || 'Saved.';

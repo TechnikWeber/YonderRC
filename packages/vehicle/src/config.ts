@@ -132,6 +132,7 @@ export function loadConfig(): VehicleConfig {
       countCapacity: true,
       batteryCapacityMah: null,
       displayMode: 'remaining',
+      percentSource: 'clamp',
     },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
     go2rtcConfigPath:

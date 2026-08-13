@@ -3,6 +3,22 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.17.4
+**English**
+- **Choose what drives the battery % gauge.** Setup › Telemetry now has a "Battery %
+  source": **coulomb** (consumed mAh vs capacity), **voltage** (full/empty curve), or
+  **clamp** (the lower of the two — safe default). The mAh readout (consumed/remaining)
+  is shown regardless; this only changes the top-right % gauge. The OSD now labels the
+  bar with its source (`mAh` / `volt` / `mAh·V`) so it's clear where the number comes from.
+
+**Deutsch**
+- **Wählbar, was die Akku-%-Anzeige speist.** Unter Setup › Telemetry gibt es jetzt eine
+  „Battery % source": **coulomb** (verbrauchte mAh vs. Kapazität), **voltage**
+  (Voll/Leer-Kurve) oder **clamp** (der niedrigere von beiden — sicherer Default). Die
+  mAh-Anzeige (verbraucht/Rest) bleibt unabhängig; das ändert nur die %-Anzeige oben
+  rechts. Das OSD beschriftet den Balken jetzt mit seiner Quelle (`mAh` / `volt` /
+  `mAh·V`), damit klar ist, woher der Wert kommt.
+
 ## v1.17.3
 **English**
 - **Factory reset** — vehicle and ground. Vehicle: Setup › System → "Factory reset"

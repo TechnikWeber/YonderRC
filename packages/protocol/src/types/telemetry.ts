@@ -12,6 +12,15 @@ export interface TelemetryReading {
   value: number;
 }
 
+/**
+ * Which method drives the battery PERCENTAGE (top-right OSD):
+ *  - coulomb : consumed-mAh vs capacity (assumes a full pack at start)
+ *  - voltage : from the configured full/empty pack-voltage curve
+ *  - clamp   : the lower of the two (safe: voltage can't inflate a wrong coulomb)
+ * The mAh readout (consumed/remaining) is independent of this — see displayMode.
+ */
+export type BatteryPercentSource = 'coulomb' | 'voltage' | 'clamp';
+
 export interface TelemetryMessage {
   type: 'telemetry';
   /** Where the values come from: real sensors, or explicitly-enabled sim. */
@@ -30,6 +39,8 @@ export interface TelemetryMessage {
   capacityMah: number | null;
   /** Remaining battery percentage, or null if no capacity set. */
   batteryPercent: number | null;
+  /** Which method produced batteryPercent (for a clear OSD label), or null. */
+  batteryPercentSource?: BatteryPercentSource | null;
   /** How the OSD should show capacity. */
   displayMode: 'consumed' | 'remaining';
 }
@@ -93,12 +104,13 @@ export interface TelemetryConfig {
   batteryCapacityMah: number | null;
   displayMode: 'consumed' | 'remaining';
   /**
-   * Optional full/empty PACK voltage. When both are set, the battery % is clamped
-   * so it can't exceed what the voltage suggests (sanity floor against coulomb
-   * counting from a not-actually-full pack). Also yields a % when no capacity is set.
+   * Optional full/empty PACK voltage for the voltage-based percentage / clamp.
+   * mAh (consumed/remaining) is shown regardless; this only feeds the %.
    */
   voltageFullV?: number | null;
   voltageEmptyV?: number | null;
+  /** Which method drives the % display. Defaults to 'clamp'. */
+  percentSource?: BatteryPercentSource;
 }
 
 // ---- camera configuration (graphical, generates go2rtc.yaml) ----

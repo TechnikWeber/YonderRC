@@ -164,19 +164,29 @@ function bar(us: number): number {
  * Battery charge bar for the OSD — shown alone top-right, phone-style. Returns
  * null when there's no real sensor or no percentage, so nothing floats up there.
  */
+const PERCENT_SRC_LABEL: Record<string, string> = {
+  coulomb: 'mAh',
+  voltage: 'volt',
+  clamp: 'mAh·V',
+};
+
 function TelemetryBar({ t }: { t: TelemetryMessage }) {
   if (t.source === 'real' && !t.ok) return null;
   const pct = t.batteryPercent;
   if (pct == null) return null;
+  const src = t.batteryPercentSource ? PERCENT_SRC_LABEL[t.batteryPercentSource] : null;
   return (
-    <div className="osd-batt-bar" title={`${pct}%`}>
-      <i
-        style={{
-          width: `${pct}%`,
-          background: pct < 15 ? 'var(--bad)' : pct < 35 ? 'var(--idle)' : 'var(--go)',
-        }}
-      />
-      <span className="osd-batt-pct">{Math.round(pct)}%</span>
+    <div className="osd-batt-wrap">
+      <div className="osd-batt-bar" title={`${pct}% (from ${t.batteryPercentSource ?? 'coulomb'})`}>
+        <i
+          style={{
+            width: `${pct}%`,
+            background: pct < 15 ? 'var(--bad)' : pct < 35 ? 'var(--idle)' : 'var(--go)',
+          }}
+        />
+        <span className="osd-batt-pct">{Math.round(pct)}%</span>
+      </div>
+      {src && <span className="osd-batt-src" title="Which method drives the % (set in Setup › Telemetry)">{src}</span>}
     </div>
   );
 }
