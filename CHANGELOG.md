@@ -3,6 +3,18 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## v1.16.2
+- **Safety fix — arm/disarm now always travels over the reliable WebSocket.**
+  Previously, when the opt-in "Control via WebRTC data channel" mode was active,
+  arm/disarm (incl. panic-disarm) went over the lossy, no-retransmit data channel,
+  so a single dropped packet could silently leave the vehicle armed. Only control
+  frames (which are superseded 20 ms later) now use the data channel; every
+  one-shot command (arm, config, hello, video, calib) is forced onto the WS.
+- **Security fix — no more shell injection in the vehicle setup API.** The LTE APN
+  and Tailscale auth key from `/api/lte` and `/api/tailscale` were interpolated
+  into shell strings; a crafted value could execute arbitrary commands on the Pi.
+  These now use `execFile` (no shell), so operator input is a literal argument.
+
 ## v1.16.1
 - **OSD refinement**: the battery **charge bar stands alone top-right** (phone-style),
   and the numeric battery data (voltage, current, mAh) moves to the **bottom-right as

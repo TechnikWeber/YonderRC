@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 import { hostname } from 'node:os';
 import { promisify } from 'node:util';
 import type {
@@ -11,10 +11,26 @@ import type {
 } from './SystemManager.js';
 
 const run = promisify(exec);
+const runFile = promisify(execFile);
 
+/** Shell helper — ONLY for static commands (pipes/grep). Never pass user input. */
 async function sh(cmd: string): Promise<{ ok: boolean; out: string }> {
   try {
     const { stdout } = await run(cmd, { timeout: 15000 });
+    return { ok: true, out: stdout.trim() };
+  } catch (err) {
+    return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
+  }
+}
+
+/**
+ * No-shell exec: the program and each argument are passed directly to the OS, so
+ * user-supplied values (APN, Tailscale auth key) can NEVER be interpreted as
+ * shell syntax. Use this for anything that carries operator input.
+ */
+async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out: string }> {
+  try {
+    const { stdout } = await runFile(file, args, { timeout: 15000 });
     return { ok: true, out: stdout.trim() };
   } catch (err) {
     return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
@@ -109,27 +125,30 @@ export class RealSystem implements SystemManager {
   }
 
   async lteConnect(apn: string): Promise<ActionResult> {
-    // Create/activate an NM GSM connection for the modem.
-    const del = await sh("nmcli connection delete yonderrc-lte");
+    // Create/activate an NM GSM connection for the modem. execFile (no shell) so
+    // the APN can't inject commands even with quotes/semicolons in it.
+    const del = await shArgs('nmcli', ['connection', 'delete', 'yonderrc-lte']);
     void del; // ignore if it didn't exist
-    const add = await sh(
-      `nmcli connection add type gsm ifname '*' con-name yonderrc-lte apn '${apn}'`,
-    );
+    const add = await shArgs('nmcli', [
+      'connection', 'add', 'type', 'gsm', 'ifname', '*',
+      'con-name', 'yonderrc-lte', 'apn', apn,
+    ]);
     if (!add.ok) return { ok: false, message: `nmcli add failed: ${add.out}` };
-    const up = await sh('nmcli connection up yonderrc-lte');
+    const up = await shArgs('nmcli', ['connection', 'up', 'yonderrc-lte']);
     return up.ok
       ? { ok: true, message: `LTE connecting on APN "${apn}".` }
       : { ok: false, message: `nmcli up failed: ${up.out}` };
   }
 
   async lteDisconnect(): Promise<ActionResult> {
-    const down = await sh('nmcli connection down yonderrc-lte');
+    const down = await shArgs('nmcli', ['connection', 'down', 'yonderrc-lte']);
     return { ok: down.ok, message: down.ok ? 'LTE disconnected.' : down.out };
   }
 
   async tailscaleUp(authKey?: string): Promise<ActionResult> {
     if (authKey) {
-      const r = await sh(`tailscale up --authkey='${authKey}' --hostname=yonderrc`);
+      // execFile (no shell): the auth key is a literal argument, never parsed by a shell.
+      const r = await shArgs('tailscale', ['up', `--authkey=${authKey}`, '--hostname=yonderrc']);
       return r.ok
         ? { ok: true, message: 'Tailscale up.' }
         : { ok: false, message: r.out };

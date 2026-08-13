@@ -76,6 +76,13 @@ async function main() {
   ok('real w/o sensor → ok:false', rm.source === 'real' && rm.ok === false);
   await rsvc.stop();
 
+  // ---- transport routing: only control frames may use the lossy data channel ----
+  const { prefersDataChannel } = await import('../packages/ground/src/lib/transport');
+  ok('control prefers data channel', prefersDataChannel('control') === true);
+  ok('arm never on data channel (reliable WS)', prefersDataChannel('arm') === false);
+  ok('config stays on WS', prefersDataChannel('config') === false);
+  ok('hello stays on WS', prefersDataChannel('hello') === false);
+
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');
   const dch = drone.throttleChannels[0];

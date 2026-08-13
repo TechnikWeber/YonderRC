@@ -22,6 +22,18 @@ export interface LinkCallbacks {
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 /**
+ * Which transport a client message must use. Only continuous control frames
+ * tolerate loss (a dropped one is superseded 20 ms later) and prefer the
+ * low-latency, unordered data channel. Everything else — arm/disarm (incl.
+ * panic), hello, config, video, calib — is a one-shot state change and MUST go
+ * over the reliable WS, or a single dropped packet is silently lost with no
+ * retransmit. Pure + exported so the routing is unit-tested.
+ */
+export function prefersDataChannel(type: ClientMessage['type']): boolean {
+  return type === 'control';
+}
+
+/**
  * Control link. Always connects a WebSocket first — it carries the handshake,
  * status stream, and WebRTC signaling, and is the control fallback. If WebRTC is
  * preferred, it negotiates a data channel over that signaling; once open, control
@@ -166,8 +178,9 @@ export class LinkClient {
   }
 
   private send(msg: ClientMessage): void {
-    // Prefer the data channel for control payload when it's open.
-    if (this.dc && this.dc.readyState === 'open') {
+    // Control payload prefers the data channel when it's open; safety-critical
+    // one-shots (arm, config, …) always take the reliable WS — see prefersDataChannel.
+    if (prefersDataChannel(msg.type) && this.dc && this.dc.readyState === 'open') {
       this.dc.send(JSON.stringify(msg));
       return;
     }
@@ -180,6 +193,8 @@ export class LinkClient {
     this.send({ type: 'control', seq: this.seq++, t: Date.now(), channels });
   }
   sendArm(armed: boolean): void {
+    // Routed over the reliable WS by send() (prefersDataChannel('arm') === false)
+    // so a panic-disarm can't be dropped on a lossy data channel.
     this.send({ type: 'arm', armed });
   }
   sendConfig(failsafeUs: number[], throttleChannels: number[], disarmedUs?: number[]): void {
