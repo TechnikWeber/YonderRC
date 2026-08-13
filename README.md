@@ -37,9 +37,14 @@ link, state, round-trip, input method, vehicle/driver, telemetry.*
   goes to its failsafe value. **Vehicle-type aware and separate from disarming** —
   a drone *holds* on link loss (throttle mid), a car/boat *stops*, a plane goes to
   *motor off*.
-- **Arming**; every new connection starts disarmed. **Auto-disarm on reconnect** can
-  be switched off (for plane/drone, where disarming in flight would cut the motors).
+- **Arming**; every new connection starts disarmed. **Auto-disarm on reconnect is
+  coupled to the vehicle type** (car/boat on, plane/drone off — pushed from the
+  ground) so a reconnect can't cut an aircraft's motors in flight.
+- **Pre-arm check** (throttle must be at its rest position) and **panic-disarm** on a
+  bindable key/button, always sent over the reliable link.
 - Model switching and settings are locked while armed.
+- **Optional shared secret** (off by default): when set, the control link and the
+  setup API require it — quick to connect the first time, lockable when you want it.
 
 ![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png)
 
@@ -61,22 +66,35 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   ACS712/758 — or sim), **precise coulomb counting** (consumed mAh) and
   **battery percentage** from the configured capacity. Sim values are clearly marked
   **SIM**; when a real sensor is missing, the OSD shows **"NO SENSOR"** instead of
-  faked numbers.
+  faked numbers, and telemetry can be **turned off** so a first flight shows no fake data.
+- **Choose what drives the % gauge**: coulomb counting, a full/empty **voltage** curve,
+  or **clamp** (the lower of the two, so a not-actually-full pack can't read 100%). The
+  OSD labels which source it's using; the mAh readout is shown independently.
+- A single INA sensor can provide **both voltage and current**.
 
 **Operation & setup**
 - Graphical **setup page** served by the vehicle itself (`/setup`): driver, cameras,
-  telemetry, watchdog, LTE APN, Tailscale — from a phone/laptop, no screen needed.
+  telemetry, watchdog, LTE, remote access, security — from a phone/laptop, no screen
+  needed. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
+  vehicle (works over LAN, the Pi's AP, or a VPN address).
 
   ![Vehicle setup page: system status, LTE APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
 
-  *Setup page served by the vehicle: system status (mode, LTE, Tailscale, Wi-Fi),
-  LTE APN and Tailscale remote access — usable from a phone with no screen.*
+  *Setup page served by the vehicle: system status (mode, LTE, remote access, Wi-Fi)
+  and all configuration — usable from a phone with no screen.*
+- **Remote access, pick one method**: **Tailscale** or **ZeroTier** (zero-config mesh
+  VPNs) or **WireGuard** — just **upload the `.conf`** exported by your own server or a
+  **FritzBox**. Brought up automatically at boot.
+- **Robust LTE setup** (not just plug-and-play): APN, **SIM PIN**, **APN username/
+  password**, **network mode** (4G-only), **roaming** toggle, live **diagnostics**
+  (raw `mmcli`), and **SIM PIN change/remove**. `autoconnect` redials by itself.
 - **Guided hardware self-test**: channel sweep, read sensors, camera snapshot.
+- **Factory reset** for both the vehicle and the ground app.
 - **Self-sufficient in the field**: with no network the Pi starts a Wi-Fi hotspot and
   opens the control/setup page via a **captive portal** — the ground app is served by
   the Pi itself, so you can control and configure with nothing but a phone.
 - Hardware drivers **PCA9685 / GPIO-PWM / SBUS** (native libs are optional),
-  non-blocking **ESC calibration**, LTE + **Tailscale** against CGNAT.
+  non-blocking **ESC calibration**.
 - **Desktop app** (Electron) with a native SDL2 controller layer (hot-plug, rumble)
   and a fallback to the browser Gamepad API.
 

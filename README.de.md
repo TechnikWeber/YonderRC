@@ -37,9 +37,15 @@ Link, Zustand, Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
   auf ihren Failsafe-Wert. **Modellabhängig und getrennt vom Disarmen** — eine
   Drohne *hält* bei Link-Verlust (Gas mittig), Auto/Boot *stoppt*, Flugzeug geht
   auf *Motor aus*.
-- **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect**
-  ist abschaltbar (für Flugzeug/Drohne, wo Disarmen im Flug die Motoren kappt).
+- **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect ist
+  an den Fahrzeugtyp gekoppelt** (Auto/Boot an, Flugzeug/Drohne aus — vom Ground
+  gepusht), damit ein Reconnect einem Luftfahrzeug nicht im Flug die Motoren kappt.
+- **Pre-Arm-Check** (Gas muss in Ruhelage stehen) und **Panic-Disarm** auf belegbarer
+  Taste/Button, immer über die zuverlässige Verbindung gesendet.
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
+- **Optionales Shared Secret** (standardmäßig aus): einmal gesetzt, verlangen der
+  Steuer-Link und die Setup-API es — erster Verbindungsaufbau bleibt schnell, bei
+  Bedarf abschließbar.
 
 ![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png)
 
@@ -61,22 +67,36 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   ACS712/758 — oder Sim), **präzises Coulomb-Counting** (verbrauchte mAh) und
   **Batterie-Prozent** aus der eingestellten Kapazität. Sim-Werte sind klar als
   **SIM** markiert; fehlt ein echter Sensor, zeigt das OSD **„NO SENSOR"** statt
-  gefälschter Werte.
+  gefälschter Werte, und Telemetrie ist **abschaltbar**, damit der erste Flug keine
+  Fantasiewerte zeigt.
+- **Wählbar, was die %-Anzeige speist**: Coulomb-Counting, eine Voll/Leer-**Spannungs**-
+  kurve oder **clamp** (der niedrigere von beiden, damit ein nicht-voller Pack nicht
+  100 % zeigt). Das OSD beschriftet die Quelle; die mAh-Anzeige läuft unabhängig.
+- Ein einzelner INA-Sensor kann **Spannung und Strom** liefern.
 
 **Betrieb & Einrichtung**
 - Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
-  Telemetrie, Watchdog, LTE-APN, Tailscale — vom Handy/Laptop, ohne Bildschirm.
+  Telemetrie, Watchdog, LTE, Fernzugriff, Sicherheit — vom Handy/Laptop, ohne
+  Bildschirm. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
+  verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
   ![Setup-Seite des Fahrzeugs: System-Status, LTE-APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
 
-  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE, Tailscale, WiFi),
-  LTE-APN und Tailscale-Fernzugriff — bedienbar vom Handy ohne Bildschirm.*
+  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE, Fernzugriff, WiFi)
+  und die gesamte Konfiguration — bedienbar vom Handy ohne Bildschirm.*
+- **Fernzugriff, eine Methode wählen**: **Tailscale** oder **ZeroTier** (Zero-Config-
+  Mesh-VPNs) oder **WireGuard** — einfach die von deinem eigenen Server oder einer
+  **FritzBox** exportierte **`.conf` hochladen**. Kommt beim Boot automatisch hoch.
+- **Robustes LTE-Setup** (nicht nur Plug-and-Play): APN, **SIM-PIN**, **APN-Benutzer/
+  Passwort**, **Netzmodus** (nur 4G), **Roaming**-Schalter, live **Diagnose** (rohe
+  `mmcli`-Ausgabe) und **SIM-PIN ändern/entfernen**. `autoconnect` wählt selbst neu.
 - **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
+- **Werksreset** für Fahrzeug und Boden-App.
 - **Autark im Feld**: ohne Netz startet der Pi einen WLAN-Hotspot und öffnet per
   **Captive Portal** die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst
   ausgeliefert, Steuern und Konfigurieren gehen also mit dem bloßen Handy.
 - Hardware-Treiber **PCA9685 / GPIO-PWM / SBUS** (native Libs sind optional),
-  nicht-blockierende **ESC-Kalibrierung**, LTE + **Tailscale** gegen CGNAT.
+  nicht-blockierende **ESC-Kalibrierung**.
 - **Desktop-App** (Electron) mit nativem SDL2-Controller-Layer (Hot-Plug, Rumble)
   und Fallback auf die Browser-Gamepad-API.
 
