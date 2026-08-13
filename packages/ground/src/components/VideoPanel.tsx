@@ -322,6 +322,23 @@ export function VideoPanel({
   };
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
   const [stats, setStats] = useState<VideoStats | null>(null);
+
+  // Trip odometer: sum of ground distance between successive fixes, with a jitter
+  // deadband so a stationary receiver's drift doesn't make it creep. Resets when the
+  // link drops (gps becomes null).
+  const [odoMeters, setOdoMeters] = useState(0);
+  const odoRef = useRef<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    if (!gps) { odoRef.current = null; setOdoMeters(0); return; }
+    if (!gps.hasFix || gps.lat == null || gps.lon == null) return;
+    const prev = odoRef.current;
+    if (prev) {
+      const d = distanceMeters(prev.lat, prev.lon, gps.lat, gps.lon);
+      const moving = gps.speedMs == null || gps.speedMs > 0.5; // ignore GPS drift while stopped
+      if (moving && d >= 1 && d < 500) setOdoMeters((m) => m + d);
+    }
+    odoRef.current = { lat: gps.lat, lon: gps.lon };
+  }, [gps]);
   const [quality, setQuality] = useState<QualitySel>(loadQuality);
   const [effectiveQuality, setEffectiveQuality] = useState<VideoQuality>(() => {
     const q = loadQuality();
@@ -680,6 +697,7 @@ export function VideoPanel({
                       <span className="osd-home-ref">{gpsHome.relative ? 'FWD' : 'N'}</span>
                       <span className="osd-home-arrow" style={{ transform: `rotate(${Math.round(gpsHome.arrowDeg)}deg)` }}>↑</span>
                     </div>
+                    <span className="osd-odo" title="Distance travelled (odometer)">⟳ {fmtDist(odoMeters)}</span>
                   </div>
                 )}
               </div>

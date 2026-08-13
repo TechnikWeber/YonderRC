@@ -3,6 +3,19 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.20.3
+**English**
+- **Trip odometer** under the home compass in the OSD — accumulated ground distance
+  (m, switching to km with 2 decimals ≥ 1000 m), computed from successive GPS fixes
+  with a jitter deadband so a stationary receiver doesn't make it creep. Resets on
+  link loss.
+
+**Deutsch**
+- **Trip-Odometer** unter dem Home-Kompass im OSD — aufsummierte Strecke (m, ab
+  1000 m in km mit 2 Nachkommastellen), aus aufeinanderfolgenden GPS-Fixes mit
+  Jitter-Deadband, damit ein stehender Empfänger sie nicht hochzählt. Reset bei
+  Verbindungsverlust.
+
 ## v1.20.2
 **English**
 - OSD polish: bigger **battery bar** and **home compass**; dropped the distance label

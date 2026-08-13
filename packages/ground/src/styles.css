@@ -720,9 +720,16 @@ body {
 /* ---- home compass / arrow ---- */
 .osd-home {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   margin-top: 2px;
+}
+.osd-odo {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: #dfe7ee;
+  text-shadow: 0 1px 3px #000;
 }
 .osd-home-rose {
   position: relative;
