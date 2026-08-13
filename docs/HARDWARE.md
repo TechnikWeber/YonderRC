@@ -1,288 +1,288 @@
-# YonderRC — Hardware-Guide (Teileliste, Verkabelung, Einrichtung)
+**English** · [Deutsch](HARDWARE.de.md)
 
-Diese Anleitung bringt YonderRC von der reinen Simulation auf echte Hardware:
-Raspberry Pi als Fahrzeugrechner, PCA9685 für Servos/ESC, INA226 für Strom/Spannung,
-Kamera für FPV, zuerst über WLAN, danach über LTE mit Tailscale für unterwegs.
+# YonderRC — Hardware guide (parts list, wiring, setup)
 
-> **Sicherheit zuerst.** Beim ersten Test **Propeller ab / Räder hoch**, ESC
-> stromlos oder Motor abgesteckt. Erst wenn jeder Kanal nachweislich das Richtige
-> tut, kommt Antriebsenergie dazu. Gearmt wird immer als **letzter** Schritt.
+This guide takes YonderRC from pure simulation to real hardware: a Raspberry Pi as
+the vehicle computer, a PCA9685 for servos/ESC, an INA226 for current/voltage, a
+camera for FPV, first over Wi-Fi and then over LTE with Tailscale for the field.
+
+> **Safety first.** For the first test, **props off / wheels up**, ESC unpowered or
+> the motor unplugged. Only once every channel provably does the right thing do you
+> add drive power. Arming is always the **last** step.
 
 ---
 
-## 1. Teileliste
+## 1. Parts list
 
-### Pflicht
+### Required
 
-| Teil | Empfehlung | Warum |
+| Part | Recommendation | Why |
 |---|---|---|
-| Rechner | **Raspberry Pi 4** (2 GB reicht) oder **Pi Zero 2 W** | Beide haben einen Hardware-H.264-Encoder für latenzarmes FPV. **Der Pi 5 hat keinen** — nicht ideal fürs Video. |
-| Speicher | microSD 32 GB (A1/A2) | Für Raspberry Pi OS Lite. |
-| Servo-/ESC-Treiber | **PCA9685** 16-Kanal PWM (I2C) | Erzeugt saubere 50-Hz-Servosignale unabhängig von der CPU. |
-| Strom-/Spannungssensor | **INA226** Breakout (I2C) | Misst Pack-Spannung und Strom hochseitig; präzise für die mAh-Zählung. Alternativ INA219 (kleinere Ströme). |
-| Stromversorgung Pi | **UBEC/BEC 5 V / 3 A** | Versorgt den Pi stabil aus dem Fahrakku. |
-| Kamera | **Pi Camera Module 3** (CSI) *oder* USB-Kamera mit H.264 | CSI = geringste Latenz. |
-| Verkabelung | Jumper, JST, Lötzeug | I2C-Bus, Servostecker, Sensor. |
+| Computer | **Raspberry Pi 4** (2 GB is enough) or **Pi Zero 2 W** | Both have a hardware H.264 encoder for low-latency FPV. **The Pi 5 does not** — not ideal for video. |
+| Storage | microSD 32 GB (A1/A2) | For Raspberry Pi OS Lite. |
+| Servo/ESC driver | **PCA9685** 16-channel PWM (I2C) | Produces clean 50 Hz servo signals independent of the CPU. |
+| Current/voltage sensor | **INA226** breakout (I2C) | Measures pack voltage and current high-side; precise for mAh counting. Alternatively INA219 (smaller currents). |
+| Pi power supply | **UBEC/BEC 5 V / 3 A** | Powers the Pi reliably from the drive battery. |
+| Camera | **Pi Camera Module 3** (CSI) *or* a USB camera with H.264 | CSI = lowest latency. |
+| Wiring | Jumpers, JST, soldering gear | I2C bus, servo connectors, sensor. |
 
-### Für LTE (Phase 2)
+### For LTE (phase 2)
 
-| Teil | Empfehlung |
+| Part | Recommendation |
 |---|---|
-| LTE-Stick | USB-LTE-Dongle, von ModemManager unterstützt (z. B. Huawei E3372 im „stick"/NCM-Modus, oder Quectel EG25-G) |
-| SIM | Daten-SIM mit bekannter APN |
+| LTE stick | USB LTE dongle supported by ModemManager (e.g. Huawei E3372 in "stick"/NCM mode, or Quectel EG25-G) |
+| SIM | Data SIM with a known APN |
 
-### Je nach Fahrzeug
+### Depending on the vehicle
 
-- **Auto/Boot:** Fahrtregler (ESC) + Lenk-/Ruderservo.
-- **Flugzeug:** ESC + Servos (Quer/Höhe/Seite/Gas).
-- **Drohne:** in der Regel ein **Flight Controller**, angesteuert per **SBUS** (statt PCA9685). YonderRC unterstützt beides.
+- **Car/boat:** ESC + steering/rudder servo.
+- **Plane:** ESC + servos (aileron/elevator/rudder/throttle).
+- **Drone:** usually a **flight controller**, driven via **SBUS** (instead of the PCA9685). YonderRC supports both.
 
 ---
 
-## 2. Verkabelung
+## 2. Wiring
 
 ### 2.1 PCA9685 ↔ Raspberry Pi (I2C)
 
 | PCA9685 | Raspberry Pi (BCM) | Pin |
 |---|---|---|
-| VCC (Logik) | 3V3 | Pin 1 |
+| VCC (logic) | 3V3 | Pin 1 |
 | GND | GND | Pin 6 |
 | SDA | GPIO2 / SDA1 | Pin 3 |
 | SCL | GPIO3 / SCL1 | Pin 5 |
-| V+ (Servopower) | **nicht** vom Pi! | eigener BEC 5–6 V |
+| V+ (servo power) | **not** from the Pi! | its own BEC 5–6 V |
 
-- **V+** ist die Servo-/ESC-Versorgung und kommt vom BEC, **nicht** vom Pi.
-- Standard-I2C-Adresse **0x40**. Mehrere Boards: Adress-Lötbrücken A0–A5.
-- Servos/ESC stecken auf den Kanal-Ausgängen 0–15 (Signal/+/−). YonderRCs
-  Kanäle 1–16 in der App entsprechen den PCA9685-Kanälen 0–15.
+- **V+** is the servo/ESC supply and comes from the BEC, **not** from the Pi.
+- Default I2C address **0x40**. For multiple boards: address solder bridges A0–A5.
+- Servos/ESC plug into channel outputs 0–15 (signal/+/−). YonderRC's channels 1–16
+  in the app map to PCA9685 channels 0–15.
 
-### 2.2 INA226 (Strom/Spannung) ↔ I2C
+### 2.2 INA226 (current/voltage) ↔ I2C
 
-- SDA/SCL an **denselben** I2C-Bus wie der PCA9685 (parallel), Adresse abweichend
-  (INA226 Standard **0x40**? — kollidiert mit PCA9685! **Adresse per Lötbrücke auf
-  z. B. 0x41 setzen**, oder PCA9685 auf 0x41 legen; Hauptsache verschieden).
-- Der Sensor sitzt **hochseitig** in der Plus-Leitung des Akkus: Akku(+) → `VIN+`,
-  Last (ESC/BEC) → `VIN−`. Der interne/externe **Shunt** bestimmt den Messbereich
-  (z. B. 0,002 Ω für hohe Ströme). Den Shunt-Wert trägst du später im Setup ein.
-- **GND** des Sensors mit dem gemeinsamen Massepunkt verbinden.
+- SDA/SCL on the **same** I2C bus as the PCA9685 (in parallel), with a different
+  address (the INA226 default is **0x40**? — that collides with the PCA9685! **Set the
+  address via a solder bridge to e.g. 0x41**, or move the PCA9685 to 0x41; the point is
+  they must differ).
+- The sensor sits **high-side** in the battery's positive lead: battery(+) → `VIN+`,
+  load (ESC/BEC) → `VIN−`. The internal/external **shunt** sets the measurement range
+  (e.g. 0.002 Ω for high currents). You enter the shunt value later in the setup.
+- Connect the sensor's **GND** to the common ground point.
 
 ```
-Akku(+) ──► [INA226 VIN+  VIN−] ──► ESC/BEC (+)
-Akku(−) ─────────────── gemeinsame Masse ───────────────
+Battery(+) ──► [INA226 VIN+  VIN−] ──► ESC/BEC (+)
+Battery(−) ─────────────── common ground ───────────────
                  │
-              Pi GND, PCA9685 GND, BEC GND  (ALLE zusammen!)
+              Pi GND, PCA9685 GND, BEC GND  (ALL together!)
 ```
 
-> **Gemeinsame Masse ist Pflicht.** Pi, PCA9685, Sensor, BEC und ESC müssen sich
-> eine Masse teilen, sonst sind Servosignale und Messwerte unzuverlässig.
+> **A common ground is mandatory.** The Pi, PCA9685, sensor, BEC and ESC must share a
+> ground, otherwise servo signals and readings are unreliable.
 
-### 2.3 Stromversorgung
+### 2.3 Power supply
 
 ```
-Fahrakku ──► BEC 5V/3A ──► Pi (5V/GND, z. B. GPIO Pin 2/6 oder USB-C)
-        └──► ESC ──► Motor
+Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB-C)
+           └──► ESC ──► motor
 ```
 
-- Den Pi **nicht** aus einem PCA9685-Kanal speisen.
-- Reihenfolge beim Einschalten: erst Elektronik/Pi, Antrieb zuletzt.
+- Do **not** power the Pi from a PCA9685 channel.
+- Power-on order: electronics/Pi first, drive last.
 
-### 2.4 Kamera
+### 2.4 Camera
 
-- **CSI:** Flachbandkabel an den Kameraport (bei Pi Zero: schmaleres Kabel).
-- **USB:** einfach einstecken; am besten eine Kamera, die selbst H.264 liefert.
+- **CSI:** ribbon cable to the camera port (on the Pi Zero: the narrower cable).
+- **USB:** just plug it in; ideally a camera that outputs H.264 itself.
 
-### 2.5 Drohne per SBUS (optional, statt PCA9685)
+### 2.5 Drone via SBUS (optional, instead of the PCA9685)
 
-- Pi **UART TX** (GPIO14 / Pin 8) → **SBUS-in** des Flight Controllers.
-- SBUS ist **invertiert** und läuft mit 100000 8E2. Viele FCs erwarten das invertierte
-  Signal; wenn dein FC kein internes Invert hat, brauchst du einen kleinen
-  Inverter (Transistor) zwischen Pi-TX und FC.
+- Pi **UART TX** (GPIO14 / pin 8) → **SBUS-in** of the flight controller.
+- SBUS is **inverted** and runs at 100000 8E2. Many FCs expect the inverted signal;
+  if your FC has no internal invert, you need a small inverter (transistor) between the
+  Pi TX and the FC.
 
 ---
 
-## 3. Software — Schritt für Schritt (zuerst WLAN)
+## 3. Software — step by step (Wi-Fi first)
 
-### 3.1 Raspberry Pi OS flashen
+### 3.1 Flash Raspberry Pi OS
 
 1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit, Bookworm)**.
-2. In den Imager-Einstellungen (Zahnrad): **SSH aktivieren**, Benutzer setzen,
-   **WLAN-Zugangsdaten** eintragen, Hostname z. B. `yonderrc`.
-3. SD-Karte flashen, in den Pi, einschalten.
+2. In the Imager settings (gear icon): **enable SSH**, set a user, enter your
+   **Wi-Fi credentials**, hostname e.g. `yonderrc`.
+3. Flash the SD card, put it in the Pi, power on.
 
-### 3.2 Einloggen und Projekt auf den Pi kopieren
+### 3.2 Log in and copy the project onto the Pi
 
-Zuerst per SSH einloggen:
+First log in via SSH:
 
 ```bash
-ssh pi@yonderrc.local          # oder die IP aus deinem Router
+ssh pi@yonderrc.local          # or the IP from your router
 ```
 
-Dann das Projekt nach `/opt/yonderrc` bringen. **Drei Wege — nimm einen:**
+Then get the project onto `/opt/yonderrc`. **Three ways — pick one:**
 
-**a) git clone (am einfachsten, wenn der Pi Internet hat)**
+**a) git clone (easiest, if the Pi has internet)**
 ```bash
 sudo mkdir -p /opt/yonderrc
 sudo chown $USER /opt/yonderrc
 git clone https://github.com/TechnikWeber/YonderRC.git /opt/yonderrc
 ```
 
-**b) scp vom Laptop (kopiert dein lokales Repo auf den Pi)**
-Auf deinem **Laptop** (nicht auf dem Pi) ausführen:
+**b) scp from the laptop (copies your local repo to the Pi)**
+Run on your **laptop** (not on the Pi):
 ```bash
-# im Ordner, der YonderRC enthält:
+# in the folder that contains YonderRC:
 scp -r ~/YonderRC pi@yonderrc.local:/tmp/YonderRC
-# dann auf dem Pi:
+# then on the Pi:
 ssh pi@yonderrc.local 'sudo mkdir -p /opt/yonderrc && sudo cp -a /tmp/YonderRC/. /opt/yonderrc/'
 ```
-Tipp: Vorher auf dem Laptop `node_modules` nicht mitkopieren (spart Zeit) — das
-Install-Skript installiert auf dem Pi ohnehin frisch.
+Tip: don't copy `node_modules` from the laptop (saves time) — the install script
+installs fresh on the Pi anyway.
 
-**c) USB-Stick (wenn der Pi kein Netz hat)**
-YonderRC auf einen USB-Stick kopieren, in den Pi stecken, dann auf dem Pi:
+**c) USB stick (if the Pi has no network)**
+Copy YonderRC onto a USB stick, plug it into the Pi, then on the Pi:
 ```bash
 sudo mkdir -p /opt/yonderrc
-sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # Pfad ggf. anpassen (lsblk zeigt das Laufwerk)
+sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # adjust the path (lsblk shows the drive)
 ```
 
-Danach installieren:
+Then install:
 
 ```bash
 sudo bash /opt/yonderrc/provisioning/install.sh
 ```
 
-`install.sh` installiert Node, ffmpeg, NetworkManager, ModemManager, Tailscale und
-go2rtc, richtet die drei systemd-Dienste ein (`yonderrc-vehicle`, `go2rtc`,
-`yonderrc-onboard`) und aktiviert **I2C** und **UART**.
+`install.sh` installs Node, ffmpeg, NetworkManager, ModemManager, Tailscale and
+go2rtc, sets up the three systemd services (`yonderrc-vehicle`, `go2rtc`,
+`yonderrc-onboard`) and enables **I2C** and **UART**.
 
-> Fedora-Notiz von deinem Laptop gilt hier nicht — auf dem Pi bringt das Skript das
-> passende ffmpeg mit H.264 mit.
+> The Fedora note for your laptop does not apply here — on the Pi the script brings
+> the right ffmpeg with H.264.
 
-### 3.3 Hardware-Treiber-Abhängigkeiten (nur was du nutzt)
+### 3.3 Hardware driver dependencies (only what you use)
 
 ```bash
 cd /opt/yonderrc
 npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA226
-npm install pigpio     -w @yonderrc/vehicle    # (nur bei GPIO-PWM statt PCA9685)
-npm install serialport -w @yonderrc/vehicle    # (nur bei SBUS/Drohne)
+npm install pigpio     -w @yonderrc/vehicle    # (only for GPIO-PWM instead of PCA9685)
+npm install serialport -w @yonderrc/vehicle    # (only for SBUS/drone)
 sudo systemctl restart yonderrc-vehicle
 ```
 
-### 3.4 Über WLAN einrichten (grafisch)
+### 3.4 Configure over Wi-Fi (graphical)
 
-Öffne vom Laptop/Handy im selben WLAN: **`http://yonderrc.local:8080/setup`**
-(oder `http://<pi-ip>:8080/setup`).
+From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`**
+(or `http://<pi-ip>:8080/setup`).
 
-1. **Vehicle:** Name setzen, **Output driver = `pca9685`** (Drohne: `sbus`),
-   Throttle-Kanal prüfen.
-2. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
-   → **Save & apply**. go2rtc wird neu geladen.
-3. **Telemetry:** Source **`real`**, Strom-Sensor **`ina226`**, `Shunt Ω` eintragen
-   (z. B. 0.002), Spannungslabel „Spannung 1", Batteriekapazität (mAh) angeben,
-   Anzeige verbraucht/Rest wählen → **Save**. Danach Fahrzeug neu starten
+1. **Vehicle:** set the name, **Output driver = `pca9685`** (drone: `sbus`), check the
+   throttle channel.
+2. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
+   **Save & apply**. go2rtc reloads.
+3. **Telemetry:** source **`real`**, current sensor **`ina226`**, enter `Shunt Ω`
+   (e.g. 0.002), voltage label "Voltage 1", enter the battery capacity (mAh), choose
+   consumed/remaining display → **Save**. Then restart the vehicle
    (`sudo systemctl restart yonderrc-vehicle`).
 
-### 3.5 Erster Funktionstest (RÄDER HOCH / PROPS AB!)
+### 3.5 First function test (WHEELS UP / PROPS OFF!)
 
-1. Boden-App am Laptop öffnen, oben die **Pi-Adresse** eintragen:
+1. Open the ground app on the laptop, enter the **Pi address** at the top:
    `ws://yonderrc.local:8080`, **Connect**.
-2. Noch **nicht armen**. Im Kanal-Monitor prüfen: Lenkung/Ruder bewegt den
-   richtigen Kanal? Endpunkte ok? Bei Bedarf im Setup Trim/EPA/Reverse anpassen.
-3. **ESC-Kalibrierung** (falls nötig) im Setup starten — Anweisungen folgen.
-4. Erst wenn alles stimmt: Antrieb scharf, **Arm** drücken, vorsichtig Gas.
-5. **Video** sollte im FPV-Panel laufen (der `go2rtc`-Dienst läuft dauerhaft).
-6. **Telemetrie** im OSD prüfen: zeigt es echte Pack-Spannung? Steht dort **nicht**
-   „SIM"? Dann liest der INA226 korrekt. Falls „SIM" erscheint, greift der Fallback
-   (Sensor nicht gefunden) — Verkabelung/Adresse/`i2c-bus` prüfen (`sudo i2cdetect -y 1`).
+2. Do **not arm** yet. In the channel monitor check: does steering/rudder move the
+   right channel? Endpoints ok? Adjust trim/EPA/reverse in the setup if needed.
+3. **ESC calibration** (if needed) — start it in the setup, instructions follow.
+4. Only once everything is right: arm the drive, press **Arm**, throttle up carefully.
+5. **Video** should run in the FPV panel (the `go2rtc` service runs continuously).
+6. Check **telemetry** in the OSD: does it show real pack voltage? Does it **not** say
+   "SIM"? Then the INA226 reads correctly. If "SIM" appears, the fallback kicked in
+   (sensor not found) — check wiring/address/`i2c-bus` (`sudo i2cdetect -y 1`).
 
 ---
 
-## 4. Von WLAN auf LTE umstellen (Phase 2)
+## 4. Switch from Wi-Fi to LTE (phase 2)
 
-Sobald alles im WLAN läuft, kommt die Reichweite über Mobilfunk. Das Problem: LTE
-liegt hinter **CGNAT**, das Fahrzeug hat keine öffentliche IP. Lösung: **Tailscale**
-legt Pi und Boden-Gerät ins selbe private Netz — überall erreichbar.
+Once everything works over Wi-Fi, range comes via cellular. The catch: LTE sits behind
+**CGNAT**, the vehicle has no public IP. The fix: **Tailscale** puts the Pi and the
+ground device on the same private network — reachable anywhere.
 
-### 4.1 LTE-Stick
+### 4.1 LTE stick
 
-1. USB-LTE-Dongle einstecken. Prüfen, ob ModemManager ihn sieht:
+1. Plug in the USB LTE dongle. Check that ModemManager sees it:
    ```bash
    mmcli -L
    ```
-2. Im Setup unter **LTE** die **APN** deines Anbieters eintragen → **Connect**.
-   Die APN wird gespeichert und verbindet künftig automatisch beim Booten.
+2. In the setup under **LTE**, enter your provider's **APN** → **Connect**. The APN is
+   saved and will connect automatically at boot from then on.
 
 ### 4.2 Tailscale
 
-1. Im Setup unter **Tailscale** auf **Bring up** — ohne Auth-Key bekommst du eine
-   Login-URL; öffnen und das Gerät in deinem Tailnet bestätigen. (Oder vorab einen
-   Auth-Key erzeugen und einfügen für Setup ohne Interaktion.)
-2. Die **Tailscale-IP** des Fahrzeugs steht danach oben im Setup-Status
-   (z. B. `100.x.y.z`).
+1. In the setup under **Tailscale**, click **Bring up** — without an auth key you get a
+   login URL; open it and approve the device in your tailnet. (Or create an auth key
+   ahead of time and paste it for non-interactive setup.)
+2. The vehicle's **Tailscale IP** then appears at the top of the setup status
+   (e.g. `100.x.y.z`).
 
-### 4.3 Von unterwegs verbinden
+### 4.3 Connect from the field
 
-- Dein Boden-Gerät (Laptop/Handy) ebenfalls in dasselbe Tailnet bringen
-  (Tailscale-App installieren, einloggen).
-- In der Boden-App als Adresse die **Tailscale-IP** verwenden:
-  `ws://100.x.y.z:8080`. Das Video läuft analog über `http://100.x.y.z:1984`.
+- Put your ground device (laptop/phone) on the same tailnet too (install the Tailscale
+  app, log in).
+- In the ground app, use the **Tailscale IP** as the address:
+  `ws://100.x.y.z:8080`. Video works the same way over `http://100.x.y.z:1984`.
 
-> **Latenz/Reichweite:** Für den absolut niedrigsten WebRTC-Weg über LTE kannst du
-> später einen eigenen **TURN-Server (coturn)** auf einem günstigen VPS ergänzen.
-> Tailscale allein gibt dir aber bereits eine funktionierende, verschlüsselte
-> Verbindung und ist der einfachste Weg, der zuverlässig klappt.
-
----
-
-## 5. Lokal ohne Netz betreiben (AP-Modus + Handy)
-
-Wenn der Pi **weder ein bekanntes WLAN noch LTE** findet, startet er nach dem
-Booten automatisch einen eigenen **WLAN-Hotspot „YonderRC-setup"** (Passwort
-`yonderrc123`). So steuerst und konfigurierst du komplett **ohne Laptop, nur mit
-dem Handy**:
-
-1. Am Handy mit dem WLAN **„YonderRC-setup"** verbinden.
-2. Dank **Captive Portal** öffnet sich automatisch die YonderRC-Seite (falls nicht,
-   im Browser `http://192.168.4.1:8080/` öffnen).
-3. Dort hast du **beides**: die **Steuerung** (Boden-App, direkt vom Pi ausgeliefert)
-   und unter **Setup** die komplette Konfiguration.
-
-Das Fahrzeug liefert die Boden-App also selbst aus — die Boden-App verbindet sich
-automatisch zurück auf denselben Host (den Pi), inklusive Video. Damit ist der Pi
-im Feld autark bedienbar; sobald wieder WLAN/LTE da ist, nutzt du wie gewohnt
-Laptop oder die Tailscale-Adresse.
-
-> **Sicherheit im AP-Betrieb:** Auch hier gelten Watchdog, Arming und (falls
-> aktiviert) Auto-Disarm bei Reconnect. Für Flugzeug/Drohne im Setup den
-> Auto-Disarm ausschalten.
+> **Latency/range:** for the absolute lowest-latency WebRTC path over LTE you can later
+> add your own **TURN server (coturn)** on a cheap VPS. Tailscale alone already gives
+> you a working, encrypted connection and is the simplest path that reliably works.
 
 ---
 
-## 6. Was YonderRC an Sicherheit dazutut
+## 5. Operate locally with no network (AP mode + phone)
 
-- **Failsafe-Watchdog:** Bleiben gültige Steuer-Frames länger als die eingestellte
-  Zeit aus (Standard 300 ms, im Setup als „Watchdog (ms)" änderbar), fährt das
-  Fahrzeug jeden Kanal auf seinen Failsafe-Wert. Die Defaults sind **modellabhängig
-  und getrennt vom Disarmen**: Drohne hält Gas in der **Mitte** (kein Absturz),
-  Auto/Boot auf **Stopp**, Flugzeug auf **Motor aus**. Alles pro Kanal einstellbar.
-- **Disarmen ≠ Failsafe:** Bewusstes Disarmen schaltet den Motor wirklich aus
-  (Drohne/Flugzeug = Minimum, Auto/Boot = Stopp) — unabhängig vom Failsafe-Wert.
-- **Arming:** Der Gas-Kanal bleibt disarmed auf Leerlauf; Motor läuft erst nach
-  bewusstem Arm.
-- **Auto-Disarm bei Reconnect:** Jede neue Verbindung startet disarmed — nach
-  Link-Verlust musst du bewusst neu armen.
-- **Treiber-Fallback:** Schlägt der Hardware-Treiber beim Start fehl, läuft der
-  Dienst im Sim weiter und die Setup-UI bleibt erreichbar.
-- **systemd `Restart=always`:** Stürzt der Dienst ab, startet ihn systemd neu.
+If the Pi finds **neither a known Wi-Fi nor LTE**, after boot it automatically starts
+its own **Wi-Fi hotspot "YonderRC-setup"** (password `yonderrc123`). This lets you
+control and configure entirely **without a laptop, using only a phone**:
+
+1. On the phone, connect to the Wi-Fi **"YonderRC-setup"**.
+2. Thanks to the **captive portal** the YonderRC page opens automatically (if not, open
+   `http://192.168.4.1:8080/` in the browser).
+3. There you have **both**: the **control** (the ground app, served directly by the Pi)
+   and under **Setup** the full configuration.
+
+So the vehicle serves the ground app itself — the ground app connects back
+automatically to the same host (the Pi), including video. That makes the Pi
+self-sufficient in the field; once Wi-Fi/LTE is back, you use the laptop or the
+Tailscale address as usual.
+
+> **Safety in AP mode:** the watchdog, arming and (if enabled) auto-disarm on reconnect
+> apply here too. For plane/drone, turn off auto-disarm in the setup.
 
 ---
 
-## 7. Schnelle Fehlersuche
+## 6. What safety YonderRC adds
 
-| Symptom | Prüfen |
+- **Failsafe watchdog:** if valid control frames stop arriving for longer than the
+  configured time (default 300 ms, changeable in the setup as "Watchdog (ms)"), the
+  vehicle drives every channel to its failsafe value. The defaults are **vehicle-type
+  aware and separate from disarming**: a drone holds throttle **mid** (no crash), a
+  car/boat goes to **stop**, a plane to **motor off**. All adjustable per channel.
+- **Disarming ≠ failsafe:** deliberate disarming really switches the motor off
+  (drone/plane = minimum, car/boat = stop) — independent of the failsafe value.
+- **Arming:** the throttle channel stays at idle while disarmed; the motor only runs
+  after a deliberate arm.
+- **Auto-disarm on reconnect:** every new connection starts disarmed — after a link
+  loss you must deliberately re-arm.
+- **Driver fallback:** if the hardware driver fails to start, the service keeps running
+  in sim and the setup UI stays reachable.
+- **systemd `Restart=always`:** if the service crashes, systemd restarts it.
+
+---
+
+## 7. Quick troubleshooting
+
+| Symptom | Check |
 |---|---|
-| Kein I2C-Gerät | `sudo i2cdetect -y 1` — erscheinen 0x40/0x41? Verkabelung/Adressen. |
-| Servos zittern | Gemeinsame Masse? BEC stark genug? PCA9685 V+ versorgt? |
-| OSD zeigt „SIM" trotz Sensor | `i2c-bus` installiert? Adresse im Setup korrekt? Sensor auf dem Bus sichtbar? |
-| Kein Video | Läuft `go2rtc`? `systemctl status go2rtc`. Kamera erkannt? |
-| LTE verbindet nicht | `mmcli -L`, APN korrekt? Signal? |
-| Von unterwegs keine Verbindung | Beide Geräte im selben Tailnet? Tailscale-IP genutzt? |
+| No I2C device | `sudo i2cdetect -y 1` — do 0x40/0x41 appear? Wiring/addresses. |
+| Servos jitter | Common ground? BEC strong enough? Is PCA9685 V+ powered? |
+| OSD shows "SIM" despite a sensor | Is `i2c-bus` installed? Address correct in the setup? Is the sensor visible on the bus? |
+| No video | Is `go2rtc` running? `systemctl status go2rtc`. Camera detected? |
+| LTE won't connect | `mmcli -L`, APN correct? Signal? |
+| No connection from the field | Are both devices on the same tailnet? Using the Tailscale IP? |

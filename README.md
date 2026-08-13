@@ -1,188 +1,189 @@
+**English** · [Deutsch](README.de.md)
+
 # YonderRC
 
-Fernsteuerung jenseits der Sichtweite über IP — eine App für **Video, Steuerung
-und Konfiguration** von Autos, Booten, Flugzeugen und Drohnen. Läuft im Browser
-(inkl. Smartphone), als Desktop-App (Windows/Linux) und auf einem Raspberry Pi als
-Fahrzeugrechner. Niedrige Latenz, ausgelegt für den Betrieb über LTE.
+Beyond-line-of-sight remote control over IP — an app for **video, control and
+configuration** of cars, boats, planes and drones. Runs in the browser (incl. phone),
+as a desktop app (Windows/Linux), and on a Raspberry Pi as the vehicle computer.
+Low latency, built for operation over LTE.
 
-Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Aufbau
-auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
+Everything runs **in a simulator — with no hardware at all**. For the real build on
+the Pi (parts list, wiring, step by step from Wi-Fi → LTE) see
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
-![Bodenstation im Fahrbetrieb: FPV-Video mit OSD — Akku-Ladebalken oben rechts, Link/Latenz und Akkudaten unten rechts, Kanalbalken unten links](docs/screenshots/Overview_OSD.png)
+![Ground station while driving: FPV video with OSD — battery charge bar top right, link/latency and battery data bottom right, channel bars bottom left](docs/screenshots/Overview_OSD.png)
 
-*Bodenstation im Fahrbetrieb: latenzarmes FPV-Video mit OSD — Akku-Ladebalken oben
-rechts, Link/Latenz-Daten und Spannung/Strom/Kapazität unten rechts.*
+*Ground station while driving: low-latency FPV video with OSD — battery charge bar
+top right, link/latency data and voltage/current/capacity bottom right.*
 
 ---
 
-## Was YonderRC kann
+## What YonderRC does
 
-**Steuerung**
-- 16 Kanäle über WebSocket oder WebRTC-Data-Channel; Tastatur, On-Screen-Buttons,
-  Gamepad oder vollwertiger Touch-Joystick (Multitouch, Deadzone, Federrücklauf).
-- **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
-  wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
-- Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
+**Control**
+- 16 channels over WebSocket or a WebRTC data channel; keyboard, on-screen buttons,
+  gamepad, or a full touch joystick (multitouch, deadzone, spring return).
+- **Models** for car / boat / plane / drone with matching channel templates,
+  selectable input method, and per-axis detent (center/min/free).
+- Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
 
-![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png)
+![Touch control with throttle/steering joysticks, Lights/Horn buttons and a status strip](docs/screenshots/TouchInputs_and_Status.png)
 
-*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons) mit Status-Leiste:
-Link, Zustand, Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
+*Touch control (multitouch joysticks, bindable buttons) with a status strip:
+link, state, round-trip, input method, vehicle/driver, telemetry.*
 
-**Sicherheit**
-- Zeitbasierter **Failsafe-Watchdog**: bleiben Steuer-Frames aus, gehen alle Kanäle
-  auf ihren Failsafe-Wert. **Modellabhängig und getrennt vom Disarmen** — eine
-  Drohne *hält* bei Link-Verlust (Gas mittig), Auto/Boot *stoppt*, Flugzeug geht
-  auf *Motor aus*.
-- **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect**
-  ist abschaltbar (für Flugzeug/Drohne, wo Disarmen im Flug die Motoren kappt).
-- Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
+**Safety**
+- Time-based **failsafe watchdog**: if control frames stop arriving, every channel
+  goes to its failsafe value. **Vehicle-type aware and separate from disarming** —
+  a drone *holds* on link loss (throttle mid), a car/boat *stops*, a plane goes to
+  *motor off*.
+- **Arming**; every new connection starts disarmed. **Auto-disarm on reconnect** can
+  be switched off (for plane/drone, where disarming in flight would cut the motors).
+- Model switching and settings are locked while armed.
 
-![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png)
+![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png)
 
-*Kanal-Monitor: zeigt die **echte** Fahrzeug-Ausgabe in µs inklusive Failsafe und
-Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
+*Channel monitor: shows the **real** vehicle output in µs including failsafe and
+disarm — the throttle channel is visibly held safe while disarmed.*
 
 **Video (FPV)**
-- Latenzarmes Video über **go2rtc/WebRTC**; H.264-Encoder wird automatisch erkannt
-  (`libx264`, `libopenh264`, Pi-Hardware).
-- **Selbstheilend**: erkennt eingefrorenes/abgerissenes Bild und verbindet sich
-  automatisch neu; der letzte Frame bleibt stehen.
-- **Video-Qualität live umschaltbar** von der Groundstation (High/Medium/Low).
-- OSD mit Status, Kanälen, **Bitrate/Paketverlust/FPS/Video-Latenz** und Telemetrie.
-- **Aufnahme & Standbild** lokal (Ordner einmal vorwählen; auf Taste oder
-  Controller-Button legbar).
+- Low-latency video over **go2rtc/WebRTC**; the H.264 encoder is auto-detected
+  (`libx264`, `libopenh264`, Pi hardware).
+- **Self-healing**: detects a frozen/dropped picture and reconnects automatically;
+  the last frame stays on screen.
+- **Video quality switchable live** from the ground station (high/medium/low).
+- OSD with status, channels, **bitrate/packet loss/FPS/video latency** and telemetry.
+- **Recording & snapshots** locally (pick a folder once; bindable to a key or a
+  controller button).
 
-**Telemetrie**
-- Spannungs-/Stromsensoren (real: ADS1115/1015, MCP3008/3208, INA219/226/260/3221,
-  ACS712/758 — oder Sim), **präzises Coulomb-Counting** (verbrauchte mAh) und
-  **Batterie-Prozent** aus der eingestellten Kapazität. Sim-Werte sind klar als
-  **SIM** markiert; fehlt ein echter Sensor, zeigt das OSD **„NO SENSOR"** statt
-  gefälschter Werte.
+**Telemetry**
+- Voltage/current sensors (real: ADS1115/1015, MCP3008/3208, INA219/226/260/3221,
+  ACS712/758 — or sim), **precise coulomb counting** (consumed mAh) and
+  **battery percentage** from the configured capacity. Sim values are clearly marked
+  **SIM**; when a real sensor is missing, the OSD shows **"NO SENSOR"** instead of
+  faked numbers.
 
-**Betrieb & Einrichtung**
-- Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
-  Telemetrie, Watchdog, LTE-APN, Tailscale — vom Handy/Laptop, ohne Bildschirm.
+**Operation & setup**
+- Graphical **setup page** served by the vehicle itself (`/setup`): driver, cameras,
+  telemetry, watchdog, LTE APN, Tailscale — from a phone/laptop, no screen needed.
 
-  ![Setup-Seite des Fahrzeugs: System-Status, LTE-APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
+  ![Vehicle setup page: system status, LTE APN, Tailscale](docs/screenshots/VehicleConfig_Setup.png)
 
-  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE, Tailscale, WiFi),
-  LTE-APN und Tailscale-Fernzugriff — bedienbar vom Handy ohne Bildschirm.*
-- **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
-- **Autark im Feld**: ohne Netz startet der Pi einen WLAN-Hotspot und öffnet per
-  **Captive Portal** die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst
-  ausgeliefert, Steuern und Konfigurieren gehen also mit dem bloßen Handy.
-- Hardware-Treiber **PCA9685 / GPIO-PWM / SBUS** (native Libs sind optional),
-  nicht-blockierende **ESC-Kalibrierung**, LTE + **Tailscale** gegen CGNAT.
-- **Desktop-App** (Electron) mit nativem SDL2-Controller-Layer (Hot-Plug, Rumble)
-  und Fallback auf die Browser-Gamepad-API.
+  *Setup page served by the vehicle: system status (mode, LTE, Tailscale, Wi-Fi),
+  LTE APN and Tailscale remote access — usable from a phone with no screen.*
+- **Guided hardware self-test**: channel sweep, read sensors, camera snapshot.
+- **Self-sufficient in the field**: with no network the Pi starts a Wi-Fi hotspot and
+  opens the control/setup page via a **captive portal** — the ground app is served by
+  the Pi itself, so you can control and configure with nothing but a phone.
+- Hardware drivers **PCA9685 / GPIO-PWM / SBUS** (native libs are optional),
+  non-blocking **ESC calibration**, LTE + **Tailscale** against CGNAT.
+- **Desktop app** (Electron) with a native SDL2 controller layer (hot-plug, rumble)
+  and a fallback to the browser Gamepad API.
 
 ---
 
-## Schnellstart
+## Quick start
 
-Benötigt Node 20+.
+Requires Node 20+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-- Fahrzeug-Dienst: `ws://localhost:8080` (Sim-Treiber), Setup unter `/setup`.
-- Bodenstation: `http://localhost:5173`.
+- Vehicle service: `ws://localhost:8080` (sim driver), setup at `/setup`.
+- Ground station: `http://localhost:5173`.
 
-**Connect** drücken, dann **Arm**, und mit `W A S D` / Pfeiltasten fahren. Vom Handy
-`http://<PC-LAN-IP>:5173` öffnen (Dev-Server und Fahrzeug lauschen auf allen
-Interfaces).
+Press **Connect**, then **Arm**, and drive with `W A S D` / arrow keys. From a phone
+open `http://<PC-LAN-IP>:5173` (the dev server and the vehicle listen on all
+interfaces).
 
-**Video im Sim** (synthetisches Testbild, braucht `ffmpeg`):
+**Video in the sim** (synthetic test pattern, needs `ffmpeg`):
 
 ```bash
-npm run dev            # Terminal 1: Fahrzeug + Boden-App
-npm run dev:video      # Terminal 2: go2rtc mit Testbild
+npm run dev            # terminal 1: vehicle + ground app
+npm run dev:video      # terminal 2: go2rtc with the test pattern
 ```
 
-Reihenfolge beachten: `npm run dev` erkennt den H.264-Encoder und schreibt die
-go2rtc-Config; danach `npm run dev:video`. Fedora: `sudo dnf install -y openh264 ffmpeg-free`.
+Mind the order: `npm run dev` detects the H.264 encoder and writes the go2rtc config;
+then run `npm run dev:video`. Fedora: `sudo dnf install -y openh264 ffmpeg-free`.
 
 **Tests:**
 
 ```bash
-npm test               # Sicherheits-/Logik-Testsuite
+npm test               # safety / logic test suite
 ```
 
 ---
 
-## Auf echter Hardware
+## On real hardware
 
-Kompletter Aufbau auf dem Raspberry Pi — Teileliste, Verkabelung, Pi-Einrichtung,
-erst im WLAN, dann Umstellung auf LTE mit Tailscale — in
+The complete build on a Raspberry Pi — parts list, wiring, Pi setup, first on Wi-Fi
+then switching to LTE with Tailscale — is in
 **[`docs/HARDWARE.md`](docs/HARDWARE.md)**.
 
-**1. Repo auf den Pi kopieren** (`/opt/yonderrc`) — ein Weg genügt:
+**1. Copy the repo onto the Pi** (`/opt/yonderrc`) — one way is enough:
 
 ```bash
-# a) git clone (wenn der Pi Internet hat)
+# a) git clone (if the Pi has internet)
 sudo mkdir -p /opt/yonderrc && sudo chown $USER /opt/yonderrc
 git clone https://github.com/TechnikWeber/YonderRC.git /opt/yonderrc
 
-# b) scp vom Laptop (dein lokales Repo auf den Pi kopieren) — auf dem LAPTOP ausführen:
+# b) scp from the laptop (copy your local repo to the Pi) — run on the LAPTOP:
 scp -r ~/YonderRC pi@yonderrc.local:/tmp/YonderRC
 ssh pi@yonderrc.local 'sudo mkdir -p /opt/yonderrc && sudo cp -a /tmp/YonderRC/. /opt/yonderrc/'
 
-# c) USB-Stick (Pi ohne Netz) — Stick einstecken, dann auf dem Pi:
-sudo mkdir -p /opt/yonderrc && sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # Pfad ggf. via lsblk prüfen
+# c) USB stick (Pi with no network) — insert the stick, then on the Pi:
+sudo mkdir -p /opt/yonderrc && sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # check the path via lsblk
 ```
 
-**2. Installieren und einrichten:**
+**2. Install and configure:**
 
 ```bash
 sudo bash /opt/yonderrc/provisioning/install.sh   # Node, ffmpeg, go2rtc, systemd, I2C/UART
-# dann grafisch unter  http://<pi>:8080/setup  einrichten
+# then configure graphically at  http://<pi>:8080/setup
 ```
 
-Treiber-Auswahl per Env (Details in HARDWARE.md und `provisioning/README.md`):
+Driver selection via env (details in `docs/HARDWARE.md` and `provisioning/README.md`):
 
 ```bash
-YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C-PWM, 16 Kanäle
+YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C PWM, 16 channels
 YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio
-YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS an einen Flight Controller
+YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS to a flight controller
 ```
 
-Schlägt ein Hardware-Treiber beim Start fehl, fällt der Dienst automatisch auf
-`sim` zurück und bleibt erreichbar — ein headless Gerät wird nie unkonfigurierbar.
+If a hardware driver fails to start, the service automatically falls back to `sim`
+and stays reachable — a headless device never becomes unconfigurable.
 
 ---
 
-## Projektstruktur
+## Project layout
 
 ```
 packages/
-  protocol/   geteilte TypeScript-Typen (Wire-Nachrichten, Kanäle, Profile, Telemetrie)
-  vehicle/    Fahrzeug-Dienst (Node/tsx): Core, Failsafe, Treiber, Sensoren, go2rtc, Setup
-  ground/     Bodenstation (React): Steuerung, FPV, OSD, Aufnahme, Setup-UI
-  desktop/    Electron-Shell mit nativem SDL2-Input
-docs/HARDWARE.md   Hardware-Guide
-provisioning/      Pi-Setup (systemd, LTE, Tailscale, Hotspot/Onboarding)
-test/              Testsuite (npm test)
+  protocol/   shared TypeScript types (wire messages, channels, profiles, telemetry)
+  vehicle/    vehicle service (Node/tsx): core, failsafe, drivers, sensors, go2rtc, setup
+  ground/     ground station (React): control, FPV, OSD, recording, setup UI
+  desktop/    Electron shell with native SDL2 input
+docs/HARDWARE.md   hardware guide
+provisioning/      Pi setup (systemd, LTE, Tailscale, hotspot/onboarding)
+test/              test suite (npm test)
 ```
 
-Alles oberhalb des Transports ist transport-unabhängig; die Steuerung läuft über
-WebSocket (Fallback + Signalisierung) oder den WebRTC-Data-Channel.
+Everything above the transport is transport-agnostic; control travels over
+WebSocket (fallback + signaling) or the WebRTC data channel.
 
 ---
 
-## Versionen
+## Versions
 
-Die aktuellen Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md) und in den
-[GitHub-Releases](https://github.com/TechnikWeber/YonderRC/releases). Diese README
-beschreibt immer den aktuellen Stand.
+The current changes are in [`CHANGELOG.md`](CHANGELOG.md) and in the
+[GitHub releases](https://github.com/TechnikWeber/YonderRC/releases). This README
+always describes the current state.
 
-## Lizenz
+## License
 
-YonderRC steht unter **CC BY-NC-ND 4.0** (Namensnennung – nicht kommerziell –
-keine Bearbeitung) **mit einem Zusatz: keine militärische oder kriegerische
-Nutzung**. Kurz: kostenlos nutzen und unveränderte Kopies mit Quellenangabe
-weitergeben; kein Verändern, keine kommerzielle und keine militärische Nutzung.
-Der volle Text steht in [`LICENSE`](LICENSE).
+YonderRC is licensed under **CC BY-NC-ND 4.0** (Attribution – NonCommercial –
+NoDerivatives) **plus one addition: no military or warfare use**. In short: use it for
+free and pass on unmodified copies with attribution; no modifying, no commercial and
+no military use. The full text is in [`LICENSE`](LICENSE).

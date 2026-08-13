@@ -1,7 +1,19 @@
 # Changelog
 
 All notable changes to YonderRC. Each release is the full project; every zip is
-self-contained.
+self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
+
+## v1.17.0
+**English**
+- **English-first documentation.** `README.md` and `docs/HARDWARE.md` are now
+  English; the German originals live in `README.de.md` and `docs/HARDWARE.de.md`,
+  with a language switcher at the top of each. No code changes — docs only.
+
+**Deutsch**
+- **Englisch als Hauptsprache der Doku.** `README.md` und `docs/HARDWARE.md` sind
+  jetzt englisch; die deutschen Originale liegen in `README.de.md` und
+  `docs/HARDWARE.de.md`, mit Sprachumschalter oben in jeder Datei. Keine
+  Code-Änderungen — nur Dokumentation.
 
 ## v1.16.3
 - **Camera setup hardening**: stream names are restricted to a safe charset (they
