@@ -3,6 +3,36 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.21.0
+**English**
+- **Mobile layout fixes** — nothing widens the page any more, so mobile Safari can't
+  pan/zoom the whole view sideways: the FPV/OSD tool buttons wrap into a second row,
+  the model editor's *Duplicate*/*Delete* drop onto their own right-aligned row, and
+  the number-input grids (endpoints, auto-quality, battery thresholds) let their
+  columns govern the width instead of the inputs' intrinsic size. The endpoints
+  min/max pair was completely unstyled and now renders as a proper two-column field.
+- **Compact OSD on phones** — same blocks at ~⅔ the size, secondary readouts (video
+  latency, kbps, fps, battery-% source) hidden, the bottom-right telemetry stacks laid
+  out as wrapped rows, and the ARMED/FAILSAFE badge moved up next to LINK so the
+  telemetry block can't cover it. New **OSD size** setting in the FPV ⚙ panel:
+  *Auto* (compact on narrow screens and on phones in landscape), *Compact*, *Full* —
+  persisted per browser. Desktop is unchanged.
+
+**Deutsch**
+- **Mobile-Layout-Fixes** — nichts macht die Seite mehr breiter als das Fenster, damit
+  Safari die Ansicht nicht mehr seitlich verschieben/zoomen lässt: die FPV/OSD-Buttons
+  rutschen in eine zweite Reihe, *Duplicate*/*Delete* im Modell-Editor bekommen eine
+  eigene, rechtsbündige Zeile, und die Zahlenfeld-Raster (Endpoints, Auto-Qualität,
+  Akku-Schwellen) richten sich nach den Spalten statt nach der Eigenbreite der Felder.
+  Das min/max-Paar bei den Endpoints hatte gar kein CSS und ist jetzt ein sauberes
+  Zwei-Spalten-Feld.
+- **Kompaktes OSD am Handy** — gleiche Blöcke in ca. ⅔ Größe, sekundäre Werte
+  (Video-Latenz, kbps, fps, Akku-%-Quelle) ausgeblendet, die Telemetrie-Blöcke unten
+  rechts als umbrechende Zeilen, und das ARMED/FAILSAFE-Badge wandert nach oben neben
+  LINK, damit der Telemetrie-Block es nicht mehr verdeckt. Neue Einstellung **OSD size**
+  im FPV-⚙-Panel: *Auto* (kompakt auf schmalen Screens und am Handy im Querformat),
+  *Compact*, *Full* — pro Browser gespeichert. Desktop bleibt unverändert.
+
 ## v1.20.4
 **English**
 - OSD: **GPS ground speed** (km/h) now shown under the home compass, next to the trip

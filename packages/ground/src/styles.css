@@ -27,6 +27,10 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* Nothing may widen the document: a single overflowing row would otherwise let
+     mobile Safari pan and zoom the whole page sideways. */
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -398,6 +402,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .profile-bar select,
 .editor select,
@@ -411,7 +416,8 @@ body {
   font-size: 14px;
 }
 .profile-bar select {
-  flex: 1;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 /* ---- virtual joystick ---- */
@@ -484,10 +490,12 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 .name-input {
-  flex: 1;
+  flex: 1 1 160px;
+  min-width: 0;
   background: var(--panel-2);
   border: 1px solid var(--line-bright);
   color: var(--text);
@@ -497,9 +505,13 @@ body {
   padding: 9px 12px;
   border-radius: 8px;
 }
+/* Duplicate/Delete keep to the right and drop to their own row when the name
+   input + type badge already fill the line. */
 .editor-actions {
   display: flex;
   gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
 }
 .throttle-row {
   display: flex;
@@ -628,12 +640,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
+/* Tools wrap into further rows instead of pushing the page wider (which on iOS
+   Safari lets the whole document pan/zoom horizontally). */
 .video-tools {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.video-tools select {
+  max-width: 100%;
 }
 .btn.tiny {
   padding: 6px 10px;
@@ -1244,6 +1266,147 @@ input[type='range'] {
 /* ---- blackbox logging (v1.14) ---- */
 .log-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .log-status { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* ---- compact OSD for phones (v1.21) ----
+   Same blocks, ~⅔ the size, with secondary readouts (.osd-sec) dropped, so the
+   overlay stops covering the picture. Driven by the OSD size setting: "auto"
+   (narrow screens), "compact" or "full" — see VideoPanel's OsdSize. */
+.osd.compact {
+  font-size: 10px;
+}
+.osd.compact > div {
+  padding: 4px 5px;
+  gap: 2px;
+}
+.osd.compact .osd-sec,
+.osd.compact .osd-batt-src {
+  display: none;
+}
+.osd.compact .osd-badge {
+  font-size: 9px;
+  padding: 2px 5px;
+  letter-spacing: 0.05em;
+}
+.osd.compact .osd-batt-bar {
+  width: 74px;
+  height: 14px;
+  margin-top: 0;
+}
+.osd.compact .osd-batt-pct {
+  font-size: 9px;
+}
+.osd.compact .osd-home-rose {
+  width: 38px;
+  height: 38px;
+}
+.osd.compact .osd-home-arrow {
+  font-size: 24px;
+}
+.osd.compact .osd-home-ref {
+  font-size: 7px;
+  top: 1px;
+}
+.osd.compact .osd-odo {
+  font-size: 10px;
+}
+.osd.compact .osd-ch span {
+  width: 20px;
+}
+.osd.compact .osd-bar {
+  width: 56px;
+  height: 5px;
+}
+/* One wrapped row instead of a tall column — the bottom-right stack is the
+   biggest offender on a phone. */
+.osd.compact .osd-block {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1px 7px;
+  padding: 3px 6px;
+  max-width: 56vw;
+}
+.osd.compact .osd-sim {
+  padding: 0 4px;
+}
+.osd.compact .osd-tel {
+  font-size: 10px;
+}
+.osd.compact .osd-tr,
+.osd.compact .osd-br {
+  margin: 4px;
+}
+/* Link + arm state share the top centre in compact; wrap instead of colliding
+   with the GPS badges (left) and the battery bar (right). */
+.osd.compact .osd-tc {
+  top: 4px;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 54vw;
+}
+
+/* ---- narrow screens: keep every row inside the viewport (v1.21) ----
+   Grid/flex items default to min-width:auto, so a text input's intrinsic size
+   (~20 chars) makes the whole row wider than the phone. Let the columns govern
+   the width instead. */
+.rec-grid > *,
+.shaping-grid > *,
+.add-grid > *,
+.batt-th > * {
+  min-width: 0;
+}
+.rec-grid input,
+.rec-field input,
+.shaping-grid input:not([type='checkbox']):not([type='radio']),
+.add-grid input:not([type='checkbox']):not([type='radio']),
+.add-grid select {
+  width: 100%;
+  min-width: 0;
+}
+/* Endpoints min/max pair — was unstyled, so the labels ran inline and the number
+   inputs spilled out of the panel on a phone. */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.grid2 > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.grid2 input {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--mono);
+}
+.eyebrow2 {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  /* Video/OSD controls take the full width below the "FPV" label and wrap. */
+  .video-head .video-tools {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+  .video-tools select {
+    flex: 1 1 auto;
+  }
+  .batt-th {
+    grid-template-columns: 18px 1fr 72px auto;
+    gap: 6px;
+  }
+  .batt-th input {
+    min-width: 0;
+  }
+}
 
 /* ---- fullscreen video (v1.15) ---- */
 .video-stage:fullscreen {

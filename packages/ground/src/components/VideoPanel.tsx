@@ -66,6 +66,39 @@ function loadOsdFields(): OsdFields {
   return { ...OSD_FIELDS_DEFAULT };
 }
 
+/**
+ * OSD scale: on a phone the full-size OSD eats most of the picture, so it can run
+ * compact (smaller type/bars, secondary readouts hidden). "auto" picks compact on
+ * narrow screens; the other two force it, for people who prefer one or the other.
+ */
+export type OsdSize = 'auto' | 'compact' | 'full';
+const OSD_SIZE_KEY = 'yonderrc.osdSize.v1';
+/** Too small for a full-size OSD: a phone in portrait, or a phone in landscape
+    (wide but short, and always a touch device — a desktop window is neither). */
+const COMPACT_QUERY = '(max-width: 700px), (max-height: 520px) and (pointer: coarse)';
+function loadOsdSize(): OsdSize {
+  const v = (typeof localStorage !== 'undefined' && localStorage.getItem(OSD_SIZE_KEY)) as OsdSize | null;
+  return v === 'compact' || v === 'full' ? v : 'auto';
+}
+
+/** Live match for a media query, so "auto" follows rotation/resize without a reload. */
+function useMediaQuery(query: string): boolean {
+  const [match, setMatch] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(query).matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatch(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+  return match;
+}
+
 type PlayState = 'idle' | 'connecting' | 'playing' | 'reconnecting' | 'error';
 export type VideoQuality = 'high' | 'medium' | 'low';
 
@@ -231,7 +264,7 @@ function TelemetryBar({ t }: { t: TelemetryMessage }) {
  * Battery data block: voltages, currents, capacity. Shown bottom-right as its own
  * panel under the link/latency block.
  */
-function TelemetryData({ t }: { t: TelemetryMessage }) {
+function TelemetryData({ t, compact }: { t: TelemetryMessage; compact: boolean }) {
   // Real source but no sensor → make it unmistakable, never show fake numbers.
   if (t.source === 'real' && !t.ok) {
     return (
@@ -240,15 +273,21 @@ function TelemetryData({ t }: { t: TelemetryMessage }) {
       </div>
     );
   }
+  // Compact drops the capacity denominator and the "left/used" word — on a phone
+  // the block has to stay narrow enough to clear the centred ARMED badge.
+  const mahValue =
+    t.capacityMah != null && t.displayMode === 'remaining'
+      ? Math.max(0, Math.round(t.capacityMah - t.mah))
+      : Math.round(t.mah);
   const capLine =
-    t.capacityMah != null
-      ? t.displayMode === 'remaining'
-        ? `${Math.max(0, Math.round(t.capacityMah - t.mah))}/${t.capacityMah} mAh left`
-        : `${Math.round(t.mah)}/${t.capacityMah} mAh used`
-      : `${Math.round(t.mah)} mAh`;
+    t.capacityMah == null || compact
+      ? `${mahValue} mAh`
+      : t.displayMode === 'remaining'
+        ? `${mahValue}/${t.capacityMah} mAh left`
+        : `${mahValue}/${t.capacityMah} mAh used`;
   return (
     <div className="osd-block osd-tel">
-      {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">SIM DATA</span>}
+      {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">{compact ? 'SIM' : 'SIM DATA'}</span>}
       {t.voltages.map((v, i) => (
         <span key={`v${i}`} className="osd-batt">{v.value.toFixed(2)} V</span>
       ))}
@@ -309,6 +348,17 @@ export function VideoPanel({
   const [play, setPlay] = useState<PlayState>('idle');
   const [showOsd, setShowOsd] = useState(true);
   const [osdFields, setOsdFieldsState] = useState<OsdFields>(loadOsdFields);
+  const [osdSize, setOsdSizeState] = useState<OsdSize>(loadOsdSize);
+  const narrowScreen = useMediaQuery(COMPACT_QUERY);
+  const compactOsd = osdSize === 'compact' || (osdSize === 'auto' && narrowScreen);
+  const setOsdSize = (v: OsdSize) => {
+    setOsdSizeState(v);
+    try {
+      localStorage.setItem(OSD_SIZE_KEY, v);
+    } catch {
+      /* ignore */
+    }
+  };
   const setOsdField = (key: keyof OsdFields, v: boolean) => {
     setOsdFieldsState((prev) => {
       const next = { ...prev, [key]: v };
@@ -571,6 +621,12 @@ export function VideoPanel({
     });
   }
 
+  const armBadge = (
+    <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
+      {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
+    </span>
+  );
+
   return (
     <section className="panel video">
       <div className="video-head">
@@ -613,7 +669,22 @@ export function VideoPanel({
 
       {showRecSettings && (
         <div className="rec-settings">
-          <div className="eyebrow2">OSD fields</div>
+          <div className="eyebrow2">OSD size</div>
+          <div className="radios">
+            {([
+              ['auto', `Auto${osdSize === 'auto' ? ` (${compactOsd ? 'compact' : 'full'})` : ''}`],
+              ['compact', 'Compact'],
+              ['full', 'Full'],
+            ] as [OsdSize, string][]).map(([val, label]) => (
+              <label key={val} className={`radio${osdSize === val ? ' on' : ''}`}>
+                <input type="radio" name="osdsize" checked={osdSize === val} onChange={() => setOsdSize(val)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="note">Compact shrinks the OSD and drops secondary readouts (video latency, kbps, fps) so the picture stays visible on a phone. Auto uses it on narrow screens.</p>
+
+          <div className="eyebrow2" style={{ marginTop: 10 }}>OSD fields</div>
           <p className="note">Show or hide OSD blocks. Kept per browser.</p>
           <div className="osd-fields">
             {([
@@ -675,7 +746,7 @@ export function VideoPanel({
         )}
 
         {showOsd && (
-          <div className="osd">
+          <div className={`osd${compactOsd ? ' compact' : ''}`}>
             {((osdFields.timer && flightSeconds !== null) ||
               (osdFields.gps && gps && gps.source !== 'off') ||
               (osdFields.homeArrow && gpsHome)) && (
@@ -710,12 +781,11 @@ export function VideoPanel({
                 {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● RECONNECTING…' : '● NO LINK'}
               </span>
               {weakLink && linkState === 'connected' && <span className="osd-badge bad">⚠ WEAK LINK</span>}
+              {/* Compact keeps the arm state up top: on a phone the bottom-centre
+                  badge would sit under the (wider) telemetry block. */}
+              {compactOsd && armBadge}
             </div>
-            <div className="osd-bc">
-              <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
-                {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
-              </span>
-            </div>
+            {!compactOsd && <div className="osd-bc">{armBadge}</div>}
             {osdFields.batteryBar && (
               <div className="osd-tr">
                 {telemetry && <TelemetryBar t={telemetry} />}
@@ -743,15 +813,15 @@ export function VideoPanel({
                     <span className={linkSignal.quality != null && linkSignal.quality < 25 ? 'osd-warn' : undefined}>{linkSignal.label}</span>
                   )}
                   <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
-                  {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
-                  {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}
-                  {stats?.fps != null && <span>{stats.fps} fps</span>}
+                  {videoLatency !== null && <span className="osd-sec">video ~{videoLatency} ms</span>}
+                  {stats?.bitrateKbps != null && <span className="osd-sec">{stats.bitrateKbps} kbps</span>}
+                  {stats?.fps != null && <span className="osd-sec">{stats.fps} fps</span>}
                   {stats?.lossPct != null && (
                     <span className={stats.lossPct >= 3 ? 'osd-warn' : undefined}>loss {stats.lossPct}%</span>
                   )}
                 </div>
               )}
-              {osdFields.batteryData && (telemetry ? <TelemetryData t={telemetry} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>)}
+              {osdFields.batteryData && (telemetry ? <TelemetryData t={telemetry} compact={compactOsd} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>)}
             </div>
           </div>
         )}
