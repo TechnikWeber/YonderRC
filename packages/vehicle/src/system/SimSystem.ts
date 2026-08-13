@@ -152,6 +152,25 @@ export class SimSystem implements SystemManager {
     return this.remote.kind === cfg.kind ? { ...this.remote } : { kind: cfg.kind, running: false, address: null, detail: 'off' };
   }
 
+  async linkSignal() {
+    if (this.lte.connected && this.lte.signal != null) {
+      return { kind: 'lte' as const, quality: this.lte.signal, label: `LTE ${this.lte.signal}%` };
+    }
+    return { kind: 'wifi' as const, quality: 82, label: 'WiFi −52 dBm' };
+  }
+
+  async detectHardware() {
+    return {
+      i2c: [
+        { address: '0x40', hint: 'PCA9685 servo/ESC driver — or INA219/226 current sensor' },
+        { address: '0x41', hint: 'INA219/226/3221 current sensor' },
+      ],
+      modemPresent: this.lte.present,
+      cameras: ['/dev/video0 (simulated)'],
+      notes: ['Simulated detection — real probe runs on the Pi.'],
+    };
+  }
+
   async reboot(): Promise<ActionResult> {
     return { ok: true, message: 'Reboot requested (simulated — no-op).' };
   }

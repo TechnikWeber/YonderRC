@@ -137,8 +137,17 @@ npm test               # safety / logic test suite
 ## On real hardware
 
 The complete build on a Raspberry Pi — parts list, wiring, Pi setup, first on Wi-Fi
-then switching to LTE with Tailscale — is in
-**[`docs/HARDWARE.md`](docs/HARDWARE.md)**.
+then switching to LTE — is in **[`docs/HARDWARE.md`](docs/HARDWARE.md)**.
+
+**Quickest (one line on Raspberry Pi OS Lite):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
+```
+
+This clones the repo to `/opt/yonderrc` and runs the installer. Then open
+`http://<pi-ip>:8080/setup` and press **Detect hardware** to have it suggest the
+driver/sensors from what's on the I²C bus. Prefer to do it by hand? Use the steps below.
 
 **1. Copy the repo onto the Pi** (`/opt/yonderrc`) — one way is enough:
 

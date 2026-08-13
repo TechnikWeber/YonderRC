@@ -5,6 +5,7 @@ import {
   CHANNEL_NEUTRAL_US,
   type Profile,
   type TelemetryMessage,
+  type LinkSignal,
 } from '@yonderrc/protocol';
 import type { ControlPath, LinkState } from '../lib/transport';
 import type { InputManager } from '../lib/input/inputManager';
@@ -240,6 +241,7 @@ export function VideoPanel({
   flightSeconds,
   batteryLow,
   batteryReason,
+  linkSignal,
   onQuality,
   onStats,
 }: {
@@ -258,6 +260,7 @@ export function VideoPanel({
   flightSeconds: number | null;
   batteryLow: boolean;
   batteryReason: string | null;
+  linkSignal: LinkSignal | null;
   onQuality: (q: VideoQuality) => void;
   onStats?: (s: VideoStats | null) => void;
 }) {
@@ -451,8 +454,11 @@ export function VideoPanel({
 
   const throttleCh = profile.throttleChannels[0] ?? 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
-  // Weak-link warning from control RTT or video packet loss.
-  const weakLink = (latencyMs != null && latencyMs > 300) || (stats?.lossPct != null && stats.lossPct >= 5);
+  // Unified weak-link warning: control RTT, video packet loss, OR low uplink signal.
+  const weakLink =
+    (latencyMs != null && latencyMs > 300) ||
+    (stats?.lossPct != null && stats.lossPct >= 5) ||
+    (linkSignal?.quality != null && linkSignal.quality < 25);
 
   function changeQuality(q: QualitySel) {
     setQuality(q);
@@ -600,6 +606,9 @@ export function VideoPanel({
                 <span>
                   {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
                 </span>
+                {linkSignal && linkSignal.kind !== 'none' && (
+                  <span className={linkSignal.quality != null && linkSignal.quality < 25 ? 'osd-warn' : undefined}>{linkSignal.label}</span>
+                )}
                 <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
                 {videoLatency !== null && <span>video ~{videoLatency} ms</span>}
                 {stats?.bitrateKbps != null && <span>{stats.bitrateKbps} kbps</span>}

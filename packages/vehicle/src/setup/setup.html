@@ -149,8 +149,12 @@
           <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
         </div>
         <label class="chk"><input type="checkbox" id="disarmOnReconnect" /> Auto-disarm on reconnect <span style="color:var(--muted)">— fallback only; the ground app sets this automatically from the vehicle type (car/boat = on, plane/drone = off). Used until a ground connects.</span></label>
-        <div class="btns"><button class="btn primary" onclick="saveConfig()">Save</button></div>
+        <div class="btns">
+          <button class="btn primary" onclick="saveConfig()">Save</button>
+          <button class="btn" onclick="detectHw()">Detect hardware</button>
+        </div>
         <div class="msg" id="cfg-msg"></div>
+        <div id="detect-out"></div>
       </section>
 
       <section class="panel">
@@ -297,6 +301,19 @@
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
         updateSecState(!!c.authRequired);
+      }
+      async function detectHw() {
+        $('detect-out').innerHTML = '<div class="msg">Probing hardware…</div>';
+        try {
+          const d = await getJSON('/api/detect');
+          const i2c = (d.i2c || []).map((x) => `<div class="row"><span class="k">${x.address}</span><span class="v">${x.hint}</span></div>`).join('') || '<div class="msg">no I²C devices</div>';
+          const cams = (d.cameras || []).length ? (d.cameras).map((c) => `<div class="row"><span class="k">camera</span><span class="v">${c}</span></div>`).join('') : '';
+          const modem = `<div class="row"><span class="k">LTE modem</span><span class="v ${d.modemPresent ? 'go' : 'warn'}">${d.modemPresent ? 'present' : 'not found'}</span></div>`;
+          const notes = (d.notes || []).map((n) => `<div class="msg">• ${n}</div>`).join('');
+          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${modem}${notes}<div class="msg">Suggestions only — set the driver/sensors above accordingly, then Save.</div>`;
+        } catch {
+          $('detect-out').innerHTML = '<div class="msg">Detection failed.</div>';
+        }
       }
       async function loadLte() {
         try {

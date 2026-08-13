@@ -166,6 +166,29 @@ async function main() {
   ok('sim pin remove ok', (await sys.lteSetPin({ action: 'disable', currentPin: '1234' })).message.toLowerCase().includes('removed'));
   ok('sim lte diagnostics', (await sys.lteDiagnostics()).output.includes('mmcli -m 0'));
 
+  // ---- link signal (WiFi dBm → quality) + hardware detection parsing ----
+  const SIG = await import('../packages/vehicle/src/system/signal');
+  ok('wifi dbm parsed', SIG.parseWifiSignalDbm('  signal: -58 dBm\n  rx bitrate: 65 MBit/s') === -58);
+  ok('wifi dbm none', SIG.parseWifiSignalDbm('Not connected.') === null);
+  ok('dbm→quality mid', SIG.dbmToQualityPct(-75) === 50);
+  ok('dbm→quality clamp hi', SIG.dbmToQualityPct(-40) === 100);
+  ok('dbm→quality clamp lo', SIG.dbmToQualityPct(-120) === 0);
+  const link = await sys.linkSignal();
+  ok('sim link signal has label+quality', typeof link.label === 'string' && (link.quality === null || typeof link.quality === 'number'));
+  const DET = await import('../packages/vehicle/src/system/detect');
+  const i2cSample = [
+    '     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f',
+    '00:                         -- -- -- -- -- -- -- --',
+    '40: 40 41 -- -- -- -- -- -- 48 -- -- -- -- -- -- --',
+    '70: -- -- -- -- -- -- -- --',
+  ].join('\n');
+  const addrs = DET.parseI2cAddresses(i2cSample);
+  ok('i2c addresses parsed', addrs.length === 3 && addrs[0] === 0x40 && addrs[1] === 0x41 && addrs[2] === 0x48, `=${addrs.map((a) => a.toString(16))}`);
+  const sugg = DET.suggestI2c(addrs);
+  ok('i2c suggest PCA9685 @0x40', sugg[0].address === '0x40' && /PCA9685/.test(sugg[0].hint));
+  ok('i2c suggest ADS @0x48', sugg[2].hint.includes('ADS'));
+  ok('sim detect finds 0x40', (await sys.detectHardware()).i2c.some((x) => x.address === '0x40'));
+
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');
   const dch = drone.throttleChannels[0];

@@ -96,6 +96,11 @@ export async function handleSetup(
     return true;
   }
 
+  if (url === '/api/detect' && method === 'GET') {
+    json(res, 200, await ctx.system.detectHardware());
+    return true;
+  }
+
   if (url === '/api/config' && method === 'GET') {
     const c = ctx.config;
     json(res, 200, {

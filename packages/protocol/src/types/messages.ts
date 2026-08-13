@@ -95,6 +95,15 @@ export interface WelcomeMessage {
   cameras: string[];
 }
 
+/** Vehicle uplink signal, unified across LTE / WiFi for the OSD "link health". */
+export interface LinkSignal {
+  kind: 'lte' | 'wifi' | 'ethernet' | 'none';
+  /** 0..100 quality, or null if unknown. */
+  quality: number | null;
+  /** Short OSD label, e.g. "LTE 72%" or "WiFi −58 dBm". */
+  label: string;
+}
+
 export interface StatusMessage {
   type: 'status';
   /** Whether outputs are live. When disarmed, throttle-type channels stay safe. */
@@ -111,6 +120,8 @@ export interface StatusMessage {
   lastClientT: number;
   /** ESC calibration progress, if a calibration is running. */
   calibration?: CalibrationStatus;
+  /** Vehicle uplink signal (LTE/WiFi), refreshed slowly on the vehicle. */
+  link?: LinkSignal;
 }
 
 export interface CalibrationStatus {

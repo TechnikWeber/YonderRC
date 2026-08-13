@@ -1,3 +1,14 @@
+import type { LinkSignal } from '@yonderrc/protocol';
+import type { I2cSuggestion } from './detect.js';
+
+/** Result of a hardware probe (see detectHardware). */
+export interface DetectResult {
+  i2c: I2cSuggestion[];
+  modemPresent: boolean;
+  cameras: string[];
+  notes: string[];
+}
+
 /**
  * SystemManager is the seam between YonderRC and the Pi's OS-level networking:
  * the LTE modem, Tailscale, and the WiFi AP/client mode used for headless
@@ -113,6 +124,10 @@ export interface SystemManager {
   lteSetPin(change: LtePinChange): Promise<ActionResult>;
   /** Raw modem diagnostics (mmcli) for troubleshooting a non-plug-and-play stick. */
   lteDiagnostics(): Promise<{ ok: boolean; output: string }>;
+  /** Current uplink signal (LTE preferred, else WiFi) for the OSD link health. */
+  linkSignal(): Promise<LinkSignal>;
+  /** Probe attached hardware (I²C devices, modem, cameras) to suggest a config. */
+  detectHardware(): Promise<DetectResult>;
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */
   tailscaleUp(authKey?: string): Promise<ActionResult>;
   tailscaleDown(): Promise<ActionResult>;

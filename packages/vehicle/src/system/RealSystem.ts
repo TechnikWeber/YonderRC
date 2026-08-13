@@ -17,6 +17,8 @@ import type {
 } from './SystemManager.js';
 import { normaliseWireguardConf } from './SystemManager.js';
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
+import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
+import { parseI2cAddresses, suggestI2c } from './detect.js';
 
 const run = promisify(exec);
 const runFile = promisify(execFile);
@@ -293,6 +295,43 @@ export class RealSystem implements SystemManager {
       return { kind: 'wireguard', running, address: ip, detail: running ? 'handshake ok' : 'no recent handshake' };
     }
     return { kind: 'none', running: false, address: null, detail: 'off' };
+  }
+
+  async linkSignal() {
+    // Prefer LTE when the modem is connected; otherwise read the WiFi RSSI.
+    const lte = await this.lteStatus();
+    if (lte.connected && lte.signal != null) {
+      return { kind: 'lte' as const, quality: lte.signal, label: `LTE ${lte.signal}%` };
+    }
+    const iw = await sh('iw dev wlan0 link');
+    const dbm = parseWifiSignalDbm(iw.out);
+    if (dbm != null) {
+      return { kind: 'wifi' as const, quality: dbmToQualityPct(dbm), label: `WiFi ${dbm} dBm` };
+    }
+    return { kind: 'none' as const, quality: null, label: '—' };
+  }
+
+  async detectHardware() {
+    const notes: string[] = [];
+    const i2cOut = await sh('i2cdetect -y 1');
+    if (!i2cOut.ok) notes.push('i2cdetect failed — is i2c-tools installed and I²C enabled?');
+    const i2c = suggestI2c(parseI2cAddresses(i2cOut.out));
+    if (i2cOut.ok && i2c.length === 0) notes.push('No I²C devices found on bus 1 — check wiring/power.');
+
+    const modemPresent = /Modem\/\d+/.test((await sh('mmcli -L')).out);
+    if (!modemPresent) notes.push('No LTE modem detected (mmcli -L).');
+
+    // Prefer libcamera (CSI) names; fall back to V4L2 /dev/video* nodes.
+    const cams: string[] = [];
+    const lc = await sh('libcamera-hello --list-cameras -t 1 2>/dev/null');
+    for (const m of lc.out.matchAll(/^\s*\d+\s*:\s*(.+)$/gm)) cams.push(m[1].trim());
+    if (cams.length === 0) {
+      const v4l = await sh('ls /dev/video* 2>/dev/null');
+      for (const d of v4l.out.split(/\s+/)) if (d.startsWith('/dev/video')) cams.push(d);
+    }
+    if (cams.length === 0) notes.push('No cameras detected (libcamera / /dev/video*).');
+
+    return { i2c, modemPresent, cameras: cams, notes };
   }
 
   async reboot(): Promise<ActionResult> {

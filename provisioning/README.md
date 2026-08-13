@@ -13,11 +13,22 @@ hardware H.264 encoder; the Pi 5 does not).
 
 ## 2. Copy the repo and install
 
+**One line** (clones to `/opt/yonderrc` and installs):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
+```
+
+Or by hand:
+
 ```bash
 sudo mkdir -p /opt/yonderrc
 # copy this repository into /opt/yonderrc (scp, git clone, or a USB stick), then:
 sudo bash /opt/yonderrc/provisioning/install.sh
 ```
+
+After it's up, open `http://<pi-ip>:8080/setup` and press **Detect hardware** — it
+scans the I²C bus, LTE modem and cameras and suggests the driver/sensors to pick.
 
 `install.sh` installs Node, ffmpeg, NetworkManager, ModemManager, Tailscale and
 go2rtc, does `npm install`, and enables three services:

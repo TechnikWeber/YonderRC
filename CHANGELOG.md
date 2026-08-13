@@ -3,6 +3,29 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.19.0
+**English**
+- **Link health in the OSD** — the vehicle now reports its uplink signal (LTE % or
+  WiFi dBm), shown bottom-right in the OSD and folded into the **weak-link** warning
+  alongside control RTT and video packet loss. One unified "is the link good" signal.
+- **One-line install** on Raspberry Pi OS Lite:
+  `curl -fsSL …/provisioning/bootstrap.sh | bash` clones to `/opt/yonderrc` and runs
+  the installer.
+- **"Detect hardware"** button in Setup — scans the I²C bus, LTE modem and cameras and
+  suggests the driver/sensors to pick, so you don't have to guess addresses. The
+  installer now also adds `i2c-tools`.
+
+**Deutsch**
+- **Link-Qualität im OSD** — das Fahrzeug meldet jetzt sein Uplink-Signal (LTE % oder
+  WiFi dBm), unten rechts im OSD sichtbar und in die **Weak-Link**-Warnung eingerechnet
+  (zusammen mit Steuer-RTT und Video-Paketverlust). Ein einheitliches „ist der Link gut".
+- **Ein-Zeilen-Installation** auf Raspberry Pi OS Lite:
+  `curl -fsSL …/provisioning/bootstrap.sh | bash` klont nach `/opt/yonderrc` und startet
+  den Installer.
+- **„Detect hardware"**-Button im Setup — scannt den I²C-Bus, das LTE-Modem und Kameras
+  und schlägt Treiber/Sensoren vor, statt Adressen raten zu müssen. Der Installer bringt
+  jetzt zusätzlich `i2c-tools` mit.
+
 ## v1.18.4
 **English**
 - **More LTE control** (Setup › LTE): force the **network mode** (4G/LTE-only or 3G)

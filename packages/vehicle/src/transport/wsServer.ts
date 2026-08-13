@@ -45,6 +45,16 @@ export function startWsServer(
   });
   const wss = new WebSocketServer({ server: http });
 
+  // Uplink signal (LTE/WiFi) refreshed slowly and attached to every status frame,
+  // so the ground OSD can show one "link health" number. Reading shells out, so a
+  // 5 s cadence is plenty — the value changes slowly.
+  let currentLink: import('@yonderrc/protocol').LinkSignal | undefined;
+  const refreshLink = () => {
+    system.linkSignal().then((l) => { currentLink = l; }).catch(() => {});
+  };
+  refreshLink();
+  setInterval(refreshLink, 5000);
+
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const who = req.socket.remoteAddress ?? 'unknown';
     // Optional shared secret: when configured, the control link must present it as
@@ -83,7 +93,7 @@ export function startWsServer(
     ws.send(JSON.stringify(welcome));
 
     const statusTimer = setInterval(() => {
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(core.status()));
+      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ ...core.status(), link: currentLink }));
     }, 50);
     // Telemetry at a calmer rate (voltage/current/mAh change slowly).
     const telemetryTimer = setInterval(() => {
