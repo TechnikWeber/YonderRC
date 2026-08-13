@@ -92,10 +92,13 @@ async function main() {
   ok('secret set + missing → deny', secretOk('s3cr3t', undefined) === false);
   ok('readSecretFromUrl parses query', readSecretFromUrl('/?secret=abc') === 'abc');
   ok('readSecretFromUrl none → null', readSecretFromUrl('/') === null);
-  const { withSecret } = await import('../packages/ground/src/lib/transport');
+  const { withSecret, setupUrlFromWs } = await import('../packages/ground/src/lib/transport');
   ok('withSecret off → unchanged', withSecret('ws://h:8080', '') === 'ws://h:8080');
   ok('withSecret appends encoded', withSecret('ws://h:8080', 'a b') === 'ws://h:8080?secret=a%20b');
   ok('withSecret respects existing query', withSecret('ws://h:8080?x=1', 'a') === 'ws://h:8080?x=1&secret=a');
+  ok('setupUrl from ws', setupUrlFromWs('ws://localhost:8080') === 'http://localhost:8080/setup');
+  ok('setupUrl from tailscale ws', setupUrlFromWs('ws://100.64.0.1:8080') === 'http://100.64.0.1:8080/setup');
+  ok('setupUrl wss → https', setupUrlFromWs('wss://host:8080') === 'https://host:8080/setup');
 
   // ---- vehicle-type failsafe vs disarmed (the drone safety fix) ----
   const drone = buildProfile('drone');

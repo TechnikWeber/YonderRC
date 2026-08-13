@@ -7,7 +7,7 @@ import {
   type TelemetryMessage,
   type WelcomeMessage,
 } from '@yonderrc/protocol';
-import { LinkClient, type ControlPath, type LinkState } from './lib/transport';
+import { LinkClient, setupUrlFromWs, type ControlPath, type LinkState } from './lib/transport';
 import { InputManager } from './lib/input/inputManager';
 import { BindingEngine } from './lib/input/bindingEngine';
 import {
@@ -83,6 +83,7 @@ export function App() {
   const input = useMemo(() => new InputManager(), []);
   const engine = useMemo(() => new BindingEngine(), []);
   const linkRef = useRef<LinkClient | null>(null);
+  const lastTelemetryAt = useRef(0);
 
   const active = profiles.find((p) => p.id === activeId) ?? profiles[0];
   const activeRef = useRef(active);
@@ -119,7 +120,10 @@ export function App() {
         pushConfig(activeRef.current); // vehicle needs failsafe as soon as we connect
       },
       onStatus: setStatus,
-      onTelemetry: setTelemetry,
+      onTelemetry: (m) => {
+        lastTelemetryAt.current = Date.now();
+        setTelemetry(m);
+      },
       onControlPath: setControlPath,
       onAuthFail: () => {
         setAuthMsg('Vehicle rejected the secret — check the API secret and Connect again.');
@@ -166,6 +170,18 @@ export function App() {
   useEffect(() => {
     linkRef.current?.setPreferWebRtc(preferWebRtc);
   }, [preferWebRtc, connected]);
+
+  // If the vehicle stops sending telemetry (e.g. telemetry set to "off" in Setup),
+  // clear it so the OSD/status don't keep showing stale or sim values.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (linkState === 'connected' && lastTelemetryAt.current && Date.now() - lastTelemetryAt.current > 3000) {
+        setTelemetry(null);
+        lastTelemetryAt.current = 0;
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [linkState]);
 
   // Re-push config whenever the active profile (or its contents) change while connected.
   useEffect(() => {
@@ -369,7 +385,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.17.1</span>
+        <span className="ver">ground · v1.17.2</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -381,6 +397,7 @@ export function App() {
         setUrl={setUrl}
         secret={secret}
         setSecret={setSecret}
+        setupUrl={setupUrlFromWs(url)}
         linkState={linkState}
         onConnect={() => linkRef.current?.connect(url, secret)}
         onDisconnect={() => linkRef.current?.disconnect()}
@@ -461,7 +478,10 @@ export function App() {
             version={tick}
           />
           <div className="link-opts">
-            <label className="opt">
+            <label
+              className="opt"
+              title="Send control frames over a WebRTC data channel instead of the WebSocket: lower latency and better through NAT/CGNAT (e.g. over LTE). Falls back to WS automatically if it can't connect. Arm/disarm and settings always use the reliable WS."
+            >
               <input
                 type="checkbox"
                 checked={preferWebRtc}
@@ -470,6 +490,7 @@ export function App() {
               Control via WebRTC data channel
             </label>
             <span className={`path-tag ${controlPath}`}>{controlPath.toUpperCase()}</span>
+            <span className="opt-hint">Lower-latency control path (NAT/LTE-friendly); auto-falls back to WS.</span>
           </div>
           <StatusStrip
             linkState={linkState}

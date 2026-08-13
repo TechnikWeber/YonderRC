@@ -129,7 +129,8 @@
         <div class="grid2">
           <label>Source
             <select id="telSource">
-              <option value="sim">sim (no sensor)</option>
+              <option value="off">off (no telemetry)</option>
+              <option value="sim">sim (fake values)</option>
               <option value="real">real sensors</option>
             </select>
           </label>
@@ -350,7 +351,7 @@
       function addCurr() { currs.push({ label: 'Current ' + (currs.length + 1), kind: 'sim' }); renderCurrs(); }
       async function loadTelemetry() {
         const t = await getJSON('/api/telemetry');
-        $('telSource').value = t.source || 'sim';
+        $('telSource').value = t.enabled === false ? 'off' : (t.source || 'sim');
         $('telHz').value = t.sampleHz ?? 10;
         $('capacity').value = t.batteryCapacityMah ?? '';
         $('displayMode').value = t.displayMode || 'remaining';
@@ -360,9 +361,10 @@
         renderVolts(); renderCurrs();
       }
       async function saveTelemetry() {
+        const src = $('telSource').value;
         const body = {
-          enabled: true,
-          source: $('telSource').value,
+          enabled: src !== 'off',            // "off" → no telemetry at all (no fake values)
+          source: src === 'off' ? 'sim' : src,
           sampleHz: Number($('telHz').value) || 10,
           voltages: volts,
           currents: currs,

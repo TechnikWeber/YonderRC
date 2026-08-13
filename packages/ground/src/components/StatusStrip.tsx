@@ -5,6 +5,7 @@ export function ConnectionBar({
   setUrl,
   secret,
   setSecret,
+  setupUrl,
   linkState,
   onConnect,
   onDisconnect,
@@ -13,6 +14,7 @@ export function ConnectionBar({
   setUrl: (v: string) => void;
   secret: string;
   setSecret: (v: string) => void;
+  setupUrl: string | null;
   linkState: LinkState;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -51,6 +53,17 @@ export function ConnectionBar({
           <button className="btn primary" onClick={onConnect}>
             Connect
           </button>
+        )}
+        {setupUrl && (
+          <a
+            className="btn"
+            href={setupUrl}
+            target="_blank"
+            rel="noreferrer"
+            title="Open the vehicle's setup page (same host as the control link)"
+          >
+            Setup ↗
+          </a>
         )}
       </div>
     </section>

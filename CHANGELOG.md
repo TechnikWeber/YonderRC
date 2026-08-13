@@ -3,6 +3,31 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.17.2
+**English**
+- **Telemetry can be turned OFF** (Setup › Telemetry → source "off"). Default stays
+  sim, but for a first flight you can disable it so the OSD shows **no fake values**
+  at all. The ground also clears telemetry if the vehicle stops sending it, so
+  turning it off live doesn't leave stale numbers on screen.
+- **"Setup ↗" button** on the ground page opens the vehicle's setup page in a new
+  tab, derived from the connection address — works over LAN, the Pi's AP, or a
+  Tailscale IP (same host:port as the control link, over http).
+- **Clearer WebRTC control option**: the "Control via WebRTC data channel" checkbox
+  now has a tooltip + hint explaining it (lower-latency, NAT/LTE-friendly control
+  path that auto-falls back to WS; arm/settings always use WS).
+
+**Deutsch**
+- **Telemetrie abschaltbar** (Setup › Telemetry → Source „off"). Standard bleibt Sim,
+  aber für den ersten Flug kann man sie deaktivieren, damit das OSD **gar keine
+  Fantasiewerte** zeigt. Die Ground-Seite blendet Telemetrie zudem aus, wenn das
+  Fahrzeug keine mehr sendet — Abschalten im Betrieb hinterlässt keine alten Werte.
+- **„Setup ↗"-Button** auf der Ground-Seite öffnet die Fahrzeug-Setup-Seite in einem
+  neuen Tab, abgeleitet aus der Verbindungsadresse — funktioniert im LAN, über den
+  AP des Pi oder eine Tailscale-IP (gleicher Host:Port wie der Steuer-Link, per http).
+- **WebRTC-Option klarer erklärt**: Die Checkbox „Control via WebRTC data channel" hat
+  jetzt Tooltip + Hinweis (latenzärmerer, NAT/LTE-freundlicher Steuerpfad mit
+  automatischem WS-Fallback; Arm/Einstellungen laufen immer über WS).
+
 ## v1.17.1
 **English**
 - **Optional shared secret (off by default).** Set an "API secret" in the vehicle's

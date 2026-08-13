@@ -28,6 +28,20 @@ export function withSecret(url: string, secret?: string | null): string {
   return `${url}${sep}secret=${encodeURIComponent(secret)}`;
 }
 
+/**
+ * The vehicle serves its `/setup` page over http on the same host:port as the WS
+ * control link, so we derive it from the connection address — works over LAN, the
+ * Pi's AP (192.168.4.1), or a Tailscale IP alike. `wss://` maps to `https://`.
+ */
+export function setupUrlFromWs(wsUrl: string): string | null {
+  try {
+    const u = new URL(wsUrl.replace(/^ws/, 'http'));
+    return `${u.protocol}//${u.host}/setup`;
+  } catch {
+    return null;
+  }
+}
+
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 /**
