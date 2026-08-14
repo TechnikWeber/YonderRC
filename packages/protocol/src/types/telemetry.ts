@@ -31,6 +31,16 @@ export interface TelemetryMessage {
   voltages: TelemetryReading[];
   /** Amps per configured current channel. */
   currents: TelemetryReading[];
+  /** °C per configured temperature channel (empty when none are configured). */
+  temperatures?: TelemetryReading[];
+  /**
+   * Index of the channel that drives the battery maths (%, mAh/Wh, low-battery
+   * warning, blackbox columns). The vehicle resolves it from the config's
+   * `primary` flag; 0 when nothing is marked. Sent so the ground warns on the
+   * same pack voltage the vehicle counted with.
+   */
+  primaryVoltage?: number;
+  primaryCurrent?: number;
   /** Coulomb-counted charge consumed since reset, in mAh. */
   mah: number;
   /** Energy consumed, in Wh (optional). */
@@ -87,9 +97,75 @@ export type CurrentSensorKind =
  */
 export type ChargeSource = 'auto' | 'sensor' | 'pi';
 
+/**
+ * Temperature sensors. Grouped by how they are read, because that decides the
+ * wiring and the extra fields:
+ *  - pi            : the Pi's own SoC sensor (sysfs, no wiring)
+ *  - ds18b20       : 1-Wire, read from the kernel's sysfs (needs dtoverlay=w1-gpio)
+ *  - I²C chips     : mcp9808 / tmp102 / tmp117 / bmp280 / bme280
+ *  - SPI amplifiers: max6675 / max31855 (type K), max31856 (more types),
+ *                    max31865 (PT100/PT1000 RTD)
+ *  - ads1115 / mcp3008: a plain ADC reading an NTC or RTD in a divider — the
+ *                    `probe` field then says which element is wired up
+ */
+export type TemperatureSensorKind =
+  | 'sim'
+  | 'pi'
+  | 'ds18b20'
+  | 'mcp9808'
+  | 'tmp102'
+  | 'tmp117'
+  | 'bmp280'
+  | 'bme280'
+  | 'max6675'
+  | 'max31855'
+  | 'max31856'
+  | 'max31865'
+  | 'ads1115'
+  | 'mcp3008';
+
+/** Sensing element on an ADC channel (ads1115/mcp3008) or a MAX31865. */
+export type TemperatureProbe = 'ntc' | 'pt100' | 'pt1000';
+
+export interface TemperatureChannelCfg {
+  label: string; // e.g. "Motor" or "T1" — shown in the OSD when >1 channel exists
+  kind: TemperatureSensorKind;
+  bus?: number; // i2c bus
+  address?: number; // i2c address
+  spiBus?: number; // SPI bus (MAX3xxxx / MCP3008)
+  spiDevice?: number; // SPI chip-select
+  channel?: number; // ADC input channel
+  gainFsrVolts?: number; // ADS full-scale range
+  vref?: number; // MCP reference voltage
+  /** DS18B20 1-Wire id, e.g. "28-0000064f9a1c"; empty = first device found. */
+  device?: string;
+  /** Which element hangs on the ADC / RTD amplifier. Default 'ntc' for ADCs. */
+  probe?: TemperatureProbe;
+  /** Divider: the fixed resistor in series with the probe, in ohms. */
+  seriesOhms?: number;
+  /** Divider excitation voltage (defaults to the ADC reference). */
+  exciteVolts?: number;
+  /** NTC: nominal resistance at 25 °C (e.g. 10000) and its beta (e.g. 3950). */
+  ntcR25?: number;
+  ntcBeta?: number;
+  /** MAX31865: reference resistor (430 Ω for PT100, 4300 Ω for PT1000) and wiring. */
+  refOhms?: number;
+  rtdWires?: 2 | 3 | 4;
+  /** MAX31856 thermocouple type. Default 'K'. */
+  tcType?: 'B' | 'E' | 'J' | 'K' | 'N' | 'R' | 'S' | 'T';
+  /** Added to the result, for a known offset. */
+  offsetC?: number;
+}
+
 export interface VoltageChannelCfg {
   label: string; // e.g. "Spannung 1"
   kind: VoltageSensorKind;
+  /**
+   * Marks the pack voltage that drives the battery maths (%, Wh, low-battery
+   * warning, blackbox). Exactly one channel should carry it; if none does, the
+   * first channel wins — which is what every config did before this flag.
+   */
+  primary?: boolean;
   bus?: number; // i2c bus (ADS1x15)
   address?: number; // i2c address (ADS1x15)
   spiBus?: number; // SPI bus (MCP3xxx)
@@ -103,6 +179,8 @@ export interface VoltageChannelCfg {
 export interface CurrentChannelCfg {
   label: string; // e.g. "Strom 1"
   kind: CurrentSensorKind;
+  /** Drives coulomb counting / mAh / Wh. Falls back to the first channel. */
+  primary?: boolean;
   bus?: number; // i2c bus (INA)
   address?: number; // i2c address (INA)
   channel?: number; // INA3221 channel (1..3) or ADC channel (ACS)
@@ -130,6 +208,8 @@ export interface TelemetryConfig {
   sampleHz: number;
   voltages: VoltageChannelCfg[];
   currents: CurrentChannelCfg[];
+  /** Optional — older configs simply have no temperature channels. */
+  temperatures?: TemperatureChannelCfg[];
   /** Integrate current into consumed mAh (coulomb counting). */
   countCapacity: boolean;
   batteryCapacityMah: number | null;

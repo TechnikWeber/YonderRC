@@ -1,13 +1,18 @@
-import type {
-  CurrentChannelCfg,
-  TelemetryConfig,
-  VoltageChannelCfg,
+import { readdir, readFile } from 'node:fs/promises';
+import {
+  primaryIndex,
+  type CurrentChannelCfg,
+  type TelemetryConfig,
+  type TemperatureChannelCfg,
+  type VoltageChannelCfg,
 } from '@yonderrc/protocol';
 import * as C from './convert.js';
 
 export interface TelemetrySample {
   voltages: number[]; // volts, per config.voltages
   currents: number[]; // amps, per config.currents
+  /** °C per config.temperatures; null when that sensor couldn't be read. */
+  temperatures: (number | null)[];
 }
 
 export interface TelemetryReader {
@@ -27,6 +32,13 @@ export interface TelemetryReader {
 /** INA parts that need a SHUNT_CAL / range write before their registers mean anything. */
 const CALIBRATED_INA = ['ina228', 'ina237', 'ina238'];
 const DEFAULT_MAX_A = 50;
+
+/** Temperature sensors by bus, so init() knows which native module to load. */
+const I2C_TEMP = ['mcp9808', 'tmp102', 'tmp117', 'bmp280', 'bme280', 'ads1115'];
+const SPI_TEMP = ['max6675', 'max31855', 'max31856', 'max31865', 'mcp3008'];
+/** Where the kernel exposes the Pi's SoC sensor and the 1-Wire devices. */
+const PI_THERMAL = '/sys/class/thermal/thermal_zone0/temp';
+const W1_DIR = '/sys/bus/w1/devices';
 
 /**
  * SimReader: plausible battery telemetry with no hardware. A pack voltage that
@@ -54,7 +66,7 @@ export class SimReader implements TelemetryReader {
   }
 
   private get emulatesCounter(): boolean {
-    return C.hasHardwareCounter(this.cfg.currents[0]?.kind);
+    return C.hasHardwareCounter(this.cfg.currents[primaryIndex(this.cfg.currents)]?.kind);
   }
 
   async accumulated(): Promise<{ mah: number; wh: number } | null> {
@@ -81,10 +93,18 @@ export class SimReader implements TelemetryReader {
       const now = Date.now();
       const dt = this.lastSampleAt ? (now - this.lastSampleAt) / 1000 : 0;
       this.lastSampleAt = now;
-      this.accMah = C.accumulateMah(this.accMah, currents[0] ?? 0, dt);
-      this.accWh = C.accumulateWh(this.accWh, voltages[0] ?? 0, currents[0] ?? 0, dt);
+      const iC = primaryIndex(this.cfg.currents);
+      const iV = primaryIndex(this.cfg.voltages);
+      this.accMah = C.accumulateMah(this.accMah, currents[iC] ?? 0, dt);
+      this.accWh = C.accumulateWh(this.accWh, voltages[iV] ?? 0, currents[iC] ?? 0, dt);
     }
-    return { voltages, currents };
+    // Temperatures: a warm-up curve that follows the load, so the OSD shows
+    // something plausible instead of a constant. Each channel gets its own offset.
+    const load = current / 25;
+    const temperatures = (this.cfg.temperatures ?? []).map(
+      (_, i) => 24 + i * 6 + 30 * load + 2 * Math.sin(this.t * 0.4 + i),
+    );
+    return { voltages, currents, temperatures };
   }
   async close(): Promise<void> {}
 }
@@ -105,16 +125,24 @@ export class RealReader implements TelemetryReader {
   private lastVoltages: number[] = [];
   /** CURRENT_LSB per INA228/237/238 address, from the calibration write. */
   private currentLsb = new Map<number, number>();
+  /** BMP280/BME280 calibration words, read once per address. */
+  private bmxCal = new Map<number, { t1: number; t2: number; t3: number }>();
+  /** Temperature channels already reported as broken — log once, not at 10 Hz. */
+  private tempWarned = new Set<string>();
 
   constructor(cfg: TelemetryConfig) {
     this.cfg = cfg;
   }
 
   async init(): Promise<void> {
-    const needsI2c = [...this.cfg.voltages, ...this.cfg.currents].some((c) =>
-      ['ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221', ...CALIBRATED_INA].includes(c.kind),
-    );
-    const needsSpi = this.cfg.voltages.some((c) => ['mcp3008', 'mcp3208'].includes(c.kind));
+    const temps = this.cfg.temperatures ?? [];
+    const needsI2c =
+      [...this.cfg.voltages, ...this.cfg.currents].some((c) =>
+        ['ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221', ...CALIBRATED_INA].includes(c.kind),
+      ) || temps.some((c) => I2C_TEMP.includes(c.kind));
+    const needsSpi =
+      this.cfg.voltages.some((c) => ['mcp3008', 'mcp3208'].includes(c.kind)) ||
+      temps.some((c) => SPI_TEMP.includes(c.kind));
     if (needsI2c) {
       const mod: string = 'i2c-bus';
       const i2cBus = await import(mod).catch(() => {
@@ -161,7 +189,7 @@ export class RealReader implements TelemetryReader {
 
   /** The INA228 channel (if any) whose accumulator we report. */
   private get counterChannel(): CurrentChannelCfg | null {
-    const primary = this.cfg.currents[0];
+    const primary = this.cfg.currents[primaryIndex(this.cfg.currents)];
     return primary && C.hasHardwareCounter(primary.kind) ? primary : null;
   }
 
@@ -293,13 +321,165 @@ export class RealReader implements TelemetryReader {
     }
   }
 
+  /**
+   * One temperature channel in °C, or null when that sensor can't be read (open
+   * thermocouple, CRC error, missing 1-Wire device). A single dead sensor must
+   * not take the whole telemetry loop down, so failures are caught per channel.
+   */
+  private async readTemperature(c: TemperatureChannelCfg): Promise<number | null> {
+    const addr = c.address;
+    const offset = c.offsetC ?? 0;
+    const add = (v: number | null) => (v === null ? null : v + offset);
+    switch (c.kind) {
+      case 'pi':
+        return add(C.piThermalC(await readFile(PI_THERMAL, 'utf8')));
+      case 'ds18b20': {
+        const id = c.device?.trim() || (await this.firstW1Device());
+        if (!id) return null;
+        return add(C.ds18b20C(await readFile(`${W1_DIR}/${id}/w1_slave`, 'utf8')));
+      }
+      case 'mcp9808':
+        return add(C.mcp9808C(await this.readWord(addr ?? 0x18, 0x05)));
+      case 'tmp102':
+        return add(C.tmp102C(await this.readWord(addr ?? 0x48, 0x00)));
+      case 'tmp117':
+        return add(C.tmp117C(await this.readWord(addr ?? 0x48, 0x00)));
+      case 'bmp280':
+      case 'bme280':
+        return add(await this.readBmx280(c));
+      case 'max6675':
+        return add(C.max6675C(await this.readSpiWord(c, 2)));
+      case 'max31855':
+        return add(C.max31855C(await this.readSpiWord(c, 4)));
+      case 'max31856':
+        // Linearised temperature registers 0x0C..0x0E, read via the SPI address
+        // byte (0x0C) the chip expects for a read burst.
+        return add(C.max31856C(await this.readSpiRegister(c, 0x0c, 3)));
+      case 'max31865': {
+        const raw = await this.readSpiRegister(c, 0x01, 2); // RTD MSB/LSB
+        const ref = c.refOhms ?? (c.probe === 'pt1000' ? 4300 : 430);
+        const ohms = C.max31865Ohms(raw, ref);
+        return ohms === null ? null : add(C.rtdTempC(ohms, c.probe === 'pt1000' ? 1000 : 100));
+      }
+      case 'ads1115':
+      case 'mcp3008': {
+        const volts = await this.readProbeVolts(c);
+        if (volts === null) return null;
+        const excite = c.exciteVolts ?? (c.kind === 'ads1115' ? 3.3 : c.vref ?? 3.3);
+        const ohms = C.dividerOhms(volts, excite, c.seriesOhms ?? 10000);
+        if (ohms === null) return null;
+        if (c.probe === 'pt100' || c.probe === 'pt1000') {
+          return add(C.rtdTempC(ohms, c.probe === 'pt1000' ? 1000 : 100));
+        }
+        return add(C.ntcTempC(ohms, c.ntcR25 ?? 10000, c.ntcBeta ?? 3950));
+      }
+      default:
+        return null;
+    }
+  }
+
+  /** First DS18B20 the kernel enumerated, so an id is optional in the config. */
+  private async firstW1Device(): Promise<string | null> {
+    const entries = await readdir(W1_DIR).catch(() => [] as string[]);
+    return entries.find((e) => /^(10|22|28|3b|42)-/.test(e)) ?? null;
+  }
+
+  /** ADC voltage for a probe divider — same maths as a voltage channel. */
+  private async readProbeVolts(c: TemperatureChannelCfg): Promise<number | null> {
+    const asVoltage: VoltageChannelCfg = {
+      label: c.label,
+      kind: c.kind === 'ads1115' ? 'ads1115' : 'mcp3008',
+      address: c.address,
+      channel: c.channel,
+      gainFsrVolts: c.gainFsrVolts,
+      vref: c.vref,
+      spiBus: c.spiBus,
+      spiDevice: c.spiDevice,
+    };
+    const v = await this.readVoltage(asVoltage);
+    return Number.isFinite(v) ? v : null;
+  }
+
+  /**
+   * BMP280/BME280: read the per-part calibration once (registers 0x88..0x8D),
+   * then the 20-bit raw temperature at 0xFA and apply the datasheet compensation.
+   */
+  private async readBmx280(c: TemperatureChannelCfg): Promise<number | null> {
+    const addr = c.address ?? 0x76;
+    let cal = this.bmxCal.get(addr);
+    if (!cal) {
+      const buf = Buffer.alloc(6);
+      await this.i2c.readI2cBlock(addr, 0x88, 6, buf);
+      cal = {
+        t1: buf.readUInt16LE(0),
+        t2: buf.readInt16LE(2),
+        t3: buf.readInt16LE(4),
+      };
+      this.bmxCal.set(addr, cal);
+      // Forced mode, 1× temperature oversampling — one conversion per read.
+      await this.i2c.writeByte(addr, 0xf4, 0x25);
+    }
+    await this.i2c.writeByte(addr, 0xf4, 0x25);
+    const raw = Buffer.alloc(3);
+    await this.i2c.readI2cBlock(addr, 0xfa, 3, raw);
+    const adcT = ((raw[0] << 16) | (raw[1] << 8) | raw[2]) >> 4;
+    if (adcT === 0x80000 >> 4) return null; // sensor idle / not configured
+    return C.bmp280TempC(adcT, cal.t1, cal.t2, cal.t3);
+  }
+
+  /** Raw SPI read of N bytes (MAX6675 / MAX31855 stream their register out). */
+  private readSpiWord(c: TemperatureChannelCfg, bytes: number): Promise<number> {
+    return this.spiTransfer(c, Buffer.alloc(bytes), bytes).then((rx) => {
+      let v = 0;
+      for (const b of rx) v = v * 256 + b;
+      return v;
+    });
+  }
+
+  /** Register read for the MAX31856/31865: address byte, then N data bytes. */
+  private readSpiRegister(c: TemperatureChannelCfg, reg: number, bytes: number): Promise<number> {
+    const tx = Buffer.alloc(bytes + 1);
+    tx[0] = reg & 0x7f; // MSB clear = read
+    return this.spiTransfer(c, tx, bytes + 1).then((rx) => {
+      let v = 0;
+      for (let i = 1; i < rx.length; i++) v = v * 256 + rx[i];
+      return v;
+    });
+  }
+
+  private spiTransfer(c: TemperatureChannelCfg, sendBuffer: Buffer, byteLength: number): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const dev = this.spi.open(c.spiBus ?? 0, c.spiDevice ?? 0, (err: Error) => {
+        if (err) return reject(err);
+        const receiveBuffer = Buffer.alloc(byteLength);
+        dev.transfer([{ sendBuffer, receiveBuffer, byteLength, speedHz: 1_000_000 }], (e: Error) => {
+          dev.close(() => {});
+          if (e) return reject(e);
+          resolve(receiveBuffer);
+        });
+      });
+    });
+  }
+
   async sample(): Promise<TelemetrySample> {
     const voltages: number[] = [];
     for (const v of this.cfg.voltages) voltages.push(await this.readVoltage(v));
     this.lastVoltages = voltages; // ACS reads reference these
     const currents: number[] = [];
     for (const c of this.cfg.currents) currents.push(await this.readCurrent(c));
-    return { voltages, currents };
+    const temperatures: (number | null)[] = [];
+    for (const t of this.cfg.temperatures ?? []) {
+      temperatures.push(
+        await this.readTemperature(t).catch((err) => {
+          if (!this.tempWarned.has(t.label)) {
+            this.tempWarned.add(t.label);
+            console.error(`[telemetry] temperature "${t.label}" (${t.kind}) failed: ${(err as Error).message}`);
+          }
+          return null;
+        }),
+      );
+    }
+    return { voltages, currents, temperatures };
   }
 
   async close(): Promise<void> {

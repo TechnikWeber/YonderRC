@@ -5,6 +5,8 @@ import {
   CHANNEL_NEUTRAL_US,
   type Profile,
   type TelemetryMessage,
+  type TelemetryReading,
+  readingKey,
   type LinkSignal,
   type GpsMessage,
   distanceMeters,
@@ -64,6 +66,23 @@ function loadOsdFields(): OsdFields {
     /* ignore */
   }
   return { ...OSD_FIELDS_DEFAULT };
+}
+
+/**
+ * Per-channel visibility on top of the block toggles above: the vehicle can report
+ * any number of voltage / current / temperature channels, and on a phone you rarely
+ * want all of them over the picture. Stored as the set of HIDDEN keys, so a newly
+ * added sensor shows up by default instead of silently staying invisible.
+ */
+const OSD_HIDDEN_KEY = 'yonderrc.osdHidden.v1';
+function loadHidden(): string[] {
+  try {
+    const raw = localStorage.getItem(OSD_HIDDEN_KEY);
+    if (raw) return JSON.parse(raw) as string[];
+  } catch {
+    /* ignore */
+  }
+  return [];
 }
 
 /**
@@ -264,7 +283,15 @@ function TelemetryBar({ t }: { t: TelemetryMessage }) {
  * Battery data block: voltages, currents, capacity. Shown bottom-right as its own
  * panel under the link/latency block.
  */
-function TelemetryData({ t, compact }: { t: TelemetryMessage; compact: boolean }) {
+function TelemetryData({
+  t,
+  compact,
+  hidden,
+}: {
+  t: TelemetryMessage;
+  compact: boolean;
+  hidden: Set<string>;
+}) {
   // Real source but no sensor → make it unmistakable, never show fake numbers.
   if (t.source === 'real' && !t.ok) {
     return (
@@ -273,6 +300,16 @@ function TelemetryData({ t, compact }: { t: TelemetryMessage; compact: boolean }
       </div>
     );
   }
+  const temps = t.temperatures ?? [];
+  // With a single channel of a kind the label adds nothing — the unit already
+  // says what it is. From the second one on it's the only way to tell them apart.
+  const vis = <K extends 'v' | 'c' | 't'>(kind: K, list: TelemetryReading[]) =>
+    list
+      .map((r, i) => ({ r, key: readingKey(kind, r.label, i), showLabel: list.length > 1 }))
+      .filter((e) => !hidden.has(e.key));
+  const volts = vis('v', t.voltages);
+  const amps = vis('c', t.currents);
+  const degs = vis('t', temps);
   // Compact drops the capacity denominator and the "left/used" word — on a phone
   // the block has to stay narrow enough to clear the centred ARMED badge.
   const mahValue =
@@ -288,11 +325,17 @@ function TelemetryData({ t, compact }: { t: TelemetryMessage; compact: boolean }
   return (
     <div className="osd-block osd-tel">
       {t.source === 'sim' && <span className="osd-sim" title="Simulated telemetry — no real sensor">{compact ? 'SIM' : 'SIM DATA'}</span>}
-      {t.voltages.map((v, i) => (
-        <span key={`v${i}`} className="osd-batt">{v.value.toFixed(2)} V</span>
+      {volts.map((e) => (
+        <span key={e.key} className="osd-batt">
+          {e.showLabel && <b className="osd-tag">{e.r.label}</b>}
+          {e.r.value.toFixed(2)} V
+        </span>
       ))}
-      {t.currents.map((c, i) => (
-        <span key={`c${i}`}>{c.value.toFixed(1)} A</span>
+      {amps.map((e) => (
+        <span key={e.key}>
+          {e.showLabel && <b className="osd-tag">{e.r.label}</b>}
+          {e.r.value.toFixed(1)} A
+        </span>
       ))}
       <span
         title={
@@ -303,6 +346,12 @@ function TelemetryData({ t, compact }: { t: TelemetryMessage; compact: boolean }
       >
         {capLine}
       </span>
+      {degs.map((e) => (
+        <span key={e.key} className="osd-temp">
+          {e.showLabel && <b className="osd-tag">{e.r.label}</b>}
+          {e.r.value.toFixed(1)} °C
+        </span>
+      ))}
     </div>
   );
 }
@@ -356,6 +405,7 @@ export function VideoPanel({
   const [play, setPlay] = useState<PlayState>('idle');
   const [showOsd, setShowOsd] = useState(true);
   const [osdFields, setOsdFieldsState] = useState<OsdFields>(loadOsdFields);
+  const [hiddenKeys, setHiddenKeys] = useState<string[]>(loadHidden);
   const [osdSize, setOsdSizeState] = useState<OsdSize>(loadOsdSize);
   const narrowScreen = useMediaQuery(COMPACT_QUERY);
   const compactOsd = osdSize === 'compact' || (osdSize === 'auto' && narrowScreen);
@@ -378,6 +428,19 @@ export function VideoPanel({
       return next;
     });
   };
+  /** Toggle one telemetry channel; the hidden set is what gets persisted. */
+  const setChannelShown = (key: string, shown: boolean) => {
+    setHiddenKeys((prev) => {
+      const next = shown ? prev.filter((k) => k !== key) : prev.includes(key) ? prev : [...prev, key];
+      try {
+        localStorage.setItem(OSD_HIDDEN_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const hidden = new Set(hiddenKeys);
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
   const [stats, setStats] = useState<VideoStats | null>(null);
 
@@ -715,6 +778,38 @@ export function VideoPanel({
             ))}
           </div>
 
+          {telemetry && (telemetry.voltages.length + telemetry.currents.length + (telemetry.temperatures?.length ?? 0) > 0) && (
+            <>
+              <div className="eyebrow2" style={{ marginTop: 10 }}>Sensor values</div>
+              <p className="note">
+                Every channel the vehicle reports. Uncheck what you don't want over the picture — the
+                label is shown as soon as a kind has more than one channel. Add or rename channels in
+                the vehicle's Setup › Telemetry.
+              </p>
+              <div className="osd-fields">
+                {([
+                  ['v', 'V', telemetry.voltages],
+                  ['c', 'A', telemetry.currents],
+                  ['t', '°C', telemetry.temperatures ?? []],
+                ] as ['v' | 'c' | 't', string, TelemetryReading[]][]).flatMap(([kind, unit, list]) =>
+                  list.map((r, i) => {
+                    const key = readingKey(kind, r.label, i);
+                    return (
+                      <label key={key} className="opt">
+                        <input
+                          type="checkbox"
+                          checked={!hidden.has(key)}
+                          onChange={(e) => setChannelShown(key, e.target.checked)}
+                        />
+                        {r.label || `${unit} ${i + 1}`} <span className="unit-tag">{unit}</span>
+                      </label>
+                    );
+                  }),
+                )}
+              </div>
+            </>
+          )}
+
           <div className="eyebrow2" style={{ marginTop: 10 }}>Recording</div>
           <div className="rec-row">
             <button className="btn tiny" onClick={rec.pickFolder}>Choose folder</button>
@@ -833,7 +928,7 @@ export function VideoPanel({
                   )}
                 </div>
               )}
-              {osdFields.batteryData && (telemetry ? <TelemetryData t={telemetry} compact={compactOsd} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>)}
+              {osdFields.batteryData && (telemetry ? <TelemetryData t={telemetry} compact={compactOsd} hidden={hidden} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>)}
             </div>
           </div>
         )}

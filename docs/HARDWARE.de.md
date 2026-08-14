@@ -157,6 +157,36 @@ Gängige Empfänger, die am Pi problemlos laufen: **Adafruit Ultimate GPS** (MTK
 
 ---
 
+### 2.7 Temperatursensoren (optional)
+
+Beliebig viele Temperaturkanäle lassen sich in Setup › Telemetry anlegen; sie erscheinen
+im OSD unterhalb von Spannung und Strom. Auswahl nach Anschlussart:
+
+| Sensor | Bus | Bereich / Hinweise | Zusätzlich nötig |
+|---|---|---|---|
+| **Raspberry Pi SoC** | — | Die Chiptemperatur des Pi selbst; gut als Throttling-Warnung | nichts |
+| **DS18B20** | 1-Wire | −55…+125 °C, ±0,5 °C, günstig, auch als wasserdichte Sonde | `dtoverlay=w1-gpio` + 4,7-kΩ-Pull-up von Data nach 3V3 |
+| **MCP9808 / TMP102 / TMP117** | I²C | −40…+125 °C; der TMP117 ist der genaue (±0,1 °C) | Adresse (0x18 / 0x48…) |
+| **BMP280 / BME280** | I²C | Umgebungsluft (BME zusätzlich Feuchte); nicht für heiße Punkte | Adresse 0x76/0x77 |
+| **MAX6675 / MAX31855** | SPI | Thermoelement Typ K, bis ca. 1000 °C — für Motor, ESC, Auspuff | `dtparam=spi=on` |
+| **MAX31856** | SPI | Thermoelement mit wählbarem Typ (B/E/J/K/N/R/S/T) | `dtparam=spi=on` |
+| **MAX31865** | SPI | PT100/PT1000, genau bis ca. 600 °C | `dtparam=spi=on`, Referenzwiderstand 430 Ω (PT100) / 4300 Ω (PT1000) |
+| **ADS1115 / MCP3008 + NTC oder PT100** | I²C / SPI | Was ohnehin verbaut ist; günstigste Variante | Vorwiderstand, Speisespannung, NTC R25/Beta |
+
+- **1-Wire- und I²C-Sensoren teilen sich den Bus** mit PCA9685/INA — nur die Adressen
+  müssen sich unterscheiden. SPI-Verstärker brauchen je ein eigenes Chip-Select (CE0/CE1).
+- **NTC/PT100 am ADC** ist ein Spannungsteiler: Speisung → Festwiderstand → *Sonde* → GND,
+  der ADC-Eingang liegt zwischen Widerstand und Sonde. Den Festwiderstand als *Series
+  resistor* eintragen und beim NTC zusätzlich `R25/Beta` (z. B. `10000/3950`, steht auf
+  dem Bauteil).
+- **Thermoelemente messen heiß, nicht genau** (typisch ±2 °C). Für Motor oder ESC ist
+  genau das richtig; für die Akkutemperatur ist ein DS18B20 an der Zelle besser.
+- Ein Sensor, der sich nicht lesen lässt (offenes Thermoelement, CRC-Fehler, fehlendes
+  1-Wire-Gerät), wird **im OSD weggelassen** statt als 0 °C angezeigt — und einmalig im
+  Fahrzeug-Log vermerkt.
+
+---
+
 ## 3. Software — Schritt für Schritt (zuerst WLAN)
 
 ### 3.1 Raspberry Pi OS flashen
@@ -253,7 +283,10 @@ sudo systemctl restart yonderrc-vehicle
    Spannungskurve oder *clamp* = der niedrigere von beiden), und **Charge counter** auf
    `auto` lassen: mit einem INA228 zählt dann der Chip selbst, alles andere integriert
    der Pi → **Save**. Danach Fahrzeug neu starten
-   (`sudo systemctl restart yonderrc-vehicle`).
+   (`sudo systemctl restart yonderrc-vehicle`). Bei mehr als einem Spannungs- oder
+   Stromkanal den Kanal am Pack als **primary** markieren — er speist %, mAh und
+   Warnungen. **Temperaturkanäle** sind optional (siehe 2.7); jeder Wert lässt sich pro
+   Bodengerät unter FPV › ⚙ › *Sensor values* ausblenden.
 4. **Security (optional):** Ein **API-Secret** setzen, wenn das Fahrzeug in einem Netz
    hängt, dem du nicht voll vertraust — siehe 6.1. Für die ersten Tests auf der
    Werkbank leer lassen; standardmäßig ist es aus.

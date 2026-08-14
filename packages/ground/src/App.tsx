@@ -7,6 +7,7 @@ import {
   type TelemetryMessage,
   type GpsMessage,
   type WelcomeMessage,
+  primaryCurrent,
 } from '@yonderrc/protocol';
 import { LinkClient, setupUrlFromWs, type ControlPath, type LinkState } from './lib/transport';
 import { InputManager } from './lib/input/inputManager';
@@ -292,7 +293,7 @@ export function App() {
         fps: vs?.fps ?? null,
         vlat: vs?.latencyMs ?? null,
         volt: packVoltage(t),
-        amp: t?.currents?.[0]?.value ?? null,
+        amp: primaryCurrent(t)?.value ?? null,
         mah: t?.mah ?? null,
         pct: t?.batteryPercent ?? null,
       });
@@ -407,7 +408,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.23.0</span>
+        <span className="ver">ground · v1.24.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>

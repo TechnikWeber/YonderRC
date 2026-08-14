@@ -766,6 +766,20 @@ body {
   background: var(--accent);
 }
 .osd-batt { color: #dfe7ee; }
+/* Channel tag in front of a value — only rendered when a kind has more than one
+   channel, so the single-sensor case stays as terse as it always was. */
+.osd-tag {
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.osd-temp { color: #dfe7ee; }
+/* Unit hint behind a channel name in the OSD settings list. */
+.unit-tag {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
 
 /* ---- home compass / arrow ---- */
 .osd-home {

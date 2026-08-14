@@ -3,6 +3,50 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.24.0
+**English**
+- **Temperature sensors, 1..n.** New temperature channels in Setup › Telemetry, shown in
+  the OSD under voltage and current: **Raspberry Pi SoC**, **DS18B20** (1-Wire),
+  **MCP9808 / TMP102 / TMP117 / BMP280 / BME280** (I²C), **MAX6675 / MAX31855 / MAX31856**
+  thermocouples and **MAX31865** PT100/PT1000 (SPI), plus an **NTC or PT100 on an
+  ADS1115 / MCP3008**. Each kind shows only the fields it needs (address, chip-select,
+  thermocouple type, probe, series resistor, R25/beta, offset). A sensor that can't be
+  read is left out of the OSD instead of appearing as 0 °C, and is logged once.
+- **Every telemetry value can now be hidden individually** — FPV › ⚙ › *Sensor values*
+  lists every channel the vehicle reports, per browser, so a phone can show less than
+  the laptop. New channels are visible by default.
+- **Labels in the OSD**: as soon as a kind has more than one channel, its label is shown
+  in front of the value (`Pack 16.6 V · BEC 5.1 V`, `Motor 62 °C`). With a single channel
+  nothing changes. New channels default to short labels (`U2`, `I2`, `T1`).
+- **Explicit primary channel.** Battery %, mAh/Wh counting, the low-battery warning and
+  the blackbox used to read *whichever channel happened to be first*, so deleting or
+  inserting a channel silently moved the battery maths. A **primary** radio (Setup ›
+  Telemetry, shown once a kind has two channels) now marks it; without a flag the first
+  channel wins, so existing configs are unchanged. The vehicle reports the index, so the
+  ground warns on the same voltage it counted with.
+
+**Deutsch**
+- **Temperatursensoren, 1..n.** Neue Temperaturkanäle in Setup › Telemetry, im OSD
+  unterhalb von Spannung und Strom: **Raspberry-Pi-SoC**, **DS18B20** (1-Wire),
+  **MCP9808 / TMP102 / TMP117 / BMP280 / BME280** (I²C), Thermoelemente über
+  **MAX6675 / MAX31855 / MAX31856** und PT100/PT1000 über **MAX31865** (SPI) sowie
+  **NTC oder PT100 an ADS1115 / MCP3008**. Jede Art zeigt nur die Felder, die sie
+  braucht (Adresse, Chip-Select, Thermoelement-Typ, Sonde, Vorwiderstand, R25/Beta,
+  Offset). Ein Sensor, der sich nicht lesen lässt, fehlt im OSD, statt als 0 °C
+  aufzutauchen — und wird einmalig geloggt.
+- **Jeder Telemetriewert ist jetzt einzeln ausblendbar** — FPV › ⚙ › *Sensor values*
+  listet jeden Kanal, den das Fahrzeug meldet, pro Browser gespeichert; am Handy also
+  weniger als am Laptop. Neue Kanäle sind standardmäßig sichtbar.
+- **Kürzel im OSD**: sobald eine Art mehr als einen Kanal hat, steht das Label vor dem
+  Wert (`Pack 16.6 V · BEC 5.1 V`, `Motor 62 °C`). Bei einem einzelnen Kanal ändert sich
+  nichts. Neue Kanäle heißen per Default kurz (`U2`, `I2`, `T1`).
+- **Expliziter Primärkanal.** Akku-%, mAh/Wh-Zählung, Akku-Warnung und Blackbox haben
+  bisher schlicht den *ersten* Kanal gelesen — Löschen oder Einfügen verschob die
+  Akkurechnung also unbemerkt. Ein **primary**-Radio (Setup › Telemetry, erscheint ab
+  zwei Kanälen einer Art) markiert ihn jetzt; ohne Flag gewinnt weiterhin der erste
+  Kanal, bestehende Configs bleiben unverändert. Das Fahrzeug meldet den Index mit,
+  damit der Ground auf derselben Spannung warnt, mit der gezählt wurde.
+
 ## v1.23.0
 **English**
 - **INA228 support — the sensor counts the charge itself.** The INA228 integrates

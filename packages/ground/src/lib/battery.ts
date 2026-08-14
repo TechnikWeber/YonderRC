@@ -1,4 +1,4 @@
-import type { TelemetryMessage } from '@yonderrc/protocol';
+import { primaryVoltage, type TelemetryMessage } from '@yonderrc/protocol';
 
 /**
  * Low-battery warning. "auto" mode only arms itself when a REAL sensor is
@@ -52,9 +52,12 @@ export function saveBattery(c: BatteryWarnCfg): void {
   }
 }
 
-/** Pack voltage = first configured voltage channel, if any. */
+/**
+ * Pack voltage = the channel the vehicle marked primary (falls back to the first),
+ * so the warning threshold watches the same voltage the vehicle counts with.
+ */
 export function packVoltage(t: TelemetryMessage | null): number | null {
-  return t?.voltages?.[0]?.value ?? null;
+  return primaryVoltage(t)?.value ?? null;
 }
 
 export interface BatteryState {

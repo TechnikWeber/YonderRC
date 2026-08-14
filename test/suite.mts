@@ -71,6 +71,59 @@ async function main() {
   ok('ina238 die temp', near(C.ina238TempC(128 << 4), 16, 1e-9));
   ok('ina238 die temp negative', C.ina238TempC(0xf800) < 0);
 
+  // ---- temperature sensors ----
+  ok('pi thermal 47.8 °C', near(C.piThermalC('47774\n')!, 47.774));
+  ok('pi thermal garbage → null', C.piThermalC('n/a') === null);
+  ok('ds18b20 parses t=', near(C.ds18b20C('aa bb : crc=5c YES\n aa bb t=23125')!, 23.125));
+  ok('ds18b20 bad crc → null', C.ds18b20C('aa bb : crc=5c NO\n aa bb t=23125') === null);
+  ok('ds18b20 power-on 85 °C → null', C.ds18b20C('crc=5c YES t=85000') === null);
+  ok('ds18b20 negative', near(C.ds18b20C('crc=aa YES t=-10625')!, -10.625));
+  ok('mcp9808 +25.25', near(C.mcp9808C(0x0194), 25.25));
+  ok('mcp9808 negative', near(C.mcp9808C(0x1f9c), -6.25)); // 13-bit two's complement
+  ok('tmp102 +25', near(C.tmp102C(0x1900), 25));
+  ok('tmp102 negative', C.tmp102C(0xe700) < 0);
+  ok('tmp117 +25', near(C.tmp117C(3200), 25));
+  // BMP280 datasheet worked example: adc_T 519888 with T1..T3 = 27504/26435/-1000.
+  ok('bmp280 compensation', Math.abs(C.bmp280TempC(519888, 27504, 26435, -1000) - 25.08) < 0.05);
+  ok('max6675 +25', near(C.max6675C(100 << 3)!, 25));
+  ok('max6675 open thermocouple → null', C.max6675C((100 << 3) | 0x04) === null);
+  ok('max31855 +25', near(C.max31855C(100 << 18)!, 25));
+  ok('max31855 fault → null', C.max31855C((100 << 18) | 0x00010000) === null);
+  ok('max31855 cold junction', near(C.max31855ColdJunctionC(400 << 4), 25));
+  ok('max31856 +25', near(C.max31856C((25 / 0.0078125) << 5), 25));
+  ok('max31865 ratio → ohms', near(C.max31865Ohms(16384 << 1, 430)!, 215));
+  ok('max31865 fault → null', C.max31865Ohms((16384 << 1) | 1, 430) === null);
+  // PT100: 100 Ω = 0 °C, 138.51 Ω = 100 °C, 80.31 Ω = −50 °C.
+  ok('pt100 at 0 °C', Math.abs(C.rtdTempC(100, 100)) < 0.01);
+  ok('pt100 at 100 °C', Math.abs(C.rtdTempC(138.5055, 100) - 100) < 0.05);
+  ok('pt100 sub-zero', Math.abs(C.rtdTempC(80.31, 100) + 50) < 0.1);
+  ok('pt1000 scales', Math.abs(C.rtdTempC(1385.055, 1000) - 100) < 0.05);
+  // NTC: at R25 the beta equation must return exactly 25 °C.
+  ok('ntc at r25 = 25 °C', Math.abs(C.ntcTempC(10000)! - 25) < 1e-9);
+  ok('ntc hotter = lower R', C.ntcTempC(4000)! > 25 && C.ntcTempC(20000)! < 25);
+  ok('ntc nonsense → null', C.ntcTempC(0) === null);
+  // Divider: probe to GND, half the excitation ⇒ probe equals the series resistor.
+  ok('divider half = series', near(C.dividerOhms(1.65, 3.3, 10000)!, 10000));
+  ok('divider high side', near(C.dividerOhms(1.65, 3.3, 10000, false)!, 10000));
+  ok('divider out of range → null', C.dividerOhms(3.3, 3.3, 10000) === null);
+
+  // ---- which channel drives the battery maths ----
+  const { primaryIndex, primaryVoltage, primaryCurrent, readingKey } = await import('../packages/protocol/src/telemetry');
+  ok('no flag → first channel', primaryIndex([{}, {}]) === 0);
+  ok('flag wins', primaryIndex([{}, { primary: true }, {}]) === 1);
+  ok('empty list → 0', primaryIndex([]) === 0);
+  const tm2 = {
+    type: 'telemetry', source: 'sim', ok: true,
+    voltages: [{ label: 'BEC', value: 5.1 }, { label: 'Pack', value: 16.4 }],
+    currents: [{ label: 'I1', value: 9 }],
+    primaryVoltage: 1, mah: 0, wh: 0, capacityMah: null, batteryPercent: null, displayMode: 'remaining',
+  } as import('@yonderrc/protocol').TelemetryMessage;
+  ok('message points at the pack', primaryVoltage(tm2)?.value === 16.4);
+  ok('current falls back to index 0', primaryCurrent(tm2)?.label === 'I1');
+  ok('no channels → null', primaryVoltage({ ...tm2, voltages: [] }) === null);
+  ok('reading key uses the label', readingKey('t', 'Motor', 3) === 't:Motor');
+  ok('reading key falls back to the index', readingKey('v', '  ', 2) === 'v:2');
+
   // Who counts the charge: only the INA228 has the hardware accumulator.
   ok('ina228 has a counter', C.hasHardwareCounter('ina228'));
   ok('ina238 has none', !C.hasHardwareCounter('ina238') && !C.hasHardwareCounter('ina226'));
@@ -140,6 +193,37 @@ async function main() {
   await new Promise((r) => setTimeout(r, 120));
   ok('reset clears the sensor counter', hwSvc.message!.mah < hm.mah, `=${hwSvc.message!.mah}`);
   await hwSvc.stop();
+
+  // ---- primary channel + temperatures end-to-end through the service ----
+  const multiCfg: TelemetryConfig = {
+    ...tcfg,
+    // The sim puts the pack on index 0 and a half-voltage rail on index 1, so
+    // flagging the rail is a clean discriminator: the % must follow the flag.
+    voltages: [{ label: 'Pack', kind: 'sim' }, { label: 'BEC', kind: 'sim', primary: true }],
+    currents: [{ label: 'I1', kind: 'sim' }],
+    temperatures: [{ label: 'Motor', kind: 'sim' }, { label: 'ESC', kind: 'sim' }],
+    percentSource: 'voltage',
+    voltageFullV: 16.8,
+    voltageEmptyV: 13.2,
+  };
+  const multi = new TelemetryService(multiCfg);
+  await multi.start();
+  await new Promise((r) => setTimeout(r, 200));
+  const mm = multi.message!;
+  ok('primary index is reported', mm.primaryVoltage === 1 && mm.primaryCurrent === 0);
+  ok('battery % follows the flag (rail → empty)', mm.batteryPercent === 0, `=${mm.batteryPercent}`);
+  ok('temperatures are reported with labels', mm.temperatures?.length === 2 && mm.temperatures[0].label === 'Motor');
+  ok('temperatures are plausible', (mm.temperatures?.[0].value ?? 0) > 20 && (mm.temperatures?.[0].value ?? 0) < 90);
+  await multi.stop();
+  // Same pack, flag moved back to the real pack channel → a full battery again.
+  const packPrimary = new TelemetryService({
+    ...multiCfg,
+    voltages: [{ label: 'Pack', kind: 'sim', primary: true }, { label: 'BEC', kind: 'sim' }],
+  });
+  await packPrimary.start();
+  await new Promise((r) => setTimeout(r, 200));
+  ok('flag on the pack → full', (packPrimary.message!.batteryPercent ?? 0) > 50, `=${packPrimary.message!.batteryPercent}`);
+  await packPrimary.stop();
 
   // Same config forced onto the Pi, and a chip without a counter.
   const piSvc = new TelemetryService({ ...hwCfg, chargeSource: 'pi' });

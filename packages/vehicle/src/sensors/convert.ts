@@ -178,6 +178,145 @@ export function resolveChargeSource(
   return sensorHasCounter ? 'sensor' : 'pi';
 }
 
+// ============================ temperature ============================
+// Every function turns one raw reading into °C. The I/O (i2c/spi/sysfs) stays in
+// TelemetryReader; only the datasheet maths lives here, so it can be tested.
+
+/** Pi SoC sensor: /sys/class/thermal/thermal_zone0/temp holds milli-°C. */
+export function piThermalC(sysfs: string): number | null {
+  const milli = Number(String(sysfs).trim());
+  if (!Number.isFinite(milli)) return null;
+  return milli / 1000;
+}
+
+/**
+ * DS18B20 via the kernel's 1-Wire driver. `w1_slave` looks like
+ *   72 01 4b 46 7f ff 0c 10 5c : crc=5c YES
+ *   72 01 4b 46 7f ff 0c 10 5c t=23125
+ * A "NO" CRC line means the read was corrupt — report null instead of a value.
+ */
+export function ds18b20C(w1Slave: string): number | null {
+  if (/crc=[0-9a-f]{2}\s+NO/i.test(w1Slave)) return null;
+  const m = /t=(-?\d+)/.exec(w1Slave);
+  if (!m) return null;
+  const milli = Number(m[1]);
+  // 85000 is the power-on default: the sensor was read before it converted.
+  if (!Number.isFinite(milli) || milli === 85000) return null;
+  return milli / 1000;
+}
+
+/** MCP9808: 13-bit two's complement in bits 12:0, 0.0625 °C/LSB. */
+export function mcp9808C(raw16: number): number {
+  const v = raw16 & 0x1fff;
+  return (v > 0x0fff ? v - 0x2000 : v) * 0.0625;
+}
+/** TMP102: 12-bit left-aligned (bits 15:4), 0.0625 °C/LSB. */
+export function tmp102C(raw16: number): number {
+  return (toSigned16(raw16) >> 4) * 0.0625;
+}
+/** TMP117: full 16-bit two's complement, 7.8125 m°C/LSB. */
+export function tmp117C(raw16: number): number {
+  return toSigned16(raw16) * 7.8125e-3;
+}
+
+/**
+ * BMP280 / BME280 temperature compensation, straight from the datasheet: the
+ * chip ships per-part calibration words (dig_T1..T3) that have to be applied to
+ * the raw 20-bit ADC value. Returns °C; also yields t_fine, which the pressure
+ * compensation would need.
+ */
+export function bmp280TempC(adcT: number, digT1: number, digT2: number, digT3: number): number {
+  const var1 = (adcT / 16384 - digT1 / 1024) * digT2;
+  const var2 = (adcT / 131072 - digT1 / 8192) ** 2 * digT3;
+  return (var1 + var2) / 5120;
+}
+
+/** MAX6675: bits 14:3 hold 12 bits at 0.25 °C; bit 2 set = no thermocouple. */
+export function max6675C(raw16: number): number | null {
+  if (raw16 & 0x0004) return null;
+  return ((raw16 >> 3) & 0x0fff) * 0.25;
+}
+/**
+ * MAX31855: 32 bits — 14-bit thermocouple temperature in 31:18 (0.25 °C), fault
+ * bit 16, and the cold-junction temperature in 15:4 (0.0625 °C).
+ */
+export function max31855C(raw32: number): number | null {
+  if (raw32 & 0x00010000) return null; // any fault (open / short to GND / VCC)
+  const v = (raw32 >>> 18) & 0x3fff;
+  return (v > 0x1fff ? v - 0x4000 : v) * 0.25;
+}
+export function max31855ColdJunctionC(raw32: number): number {
+  const v = (raw32 >>> 4) & 0x0fff;
+  return (v > 0x07ff ? v - 0x1000 : v) * 0.0625;
+}
+/** MAX31856: 24-bit linearised temperature, 19 bits used, 0.0078125 °C/LSB. */
+export function max31856C(raw24: number): number {
+  const v = raw24 >> 5; // bits 4:0 are unused
+  return (v > 0x3ffff ? v - 0x80000 : v) * 0.0078125;
+}
+
+/**
+ * MAX31865: the RTD register is a 15-bit ratio of the reference resistor
+ * (bit 0 is the fault flag), so R = ratio × R_ref / 32768.
+ */
+export function max31865Ohms(raw16: number, refOhms: number): number | null {
+  if (raw16 & 0x0001) return null; // fault
+  return ((raw16 >> 1) * refOhms) / 32768;
+}
+
+/**
+ * PT100/PT1000 resistance → °C (inverse Callendar–Van-Dusen). Above 0 °C the
+ * quadratic has a closed-form solution; below 0 °C the polynomial has no simple
+ * inverse, so the standard approximation polynomial is used there.
+ */
+export function rtdTempC(ohms: number, r0 = 100): number {
+  const A = 3.9083e-3;
+  const B = -5.775e-7;
+  const ratio = ohms / r0;
+  if (ratio >= 1) {
+    return (-A + Math.sqrt(A * A - 4 * B * (1 - ratio))) / (2 * B);
+  }
+  // Below 0 °C the CVD polynomial has no closed-form inverse; this is the
+  // standard approximation, evaluated on the PT100-equivalent resistance.
+  const x = ratio * 100;
+  return (
+    -242.02 +
+    2.2228 * x +
+    2.5859e-3 * x ** 2 -
+    4.826e-6 * x ** 3 -
+    2.8183e-8 * x ** 4 +
+    1.5243e-10 * x ** 5
+  );
+}
+
+/**
+ * Divider resistance from a measured voltage. The probe sits either at the low
+ * side (probe to GND, fixed resistor to the excitation) or the high side.
+ */
+export function dividerOhms(
+  measuredVolts: number,
+  exciteVolts: number,
+  seriesOhms: number,
+  probeAtLowSide = true,
+): number | null {
+  if (exciteVolts <= 0 || measuredVolts <= 0 || measuredVolts >= exciteVolts) return null;
+  return probeAtLowSide
+    ? (seriesOhms * measuredVolts) / (exciteVolts - measuredVolts)
+    : (seriesOhms * (exciteVolts - measuredVolts)) / measuredVolts;
+}
+
+/**
+ * NTC resistance → °C via the beta equation, referenced to 25 °C. Good to about
+ * ±1 °C over a typical motor/ESC range; Steinhart–Hart would need three
+ * coefficients most datasheets don't print.
+ */
+export function ntcTempC(ohms: number, r25 = 10000, beta = 3950): number | null {
+  if (ohms <= 0 || r25 <= 0 || beta <= 0) return null;
+  const t0 = 298.15; // 25 °C in kelvin
+  const inv = 1 / t0 + Math.log(ohms / r25) / beta;
+  return 1 / inv - 273.15;
+}
+
 // ---- ADS1115 (16-bit) / ADS1015 (12-bit) ----
 export function ads1115Volts(raw: number, fsrVolts: number): number {
   return (toSigned16(raw) / 32768) * fsrVolts;

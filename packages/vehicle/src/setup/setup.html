@@ -196,6 +196,11 @@
         <div class="eyebrow2">Current channels</div>
         <div id="curr-list"></div>
         <div class="btns"><button class="btn" onclick="addCurr()">+ Current</button></div>
+        <p class="msg">The channel marked <b>primary</b> drives the battery %, the mAh/Wh counting, the low-battery warning and the blackbox columns. With one channel of a kind there is nothing to choose; with several, mark the one that measures the pack.</p>
+        <div class="eyebrow2">Temperature channels</div>
+        <div id="temp-list"></div>
+        <div class="btns"><button class="btn" onclick="addTemp()">+ Temperature</button></div>
+        <p class="msg">Optional. Shown in the OSD below voltage/current; each value can be hidden per ground device under FPV › ⚙ › <i>Sensor values</i>. Give short labels (<code>T1</code>, <code>Motor</code>, <code>ESC</code>) — they are only shown once a kind has more than one channel.</p>
         <div class="grid2">
           <label>Battery capacity (mAh)<input id="capacity" type="number" placeholder="e.g. 2200" /></label>
           <label>Capacity display
@@ -577,13 +582,37 @@
       }
 
       // ---- Telemetry ----
-      let volts = [], currs = [];
+      let volts = [], currs = [], temps = [];
       const V_KINDS = ['sim', 'mcp3008', 'mcp3208', 'ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238'];
       const C_KINDS = ['sim', 'ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238', 'acs712', 'acs758'];
       // These three need a calibration write, so they get the extra fields below.
       const CAL_KINDS = ['ina228', 'ina237', 'ina238'];
       // Low range picked but the shunt voltage doesn't fit in it → the current clips.
       const cOverrange = (c) => !!c.lowShuntRange && c.maxCurrentA * c.shuntOhms * 1000 > 40.96;
+      const T_KINDS = [
+        ['pi', 'Raspberry Pi (SoC, no wiring)'],
+        ['sim', 'sim (fake values)'],
+        ['ds18b20', 'DS18B20 (1-Wire)'],
+        ['mcp9808', 'MCP9808 (I²C)'],
+        ['tmp102', 'TMP102 (I²C)'],
+        ['tmp117', 'TMP117 (I²C)'],
+        ['bmp280', 'BMP280 (I²C)'],
+        ['bme280', 'BME280 (I²C)'],
+        ['max6675', 'MAX6675 thermocouple type K (SPI)'],
+        ['max31855', 'MAX31855 thermocouple type K (SPI)'],
+        ['max31856', 'MAX31856 thermocouple, selectable type (SPI)'],
+        ['max31865', 'MAX31865 PT100/PT1000 (SPI)'],
+        ['ads1115', 'ADS1115 + NTC/PT100 (I²C)'],
+        ['mcp3008', 'MCP3008 + NTC/PT100 (SPI)'],
+      ];
+      const T_I2C = ['mcp9808', 'tmp102', 'tmp117', 'bmp280', 'bme280', 'ads1115'];
+      const T_SPI = ['max6675', 'max31855', 'max31856', 'max31865', 'mcp3008'];
+      const T_ADC = ['ads1115', 'mcp3008'];
+      const TC_TYPES = ['B', 'E', 'J', 'K', 'N', 'R', 'S', 'T'];
+      /** Only the first channel of a kind exists → nothing to pick, so hide the radio. */
+      const primaryRow = (list, i, fn) => list.length < 2 ? '' : `
+            <label class="chk"><input type="radio" ${list[i].primary || (!list.some((x) => x.primary) && i === 0) ? 'checked' : ''}
+              onchange="${fn}(${i})" /> primary — drives battery %, mAh and warnings</label>`;
       function renderVolts() {
         $('volt-list').innerHTML = volts.map((v, i) => `
           <div class="item"><div class="grid3">
@@ -592,7 +621,7 @@
               ${V_KINDS.map((k) => `<option value="${k}" ${v.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
             </select></label>
             <label>Channel<input type="number" value="${v.channel ?? 0}" oninput="vSet(${i},'channel',+this.value)" /></label>
-          </div><div class="btns"><button class="btn tiny" onclick="vDel(${i})">Remove</button></div></div>`).join('');
+          </div>${primaryRow(volts, i, 'vPrimary')}<div class="btns"><button class="btn tiny" onclick="vDel(${i})">Remove</button></div></div>`).join('');
       }
       function renderCurrs() {
         $('curr-list').innerHTML = currs.map((c, i) => `
@@ -608,14 +637,78 @@
               <option value="high" ${c.lowShuntRange ? '' : 'selected'}>±163.84 mV (default)</option>
               <option value="low" ${c.lowShuntRange ? 'selected' : ''}>±40.96 mV (4× resolution)</option>
             </select></label>
-          </div><p class="msg"${cOverrange(c) ? ' style="color:var(--bad)"' : ''}>Max current sets CURRENT_LSB/SHUNT_CAL. The low range needs max current × shunt ≤ 40.96 mV${c.maxCurrentA && c.shuntOhms ? ` (yours: ${(c.maxCurrentA * c.shuntOhms * 1000).toFixed(1)} mV${cOverrange(c) ? ' — over range, the reading will clip; use ±163.84 mV or a smaller shunt' : ''})` : ''}.${c.kind === 'ina228' ? ' The INA228 also counts charge/energy itself.' : ' INA237/238 have no charge counter — the Pi integrates.'}</p>` : ''}<div class="btns"><button class="btn tiny" onclick="cDel(${i})">Remove</button></div></div>`).join('');
+          </div><p class="msg"${cOverrange(c) ? ' style="color:var(--bad)"' : ''}>Max current sets CURRENT_LSB/SHUNT_CAL. The low range needs max current × shunt ≤ 40.96 mV${c.maxCurrentA && c.shuntOhms ? ` (yours: ${(c.maxCurrentA * c.shuntOhms * 1000).toFixed(1)} mV${cOverrange(c) ? ' — over range, the reading will clip; use ±163.84 mV or a smaller shunt' : ''})` : ''}.${c.kind === 'ina228' ? ' The INA228 also counts charge/energy itself.' : ' INA237/238 have no charge counter — the Pi integrates.'}</p>` : ''}${primaryRow(currs, i, 'cPrimary')}<div class="btns"><button class="btn tiny" onclick="cDel(${i})">Remove</button></div></div>`).join('');
+      }
+      function renderTemps() {
+        $('temp-list').innerHTML = temps.map((t, i) => {
+          const adc = T_ADC.includes(t.kind);
+          const probe = t.probe || (adc ? 'ntc' : 'pt100');
+          return `
+          <div class="item"><div class="grid3">
+            <label>Label<input value="${t.label || ''}" oninput="tSet(${i},'label',this.value)" /></label>
+            <label>Sensor<select onchange="tSet(${i},'kind',this.value); renderTemps()">
+              ${T_KINDS.map(([k, name]) => `<option value="${k}" ${t.kind === k ? 'selected' : ''}>${name}</option>`).join('')}
+            </select></label>
+            <label>Offset °C<input type="number" step="0.1" value="${t.offsetC ?? ''}" placeholder="0" oninput="tSet(${i},'offsetC',+this.value)" /></label>
+          </div>
+          ${t.kind === 'ds18b20' ? `<label>1-Wire id (optional — empty = first sensor found)<input value="${t.device || ''}" placeholder="28-0000064f9a1c" oninput="tSet(${i},'device',this.value)" /></label>` : ''}
+          ${T_I2C.includes(t.kind) ? `<div class="grid2">
+            <label>I²C address (hex)<input value="${t.address != null ? '0x' + t.address.toString(16) : ''}" placeholder="${t.kind === 'mcp9808' ? '0x18' : t.kind === 'bmp280' || t.kind === 'bme280' ? '0x76' : '0x48'}" oninput="tSetAddr(${i}, this.value)" /></label>
+            ${t.kind === 'ads1115' ? `<label>ADC channel<input type="number" value="${t.channel ?? 0}" oninput="tSet(${i},'channel',+this.value)" /></label>` : '<span></span>'}
+          </div>` : ''}
+          ${T_SPI.includes(t.kind) ? `<div class="grid2">
+            <label>SPI bus<input type="number" value="${t.spiBus ?? 0}" oninput="tSet(${i},'spiBus',+this.value)" /></label>
+            <label>SPI chip-select<input type="number" value="${t.spiDevice ?? 0}" oninput="tSet(${i},'spiDevice',+this.value)" /></label>
+          </div>` : ''}
+          ${t.kind === 'mcp3008' ? `<label>ADC channel<input type="number" value="${t.channel ?? 0}" oninput="tSet(${i},'channel',+this.value)" /></label>` : ''}
+          ${t.kind === 'max31856' ? `<label>Thermocouple type<select onchange="tSet(${i},'tcType',this.value)">
+              ${TC_TYPES.map((k) => `<option value="${k}" ${(t.tcType || 'K') === k ? 'selected' : ''}>type ${k}</option>`).join('')}
+            </select></label>` : ''}
+          ${t.kind === 'max31865' ? `<div class="grid2">
+            <label>Probe<select onchange="tSet(${i},'probe',this.value)">
+              <option value="pt100" ${probe === 'pt100' ? 'selected' : ''}>PT100</option>
+              <option value="pt1000" ${probe === 'pt1000' ? 'selected' : ''}>PT1000</option>
+            </select></label>
+            <label>Reference resistor Ω<input type="number" value="${t.refOhms ?? ''}" placeholder="${probe === 'pt1000' ? '4300' : '430'}" oninput="tSet(${i},'refOhms',+this.value)" /></label>
+          </div>` : ''}
+          ${adc ? `<div class="grid2">
+            <label>Probe<select onchange="tSet(${i},'probe',this.value); renderTemps()">
+              <option value="ntc" ${probe === 'ntc' ? 'selected' : ''}>NTC thermistor</option>
+              <option value="pt100" ${probe === 'pt100' ? 'selected' : ''}>PT100</option>
+              <option value="pt1000" ${probe === 'pt1000' ? 'selected' : ''}>PT1000</option>
+            </select></label>
+            <label>Series resistor Ω<input type="number" value="${t.seriesOhms ?? ''}" placeholder="10000" oninput="tSet(${i},'seriesOhms',+this.value)" /></label>
+          </div>
+          <div class="grid2">
+            <label>Excitation V<input type="number" step="0.1" value="${t.exciteVolts ?? ''}" placeholder="3.3" oninput="tSet(${i},'exciteVolts',+this.value)" /></label>
+            ${probe === 'ntc' ? `<label>NTC R25 Ω / beta<input value="${(t.ntcR25 ?? '') + (t.ntcBeta ? '/' + t.ntcBeta : '')}" placeholder="10000/3950" oninput="tSetNtc(${i}, this.value)" /></label>` : '<span></span>'}
+          </div>` : ''}
+          <div class="btns"><button class="btn tiny" onclick="tDel(${i})">Remove</button></div></div>`;
+        }).join('');
       }
       function vSet(i, k, val) { volts[i][k] = val; }
       function cSet(i, k, val) { currs[i][k] = val; }
+      function tSet(i, k, val) { temps[i][k] = val; }
+      // The field is labelled hex: "0x48" and a bare "48" both mean 0x48.
+      function tSetAddr(i, val) {
+        const raw = String(val).trim();
+        const n = /^0x/i.test(raw) ? Number(raw) : parseInt(raw, 16);
+        temps[i].address = Number.isFinite(n) ? n : undefined;
+      }
+      function tSetNtc(i, val) {
+        const [r25, beta] = String(val).split('/').map((x) => Number(x.trim()));
+        temps[i].ntcR25 = Number.isFinite(r25) ? r25 : undefined;
+        temps[i].ntcBeta = Number.isFinite(beta) ? beta : undefined;
+      }
+      // Exactly one primary per kind — set it here rather than trusting the radios.
+      function vPrimary(i) { volts.forEach((v, n) => { v.primary = n === i; }); renderVolts(); }
+      function cPrimary(i) { currs.forEach((c, n) => { c.primary = n === i; }); renderCurrs(); }
       function vDel(i) { volts.splice(i, 1); renderVolts(); }
       function cDel(i) { currs.splice(i, 1); renderCurrs(); }
-      function addVolt() { volts.push({ label: 'Voltage ' + (volts.length + 1), kind: 'sim' }); renderVolts(); }
-      function addCurr() { currs.push({ label: 'Current ' + (currs.length + 1), kind: 'sim' }); renderCurrs(); }
+      function tDel(i) { temps.splice(i, 1); renderTemps(); }
+      function addVolt() { volts.push({ label: 'U' + (volts.length + 1), kind: 'sim' }); renderVolts(); }
+      function addCurr() { currs.push({ label: 'I' + (currs.length + 1), kind: 'sim' }); renderCurrs(); }
+      function addTemp() { temps.push({ label: 'T' + (temps.length + 1), kind: 'pi' }); renderTemps(); }
       async function loadTelemetry() {
         const t = await getJSON('/api/telemetry');
         $('telSource').value = t.enabled === false ? 'off' : (t.source || 'sim');
@@ -629,7 +722,8 @@
         $('chargeSource').value = t.chargeSource || 'auto';
         volts = t.voltages || [];
         currs = t.currents || [];
-        renderVolts(); renderCurrs();
+        temps = t.temperatures || [];
+        renderVolts(); renderCurrs(); renderTemps();
       }
       async function saveTelemetry() {
         const src = $('telSource').value;
@@ -639,6 +733,7 @@
           sampleHz: Number($('telHz').value) || 10,
           voltages: volts,
           currents: currs,
+          temperatures: temps,
           countCapacity: $('countCapacity').checked,
           batteryCapacityMah: $('capacity').value ? Number($('capacity').value) : null,
           displayMode: $('displayMode').value,

@@ -101,6 +101,18 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   or **clamp** (the lower of the two, so a not-actually-full pack can't read 100%). The
   OSD labels which source it's using; the mAh readout is shown independently.
 - A single INA sensor can provide **both voltage and current**.
+- **Temperature sensors, 1..n**: Raspberry Pi SoC, DS18B20 (1-Wire), MCP9808 / TMP102 /
+  TMP117 / BMP280 / BME280 (I²C), MAX6675 / MAX31855 / MAX31856 thermocouples and
+  MAX31865 PT100/PT1000 (SPI), or an NTC/PT100 on an ADS1115 / MCP3008. Shown in the
+  OSD under voltage and current.
+- **Any number of channels, each individually switchable**: the OSD lists every channel
+  the vehicle reports under FPV › ⚙ › *Sensor values*, so you decide per device what
+  sits over the picture. As soon as a kind has more than one channel, its **label** is
+  shown in front of the value (`Pack 16.6 V · BEC 5.1 V`, `Motor 62 °C`); with a single
+  channel the value stays as terse as before.
+- **One channel is marked *primary*** (Setup › Telemetry) and drives the battery %, the
+  mAh/Wh counting, the low-battery warning and the blackbox — so adding a second
+  voltage or current can't quietly move the battery maths onto the wrong sensor.
 - **INA228 (recommended): the sensor counts the charge itself.** Its hardware
   CHARGE/ENERGY registers integrate at ADC rate, so the vehicle only reads two
   registers — the mAh no longer depend on the polling rate or on a sample the loop

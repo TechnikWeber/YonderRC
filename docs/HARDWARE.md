@@ -156,6 +156,34 @@ over UART. Wiring:
 
 ---
 
+### 2.7 Temperature sensors (optional)
+
+Any number of temperature channels can be added in Setup › Telemetry; they show up in
+the OSD under voltage and current. Pick by how the sensor is read:
+
+| Sensor | Bus | Range / notes | Extra setup |
+|---|---|---|---|
+| **Raspberry Pi SoC** | — | The Pi's own die temperature; good for a thermal-throttle warning | none |
+| **DS18B20** | 1-Wire | −55…+125 °C, ±0.5 °C, cheap and available as a waterproof probe | `dtoverlay=w1-gpio` + a 4.7 kΩ pull-up from data to 3V3 |
+| **MCP9808 / TMP102 / TMP117** | I²C | −40…+125 °C; TMP117 is the accurate one (±0.1 °C) | address (0x18 / 0x48…) |
+| **BMP280 / BME280** | I²C | Ambient air (the BME also does humidity); not for hot spots | address 0x76/0x77 |
+| **MAX6675 / MAX31855** | SPI | Type-K thermocouple, up to ~1000 °C — for motors, ESCs, exhausts | `dtparam=spi=on` |
+| **MAX31856** | SPI | Thermocouple with a selectable type (B/E/J/K/N/R/S/T) | `dtparam=spi=on` |
+| **MAX31865** | SPI | PT100/PT1000, accurate up to ~600 °C | `dtparam=spi=on`, reference resistor 430 Ω (PT100) / 4300 Ω (PT1000) |
+| **ADS1115 / MCP3008 + NTC or PT100** | I²C / SPI | Whatever you already have wired; cheapest option | series resistor, excitation voltage, NTC R25/beta |
+
+- **1-Wire and I²C sensors share the bus** with the PCA9685/INA — just make sure the
+  addresses differ. SPI amplifiers each need their own chip-select (CE0/CE1).
+- **NTC/PT100 on an ADC** is a divider: excitation → fixed resistor → *probe* → GND, and
+  the ADC input sits between resistor and probe. Enter the fixed resistor as *series
+  resistor* and, for an NTC, its `R25/beta` (e.g. `10000/3950`, printed on the part).
+- **Thermocouples measure hot things, not precisely** (±2 °C typical). For a motor or
+  ESC that's exactly right; for pack temperature a DS18B20 taped to the cells is better.
+- A sensor that can't be read (open thermocouple, CRC error, missing 1-Wire device) is
+  **left out of the OSD** rather than shown as 0 °C, and logged once on the vehicle.
+
+---
+
 ## 3. Software — step by step (Wi-Fi first)
 
 ### 3.1 Flash Raspberry Pi OS
@@ -251,7 +279,10 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    pick what drives the **battery %** (coulomb counting, the voltage curve, or *clamp* =
    the lower of the two), and leave **Charge counter** on `auto`: with an INA228 that
    uses the chip's own counter, everything else integrates on the Pi → **Save**. Then
-   restart the vehicle (`sudo systemctl restart yonderrc-vehicle`).
+   restart the vehicle (`sudo systemctl restart yonderrc-vehicle`). With more than one
+   voltage or current channel, mark the one that measures the pack as **primary** — it
+   drives the %, the mAh and the warnings. **Temperature channels** are optional (see
+   2.7); each value can be hidden per ground device under FPV › ⚙ › *Sensor values*.
 4. **Security (optional):** set an **API secret** if the vehicle sits on a network you
    don't fully trust — see 6.1. Leave it empty for the first bench tests; it's off by
    default.

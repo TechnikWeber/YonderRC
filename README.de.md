@@ -106,6 +106,18 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   kurve oder **clamp** (der niedrigere von beiden, damit ein nicht-voller Pack nicht
   100 % zeigt). Das OSD beschriftet die Quelle; die mAh-Anzeige läuft unabhängig.
 - Ein einzelner INA-Sensor kann **Spannung und Strom** liefern.
+- **Temperatursensoren, 1..n**: Raspberry-Pi-SoC, DS18B20 (1-Wire), MCP9808 / TMP102 /
+  TMP117 / BMP280 / BME280 (I²C), Thermoelemente über MAX6675 / MAX31855 / MAX31856 und
+  PT100/PT1000 über MAX31865 (SPI), oder ein NTC/PT100 an ADS1115 / MCP3008. Im OSD
+  unterhalb von Spannung und Strom.
+- **Beliebig viele Kanäle, jeder einzeln schaltbar**: das OSD listet unter FPV › ⚙ ›
+  *Sensor values* jeden Kanal, den das Fahrzeug meldet — du entscheidest pro Gerät, was
+  im Bild steht. Sobald eine Art mehr als einen Kanal hat, steht das **Kürzel** vor dem
+  Wert (`Pack 16.6 V · BEC 5.1 V`, `Motor 62 °C`); bei einem einzelnen Kanal bleibt die
+  Anzeige so knapp wie bisher.
+- **Ein Kanal ist als *primary* markiert** (Setup › Telemetry) und speist Akku-%,
+  mAh/Wh-Zählung, Akku-Warnung und Blackbox — ein zweiter Spannungs- oder Stromkanal
+  kann die Akkurechnung damit nicht mehr unbemerkt auf den falschen Sensor schieben.
 - **INA228 (Empfehlung): der Sensor zählt die Ladung selbst.** Seine CHARGE-/ENERGY-
   Register integrieren in Hardware mit der ADC-Rate, das Fahrzeug liest nur noch zwei
   Register — die mAh hängen nicht mehr an der Abtastrate oder an ausgefallenen

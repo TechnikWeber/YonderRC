@@ -1,4 +1,4 @@
-import type { TelemetryConfig, TelemetryMessage } from '@yonderrc/protocol';
+import { primaryIndex, type TelemetryConfig, type TelemetryMessage } from '@yonderrc/protocol';
 import {
   accumulateMah,
   accumulateWh,
@@ -53,7 +53,8 @@ export class TelemetryService {
     // actually offers the accumulator — otherwise this stays on Pi integration.
     this.chargeFrom = resolveChargeSource(
       this.cfg.chargeSource,
-      hasHardwareCounter(this.cfg.currents[0]?.kind) && typeof this.reader.accumulated === 'function',
+      hasHardwareCounter(this.cfg.currents[primaryIndex(this.cfg.currents)]?.kind) &&
+        typeof this.reader.accumulated === 'function',
     );
     const periodMs = 1000 / Math.max(1, this.cfg.sampleHz);
     this.lastAt = Date.now();
@@ -79,6 +80,9 @@ export class TelemetryService {
           ok: false,
           voltages: this.cfg.voltages.map((c) => ({ label: c.label, value: 0 })),
           currents: this.cfg.currents.map((c) => ({ label: c.label, value: 0 })),
+          temperatures: (this.cfg.temperatures ?? []).map((c) => ({ label: c.label, value: 0 })),
+          primaryVoltage: primaryIndex(this.cfg.voltages),
+          primaryCurrent: primaryIndex(this.cfg.currents),
           mah: 0,
           wh: 0,
           capacityMah: this.cfg.batteryCapacityMah,
@@ -89,8 +93,11 @@ export class TelemetryService {
       }
 
       const s = await this.reader.sample();
+      // Which channels drive the battery maths (config's `primary` flag, else 0).
+      const iVoltage = primaryIndex(this.cfg.voltages);
+      const iCurrent = primaryIndex(this.cfg.currents);
 
-      // Coulomb counting on the primary current channel (index 0). With an
+      // Coulomb counting on the primary current channel. With an
       // INA228 the chip has already integrated it in hardware at ADC rate — we
       // just read CHARGE/ENERGY, so a slow or skipped poll costs nothing. If the
       // read fails we keep the last values rather than inventing an integration.
@@ -101,8 +108,8 @@ export class TelemetryService {
           this.wh = acc.wh;
         }
       } else if (this.cfg.countCapacity && s.currents.length > 0) {
-        const amps = s.currents[0];
-        const volts = s.voltages[0] ?? 0;
+        const amps = s.currents[iCurrent] ?? 0;
+        const volts = s.voltages[iVoltage] ?? 0;
         this.mah = accumulateMah(this.mah, amps, dt);
         this.wh = accumulateWh(this.wh, volts, amps, dt);
       }
@@ -114,7 +121,7 @@ export class TelemetryService {
       const { pct: batteryPercent, source: batteryPercentSource } = computeBatteryPercent(
         this.cfg.percentSource ?? 'clamp',
         coulombPct,
-        s.voltages[0],
+        s.voltages[iVoltage],
         this.cfg.voltageFullV ?? null,
         this.cfg.voltageEmptyV ?? null,
       );
@@ -125,6 +132,13 @@ export class TelemetryService {
         ok: true,
         voltages: this.cfg.voltages.map((c, i) => ({ label: c.label, value: round(s.voltages[i] ?? 0, 2) })),
         currents: this.cfg.currents.map((c, i) => ({ label: c.label, value: round(s.currents[i] ?? 0, 2) })),
+        // A sensor that couldn't be read is dropped rather than shown as 0 °C —
+        // a plausible-looking wrong temperature is worse than a missing one.
+        temperatures: (this.cfg.temperatures ?? []).flatMap((c, i) =>
+          s.temperatures[i] == null ? [] : [{ label: c.label, value: round(s.temperatures[i] as number, 1) }],
+        ),
+        primaryVoltage: iVoltage,
+        primaryCurrent: iCurrent,
         mah: round(this.mah, 1),
         wh: round(this.wh, 2),
         capacityMah: cap,
