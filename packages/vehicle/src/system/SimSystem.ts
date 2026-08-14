@@ -162,8 +162,8 @@ export class SimSystem implements SystemManager {
   async detectHardware() {
     return {
       i2c: [
-        { address: '0x40', hint: 'PCA9685 servo/ESC driver — or INA219/226 current sensor' },
-        { address: '0x41', hint: 'INA219/226/3221 current sensor' },
+        { address: '0x40', hint: 'PCA9685 servo/ESC driver — or INA2xx current sensor (219/226/228/237/238)' },
+        { address: '0x41', hint: 'INA2xx current sensor (219/226/228/237/238/3221)' },
       ],
       modemPresent: this.lte.present,
       cameras: ['/dev/video0 (simulated)'],

@@ -144,6 +144,7 @@ export function loadConfig(): VehicleConfig {
       batteryCapacityMah: null,
       displayMode: 'remaining',
       percentSource: 'clamp',
+      chargeSource: 'auto',
     },
     gps: p.gps ?? { source: 'off', device: '/dev/ttyAMA0', baud: 9600, autoHome: true, minSats: 6, home: null },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],

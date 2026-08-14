@@ -38,6 +38,47 @@ async function main() {
   ok('ina219 amps', near(C.ina219Amps(2000, 0.01), 2));
   ok('ina226 bus 12V', near(C.ina226BusVolts(9600), 12));
   ok('ina260 amps 5A', near(C.ina260Amps(4000), 5));
+
+  // INA228: 20-bit registers are left-aligned in 24 bits, so every raw value here
+  // is the datasheet code << 4.
+  ok('ina228 bus 12V', near(C.ina228BusVolts(Math.round(12 / 195.3125e-6) << 4), 12, 1e-4));
+  ok('ina228 shunt 10 mV', near(C.ina228ShuntVolts(Math.round(0.01 / 312.5e-9) << 4), 0.01, 1e-9));
+  ok('ina228 low range 4x finer', near(C.ina228ShuntVolts(0x10 << 4, true), 16 * 78.125e-9, 1e-12));
+  ok('ina228 negative shunt', C.ina228ShuntVolts(0xfffff << 4) < 0);
+  ok('ina228 10A over 1 mΩ', near(C.ina228Amps(Math.round(0.01 / 312.5e-9) << 4, 0.001), 10, 1e-6));
+  const lsb228 = C.ina228CurrentLsb(50); // 50 A / 2^19
+  ok('ina228 current LSB', near(lsb228, 50 / 524288));
+  // SHUNT_CAL = 13107.2e6 × LSB × R  → 50 A, 1 mΩ: 13107.2e6 × 9.5367e-5 × 0.001
+  ok('ina228 shunt cal', C.ina228ShuntCal(lsb228, 0.001) === 1250);
+  ok('ina228 shunt cal x4 in low range', C.ina228ShuntCal(lsb228, 0.001, true) === 5000);
+  ok('ina228 shunt cal clamps to 15 bit', C.ina228ShuntCal(lsb228, 1) === 0x7fff);
+  // 1 A for 1 h = 3600 C = 1000 mAh; charge counts in CURRENT_LSB steps.
+  ok('ina228 charge 1000 mAh', near(C.ina228ChargeMah(Math.round(3600 / lsb228), lsb228), 1000, 0.01));
+  ok('ina228 charge signed (regen)', C.ina228ChargeMah(0xffffffffff, lsb228) < 0);
+  // ENERGY LSB = 16 × 3.2 × CURRENT_LSB joules; 3600 J = 1 Wh.
+  ok('ina228 energy 1 Wh', near(C.ina228EnergyWh(Math.round(3600 / (16 * 3.2 * lsb228)), lsb228), 1, 0.01));
+  ok('ina228 die temp', near(C.ina228TempC(0x0800), 16, 1e-9));
+
+  // INA237/238: same registers, 16-bit, no charge counter.
+  ok('ina238 bus 12V', near(C.ina238BusVolts(3840), 12));
+  ok('ina238 shunt 10 mV', near(C.ina238ShuntVolts(2000), 0.01, 1e-9));
+  ok('ina238 low range', near(C.ina238ShuntVolts(2000, true), 0.0025, 1e-9));
+  ok('ina238 10A over 1 mΩ', near(C.ina238Amps(2000, 0.001), 10, 1e-6));
+  const lsb238 = C.ina238CurrentLsb(50);
+  ok('ina238 current LSB', near(lsb238, 50 / 32768));
+  ok('ina238 shunt cal', C.ina238ShuntCal(lsb238, 0.001) === 1250);
+  // INA238 keeps its 12-bit temperature in bits 15:4 → 128 codes × 125 m°C = 16 °C.
+  ok('ina238 die temp', near(C.ina238TempC(128 << 4), 16, 1e-9));
+  ok('ina238 die temp negative', C.ina238TempC(0xf800) < 0);
+
+  // Who counts the charge: only the INA228 has the hardware accumulator.
+  ok('ina228 has a counter', C.hasHardwareCounter('ina228'));
+  ok('ina238 has none', !C.hasHardwareCounter('ina238') && !C.hasHardwareCounter('ina226'));
+  ok('auto uses the sensor when present', C.resolveChargeSource('auto', true) === 'sensor');
+  ok('auto falls back to the Pi', C.resolveChargeSource('auto', false) === 'pi');
+  ok('sensor request degrades to Pi', C.resolveChargeSource('sensor', false) === 'pi');
+  ok('pi stays on the Pi', C.resolveChargeSource('pi', true) === 'pi');
+  ok('undefined behaves like auto', C.resolveChargeSource(undefined, true) === 'sensor');
   ok('ads1115 half-scale', near(C.ads1115Volts(16384, 4.096), 2.048, 1e-4));
   ok('mcp3208 half', near(C.mcp3208Volts(2048, 3.3), 1.65, 2e-3));
   ok('acs712 5A', near(C.acsAmps(2.83, 2.5, 66), 5, 1e-2));
@@ -79,6 +120,38 @@ async function main() {
   ok('telemetry sim source+ok', tm.source === 'sim' && tm.ok === true);
   ok('telemetry battery %', tm.batteryPercent !== null && tm.batteryPercent > 90);
   await svc.stop();
+
+  // ---- INA228: the sensor counts, the service only reads it ----
+  // The sim reader emulates the chip's CHARGE/ENERGY registers, so the whole
+  // service path (auto → sensor, reset clears it) runs without hardware. The I²C
+  // register access itself can only be proven on a Pi.
+  const hwCfg: TelemetryConfig = {
+    ...tcfg,
+    currents: [{ label: 'I1', kind: 'ina228', shuntOhms: 0.001, maxCurrentA: 50 }],
+    chargeSource: 'auto',
+  };
+  const hwSvc = new TelemetryService(hwCfg);
+  await hwSvc.start();
+  await new Promise((r) => setTimeout(r, 300));
+  const hm = hwSvc.message!;
+  ok('ina228 → charge from the sensor', hm.chargeFrom === 'sensor');
+  ok('sensor counter accumulates', hm.mah > 0, `=${hm.mah}`);
+  await hwSvc.resetCapacity();
+  await new Promise((r) => setTimeout(r, 120));
+  ok('reset clears the sensor counter', hwSvc.message!.mah < hm.mah, `=${hwSvc.message!.mah}`);
+  await hwSvc.stop();
+
+  // Same config forced onto the Pi, and a chip without a counter.
+  const piSvc = new TelemetryService({ ...hwCfg, chargeSource: 'pi' });
+  await piSvc.start();
+  await new Promise((r) => setTimeout(r, 200));
+  ok('forced pi integration', piSvc.message!.chargeFrom === 'pi' && piSvc.message!.mah > 0);
+  await piSvc.stop();
+  const noCounter = new TelemetryService({ ...hwCfg, currents: [{ label: 'I1', kind: 'ina238', shuntOhms: 0.001 }], chargeSource: 'sensor' });
+  await noCounter.start();
+  await new Promise((r) => setTimeout(r, 200));
+  ok('ina238 falls back to pi counting', noCounter.message!.chargeFrom === 'pi' && noCounter.message!.mah > 0);
+  await noCounter.stop();
 
   // ---- real telemetry with no sensor → NO DATA (no sim substitution) ----
   const rcfg: TelemetryConfig = { ...tcfg, source: 'real', voltages: [{ label: 'V1', kind: 'ina226' }], currents: [{ label: 'I1', kind: 'ina226', shuntOhms: 0.001 }] };

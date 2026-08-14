@@ -96,8 +96,8 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Controller-Button legbar).
 
 **Telemetrie**
-- Spannungs-/Stromsensoren (real: ADS1115/1015, MCP3008/3208, INA219/226/260/3221,
-  ACS712/758 — oder Sim), **präzises Coulomb-Counting** (verbrauchte mAh) und
+- Spannungs-/Stromsensoren (real: ADS1115/1015, MCP3008/3208, INA219/226/228/237/238/
+  260/3221, ACS712/758 — oder Sim), **präzises Coulomb-Counting** (verbrauchte mAh) und
   **Batterie-Prozent** aus der eingestellten Kapazität. Sim-Werte sind klar als
   **SIM** markiert; fehlt ein echter Sensor, zeigt das OSD **„NO SENSOR"** statt
   gefälschter Werte, und Telemetrie ist **abschaltbar**, damit der erste Flug keine
@@ -106,6 +106,11 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   kurve oder **clamp** (der niedrigere von beiden, damit ein nicht-voller Pack nicht
   100 % zeigt). Das OSD beschriftet die Quelle; die mAh-Anzeige läuft unabhängig.
 - Ein einzelner INA-Sensor kann **Spannung und Strom** liefern.
+- **INA228 (Empfehlung): der Sensor zählt die Ladung selbst.** Seine CHARGE-/ENERGY-
+  Register integrieren in Hardware mit der ADC-Rate, das Fahrzeug liest nur noch zwei
+  Register — die mAh hängen nicht mehr an der Abtastrate oder an ausgefallenen
+  Messungen. 85 V Busbereich (bis 12S) und 20 Bit Auflösung. INA237/238 sind dieselbe
+  85-V-Familie ohne Zähler (dann integriert der Pi), INA226 reicht bis 36 V.
 - **Akku-Warnung** über Prozent / Spannung / verbrauchte mAh, mit blinkender
   OSD-Markierung, Controller-Rumble und Ton.
 - **Blackbox-Logging** (optional, standardmäßig aus): 2-Hz-CSV mit Arm-/Failsafe-

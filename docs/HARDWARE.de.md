@@ -3,7 +3,7 @@
 # YonderRC — Hardware-Guide (Teileliste, Verkabelung, Einrichtung)
 
 Diese Anleitung bringt YonderRC von der reinen Simulation auf echte Hardware:
-Raspberry Pi als Fahrzeugrechner, PCA9685 für Servos/ESC, INA226 für Strom/Spannung,
+Raspberry Pi als Fahrzeugrechner, PCA9685 für Servos/ESC, INA228 für Strom/Spannung,
 Kamera für FPV, zuerst über WLAN, danach über LTE mit Tailscale für unterwegs.
 
 > **Sicherheit zuerst.** Beim ersten Test **Propeller ab / Räder hoch**, ESC
@@ -21,10 +21,38 @@ Kamera für FPV, zuerst über WLAN, danach über LTE mit Tailscale für unterweg
 | Rechner | **Raspberry Pi 4** (2 GB reicht) oder **Pi Zero 2 W** | Beide haben einen Hardware-H.264-Encoder für latenzarmes FPV. **Der Pi 5 hat keinen** — nicht ideal fürs Video. |
 | Speicher | microSD 32 GB (A1/A2) | Für Raspberry Pi OS Lite. |
 | Servo-/ESC-Treiber | **PCA9685** 16-Kanal PWM (I2C) | Erzeugt saubere 50-Hz-Servosignale unabhängig von der CPU. |
-| Strom-/Spannungssensor | **INA226** Breakout (I2C) | Misst Pack-Spannung und Strom hochseitig; präzise für die mAh-Zählung. Alternativ INA219 (kleinere Ströme). |
+| Strom-/Spannungssensor | **INA228** Breakout (I2C) | Misst Pack-Spannung und Strom hochseitig. **Zählt Ladung und Energie selbst** (CHARGE-/ENERGY-Register), 85 V Busbereich (bis 12S) und 20 Bit Auflösung. Alternativen siehe „Welcher Stromsensor?". |
 | Stromversorgung Pi | **UBEC/BEC 5 V / 3 A** | Versorgt den Pi stabil aus dem Fahrakku. |
 | Kamera | **Pi Camera Module 3** (CSI) *oder* USB-Kamera mit H.264 | CSI = geringste Latenz. |
 | Verkabelung | Jumper, JST, Lötzeug | I2C-Bus, Servostecker, Sensor. |
+
+### Welcher Stromsensor? (Empfehlung INA228)
+
+Alle werden unterstützt und gleich konfiguriert — einen aussuchen, hochseitig
+verdrahten, den Shunt-Wert im Setup eintragen:
+
+| Sensor | Busbereich | Auflösung | Ladungszähler | Wann |
+|---|---|---|---|---|
+| **INA228** | 85 V | 20 Bit | **ja — im Chip** | **Empfehlung.** Deckt bis 12S ab, und die mAh kommen aus dem Sensor statt aus einer Summe auf dem Pi. |
+| INA238 | 85 V | 16 Bit | nein | Günstigere 85-V-Variante, gleiche Verdrahtung und Registerkarte. Der Pi integriert. |
+| INA237 | 85 V | 16 Bit | nein | Wie INA238, nur niedrigere Genauigkeitsklasse. |
+| INA226 | 36 V | 16 Bit | nein | Reicht bis 8S; das verbreitetste Breakout. |
+| INA219 | 26 V | 12 Bit | nein | Kleine Ströme / kleine Packs. |
+| INA260 | 36 V | 16 Bit | nein | Shunt (2 mΩ) integriert — nichts auszuwählen, dafür nur ~15 A. |
+| INA3221 | 26 V | 13 Bit | nein | Drei Kanäle gleichzeitig, dafür grob. |
+
+**Warum sich der INA228 lohnt.** Über Bereich und Auflösung hinaus integriert er
+**Ladung (Coulomb) und Energie (Joule) in Hardware**, durchgehend mit der ADC-Rate.
+YonderRC liest dann nur noch zwei Register: die verbrauchten mAh hängen nicht mehr
+daran, wie oft das Fahrzeug abtastet, und eine ausgefallene Messung (CPU beschäftigt,
+Video-Hänger) fehlt nicht mehr still in der Bilanz. Bei allen anderen Sensoren
+integriert das Fahrzeug den abgetasteten Strom selbst — präzise, aber eben nur so gut
+wie die Abtastung.
+
+Einzutragen sind weiterhin **Max current A** (bestimmt den chipinternen LSB und damit
+die Kalibrierung) und der **Shunt-Wert**. Faustregel: Shunt so wählen, dass
+`max. Strom × Shunt ≤ 163 mV`, z. B. 1 mΩ für 100 A. Bleibt `max. Strom × Shunt` sogar
+unter **40,96 mV**, den Shunt-Bereich auf ±40,96 mV stellen — 4× feinere Auflösung.
 
 ### Für LTE (Phase 2)
 
@@ -58,18 +86,23 @@ Kamera für FPV, zuerst über WLAN, danach über LTE mit Tailscale für unterweg
 - Servos/ESC stecken auf den Kanal-Ausgängen 0–15 (Signal/+/−). YonderRCs
   Kanäle 1–16 in der App entsprechen den PCA9685-Kanälen 0–15.
 
-### 2.2 INA226 (Strom/Spannung) ↔ I2C
+### 2.2 INA228 (Strom/Spannung) ↔ I2C
+
+*(Verkabelung identisch für INA226/237/238 — nur der Eintrag im Setup ändert sich.)*
 
 - SDA/SCL an **denselben** I2C-Bus wie der PCA9685 (parallel), Adresse abweichend
-  (INA226 Standard **0x40**? — kollidiert mit PCA9685! **Adresse per Lötbrücke auf
-  z. B. 0x41 setzen**, oder PCA9685 auf 0x41 legen; Hauptsache verschieden).
+  (INA2xx Standard **0x40** — kollidiert mit PCA9685! **Adresse über die A0/A1-Pins bzw.
+  Lötbrücken auf z. B. 0x41 setzen**, oder PCA9685 auf 0x41 legen; Hauptsache
+  verschieden).
 - Der Sensor sitzt **hochseitig** in der Plus-Leitung des Akkus: Akku(+) → `VIN+`,
-  Last (ESC/BEC) → `VIN−`. Der interne/externe **Shunt** bestimmt den Messbereich
-  (z. B. 0,002 Ω für hohe Ströme). Den Shunt-Wert trägst du später im Setup ein.
+  Last (ESC/BEC) → `VIN−`. Der **Shunt** bestimmt den Messbereich (z. B. 0,002 Ω für
+  hohe Ströme, 0,001 Ω für sehr hohe). Den Shunt-Wert trägst du später im Setup ein.
+- **VBUS** misst gegen die Masse des Sensors — ein INA228 liefert Pack-Spannung
+  **und** Strom, ohne zusätzlichen Spannungsteiler.
 - **GND** des Sensors mit dem gemeinsamen Massepunkt verbinden.
 
 ```
-Akku(+) ──► [INA226 VIN+  VIN−] ──► ESC/BEC (+)
+Akku(+) ──► [INA228 VIN+  VIN−] ──► ESC/BEC (+)
 Akku(−) ─────────────── gemeinsame Masse ───────────────
                  │
               Pi GND, PCA9685 GND, BEC GND  (ALLE zusammen!)
@@ -192,7 +225,7 @@ Hardware sauber durch. Installiere die, die du brauchst:
 
 ```bash
 cd /opt/yonderrc
-npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA226
+npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA2xx
 npm install pigpio     -w @yonderrc/vehicle    # (nur bei GPIO-PWM statt PCA9685)
 npm install serialport -w @yonderrc/vehicle    # (nur bei SBUS/Drohne und seriellem GPS)
 sudo systemctl restart yonderrc-vehicle
@@ -212,11 +245,14 @@ sudo systemctl restart yonderrc-vehicle
    passenden Wert (Auto/Boot an, Flugzeug/Drohne aus).
 2. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
    → **Save & apply**. go2rtc wird neu geladen.
-3. **Telemetry:** Source **`real`**, Strom-Sensor **`ina226`**, `Shunt Ω` eintragen
-   (z. B. 0.002), Spannungslabel „Spannung 1", Batteriekapazität (mAh) angeben,
-   Anzeige verbraucht/Rest wählen und festlegen, was die **Akku-%** speist
-   (Coulomb-Counting, Spannungskurve oder *clamp* = der niedrigere von beiden)
-   → **Save**. Danach Fahrzeug neu starten
+3. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
+   `ina238`), `Shunt Ω` eintragen (z. B. 0.002) und beim INA228/237/238 zusätzlich
+   **Max current A** plus Shunt-Bereich. Einen Spannungskanal derselben Art anlegen
+   („Spannung 1") — der INA liefert beides. Batteriekapazität (mAh) angeben, Anzeige
+   verbraucht/Rest wählen, festlegen, was die **Akku-%** speist (Coulomb-Counting,
+   Spannungskurve oder *clamp* = der niedrigere von beiden), und **Charge counter** auf
+   `auto` lassen: mit einem INA228 zählt dann der Chip selbst, alles andere integriert
+   der Pi → **Save**. Danach Fahrzeug neu starten
    (`sudo systemctl restart yonderrc-vehicle`).
 4. **Security (optional):** Ein **API-Secret** setzen, wenn das Fahrzeug in einem Netz
    hängt, dem du nicht voll vertraust — siehe 6.1. Für die ersten Tests auf der
@@ -232,7 +268,7 @@ sudo systemctl restart yonderrc-vehicle
 4. Erst wenn alles stimmt: Antrieb scharf, **Arm** drücken, vorsichtig Gas.
 5. **Video** sollte im FPV-Panel laufen (der `go2rtc`-Dienst läuft dauerhaft).
 6. **Telemetrie** im OSD prüfen: zeigt es echte Pack-Spannung? Steht dort **nicht**
-   „SIM"? Dann liest der INA226 korrekt. Falls „SIM" erscheint, greift der Fallback
+   „SIM"? Dann liest der Sensor korrekt. Falls „SIM" erscheint, greift der Fallback
    (Sensor nicht gefunden) — Verkabelung/Adresse/`i2c-bus` prüfen (`sudo i2cdetect -y 1`).
 
 ---

@@ -3,7 +3,7 @@
 # YonderRC — Hardware guide (parts list, wiring, setup)
 
 This guide takes YonderRC from pure simulation to real hardware: a Raspberry Pi as
-the vehicle computer, a PCA9685 for servos/ESC, an INA226 for current/voltage, a
+the vehicle computer, a PCA9685 for servos/ESC, an INA228 for current/voltage, a
 camera for FPV, first over Wi-Fi and then over LTE with Tailscale for the field.
 
 > **Safety first.** For the first test, **props off / wheels up**, ESC unpowered or
@@ -21,10 +21,37 @@ camera for FPV, first over Wi-Fi and then over LTE with Tailscale for the field.
 | Computer | **Raspberry Pi 4** (2 GB is enough) or **Pi Zero 2 W** | Both have a hardware H.264 encoder for low-latency FPV. **The Pi 5 does not** — not ideal for video. |
 | Storage | microSD 32 GB (A1/A2) | For Raspberry Pi OS Lite. |
 | Servo/ESC driver | **PCA9685** 16-channel PWM (I2C) | Produces clean 50 Hz servo signals independent of the CPU. |
-| Current/voltage sensor | **INA226** breakout (I2C) | Measures pack voltage and current high-side; precise for mAh counting. Alternatively INA219 (smaller currents). |
+| Current/voltage sensor | **INA228** breakout (I2C) | Measures pack voltage and current high-side. **Counts charge and energy itself** (CHARGE/ENERGY registers), 85 V bus range (up to 12S) and 20-bit resolution. See "Which current sensor?" below for the alternatives. |
 | Pi power supply | **UBEC/BEC 5 V / 3 A** | Powers the Pi reliably from the drive battery. |
 | Camera | **Pi Camera Module 3** (CSI) *or* a USB camera with H.264 | CSI = lowest latency. |
 | Wiring | Jumpers, JST, soldering gear | I2C bus, servo connectors, sensor. |
+
+### Which current sensor? (INA228 recommended)
+
+All of these are supported and configured the same way — pick one, wire it high-side,
+enter the shunt value in the setup:
+
+| Sensor | Bus range | Resolution | Charge counter | When |
+|---|---|---|---|---|
+| **INA228** | 85 V | 20-bit | **yes — in the chip** | **Recommended.** Covers up to 12S, and the mAh come out of the sensor instead of being summed on the Pi. |
+| INA238 | 85 V | 16-bit | no | Cheaper 85 V option, same wiring and register map. The Pi integrates. |
+| INA237 | 85 V | 16-bit | no | Like the INA238 but a lower accuracy grade. |
+| INA226 | 36 V | 16-bit | no | Fine for up to 8S; the most common breakout. |
+| INA219 | 26 V | 12-bit | no | Small currents / small packs. |
+| INA260 | 36 V | 16-bit | no | Integrated 2 mΩ shunt — no shunt to choose, limited to ~15 A. |
+| INA3221 | 26 V | 13-bit | no | Three channels at once, coarse. |
+
+**Why the INA228 is worth it.** Beyond the range and resolution it integrates
+**charge (coulombs) and energy (joules) in hardware**, continuously at the ADC rate.
+YonderRC then just reads two registers: the consumed mAh no longer depend on how
+often the vehicle polls, and a sample the loop missed (busy CPU, video hiccup) can no
+longer quietly go uncounted. On every other sensor the vehicle integrates the sampled
+current itself — precise, but only as good as the sampling.
+
+You still set **Max current A** (it picks the chip's internal LSB and with it the
+calibration) and the **shunt value**. Rule of thumb: shunt so that
+`max current × shunt ≤ 163 mV`, e.g. 1 mΩ for 100 A. If `max current × shunt` also
+stays under **40.96 mV**, switch the shunt range to ±40.96 mV for 4× the resolution.
 
 ### For LTE (phase 2)
 
@@ -58,19 +85,23 @@ camera for FPV, first over Wi-Fi and then over LTE with Tailscale for the field.
 - Servos/ESC plug into channel outputs 0–15 (signal/+/−). YonderRC's channels 1–16
   in the app map to PCA9685 channels 0–15.
 
-### 2.2 INA226 (current/voltage) ↔ I2C
+### 2.2 INA228 (current/voltage) ↔ I2C
+
+*(Wiring is identical for the INA226/237/238 — only the setup entry changes.)*
 
 - SDA/SCL on the **same** I2C bus as the PCA9685 (in parallel), with a different
-  address (the INA226 default is **0x40**? — that collides with the PCA9685! **Set the
-  address via a solder bridge to e.g. 0x41**, or move the PCA9685 to 0x41; the point is
-  they must differ).
+  address (the INA2xx default is **0x40** — that collides with the PCA9685! **Set the
+  address via the A0/A1 pins/solder bridges to e.g. 0x41**, or move the PCA9685 to 0x41;
+  the point is they must differ).
 - The sensor sits **high-side** in the battery's positive lead: battery(+) → `VIN+`,
-  load (ESC/BEC) → `VIN−`. The internal/external **shunt** sets the measurement range
-  (e.g. 0.002 Ω for high currents). You enter the shunt value later in the setup.
+  load (ESC/BEC) → `VIN−`. The **shunt** sets the measurement range (e.g. 0.002 Ω for
+  high currents, 0.001 Ω for very high). You enter the shunt value later in the setup.
+- **VBUS** measures against the sensor's ground — one INA228 delivers pack voltage
+  **and** current, no extra divider.
 - Connect the sensor's **GND** to the common ground point.
 
 ```
-Battery(+) ──► [INA226 VIN+  VIN−] ──► ESC/BEC (+)
+Battery(+) ──► [INA228 VIN+  VIN−] ──► ESC/BEC (+)
 Battery(−) ─────────────── common ground ───────────────
                  │
               Pi GND, PCA9685 GND, BEC GND  (ALL together!)
@@ -193,7 +224,7 @@ cleanly. Add the one you need:
 
 ```bash
 cd /opt/yonderrc
-npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA226
+npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA2xx
 npm install pigpio     -w @yonderrc/vehicle    # (only for GPIO-PWM instead of PCA9685)
 npm install serialport -w @yonderrc/vehicle    # (only for SBUS/drone, and serial GPS)
 sudo systemctl restart yonderrc-vehicle
@@ -213,11 +244,14 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    type (car/boat on, plane/drone off).
 2. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
    **Save & apply**. go2rtc reloads.
-3. **Telemetry:** source **`real`**, current sensor **`ina226`**, enter `Shunt Ω`
-   (e.g. 0.002), voltage label "Voltage 1", enter the battery capacity (mAh), choose
-   consumed/remaining display, and pick what drives the **battery %** (coulomb counting,
-   the voltage curve, or *clamp* = the lower of the two) → **Save**. Then restart the
-   vehicle (`sudo systemctl restart yonderrc-vehicle`).
+3. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
+   `ina238`), enter `Shunt Ω` (e.g. 0.002) and, for the INA228/237/238, **Max current A**
+   plus the shunt range. Add a voltage channel of the same kind ("Voltage 1") — the INA
+   provides both. Enter the battery capacity (mAh), choose consumed/remaining display,
+   pick what drives the **battery %** (coulomb counting, the voltage curve, or *clamp* =
+   the lower of the two), and leave **Charge counter** on `auto`: with an INA228 that
+   uses the chip's own counter, everything else integrates on the Pi → **Save**. Then
+   restart the vehicle (`sudo systemctl restart yonderrc-vehicle`).
 4. **Security (optional):** set an **API secret** if the vehicle sits on a network you
    don't fully trust — see 6.1. Leave it empty for the first bench tests; it's off by
    default.
@@ -232,7 +266,7 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 4. Only once everything is right: arm the drive, press **Arm**, throttle up carefully.
 5. **Video** should run in the FPV panel (the `go2rtc` service runs continuously).
 6. Check **telemetry** in the OSD: does it show real pack voltage? Does it **not** say
-   "SIM"? Then the INA226 reads correctly. If "SIM" appears, the fallback kicked in
+   "SIM"? Then the sensor reads correctly. If "SIM" appears, the fallback kicked in
    (sensor not found) — check wiring/address/`i2c-bus` (`sudo i2cdetect -y 1`).
 
 ---

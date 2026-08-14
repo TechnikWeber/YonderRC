@@ -15,7 +15,18 @@ export interface TelemetryReader {
   init(): Promise<void>;
   sample(): Promise<TelemetrySample>;
   close(): Promise<void>;
+  /**
+   * Consumed charge/energy straight from the sensor's own accumulator (INA228),
+   * or null when the configured chip has none — then the service integrates.
+   */
+  accumulated?(): Promise<{ mah: number; wh: number } | null>;
+  /** Clear that accumulator (fresh battery). No-op without one. */
+  resetAccumulator?(): Promise<void>;
 }
+
+/** INA parts that need a SHUNT_CAL / range write before their registers mean anything. */
+const CALIBRATED_INA = ['ina228', 'ina237', 'ina238'];
+const DEFAULT_MAX_A = 50;
 
 /**
  * SimReader: plausible battery telemetry with no hardware. A pack voltage that
@@ -27,13 +38,32 @@ export class SimReader implements TelemetryReader {
   private cfg: TelemetryConfig;
   private t = 0;
   private nominal: number;
+  // Emulated INA228 charge/energy registers, so the hardware-counter path can be
+  // exercised (and demoed) without the chip. Sim-first: same code path, fake chip.
+  private accMah = 0;
+  private accWh = 0;
+  private lastSampleAt = 0;
 
   constructor(cfg: TelemetryConfig) {
     this.cfg = cfg;
     // Guess a nominal pack voltage from a 4S LiPo unless told otherwise.
     this.nominal = 16.8;
   }
-  async init(): Promise<void> {}
+  async init(): Promise<void> {
+    this.lastSampleAt = Date.now();
+  }
+
+  private get emulatesCounter(): boolean {
+    return C.hasHardwareCounter(this.cfg.currents[0]?.kind);
+  }
+
+  async accumulated(): Promise<{ mah: number; wh: number } | null> {
+    return this.emulatesCounter ? { mah: this.accMah, wh: this.accWh } : null;
+  }
+  async resetAccumulator(): Promise<void> {
+    this.accMah = 0;
+    this.accWh = 0;
+  }
 
   async sample(): Promise<TelemetrySample> {
     this.t += 0.1;
@@ -46,6 +76,14 @@ export class SimReader implements TelemetryReader {
 
     const voltages = this.cfg.voltages.map((_, i) => (i === 0 ? packV : packV / 2 + i));
     const currents = this.cfg.currents.map((_, i) => (i === 0 ? current : current * 0.4));
+
+    if (this.emulatesCounter) {
+      const now = Date.now();
+      const dt = this.lastSampleAt ? (now - this.lastSampleAt) / 1000 : 0;
+      this.lastSampleAt = now;
+      this.accMah = C.accumulateMah(this.accMah, currents[0] ?? 0, dt);
+      this.accWh = C.accumulateWh(this.accWh, voltages[0] ?? 0, currents[0] ?? 0, dt);
+    }
     return { voltages, currents };
   }
   async close(): Promise<void> {}
@@ -65,6 +103,8 @@ export class RealReader implements TelemetryReader {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private spi: any = null;
   private lastVoltages: number[] = [];
+  /** CURRENT_LSB per INA228/237/238 address, from the calibration write. */
+  private currentLsb = new Map<number, number>();
 
   constructor(cfg: TelemetryConfig) {
     this.cfg = cfg;
@@ -72,7 +112,7 @@ export class RealReader implements TelemetryReader {
 
   async init(): Promise<void> {
     const needsI2c = [...this.cfg.voltages, ...this.cfg.currents].some((c) =>
-      ['ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221'].includes(c.kind),
+      ['ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221', ...CALIBRATED_INA].includes(c.kind),
     );
     const needsSpi = this.cfg.voltages.some((c) => ['mcp3008', 'mcp3208'].includes(c.kind));
     if (needsI2c) {
@@ -89,12 +129,77 @@ export class RealReader implements TelemetryReader {
       });
       this.spi = spiDev; // opened per-read below
     }
+    await this.calibrateInas();
+  }
+
+  /**
+   * INA228/237/238 need SHUNT_CAL (and the shunt range) programmed before their
+   * CURRENT/POWER/CHARGE/ENERGY registers are meaningful. Voltage-only channels
+   * don't, but calibrating them too is harmless and keeps a single INA that
+   * provides both voltage and current consistent.
+   */
+  private async calibrateInas(): Promise<void> {
+    for (const c of this.cfg.currents) {
+      if (!CALIBRATED_INA.includes(c.kind)) continue;
+      const addr = c.address ?? 0x40;
+      const low = !!c.lowShuntRange;
+      const shunt = c.shuntOhms ?? 0.001;
+      const maxA = c.maxCurrentA ?? DEFAULT_MAX_A;
+      if (c.kind === 'ina228') {
+        const lsb = C.ina228CurrentLsb(maxA);
+        await this.writeWord(addr, C.INA228_REG.config, low ? C.INA228_ADCRANGE : 0);
+        await this.writeWord(addr, C.INA228_REG.shuntCal, C.ina228ShuntCal(lsb, shunt, low));
+        this.currentLsb.set(addr, lsb);
+      } else {
+        const lsb = C.ina238CurrentLsb(maxA);
+        await this.writeWord(addr, C.INA238_REG.config, low ? C.INA238_ADCRANGE : 0);
+        await this.writeWord(addr, C.INA238_REG.shuntCal, C.ina238ShuntCal(lsb, shunt, low));
+        this.currentLsb.set(addr, lsb);
+      }
+    }
+  }
+
+  /** The INA228 channel (if any) whose accumulator we report. */
+  private get counterChannel(): CurrentChannelCfg | null {
+    const primary = this.cfg.currents[0];
+    return primary && C.hasHardwareCounter(primary.kind) ? primary : null;
+  }
+
+  async accumulated(): Promise<{ mah: number; wh: number } | null> {
+    const c = this.counterChannel;
+    if (!c || !this.i2c) return null;
+    const addr = c.address ?? 0x40;
+    const lsb = this.currentLsb.get(addr) ?? C.ina228CurrentLsb(c.maxCurrentA ?? DEFAULT_MAX_A);
+    const charge = await this.readBig(addr, C.INA228_REG.charge, 5);
+    const energy = await this.readBig(addr, C.INA228_REG.energy, 5);
+    return { mah: C.ina228ChargeMah(charge, lsb), wh: C.ina228EnergyWh(energy, lsb) };
+  }
+
+  async resetAccumulator(): Promise<void> {
+    const c = this.counterChannel;
+    if (!c || !this.i2c) return;
+    // RSTACC clears CHARGE/ENERGY; keep the range bit so calibration survives.
+    const range = c.lowShuntRange ? C.INA228_ADCRANGE : 0;
+    await this.writeWord(c.address ?? 0x40, C.INA228_REG.config, C.INA228_RSTACC | range);
   }
 
   private async readWord(addr: number, reg: number): Promise<number> {
     const buf = Buffer.alloc(2);
     await this.i2c.readI2cBlock(addr, reg, 2, buf);
     return (buf[0] << 8) | buf[1]; // big-endian
+  }
+
+  /** Big-endian register of 3 (24-bit) or 5 (40-bit) bytes — INA228 ENERGY/CHARGE. */
+  private async readBig(addr: number, reg: number, bytes: number): Promise<number> {
+    const buf = Buffer.alloc(bytes);
+    await this.i2c.readI2cBlock(addr, reg, bytes, buf);
+    let v = 0;
+    for (const b of buf) v = v * 256 + b; // shifts overflow past 32 bits, multiply
+    return v;
+  }
+
+  private async writeWord(addr: number, reg: number, value: number): Promise<void> {
+    await this.i2c.writeI2cBlock(addr, reg, 2, Buffer.from([(value >> 8) & 0xff, value & 0xff]));
   }
 
   private async readVoltage(c: VoltageChannelCfg): Promise<number> {
@@ -115,6 +220,13 @@ export class RealReader implements TelemetryReader {
       const raw = await this.readMcp(c);
       const v = c.kind === 'mcp3008' ? C.mcp3008Volts(raw, c.vref ?? 3.3) : C.mcp3208Volts(raw, c.vref ?? 3.3);
       return v * scale;
+    }
+    // INA228/237/238 keep the bus voltage at 0x05 (24-bit / 16-bit).
+    if (c.kind === 'ina228') {
+      return C.ina228BusVolts(await this.readBig(c.address ?? 0x40, C.INA228_REG.vbus, 3)) * scale;
+    }
+    if (c.kind === 'ina237' || c.kind === 'ina238') {
+      return C.ina238BusVolts(await this.readWord(c.address ?? 0x40, C.INA238_REG.vbus)) * scale;
     }
     // INA2xx bus-voltage register (0x02; INA3221 has one per channel at 0x02/04/06).
     if (c.kind === 'ina219' || c.kind === 'ina226' || c.kind === 'ina260' || c.kind === 'ina3221') {
@@ -163,6 +275,14 @@ export class RealReader implements TelemetryReader {
         const ch = (c.channel ?? 1) - 1;
         return C.ina3221Amps(await this.readWord(addr, 0x01 + ch * 2), shunt);
       }
+      // Amps from VSHUNT (fixed datasheet LSB) so the reading is independent of
+      // the SHUNT_CAL write; that calibration only scales the chip's own
+      // CURRENT/POWER/CHARGE/ENERGY registers.
+      case 'ina228':
+        return C.ina228Amps(await this.readBig(addr, C.INA228_REG.vshunt, 3), shunt, !!c.lowShuntRange);
+      case 'ina237':
+      case 'ina238':
+        return C.ina238Amps(await this.readWord(addr, C.INA238_REG.vshunt), shunt, !!c.lowShuntRange);
       case 'acs712':
       case 'acs758': {
         const vout = this.lastVoltages[c.adcChannel ?? 0] ?? 0;

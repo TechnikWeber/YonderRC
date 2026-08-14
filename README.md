@@ -92,8 +92,8 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   controller button).
 
 **Telemetry**
-- Voltage/current sensors (real: ADS1115/1015, MCP3008/3208, INA219/226/260/3221,
-  ACS712/758 — or sim), **precise coulomb counting** (consumed mAh) and
+- Voltage/current sensors (real: ADS1115/1015, MCP3008/3208, INA219/226/228/237/238/
+  260/3221, ACS712/758 — or sim), **precise coulomb counting** (consumed mAh) and
   **battery percentage** from the configured capacity. Sim values are clearly marked
   **SIM**; when a real sensor is missing, the OSD shows **"NO SENSOR"** instead of
   faked numbers, and telemetry can be **turned off** so a first flight shows no fake data.
@@ -101,6 +101,11 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   or **clamp** (the lower of the two, so a not-actually-full pack can't read 100%). The
   OSD labels which source it's using; the mAh readout is shown independently.
 - A single INA sensor can provide **both voltage and current**.
+- **INA228 (recommended): the sensor counts the charge itself.** Its hardware
+  CHARGE/ENERGY registers integrate at ADC rate, so the vehicle only reads two
+  registers — the mAh no longer depend on the polling rate or on a sample the loop
+  missed. 85 V bus range (up to 12S) and 20-bit resolution. INA237/238 are the same
+  85 V family without the counter (the Pi integrates), INA226 stays fine up to 36 V.
 - **Low-battery warning** on percent / voltage / consumed mAh, with a blinking OSD
   marker, controller rumble and a beep.
 - **Blackbox logging** (optional, off by default): 2 Hz CSV of arm/failsafe state,

@@ -43,6 +43,141 @@ export function ina3221Amps(shuntRaw: number, shuntOhms: number): number {
   return shuntV / shuntOhms;
 }
 
+/**
+ * ---- INA228 ---- 20-bit ΔΣ, 85 V bus, and the reason it's the recommended part:
+ * it integrates CHARGE (coulombs) and ENERGY (joules) in hardware, continuously,
+ * at the ADC rate. The Pi only reads two registers instead of summing samples, so
+ * the mAh no longer depend on the polling rate or on samples the loop missed.
+ *
+ * The accumulators are scaled by CURRENT_LSB, which the host chooses via
+ * SHUNT_CAL — so the calibration write at init is what makes CHARGE/ENERGY (and
+ * the CURRENT/POWER registers) mean anything.
+ *
+ * Registers: 0x00 CONFIG, 0x02 SHUNT_CAL, 0x04 VSHUNT, 0x05 VBUS, 0x06 DIETEMP,
+ * 0x07 CURRENT, 0x08 POWER, 0x09 ENERGY (40-bit), 0x0A CHARGE (40-bit).
+ */
+export const INA228_REG = {
+  config: 0x00,
+  adcConfig: 0x01,
+  shuntCal: 0x02,
+  vshunt: 0x04,
+  vbus: 0x05,
+  dietemp: 0x06,
+  current: 0x07,
+  power: 0x08,
+  energy: 0x09,
+  charge: 0x0a,
+} as const;
+/** CONFIG bit 14 clears ENERGY/CHARGE; bit 4 selects the ±40.96 mV shunt range. */
+export const INA228_RSTACC = 0x4000;
+export const INA228_ADCRANGE = 0x0010;
+
+function toSigned20(raw: number): number {
+  return raw > 0x7ffff ? raw - 0x100000 : raw;
+}
+function toSigned40(raw: number): number {
+  return raw > 0x7fffffffff ? raw - 0x10000000000 : raw;
+}
+
+/** Current per LSB: the full 20-bit signed span maps to ±maxCurrentA. */
+export function ina228CurrentLsb(maxCurrentA: number): number {
+  return maxCurrentA / 2 ** 19;
+}
+/** SHUNT_CAL = 13107.2e6 × CURRENT_LSB × R_shunt, ×4 in the low shunt range. */
+export function ina228ShuntCal(currentLsb: number, shuntOhms: number, lowRange = false): number {
+  const cal = 13107.2e6 * currentLsb * shuntOhms * (lowRange ? 4 : 1);
+  return Math.max(0, Math.min(0x7fff, Math.round(cal)));
+}
+/** VBUS: 24-bit register, 20-bit result left-aligned, 195.3125 µV/LSB, always positive. */
+export function ina228BusVolts(raw24: number): number {
+  return (raw24 >> 4) * 195.3125e-6;
+}
+/** VSHUNT: 312.5 nV/LSB (±163.84 mV range) or 78.125 nV/LSB (±40.96 mV range). */
+export function ina228ShuntVolts(raw24: number, lowRange = false): number {
+  return toSigned20(raw24 >> 4) * (lowRange ? 78.125e-9 : 312.5e-9);
+}
+/**
+ * Amps from VSHUNT rather than the CURRENT register: the shunt LSB is fixed by the
+ * datasheet, so the reading stays right even if SHUNT_CAL was never written.
+ */
+export function ina228Amps(shuntRaw24: number, shuntOhms: number, lowRange = false): number {
+  return ina228ShuntVolts(shuntRaw24, lowRange) / shuntOhms;
+}
+/** CHARGE is signed 40-bit coulombs × CURRENT_LSB; ÷3.6 turns C into mAh. */
+export function ina228ChargeMah(raw40: number, currentLsb: number): number {
+  return (toSigned40(raw40) * currentLsb) / 3.6;
+}
+/** ENERGY is unsigned 40-bit × 16 × POWER_LSB (= 3.2 × CURRENT_LSB) joules → Wh. */
+export function ina228EnergyWh(raw40: number, currentLsb: number): number {
+  return (raw40 * 16 * 3.2 * currentLsb) / 3600;
+}
+/** DIETEMP: signed 16-bit, 7.8125 m°C/LSB. */
+export function ina228TempC(raw16: number): number {
+  return toSigned16(raw16) * 7.8125e-3;
+}
+
+/**
+ * ---- INA237 / INA238 ---- Same 85 V front end and register map as the INA228 but
+ * a 16-bit ADC and, importantly, **no CHARGE/ENERGY accumulators** — those two
+ * still have to be integrated on the Pi. INA237 is the lower-accuracy grade of the
+ * same silicon; both use the identical conversions.
+ * Registers: 0x00 CONFIG, 0x02 SHUNT_CAL, 0x04 VSHUNT, 0x05 VBUS, 0x06 DIETEMP,
+ * 0x07 CURRENT, 0x08 POWER.
+ */
+export const INA238_REG = {
+  config: 0x00,
+  adcConfig: 0x01,
+  shuntCal: 0x02,
+  vshunt: 0x04,
+  vbus: 0x05,
+  dietemp: 0x06,
+  current: 0x07,
+  power: 0x08,
+} as const;
+export const INA238_ADCRANGE = 0x0010;
+
+export function ina238CurrentLsb(maxCurrentA: number): number {
+  return maxCurrentA / 2 ** 15;
+}
+/** SHUNT_CAL = 819.2e6 × CURRENT_LSB × R_shunt, ×4 in the low shunt range. */
+export function ina238ShuntCal(currentLsb: number, shuntOhms: number, lowRange = false): number {
+  const cal = 819.2e6 * currentLsb * shuntOhms * (lowRange ? 4 : 1);
+  return Math.max(0, Math.min(0x7fff, Math.round(cal)));
+}
+/** VBUS: 16-bit, 3.125 mV/LSB. */
+export function ina238BusVolts(raw16: number): number {
+  return raw16 * 3.125e-3;
+}
+/** VSHUNT: 5 µV/LSB (±163.84 mV) or 1.25 µV/LSB (±40.96 mV). */
+export function ina238ShuntVolts(raw16: number, lowRange = false): number {
+  return toSigned16(raw16) * (lowRange ? 1.25e-6 : 5e-6);
+}
+export function ina238Amps(shuntRaw16: number, shuntOhms: number, lowRange = false): number {
+  return ina238ShuntVolts(shuntRaw16, lowRange) / shuntOhms;
+}
+/** DIETEMP: signed 16-bit with the result in bits 15:4, 125 m°C/LSB. */
+export function ina238TempC(raw16: number): number {
+  return (toSigned16(raw16) >> 4) * 0.125;
+}
+
+/** Which sensors integrate charge/energy themselves. */
+export function hasHardwareCounter(kind: string | undefined): boolean {
+  return kind === 'ina228';
+}
+
+/**
+ * Who counts the consumed mAh/Wh. 'sensor' is only possible when the primary
+ * current sensor has an accumulator, so an impossible request degrades to 'pi'
+ * rather than silently reporting nothing.
+ */
+export function resolveChargeSource(
+  mode: 'auto' | 'sensor' | 'pi' | undefined,
+  sensorHasCounter: boolean,
+): 'sensor' | 'pi' {
+  if (mode === 'pi') return 'pi';
+  return sensorHasCounter ? 'sensor' : 'pi';
+}
+
 // ---- ADS1115 (16-bit) / ADS1015 (12-bit) ----
 export function ads1115Volts(raw: number, fsrVolts: number): number {
   return (toSigned16(raw) / 32768) * fsrVolts;

@@ -252,6 +252,9 @@ export async function handleSetup(
   if (url === '/api/telemetry' && method === 'POST') {
     const telemetry = (await readBody(req)) as PersistentConfig['telemetry'];
     savePersisted(ctx.config.configPath, { telemetry });
+    // Keep the in-memory config in sync — GET /api/telemetry reads it, so without
+    // this the setup page showed the pre-save values again after a reload.
+    if (telemetry) ctx.config.telemetry = telemetry;
     ctx.onConfigSaved?.({ telemetry });
     // Apply live so battery %/mAh appears without a restart.
     let note = 'Telemetry applied.';
@@ -264,7 +267,7 @@ export async function handleSetup(
     return true;
   }
   if (url === '/api/telemetry/reset' && method === 'POST') {
-    ctx.telemetry.resetCapacity();
+    await ctx.telemetry.resetCapacity();
     json(res, 200, { ok: true, message: 'Coulomb counter reset.' });
     return true;
   }

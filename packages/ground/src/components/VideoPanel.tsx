@@ -294,7 +294,15 @@ function TelemetryData({ t, compact }: { t: TelemetryMessage; compact: boolean }
       {t.currents.map((c, i) => (
         <span key={`c${i}`}>{c.value.toFixed(1)} A</span>
       ))}
-      <span>{capLine}</span>
+      <span
+        title={
+          t.chargeFrom === 'sensor'
+            ? 'mAh counted by the sensor itself (INA228 CHARGE register)'
+            : 'mAh integrated on the vehicle from the sampled current'
+        }
+      >
+        {capLine}
+      </span>
     </div>
   );
 }

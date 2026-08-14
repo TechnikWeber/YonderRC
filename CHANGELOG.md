@@ -3,6 +3,54 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.23.0
+**English**
+- **INA228 support — the sensor counts the charge itself.** The INA228 integrates
+  CHARGE (coulombs) and ENERGY (joules) in hardware at ADC rate, so the vehicle reads
+  two registers instead of summing samples: the consumed mAh no longer depend on the
+  polling rate, and a sample the loop missed can't quietly go uncounted. 85 V bus
+  range (up to 12S) and 20-bit resolution on top. New **Charge counter** setting
+  (`auto` / `sensor` / `pi`); `auto` uses the chip when it has a counter and the Pi
+  otherwise, and **Reset mAh** now also clears the chip's registers (RSTACC).
+- **INA237 / INA238 support** — the same 85 V family and register map, 16-bit and
+  without the accumulators, so the Pi keeps integrating for them. Complete coverage:
+  INA219/226/228/237/238/260/3221.
+- New per-channel fields for these three: **Max current A** (sets CURRENT_LSB and with
+  it SHUNT_CAL, written at init) and the **shunt range** (±163.84 mV / ±40.96 mV, 4×
+  resolution), with a warning when max current × shunt doesn't fit the low range.
+  Current is read from VSHUNT, so it stays correct even if the calibration write
+  didn't land.
+- **Recommendation in the hardware guide is now the INA228** (parts list, wiring 2.2,
+  setup step 3), with a comparison table of all seven supported sensors — INA226
+  remains the choice up to 36 V.
+- **Fixed:** saving telemetry updated the file and the running service but not the
+  in-memory config, so reloading the setup page showed the pre-save values again.
+- Detection hints for I²C addresses now name the whole INA2xx family.
+
+**Deutsch**
+- **INA228 unterstützt — der Sensor zählt die Ladung selbst.** Der INA228 integriert
+  CHARGE (Coulomb) und ENERGY (Joule) in Hardware mit der ADC-Rate; das Fahrzeug liest
+  nur noch zwei Register, statt Messwerte aufzusummieren: die verbrauchten mAh hängen
+  nicht mehr an der Abtastrate, und eine ausgefallene Messung fehlt nicht mehr still in
+  der Bilanz. Dazu 85 V Busbereich (bis 12S) und 20 Bit Auflösung. Neue Einstellung
+  **Charge counter** (`auto` / `sensor` / `pi`); `auto` nimmt den Chip, wenn er einen
+  Zähler hat, sonst den Pi. **Reset mAh** löscht jetzt auch die Chip-Register (RSTACC).
+- **INA237 / INA238 unterstützt** — dieselbe 85-V-Familie und Registerkarte, 16 Bit und
+  ohne Akkumulatoren, für sie integriert weiterhin der Pi. Damit ist die Abdeckung
+  komplett: INA219/226/228/237/238/260/3221.
+- Neue Felder pro Kanal für diese drei: **Max current A** (bestimmt CURRENT_LSB und
+  damit SHUNT_CAL, wird beim Start geschrieben) und der **Shunt-Bereich** (±163,84 mV /
+  ±40,96 mV, 4× Auflösung), mit Warnung, wenn max. Strom × Shunt nicht in den kleinen
+  Bereich passt. Der Strom kommt aus VSHUNT und stimmt daher auch dann, wenn die
+  Kalibrierung nicht geschrieben werden konnte.
+- **Empfehlung im Hardware-Guide ist jetzt der INA228** (Teileliste, Verkabelung 2.2,
+  Setup-Schritt 3), mit Vergleichstabelle aller sieben unterstützten Sensoren — der
+  INA226 bleibt die Wahl bis 36 V.
+- **Behoben:** Telemetrie-Speichern aktualisierte Datei und laufenden Dienst, aber
+  nicht die Config im Speicher — nach einem Reload zeigte die Setup-Seite wieder die
+  alten Werte.
+- Die Erkennungs-Hinweise zu I²C-Adressen nennen jetzt die ganze INA2xx-Familie.
+
 ## v1.22.0
 **English**
 - **Hold-to-arm (3 s)**: the arm button no longer toggles on a tap. Press and hold it

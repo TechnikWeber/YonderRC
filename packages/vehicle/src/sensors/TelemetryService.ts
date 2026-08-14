@@ -1,5 +1,11 @@
 import type { TelemetryConfig, TelemetryMessage } from '@yonderrc/protocol';
-import { accumulateMah, accumulateWh, computeBatteryPercent } from './convert.js';
+import {
+  accumulateMah,
+  accumulateWh,
+  computeBatteryPercent,
+  hasHardwareCounter,
+  resolveChargeSource,
+} from './convert.js';
 import { createReader, type TelemetryReader } from './TelemetryReader.js';
 
 /**
@@ -21,6 +27,8 @@ export class TelemetryService {
   private wh = 0;
   private lastAt = 0;
   private latest: TelemetryMessage | null = null;
+  /** 'sensor' = the chip's own accumulator (INA228), 'pi' = integrate here. */
+  private chargeFrom: 'sensor' | 'pi' = 'pi';
 
   constructor(cfg: TelemetryConfig) {
     this.cfg = cfg;
@@ -41,12 +49,19 @@ export class TelemetryService {
       );
       this.degraded = true;
     }
+    // A sensor that counts charge itself (INA228) only counts if the reader
+    // actually offers the accumulator — otherwise this stays on Pi integration.
+    this.chargeFrom = resolveChargeSource(
+      this.cfg.chargeSource,
+      hasHardwareCounter(this.cfg.currents[0]?.kind) && typeof this.reader.accumulated === 'function',
+    );
     const periodMs = 1000 / Math.max(1, this.cfg.sampleHz);
     this.lastAt = Date.now();
     this.timer = setInterval(() => void this.tick(), periodMs);
     console.log(
       `[telemetry] ${this.actualSource} source${this.degraded ? ' (DEGRADED — no sensor)' : ''}, ` +
-        `${this.cfg.sampleHz} Hz, capacity ${this.cfg.batteryCapacityMah ?? '—'} mAh, counting=${this.cfg.countCapacity}`,
+        `${this.cfg.sampleHz} Hz, capacity ${this.cfg.batteryCapacityMah ?? '—'} mAh, counting=${this.cfg.countCapacity}` +
+        `, charge=${this.chargeFrom === 'sensor' ? 'sensor counter (INA228)' : 'integrated on the Pi'}`,
     );
   }
 
@@ -75,8 +90,17 @@ export class TelemetryService {
 
       const s = await this.reader.sample();
 
-      // Coulomb counting on the primary current channel (index 0).
-      if (this.cfg.countCapacity && s.currents.length > 0) {
+      // Coulomb counting on the primary current channel (index 0). With an
+      // INA228 the chip has already integrated it in hardware at ADC rate — we
+      // just read CHARGE/ENERGY, so a slow or skipped poll costs nothing. If the
+      // read fails we keep the last values rather than inventing an integration.
+      if (this.cfg.countCapacity && this.chargeFrom === 'sensor') {
+        const acc = await this.reader.accumulated?.();
+        if (acc) {
+          this.mah = acc.mah;
+          this.wh = acc.wh;
+        }
+      } else if (this.cfg.countCapacity && s.currents.length > 0) {
         const amps = s.currents[0];
         const volts = s.voltages[0] ?? 0;
         this.mah = accumulateMah(this.mah, amps, dt);
@@ -106,6 +130,7 @@ export class TelemetryService {
         capacityMah: cap,
         batteryPercent: batteryPercent == null ? null : round(batteryPercent, 1),
         batteryPercentSource,
+        chargeFrom: this.chargeFrom,
         displayMode: this.cfg.displayMode,
       };
     } catch (err) {
@@ -113,10 +138,19 @@ export class TelemetryService {
     }
   }
 
-  /** Reset the coulomb counter (e.g. on a fresh battery). */
-  resetCapacity(): void {
+  /**
+   * Reset the coulomb counter (e.g. on a fresh battery). With a hardware counter
+   * the chip's own CHARGE/ENERGY registers are cleared too — otherwise the next
+   * read would immediately restore the old total.
+   */
+  async resetCapacity(): Promise<void> {
     this.mah = 0;
     this.wh = 0;
+    try {
+      await this.reader.resetAccumulator?.();
+    } catch (err) {
+      console.error('[telemetry] sensor accumulator reset failed:', (err as Error).message);
+    }
   }
 
   get message(): TelemetryMessage | null {

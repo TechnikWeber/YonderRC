@@ -206,6 +206,14 @@
           </label>
         </div>
         <label class="chk"><input type="checkbox" id="countCapacity" /> Count consumed capacity (coulomb counting)</label>
+        <label>Charge counter
+          <select id="chargeSource">
+            <option value="auto">auto — the sensor's own counter when it has one (INA228)</option>
+            <option value="sensor">sensor — INA228 CHARGE/ENERGY registers</option>
+            <option value="pi">pi — integrate the sampled current here</option>
+          </select>
+        </label>
+        <p class="msg">The <b>INA228</b> integrates charge and energy in hardware at ADC rate, so the mAh no longer depend on the polling rate or on samples this loop missed. Every other sensor (incl. INA237/238) is integrated on the Pi — "sensor" then falls back to "pi".</p>
         <div class="grid2">
           <label>Full pack voltage (V, optional)<input id="voltageFullV" type="number" step="0.1" placeholder="e.g. 16.8" /></label>
           <label>Empty pack voltage (V, optional)<input id="voltageEmptyV" type="number" step="0.1" placeholder="e.g. 13.2" /></label>
@@ -570,8 +578,12 @@
 
       // ---- Telemetry ----
       let volts = [], currs = [];
-      const V_KINDS = ['sim', 'mcp3008', 'mcp3208', 'ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221'];
-      const C_KINDS = ['sim', 'ina219', 'ina226', 'ina260', 'ina3221', 'acs712', 'acs758'];
+      const V_KINDS = ['sim', 'mcp3008', 'mcp3208', 'ads1115', 'ads1015', 'ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238'];
+      const C_KINDS = ['sim', 'ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238', 'acs712', 'acs758'];
+      // These three need a calibration write, so they get the extra fields below.
+      const CAL_KINDS = ['ina228', 'ina237', 'ina238'];
+      // Low range picked but the shunt voltage doesn't fit in it → the current clips.
+      const cOverrange = (c) => !!c.lowShuntRange && c.maxCurrentA * c.shuntOhms * 1000 > 40.96;
       function renderVolts() {
         $('volt-list').innerHTML = volts.map((v, i) => `
           <div class="item"><div class="grid3">
@@ -586,11 +598,17 @@
         $('curr-list').innerHTML = currs.map((c, i) => `
           <div class="item"><div class="grid3">
             <label>Label<input value="${c.label || ''}" oninput="cSet(${i},'label',this.value)" /></label>
-            <label>Sensor<select onchange="cSet(${i},'kind',this.value)">
+            <label>Sensor<select onchange="cSet(${i},'kind',this.value); renderCurrs()">
               ${C_KINDS.map((k) => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
             </select></label>
             <label>Shunt Ω<input type="number" step="0.0001" value="${c.shuntOhms ?? ''}" placeholder="0.001" oninput="cSet(${i},'shuntOhms',+this.value)" /></label>
-          </div><div class="btns"><button class="btn tiny" onclick="cDel(${i})">Remove</button></div></div>`).join('');
+          </div>${CAL_KINDS.includes(c.kind) ? `<div class="grid2">
+            <label>Max current A<input type="number" step="1" value="${c.maxCurrentA ?? ''}" placeholder="50" oninput="cSet(${i},'maxCurrentA',+this.value)" /></label>
+            <label>Shunt range<select onchange="cSet(${i},'lowShuntRange',this.value==='low'); renderCurrs()">
+              <option value="high" ${c.lowShuntRange ? '' : 'selected'}>±163.84 mV (default)</option>
+              <option value="low" ${c.lowShuntRange ? 'selected' : ''}>±40.96 mV (4× resolution)</option>
+            </select></label>
+          </div><p class="msg"${cOverrange(c) ? ' style="color:var(--bad)"' : ''}>Max current sets CURRENT_LSB/SHUNT_CAL. The low range needs max current × shunt ≤ 40.96 mV${c.maxCurrentA && c.shuntOhms ? ` (yours: ${(c.maxCurrentA * c.shuntOhms * 1000).toFixed(1)} mV${cOverrange(c) ? ' — over range, the reading will clip; use ±163.84 mV or a smaller shunt' : ''})` : ''}.${c.kind === 'ina228' ? ' The INA228 also counts charge/energy itself.' : ' INA237/238 have no charge counter — the Pi integrates.'}</p>` : ''}<div class="btns"><button class="btn tiny" onclick="cDel(${i})">Remove</button></div></div>`).join('');
       }
       function vSet(i, k, val) { volts[i][k] = val; }
       function cSet(i, k, val) { currs[i][k] = val; }
@@ -608,6 +626,7 @@
         $('voltageFullV').value = t.voltageFullV ?? '';
         $('voltageEmptyV').value = t.voltageEmptyV ?? '';
         $('percentSource').value = t.percentSource || 'clamp';
+        $('chargeSource').value = t.chargeSource || 'auto';
         volts = t.voltages || [];
         currs = t.currents || [];
         renderVolts(); renderCurrs();
@@ -626,6 +645,7 @@
           voltageFullV: $('voltageFullV').value ? Number($('voltageFullV').value) : null,
           voltageEmptyV: $('voltageEmptyV').value ? Number($('voltageEmptyV').value) : null,
           percentSource: $('percentSource').value,
+          chargeSource: $('chargeSource').value,
         };
         const r = await post('/api/telemetry', body);
         $('tel-msg').textContent = r.note || 'Saved.';

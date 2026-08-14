@@ -41,6 +41,8 @@ export interface TelemetryMessage {
   batteryPercent: number | null;
   /** Which method produced batteryPercent (for a clear OSD label), or null. */
   batteryPercentSource?: BatteryPercentSource | null;
+  /** Who counted mah/wh: the sensor's own accumulator or the Pi's integration. */
+  chargeFrom?: 'sensor' | 'pi';
   /** How the OSD should show capacity. */
   displayMode: 'consumed' | 'remaining';
 }
@@ -58,15 +60,32 @@ export type VoltageSensorKind =
   | 'ina219'
   | 'ina226'
   | 'ina260'
-  | 'ina3221';
+  | 'ina3221'
+  // 85 V-class parts: INA228 (20-bit + hardware charge/energy counters),
+  // INA237/INA238 (16-bit, same register map, no counters).
+  | 'ina228'
+  | 'ina237'
+  | 'ina238';
 export type CurrentSensorKind =
   | 'sim'
   | 'ina219'
   | 'ina226'
   | 'ina260'
   | 'ina3221'
+  | 'ina228'
+  | 'ina237'
+  | 'ina238'
   | 'acs712'
   | 'acs758';
+
+/**
+ * Where consumed mAh / Wh come from:
+ *  - auto   : the sensor's own accumulator when it has one (INA228), else the Pi
+ *  - sensor : the sensor accumulator; falls back to the Pi if the chip has none
+ *  - pi     : always integrate the sampled current on the Pi
+ * Only the INA228 has hardware CHARGE/ENERGY registers today.
+ */
+export type ChargeSource = 'auto' | 'sensor' | 'pi';
 
 export interface VoltageChannelCfg {
   label: string; // e.g. "Spannung 1"
@@ -87,10 +106,22 @@ export interface CurrentChannelCfg {
   bus?: number; // i2c bus (INA)
   address?: number; // i2c address (INA)
   channel?: number; // INA3221 channel (1..3) or ADC channel (ACS)
-  shuntOhms?: number; // INA219/226/3221
+  shuntOhms?: number; // INA219/226/3221/228/237/238
   mvPerAmp?: number; // ACS712 (66/100/185) / ACS758
   zeroVolts?: number; // ACS zero-current output (~Vcc/2)
   adcChannel?: number; // which voltage channel index the ACS is wired to
+  /**
+   * INA228/237/238: the highest current you expect. It sets CURRENT_LSB and with
+   * it SHUNT_CAL, which is what scales the chip's CURRENT/POWER/CHARGE/ENERGY
+   * registers. Too low clips, far too high wastes resolution. Default 50 A.
+   */
+  maxCurrentA?: number;
+  /**
+   * INA228/237/238: use the ±40.96 mV shunt range instead of ±163.84 mV — 4× the
+   * resolution for small shunts, but the shunt voltage must stay inside it
+   * (I_max × R_shunt ≤ 40.96 mV).
+   */
+  lowShuntRange?: boolean;
 }
 
 export interface TelemetryConfig {
@@ -111,6 +142,8 @@ export interface TelemetryConfig {
   voltageEmptyV?: number | null;
   /** Which method drives the % display. Defaults to 'clamp'. */
   percentSource?: BatteryPercentSource;
+  /** Who integrates charge/energy. Defaults to 'auto' (sensor counter if present). */
+  chargeSource?: ChargeSource;
 }
 
 // ---- camera configuration (graphical, generates go2rtc.yaml) ----
