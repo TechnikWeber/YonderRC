@@ -3,6 +3,35 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.31.1
+**English**
+- **Fixed: a touch model could come up with a missing joystick and refuse to arm.**
+  Profiles live in the browser and outlive the version that wrote them. Before v1.10.0 a
+  transmitter-mode switch reassigned a stick axis without re-deriving its input element,
+  so a stored model could end up with, say, its throttle axis still on the *keyboard*
+  source while the model ran on **touch**. The control pad only draws virtual `joy:…`
+  bindings, so that stick was never rendered — and because nothing drove the channel it
+  sat at centre instead of idle, which made the pre-arm check refuse with "throttle not
+  at idle".
+- Models are now **repaired once when they load** and written back: an axis binding gets
+  the source and element its input method requires. Aux and user-added channels are left
+  untouched. Switching the input method away and back was the manual workaround; it is no
+  longer needed.
+
+**Deutsch**
+- **Behoben: ein Touch-Modell konnte mit fehlendem Joystick starten und das Armen
+  verweigern.** Profile liegen im Browser und überleben die Version, die sie geschrieben
+  hat. Vor v1.10.0 hat ein Sendermodus-Wechsel eine Stick-Achse umgehängt, ohne ihr
+  Eingabe-Element neu abzuleiten — ein gespeichertes Modell konnte also seine Gas-Achse
+  noch auf der *Tastatur*-Quelle haben, während das Modell auf **Touch** lief. Das
+  Control-Pad zeichnet nur virtuelle `joy:…`-Bindungen, dieser Stick fehlte also — und
+  weil niemand den Kanal gefahren hat, stand er auf Mitte statt Leerlauf, worauf der
+  Pre-Arm-Check mit „throttle not at idle" blockierte.
+- Modelle werden jetzt **beim Laden einmal repariert** und zurückgeschrieben: eine
+  Achsen-Bindung bekommt Quelle und Element, die ihre Eingabemethode verlangt. Aux- und
+  selbst angelegte Kanäle bleiben unangetastet. Der Workaround (Eingabemethode einmal
+  hin und zurück schalten) ist damit überflüssig.
+
 ## v1.31.0
 **English**
 - **Fixed: the throttle channel could go stale.** A profile stored `throttleChannels`

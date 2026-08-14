@@ -567,6 +567,32 @@ async function main() {
   ok('moved plane throttle is still cut when disarmed', planeDisarm[7] === 1000, `=${planeDisarm[7]}`);
   ok('the old channel is no longer forced', planeDisarm[2] === 1500, `=${planeDisarm[2]}`);
 
+  // ---- self-healing: an axis left on the wrong source/element by an old version ----
+  const { repairAxisBindings } = await import('../packages/ground/src/lib/templates');
+  const touchCar = rebuildForMethod(buildProfile('car'), 'touch');
+  ok('a healthy profile is returned unchanged', repairAxisBindings(touchCar) === touchCar);
+  // Exactly the state that made the throttle stick disappear: touch profile, but
+  // the throttle axis still carries its keyboard source/element.
+  const brokenCar = {
+    ...touchCar,
+    bindings: touchCar.bindings.map((b) => (b.label === 'Throttle' ? { ...b, source: 'keyboard' as const, element: 'k|i' } : b)),
+  };
+  const drawn = (p: typeof brokenCar) => p.bindings.filter((b) => b.source === 'virtual' && b.element.startsWith('joy:')).map((b) => b.label);
+  ok('the broken profile hides the throttle stick', drawn(brokenCar).join() === 'Steering');
+  const healed = repairAxisBindings(brokenCar);
+  ok('repair brings the stick back', drawn(healed).join() === 'Steering,Throttle');
+  ok('repair restores source and element', healed.bindings.find((b) => b.label === 'Throttle')?.element === 'joy:R:y');
+  // A stale element after an old stick-mode switch is repaired from the axis.
+  const staleMode = {
+    ...touchCar,
+    stickMode: 4 as const,
+    bindings: touchCar.bindings.map((b) => (b.label === 'Throttle' ? { ...b, stickAxis: 'leftY' as const } : b)),
+  };
+  ok('stale element follows the axis', repairAxisBindings(staleMode).bindings.find((b) => b.label === 'Throttle')?.element === 'joy:L:y');
+  // Aux and user-added channels must not be touched (they have no stickAxis).
+  const withAux = repairAxisBindings(brokenCar);
+  ok('aux channels are left alone', withAux.bindings.find((b) => b.label === 'Lights')?.element === 'btn');
+
   // ---- throttle limiter (three speeds) ----
   const TL = await import('../packages/ground/src/lib/throttleLimit');
   const { neutralChannels: neutral } = await import('../packages/protocol/src/channels');

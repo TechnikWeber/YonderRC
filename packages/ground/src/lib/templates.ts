@@ -448,6 +448,36 @@ export function setDetent(profile: Profile, stickAxis: StickAxis, detent: Detent
   };
 }
 
+/**
+ * Repair stick-axis bindings whose `source`/`element` don't match the profile's
+ * input method.
+ *
+ * A profile is stored in the browser and outlives the app version that wrote it.
+ * Before v1.10.0 a transmitter-mode switch reassigned the axis without
+ * re-deriving its input element, and a method switch could leave a moved axis on
+ * its old source — the result is an axis that no input drives: on touch its
+ * joystick isn't rendered at all (the pad only draws `virtual` bindings with a
+ * `joy:…` element), and the channel sits at centre instead of its rest position,
+ * so the pre-arm check refuses to arm with "throttle not at idle".
+ *
+ * An axis binding has exactly one correct source/element per method, so this can
+ * be repaired without guessing. Aux and user-added channels are left alone.
+ */
+export function repairAxisBindings(profile: Profile): Profile {
+  const method = profile.inputMethod;
+  const wantSource = method === 'keyboard' ? 'keyboard' : method === 'gamepad' ? 'gamepad' : 'virtual';
+  let changed = false;
+  const bindings = profile.bindings.map((b) => {
+    if (!b.stickAxis) return b;
+    const wantElement = AXIS_ELEMENT[method]?.[b.stickAxis];
+    if (!wantElement) return b;
+    if (b.source === wantSource && b.element === wantElement) return b;
+    changed = true;
+    return { ...b, source: wantSource as ChannelBinding['source'], element: wantElement };
+  });
+  return changed ? { ...profile, bindings } : profile;
+}
+
 /** The detents currently in effect, for the editor UI. */
 export function currentDetents(profile: Profile): Partial<Record<StickAxis, Detent>> {
   const out: Partial<Record<StickAxis, Detent>> = {};

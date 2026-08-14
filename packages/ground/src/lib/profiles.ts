@@ -1,6 +1,6 @@
 import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/protocol';
 import type { Profile } from '@yonderrc/protocol';
-import { buildProfile, disarmedThrottleUs, throttleChannelsOf } from './templates';
+import { buildProfile, disarmedThrottleUs, repairAxisBindings, throttleChannelsOf, withResolvedThrottle } from './templates';
 
 const PROFILES_KEY = 'yonderrc.profiles.v3';
 const ACTIVE_KEY = 'yonderrc.activeProfile.v3';
@@ -19,7 +19,14 @@ export function loadProfiles(): Profile[] {
     const raw = localStorage.getItem(PROFILES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Profile[];
-      if (Array.isArray(parsed) && parsed.length && parsed[0].vehicleType) return parsed;
+      if (Array.isArray(parsed) && parsed.length && parsed[0].vehicleType) {
+        // Heal models written by older versions: an axis whose source/element no
+        // longer matches the input method would be invisible and undrivable, and
+        // a stale throttle list would misdirect the disarm/failsafe values.
+        const healed = parsed.map((p) => withResolvedThrottle(repairAxisBindings(p)));
+        if (healed.some((p, i) => p !== parsed[i])) saveProfiles(healed);
+        return healed;
+      }
     }
   } catch {
     /* fall through to seed */

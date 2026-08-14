@@ -57,6 +57,11 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
 - **Stick modes 1–4** (`ground/src/lib/templates.ts`, `applyStickMode`): remap the
   primary stick axes by *function* (derived from the label). Custom channels (added
   in the binding editor) are untouched by mode and **survive method switches**.
+- **Stored profiles outlive app versions.** `loadProfiles()` heals them once on load
+  (`repairAxisBindings` + `withResolvedThrottle`) and rewrites storage: an axis binding
+  whose `source`/`element` don't match the profile's `inputMethod` is invisible on the
+  pad and undrivable (pre-v1.10 mode switches could produce exactly that). Add repairs
+  there rather than assuming stored data matches the current shape.
 - **Which channel is throttle** comes from `throttleChannelsOf(profile)`
   (`ground/src/lib/templates.ts`), derived from the bindings' labels with the stored
   `profile.throttleChannels` as fallback — the stored list used to go stale whenever a
