@@ -3,6 +3,26 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.28.0
+**English**
+- **Hold-to-arm is now configurable** in Setup › Controls: a switch to turn the
+  protection off entirely and an adjustable **hold time** (0.5–10 s), stored per browser.
+- **The default hold is now 2 s** instead of 3 — long enough that no pocket-touch gets
+  through, short enough that arming doesn't feel like a ceremony. Switched off, the arm
+  button toggles on a plain tap again and says so ("DISARMED — tap to arm").
+- **Panic-disarm stays instant** in every configuration, and the pre-arm check is
+  unaffected.
+
+**Deutsch**
+- **Halten zum Armen ist jetzt einstellbar** unter Setup › Controls: ein Schalter, um den
+  Schutz ganz abzuschalten, und eine einstellbare **Haltezeit** (0,5–10 s), pro Browser
+  gespeichert.
+- **Die Vorgabe sind jetzt 2 s** statt 3 — lang genug, dass kein Griff in die Hosentasche
+  durchkommt, kurz genug, dass Armen keine Zeremonie wird. Abgeschaltet reagiert der
+  Arm-Button wieder auf einfaches Antippen und sagt das auch („DISARMED — tap to arm").
+- **Panic-Disarm bleibt in jeder Konfiguration sofort**, der Pre-Arm-Check bleibt
+  unberührt.
+
 ## v1.27.1
 **English**
 - **The setup hotspot can now stay up next to LTE.** New *when to start it* setting in

@@ -104,9 +104,10 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   per-channel OSD visibility, labels from the second channel of a kind on, explicit
   `primary` flag, and one blackbox CSV column per channel. **All register/bus access is
   hardware-only-verified** — only the maths and the sim path are proven.
-- **Hold-to-arm — DONE (v1.22.0)**: 3 s press-and-hold for arm *and* disarm
-  (`ground/src/lib/hold.ts`), panic-disarm stays instant, OSD shows only
-  DISARMED/FAILSAFE.
+- **Hold-to-arm — DONE (v1.22.0, configurable since v1.28.0)**: press-and-hold for arm
+  *and* disarm (`ground/src/lib/hold.ts`; default 2 s, 0.5–10 s, switchable off in
+  Setup › Controls — `holdMsFor` returns 0 and the button becomes a plain toggle).
+  Panic-disarm stays instant, OSD shows only DISARMED/FAILSAFE.
 - **WiFi onboarding — DONE (v1.27.0)**: Setup › WiFi scans (`nmcli … device wifi list`,
   pure `parseWifiScan`), joins a network and manages the hotspot (`hotspotArgs`, open by
   default — `config.hotspot`). A failed join restarts the hotspot so the Pi can't lock

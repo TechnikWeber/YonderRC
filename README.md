@@ -64,9 +64,10 @@ second row, and below it the arm button with the touch joysticks and bindable bu
   the vehicle type** (car/boat on, plane/drone off — pushed from the ground) so a
   reconnect can't cut an aircraft's motors in flight; **overridable** to always on/off
   in Setup › Controls, with *auto* as the default.
-- **Hold-to-arm**: the arm button has to be held for 3 s (with a countdown filling the
-  button) to arm *or* disarm, so a mis-touch on a phone can't cut the motors.
-  **Panic-disarm** stays instant.
+- **Hold-to-arm**: the arm button has to be held (2 s by default, with a countdown
+  filling the button) to arm *or* disarm, so a mis-touch on a phone can't cut the
+  motors. Hold time is adjustable and the protection can be switched off entirely in
+  Setup › Controls; **panic-disarm** stays instant either way.
 - **Pre-arm check** (throttle must be at its rest position) and **panic-disarm** on a
   bindable key/button, always sent over the reliable link.
 - Model switching and settings are locked while armed.
@@ -179,7 +180,7 @@ npm run dev
 - Vehicle service: `ws://localhost:8080` (sim driver), setup at `/setup`.
 - Ground station: `http://localhost:5173`.
 
-Press **Connect**, **hold Arm for 3 s**, and drive with `W A S D` / arrow keys. From a phone
+Press **Connect**, **hold Arm for 2 s**, and drive with `W A S D` / arrow keys. From a phone
 open `http://<PC-LAN-IP>:5173` (the dev server and the vehicle listen on all
 interfaces).
 

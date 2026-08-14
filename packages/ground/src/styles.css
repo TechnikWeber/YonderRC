@@ -973,6 +973,12 @@ body {
   margin-bottom: 8px;
 }
 /* Inline warning under a setting that was deliberately forced off its default. */
+/* Hold-time row reuses the threshold layout but has no leading checkbox. Two
+   classes so it beats the .batt-th rules defined further down. */
+.batt-th.hold-row {
+  grid-template-columns: 1fr 72px auto;
+  max-width: 260px;
+}
 .warn-note {
   color: var(--idle);
 }

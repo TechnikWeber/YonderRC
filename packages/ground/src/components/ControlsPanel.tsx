@@ -3,6 +3,7 @@ import { ACTION_LABELS, type ActionBindings, type ActionId } from '../lib/action
 import type { BatteryWarnCfg } from '../lib/battery';
 import type { InputManager } from '../lib/input/inputManager';
 import type { AutoDisarmMode } from '../lib/templates';
+import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
 
 const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'next-camera', 'record-toggle', 'snapshot'];
 
@@ -11,6 +12,8 @@ export function ControlsPanel({
   onBindings,
   preArm,
   onPreArm,
+  hold,
+  onHold,
   battery,
   onBattery,
   logging,
@@ -29,6 +32,8 @@ export function ControlsPanel({
   onBindings: (b: ActionBindings) => void;
   preArm: boolean;
   onPreArm: (v: boolean) => void;
+  hold: HoldCfg;
+  onHold: (c: HoldCfg) => void;
   battery: BatteryWarnCfg;
   onBattery: (c: BatteryWarnCfg) => void;
   logging: boolean;
@@ -82,6 +87,29 @@ export function ControlsPanel({
         Pre-arm check — refuse to arm unless throttle is at its rest position
       </label>
       <p className="note">Uses each throttle channel's detent: centre for reverse-capable cars and drones, idle (min) for planes/boats. Prevents a lurch on arming.</p>
+
+      <label className="opt big">
+        <input type="checkbox" checked={hold.enabled} onChange={(e) => onHold({ ...hold, enabled: e.target.checked })} />
+        Hold to arm — the arm button only acts after being held
+      </label>
+      <label className="batt-th hold-row">
+        <span>Hold time</span>
+        <input
+          type="number"
+          step={0.5}
+          min={HOLD_MIN_S}
+          max={HOLD_MAX_S}
+          value={hold.seconds}
+          disabled={!hold.enabled}
+          onChange={(e) => onHold({ ...hold, seconds: clampHoldSeconds(Number(e.target.value)) })}
+        />
+        <span className="unit">s</span>
+      </label>
+      <p className="note">
+        Applies to arming <b>and</b> disarming — the mis-touch that cuts the motors is the second
+        one. Switched off, the button toggles on a plain tap again. {HOLD_MIN_S}–{HOLD_MAX_S} s;
+        panic-disarm stays instant either way.
+      </p>
 
       <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>
         Auto-disarm on reconnect: <b>{autoDisarm ? 'ON' : 'OFF'}</b>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Detent, Profile } from '@yonderrc/protocol';
 import type { InputManager } from '../lib/input/inputManager';
 import type { BindingEngine } from '../lib/input/bindingEngine';
-import { ARM_HOLD_MS, holdProgress, holdRemainingS } from '../lib/hold';
+import { holdProgress, holdRemainingS } from '../lib/hold';
 import { VirtualJoystick } from './VirtualJoystick';
 
 interface JoyCfg {
@@ -45,6 +45,7 @@ export function ControlPad({
   onToggleArm,
   connected,
   calibrationActive,
+  holdMs,
   version,
 }: {
   profile: Profile;
@@ -52,6 +53,8 @@ export function ControlPad({
   engine: BindingEngine;
   armed: boolean;
   onToggleArm: () => void;
+  /** Hold time for the arm button in ms; 0 = protection off (plain tap). */
+  holdMs: number;
   connected: boolean;
   calibrationActive: boolean;
   version: number;
@@ -65,8 +68,9 @@ export function ControlPad({
 
   const armDisabled = !connected || calibrationActive;
 
-  // Hold-to-confirm: a single tap can't arm (or, worse, disarm in flight) any
-  // more — the button has to be held for ARM_HOLD_MS and fills up while you do.
+  // Hold-to-confirm: unless it is switched off in Setup › Controls, a single tap
+  // can't arm (or, worse, disarm in flight) — the button has to be held for the
+  // configured time and fills up while you do.
   const [progress, setProgress] = useState(0);
   const startedAt = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -81,11 +85,11 @@ export function ControlPad({
   }, []);
 
   const beginHold = useCallback(() => {
-    if (armDisabled || startedAt.current !== null) return;
+    if (armDisabled || holdMs <= 0 || startedAt.current !== null) return;
     startedAt.current = performance.now();
     firedRef.current = false;
     const step = () => {
-      const p = holdProgress(startedAt.current, performance.now());
+      const p = holdProgress(startedAt.current, performance.now(), holdMs);
       setProgress(p);
       if (p >= 1) {
         if (!firedRef.current) {
@@ -99,7 +103,7 @@ export function ControlPad({
       rafRef.current = requestAnimationFrame(step);
     };
     rafRef.current = requestAnimationFrame(step);
-  }, [armDisabled, cancelHold, onToggleArm]);
+  }, [armDisabled, cancelHold, holdMs, onToggleArm]);
 
   // Losing the link (or starting ESC calibration) mid-hold must not leave a
   // half-filled button that fires the moment it comes back.
@@ -116,10 +120,10 @@ export function ControlPad({
     : calibrationActive
       ? 'ESC calibration active — cancel it to arm'
       : holding
-        ? `${armed ? 'DISARMING' : 'ARMING'} IN ${holdRemainingS(progress).toFixed(1)} s — keep holding`
+        ? `${armed ? 'DISARMING' : 'ARMING'} IN ${holdRemainingS(progress, holdMs).toFixed(1)} s — keep holding`
         : armed
-          ? `ARMED — hold ${ARM_HOLD_MS / 1000} s to disarm`
-          : `DISARMED — hold ${ARM_HOLD_MS / 1000} s to arm`;
+          ? holdMs > 0 ? `ARMED — hold ${holdMs / 1000} s to disarm` : 'ARMED — tap to disarm'
+          : holdMs > 0 ? `DISARMED — hold ${holdMs / 1000} s to arm` : 'DISARMED — tap to arm';
 
   const methodHint =
     profile.inputMethod === 'keyboard'
@@ -150,7 +154,12 @@ export function ControlPad({
           if (e.key === ' ' || e.key === 'Enter') cancelHold();
         }}
         onBlur={cancelHold}
-        onClick={(e) => e.preventDefault()}
+        onClick={(e) => {
+          // With the hold switched off the button is an ordinary toggle again;
+          // otherwise the pointer/key handlers above own the interaction.
+          if (holdMs > 0) e.preventDefault();
+          else onToggleArm();
+        }}
         disabled={armDisabled}
         aria-pressed={armed}
       >

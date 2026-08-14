@@ -294,8 +294,8 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 2. Do **not arm** yet. In the channel monitor check: does steering/rudder move the
    right channel? Endpoints ok? Adjust trim/EPA/reverse in the setup if needed.
 3. **ESC calibration** (if needed) — start it in the setup, instructions follow.
-4. Only once everything is right: arm the drive, **hold the arm button for 3 s** until
-   the countdown completes, throttle up carefully.
+4. Only once everything is right: arm the drive, **hold the arm button** until the
+   countdown completes (2 s by default), throttle up carefully.
 5. **Video** should run in the FPV panel (the `go2rtc` service runs continuously).
 6. Check **telemetry** in the OSD: does it show real pack voltage? Does it **not** say
    "SIM"? Then the sensor reads correctly. If "SIM" appears, the fallback kicked in
@@ -458,10 +458,11 @@ Tailscale address as usual.
   it on **auto** unless your setup really isn't described by the vehicle type.
 - **Pre-arm check:** arming is refused while the throttle isn't at its rest position
   (centre or idle, depending on the channel's detent).
-- **Hold to arm:** the arm button only acts after being held for 3 s (it fills up and
-  counts down), for arming *and* disarming — a mis-touch on a phone can't cut the
-  motors. The bindable **panic-disarm** stays instant, and the OSD only ever shows
-  DISARMED or FAILSAFE, never a badge for the normal armed case.
+- **Hold to arm:** the arm button only acts after being held (2 s by default; it fills
+  up and counts down), for arming *and* disarming — a mis-touch on a phone can't cut the
+  motors. Hold time (0.5–10 s) and an off switch live in the ground app under **Setup ›
+  Controls**. The bindable **panic-disarm** stays instant either way, and the OSD only
+  ever shows DISARMED or FAILSAFE, never a badge for the normal armed case.
 - **Driver fallback:** if the hardware driver fails to start, the service keeps running
   in sim and the setup UI stays reachable.
 - **systemd `Restart=always`:** if the service crashes, systemd restarts it.

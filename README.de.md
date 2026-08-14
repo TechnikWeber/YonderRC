@@ -67,9 +67,10 @@ Buttons.*
   dem Fahrzeugtyp** (Auto/Boot an, Flugzeug/Drohne aus — vom Ground gepusht), damit ein
   Reconnect einem Luftfahrzeug nicht im Flug die Motoren kappt; in Setup › Controls
   **überschreibbar** auf immer an/aus, Standard bleibt *auto*.
-- **Halten zum Armen**: der Arm-Button muss 3 s gehalten werden (mit Countdown, der
-  den Button füllt), zum Armen *und* zum Disarmen — ein Fehlgriff am Handy kappt so
-  nicht die Motoren. **Panic-Disarm** bleibt sofort.
+- **Halten zum Armen**: der Arm-Button muss gehalten werden (standardmäßig 2 s, mit
+  Countdown, der den Button füllt), zum Armen *und* zum Disarmen — ein Fehlgriff am
+  Handy kappt so nicht die Motoren. Haltezeit einstellbar, der Schutz ganz abschaltbar
+  unter Setup › Controls; **Panic-Disarm** bleibt in jedem Fall sofort.
 - **Pre-Arm-Check** (Gas muss in Ruhelage stehen) und **Panic-Disarm** auf belegbarer
   Taste/Button, immer über die zuverlässige Verbindung gesendet.
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
@@ -184,7 +185,7 @@ npm run dev
 - Fahrzeug-Dienst: `ws://localhost:8080` (Sim-Treiber), Setup unter `/setup`.
 - Bodenstation: `http://localhost:5173`.
 
-**Connect** drücken, **Arm 3 s halten**, und mit `W A S D` / Pfeiltasten fahren. Vom Handy
+**Connect** drücken, **Arm 2 s halten**, und mit `W A S D` / Pfeiltasten fahren. Vom Handy
 `http://<PC-LAN-IP>:5173` öffnen (Dev-Server und Fahrzeug lauschen auf allen
 Interfaces).
 

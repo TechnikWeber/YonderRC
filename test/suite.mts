@@ -534,16 +534,26 @@ async function main() {
   ok('plane arms at idle throttle', preArmCheck(planeP, low).ok);
 
   // ---- hold-to-arm timing ----
-  const { holdProgress, holdRemainingS, ARM_HOLD_MS } = await import('../packages/ground/src/lib/hold');
-  ok('hold is 3 s', ARM_HOLD_MS === 3000);
+  const { holdProgress, holdRemainingS, ARM_HOLD_MS, clampHoldSeconds, holdMsFor, HOLD_DEFAULTS, HOLD_MIN_S, HOLD_MAX_S } =
+    await import('../packages/ground/src/lib/hold');
+  ok('hold defaults to 2 s, on', ARM_HOLD_MS === 2000 && HOLD_DEFAULTS.seconds === 2 && HOLD_DEFAULTS.enabled === true);
   ok('not holding = 0', holdProgress(null, 12345) === 0);
   ok('hold starts at 0', holdProgress(1000, 1000) === 0);
-  ok('hold half way', near(holdProgress(1000, 2500), 0.5));
+  ok('hold half way', near(holdProgress(1000, 2000), 0.5));
   ok('hold completes', holdProgress(1000, 4000) === 1);
   ok('hold clamps past the end', holdProgress(1000, 99999) === 1);
   ok('clock jumping back does not fire', holdProgress(1000, 500) === 0);
   ok('zero hold fires at once', holdProgress(1000, 1000, 0) === 1);
-  ok('remaining counts down', holdRemainingS(0) === 3 && holdRemainingS(0.5) === 1.5 && holdRemainingS(1) === 0);
+  ok('custom hold time is honoured', near(holdProgress(0, 2500, 5000), 0.5));
+  ok('remaining counts down', holdRemainingS(0) === 2 && holdRemainingS(0.5) === 1 && holdRemainingS(1) === 0);
+  ok('remaining follows a custom hold', holdRemainingS(0.5, 6000) === 3);
+  // Configurable in Setup › Controls: off means a plain tap, and the seconds are clamped.
+  ok('enabled → ms from seconds', holdMsFor({ enabled: true, seconds: 2.5 }) === 2500);
+  ok('disabled → 0 (plain tap)', holdMsFor({ enabled: false, seconds: 3 }) === 0);
+  ok('clamps below the minimum', clampHoldSeconds(0.1) === HOLD_MIN_S);
+  ok('clamps above the maximum', clampHoldSeconds(99) === HOLD_MAX_S);
+  ok('rounds to a tenth', clampHoldSeconds(2.34) === 2.3);
+  ok('garbage falls back to the default', clampHoldSeconds(Number.NaN) === HOLD_DEFAULTS.seconds);
 
   // ---- low-battery warning ----
   const { evaluateBattery, BATTERY_DEFAULTS } = await import('../packages/ground/src/lib/battery');

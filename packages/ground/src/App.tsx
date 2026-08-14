@@ -32,6 +32,7 @@ import { preArmCheck } from './lib/safety';
 import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWarnCfg } from './lib/battery';
 import { beep } from './lib/beep';
 import { logToCsv, downloadText, sensorSnapshot, LOG_CAP, type LogRow } from './lib/logger';
+import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
 import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, type AutoDisarmMode } from './lib/templates';
 
@@ -104,11 +105,16 @@ export function App() {
     return v === 'on' || v === 'off' ? v : 'auto';
   });
   const [actions, setActionsState] = useState(loadActions);
+  const [holdCfg, setHoldCfgState] = useState<HoldCfg>(loadHoldCfg);
   const [preArmMsg, setPreArmMsg] = useState<string | null>(null);
   const [batteryCfg, setBatteryCfgState] = useState(loadBattery);
   const setBatteryCfg = (c: BatteryWarnCfg) => {
     setBatteryCfgState(c);
     saveBattery(c);
+  };
+  const setHoldCfg = (c: HoldCfg) => {
+    setHoldCfgState(c);
+    saveHoldCfg(c);
   };
   const setActions = (b: ActionBindings) => {
     setActionsState(b);
@@ -430,7 +436,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.27.1</span>
+        <span className="ver">ground · v1.28.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -482,7 +488,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>
@@ -527,6 +533,7 @@ export function App() {
             onToggleArm={() => requestArm(!armed)}
             connected={connected}
             calibrationActive={status?.calibration?.active ?? false}
+            holdMs={holdMsFor(holdCfg)}
             version={tick}
           />
           <div className="link-opts">
