@@ -3,6 +3,34 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.32.0
+**English**
+- **The Car template now defaults to stick mode 2.** A car needs only two axes, and mode 2
+  puts both on the **left stick** — steering on X, throttle on Y — so one thumb drives it
+  on a phone. Mode 4 splits them across two sticks if you prefer that; switch any time in
+  Setup › Model.
+- **Fixed: a template's default stick mode was recorded but never applied.** `buildProfile`
+  stored `stickMode` while laying the axes out exactly as written in the template, so a
+  template whose default differed from that layout produced a profile claiming a mode it
+  wasn't in. The mode is now applied when the profile is built — a no-op for boat, plane
+  and drone, whose layouts already matched.
+- Existing models keep their stick mode; this changes what a **new** model from the
+  template looks like (and what a factory reset seeds).
+
+**Deutsch**
+- **Die Auto-Vorlage steht jetzt standardmäßig auf Stick-Mode 2.** Ein Auto braucht nur
+  zwei Achsen, und Mode 2 legt beide auf den **linken Stick** — Lenkung auf X, Gas auf Y —
+  damit fährt man es am Handy mit einem Daumen. Mode 4 verteilt sie auf zwei Sticks, wenn
+  dir das lieber ist; jederzeit umstellbar unter Setup › Model.
+- **Behoben: der Standard-Stick-Mode einer Vorlage wurde vermerkt, aber nie angewendet.**
+  `buildProfile` hat `stickMode` gespeichert und die Achsen trotzdem genau so gelegt, wie
+  sie in der Vorlage stehen — eine Vorlage, deren Standard von dieser Anordnung abweicht,
+  erzeugte also ein Profil, das einen Mode behauptete, in dem es gar nicht war. Der Mode
+  wird jetzt beim Erzeugen angewendet — für Boot, Flugzeug und Drohne ohne Wirkung, deren
+  Anordnung passte bereits.
+- Bestehende Modelle behalten ihren Stick-Mode; das ändert, wie ein **neues** Modell aus
+  der Vorlage aussieht (und was ein Factory Reset anlegt).
+
 ## v1.31.3
 **English**
 - **The default arm hold is now 1 s** (was 2 s). Still long enough to filter out a tap or

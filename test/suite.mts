@@ -471,7 +471,7 @@ async function main() {
   ok('mode1 elevator=leftY', axOf(pm1, 'Elevator') === 'leftY');
   ok('mode1 element re-derived (touch R stick)', pm1.bindings.find((b) => b.label === 'Throttle')?.element === 'joy:R:y');
   ok('mode survives method switch', rebuildForMethod(pm1, 'gamepad').stickMode === 1 && axOf(rebuildForMethod(pm1, 'gamepad'), 'Throttle') === 'rightY');
-  ok('car defaults to mode 1', buildProfile('car').stickMode === 1);
+  ok('car defaults to mode 2 (one-stick layout)', buildProfile('car').stickMode === 2);
   ok('funcFromLabel maps steering→rudder', funcFromLabel('Steering') === 'rudder');
   // Detents follow the CHANNEL, not the stick axis, across a mode + method change.
   const pMode1 = applyStickMode(buildProfile('plane'), 1); // throttle→rightY, elevator→leftY
@@ -581,7 +581,7 @@ async function main() {
   ok('the broken profile hides the throttle stick', drawn(brokenCar).join() === 'Steering');
   const healed = repairAxisBindings(brokenCar);
   ok('repair brings the stick back', drawn(healed).join() === 'Steering,Throttle');
-  ok('repair restores source and element', healed.bindings.find((b) => b.label === 'Throttle')?.element === 'joy:R:y');
+  ok('repair restores source and element', healed.bindings.find((b) => b.label === 'Throttle')?.element === 'joy:L:y');
   // A stale element after an old stick-mode switch is repaired from the axis.
   const staleMode = {
     ...touchCar,
@@ -592,6 +592,25 @@ async function main() {
   // Aux and user-added channels must not be touched (they have no stickAxis).
   const withAux = repairAxisBindings(brokenCar);
   ok('aux channels are left alone', withAux.bindings.find((b) => b.label === 'Lights')?.element === 'btn');
+
+  // ---- a template's default stick mode must be APPLIED, not just recorded ----
+  for (const vt of ['car', 'boat', 'plane', 'drone'] as const) {
+    const p = buildProfile(vt);
+    const remapped = applyStickMode(p, p.stickMode ?? 1);
+    const same = p.bindings.every((b, i) => b.stickAxis === remapped.bindings[i].stickAxis && b.element === remapped.bindings[i].element);
+    ok(`${vt} axes match its default mode`, same);
+  }
+  const carMode = buildProfile('car');
+  ok('car defaults to mode 2', carMode.stickMode === 2);
+  // Mode 2 on a two-axis model puts both axes on the LEFT stick (one thumb).
+  const carTouch = rebuildForMethod(carMode, 'touch');
+  const carSticks = new Set(carTouch.bindings.filter((b) => b.source === 'virtual').map((b) => b.element.split(':')[1]));
+  ok('car mode 2 is a one-stick layout', carSticks.size === 1 && carSticks.has('L'), [...carSticks].join());
+  ok('steering and throttle share it', carTouch.bindings.filter((b) => b.element === 'joy:L:x' || b.element === 'joy:L:y').length === 2);
+  // The throttle detent has to travel with the axis, or the pre-arm rest is wrong.
+  ok('car throttle keeps its centre detent', carTouch.bindings.find((b) => b.label === 'Throttle')?.detent === 'center');
+  ok('boat keeps its free throttle detent', rebuildForMethod(buildProfile('boat'), 'touch').bindings.find((b) => b.label === 'Throttle')?.detent === 'free');
+  ok('plane keeps its free throttle detent', buildProfile('plane').bindings.find((b) => b.label === 'Throttle')?.detent === 'free');
 
   // ---- ESC calibration uses the CHANNEL's endpoints, not the profile default ----
   const { channelEndpoints } = await import('../packages/ground/src/lib/templates');

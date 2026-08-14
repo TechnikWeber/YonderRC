@@ -135,7 +135,10 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
     // Car throttle centers (neutral = stop, allows reverse).
     defaultDetents: { ...CENTER },
     defaultInputMethod: 'keyboard',
-    defaultStickMode: 1,
+    // Mode 2 puts steering (X) and throttle (Y) on the SAME left stick — a car
+    // needs only two axes, so one thumb drives it. Mode 4 splits them across two
+    // sticks if you prefer that.
+    defaultStickMode: 2,
   },
   boat: {
     vehicleType: 'boat',
@@ -358,7 +361,10 @@ export function buildProfile(
   const endpoints = opts.endpoints ?? { minUs: 1000, maxUs: 2000 };
   const method = opts.inputMethod ?? t.defaultInputMethod;
   const detents = { ...t.defaultDetents };
-  return {
+  // The template's `axes` are written in one fixed stick layout, so the default
+  // mode has to be APPLIED, not just recorded — otherwise a template whose
+  // default differs from that layout ships a profile claiming a mode it isn't in.
+  return applyStickMode({
     id: opts.id ?? `p_${vehicleType}_${Date.now().toString(36)}${(idc++).toString(36)}`,
     name: opts.name ?? t.name,
     vehicleType,
@@ -368,7 +374,7 @@ export function buildProfile(
     throttleChannels: t.throttleChannels,
     stickMode: t.defaultStickMode,
     bindings: buildBindings(t, method, endpoints, detents),
-  };
+  }, t.defaultStickMode);
 }
 
 /** Regenerate bindings for a new input method, preserving detents + per-channel shaping. */
