@@ -460,8 +460,9 @@ Tailscale address as usual.
   (centre or idle, depending on the channel's detent).
 - **Hold to arm:** the arm button only acts after being held (2 s by default; it fills
   up and counts down), for arming *and* disarming — a mis-touch on a phone can't cut the
-  motors. Hold time (0.5–10 s) and an off switch live in the ground app under **Setup ›
-  Controls**. The bindable **panic-disarm** stays instant either way, and the OSD only
+  motors. The same hold applies to a **key or controller button** bound to arm/disarm —
+  a bumped controller cuts motors just as well as a mis-touch. Hold time (0.5–10 s) and
+  an off switch live in the ground app under **Setup › Controls**. The bindable **panic-disarm** stays instant either way, and the OSD only
   ever shows DISARMED or FAILSAFE, never a badge for the normal armed case.
 - **Driver fallback:** if the hardware driver fails to start, the service keeps running
   in sim and the setup UI stays reachable.

@@ -107,8 +107,9 @@ export function ControlsPanel({
       </label>
       <p className="note">
         Applies to arming <b>and</b> disarming — the mis-touch that cuts the motors is the second
-        one. Switched off, the button toggles on a plain tap again. {HOLD_MIN_S}–{HOLD_MAX_S} s;
-        panic-disarm stays instant either way.
+        one — and to a key or controller button bound to <b>Arm / disarm</b> below, since a bumped
+        controller is just as capable of it. Switched off, both toggle on a plain press again.
+        {HOLD_MIN_S}–{HOLD_MAX_S} s; panic-disarm stays instant either way.
       </p>
 
       <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>

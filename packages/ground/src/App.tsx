@@ -261,7 +261,16 @@ export function App() {
     setPreArmMsg('PANIC — disarm sent');
     window.setTimeout(() => setPreArmMsg((m) => (m === 'PANIC — disarm sent' ? null : m)), 2500);
   };
-  useActionHotkeys(actions, { 'panic-disarm': panicDisarm, 'toggle-arm': () => requestArm(!armed) }, input);
+  // The bound arm key/button gets the same hold protection as the on-screen
+  // button (panic-disarm never does); the progress feeds the button's fill so
+  // there's visible feedback wherever you look.
+  const [hotkeyHold, setHotkeyHold] = useState(0);
+  useActionHotkeys(
+    actions,
+    { 'panic-disarm': panicDisarm, 'toggle-arm': () => requestArm(!armed) },
+    input,
+    { holdMs: holdMsFor(holdCfg), actions: ['toggle-arm'], onProgress: setHotkeyHold },
+  );
 
   // Session timer: runs while armed; also captures mAh consumed since arming.
   const [sessionSeconds, setFlightSeconds] = useState(0);
@@ -436,7 +445,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.28.0</span>
+        <span className="ver">ground · v1.29.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -534,6 +543,7 @@ export function App() {
             connected={connected}
             calibrationActive={status?.calibration?.active ?? false}
             holdMs={holdMsFor(holdCfg)}
+            externalProgress={hotkeyHold}
             version={tick}
           />
           <div className="link-opts">

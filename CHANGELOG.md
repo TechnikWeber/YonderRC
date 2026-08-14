@@ -3,6 +3,31 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.29.0
+**English**
+- **The arm hold now covers the bound key and controller button too.** Until now the
+  2 s hold only applied to the on-screen arm button; a key or gamepad button bound to
+  *Arm / disarm* fired on the press, which is the input most likely to be bumped by
+  accident. It now needs the same sustained press, and releasing early cancels.
+- **The arm button shows that hold**: holding the bound key fills the same bar and runs
+  the same countdown, so there is visible feedback wherever you're looking.
+- Switching the protection off in Setup › Controls disables it for **both** paths, and
+  **panic-disarm stays instant** either way. Losing window focus mid-hold cancels, so a
+  key can't stay "held" while you're in another tab.
+
+**Deutsch**
+- **Das Arm-Halten gilt jetzt auch für die belegte Taste und den Controller-Button.**
+  Bisher galten die 2 s nur für den Arm-Button auf dem Bildschirm; eine auf
+  *Arm / disarm* gelegte Taste oder Gamepad-Taste löste beim Drücken aus — ausgerechnet
+  die Eingabe, die man am ehesten aus Versehen anstößt. Jetzt braucht sie dasselbe
+  Halten, und früher loslassen bricht ab.
+- **Der Arm-Button zeigt dieses Halten mit an**: die belegte Taste füllt denselben
+  Balken und lässt denselben Countdown laufen — sichtbares Feedback, egal wohin man
+  gerade schaut.
+- Der Aus-Schalter in Setup › Controls schaltet **beide** Wege ab, und **Panic-Disarm
+  bleibt in jedem Fall sofort**. Verliert das Fenster den Fokus, bricht das Halten ab —
+  eine Taste kann also nicht „gedrückt bleiben", während man in einem anderen Tab ist.
+
 ## v1.28.0
 **English**
 - **Hold-to-arm is now configurable** in Setup › Controls: a switch to turn the

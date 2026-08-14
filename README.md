@@ -66,7 +66,8 @@ second row, and below it the arm button with the touch joysticks and bindable bu
   in Setup › Controls, with *auto* as the default.
 - **Hold-to-arm**: the arm button has to be held (2 s by default, with a countdown
   filling the button) to arm *or* disarm, so a mis-touch on a phone can't cut the
-  motors. Hold time is adjustable and the protection can be switched off entirely in
+  motors — and the same hold applies to a **key or controller button** bound to
+  arm/disarm. Hold time is adjustable and the protection can be switched off entirely in
   Setup › Controls; **panic-disarm** stays instant either way.
 - **Pre-arm check** (throttle must be at its rest position) and **panic-disarm** on a
   bindable key/button, always sent over the reliable link.

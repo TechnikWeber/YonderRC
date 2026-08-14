@@ -472,8 +472,10 @@ Laptop oder die Tailscale-Adresse.
   steht (Mitte oder Leerlauf, je nach Detent des Kanals).
 - **Halten zum Armen:** Der Arm-Button löst erst nach Halten aus (standardmäßig 2 s; er
   füllt sich und zählt herunter), beim Armen *und* beim Disarmen — ein Fehlgriff am Handy
-  kappt so nicht die Motoren. Haltezeit (0,5–10 s) und Aus-Schalter liegen in der
-  Boden-App unter **Setup › Controls**. Das belegbare **Panic-Disarm** bleibt in jedem
+  kappt so nicht die Motoren. Dasselbe Halten gilt für eine auf Arm/Disarm gelegte
+  **Taste oder Controller-Taste** — ein angestoßener Controller kappt die Motoren genauso
+  gut wie ein Fehlgriff. Haltezeit (0,5–10 s) und Aus-Schalter liegen in der Boden-App
+  unter **Setup › Controls**. Das belegbare **Panic-Disarm** bleibt in jedem
   Fall sofort, und das OSD zeigt nur noch DISARMED oder FAILSAFE, nie ein Badge für den
   Normalfall „gearmt".
 - **Treiber-Fallback:** Schlägt der Hardware-Treiber beim Start fehl, läuft der

@@ -46,6 +46,7 @@ export function ControlPad({
   connected,
   calibrationActive,
   holdMs,
+  externalProgress = 0,
   version,
 }: {
   profile: Profile;
@@ -55,6 +56,8 @@ export function ControlPad({
   onToggleArm: () => void;
   /** Hold time for the arm button in ms; 0 = protection off (plain tap). */
   holdMs: number;
+  /** Hold progress coming from the bound arm key/button, so the fill matches. */
+  externalProgress?: number;
   connected: boolean;
   calibrationActive: boolean;
   version: number;
@@ -114,13 +117,16 @@ export function ControlPad({
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const holding = progress > 0;
+  // The same button visualises both paths: pressing it, or holding the bound
+  // key / gamepad button.
+  const shownProgress = Math.max(progress, externalProgress);
+  const holding = shownProgress > 0;
   const armLabel = !connected
     ? 'Connect the vehicle to arm'
     : calibrationActive
       ? 'ESC calibration active — cancel it to arm'
       : holding
-        ? `${armed ? 'DISARMING' : 'ARMING'} IN ${holdRemainingS(progress, holdMs).toFixed(1)} s — keep holding`
+        ? `${armed ? 'DISARMING' : 'ARMING'} IN ${holdRemainingS(shownProgress, holdMs).toFixed(1)} s — keep holding`
         : armed
           ? holdMs > 0 ? `ARMED — hold ${holdMs / 1000} s to disarm` : 'ARMED — tap to disarm'
           : holdMs > 0 ? `DISARMED — hold ${holdMs / 1000} s to arm` : 'DISARMED — tap to arm';
@@ -163,7 +169,7 @@ export function ControlPad({
         disabled={armDisabled}
         aria-pressed={armed}
       >
-        <i className="arm-fill" style={{ width: `${Math.round(progress * 100)}%` }} aria-hidden="true" />
+        <i className="arm-fill" style={{ width: `${Math.round(shownProgress * 100)}%` }} aria-hidden="true" />
         <span className="arm-text">{armLabel}</span>
       </button>
 

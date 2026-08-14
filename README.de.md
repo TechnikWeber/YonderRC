@@ -69,8 +69,9 @@ Buttons.*
   **überschreibbar** auf immer an/aus, Standard bleibt *auto*.
 - **Halten zum Armen**: der Arm-Button muss gehalten werden (standardmäßig 2 s, mit
   Countdown, der den Button füllt), zum Armen *und* zum Disarmen — ein Fehlgriff am
-  Handy kappt so nicht die Motoren. Haltezeit einstellbar, der Schutz ganz abschaltbar
-  unter Setup › Controls; **Panic-Disarm** bleibt in jedem Fall sofort.
+  Handy kappt so nicht die Motoren — und dasselbe Halten gilt für eine auf Arm/Disarm
+  gelegte **Taste oder Controller-Taste**. Haltezeit einstellbar, der Schutz ganz
+  abschaltbar unter Setup › Controls; **Panic-Disarm** bleibt in jedem Fall sofort.
 - **Pre-Arm-Check** (Gas muss in Ruhelage stehen) und **Panic-Disarm** auf belegbarer
   Taste/Button, immer über die zuverlässige Verbindung gesendet.
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
