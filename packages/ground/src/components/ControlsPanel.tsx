@@ -152,7 +152,7 @@ export function ControlsPanel({
       )}
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Action bindings</div>
-      <p className="note">Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over the reliable link.</p>
+      <p className="note">Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over the reliable link — <b>no hold, no confirmation</b>, which is why it ships <b>unbound</b>: a stray key cuts the motors, and on an aircraft that is a crash. Bind it to something you can't hit by accident, and if you fly with a controller, bind it there — a keyboard key is no use with both hands on the sticks.</p>
       <div className="actions-grid">
         <div className="actions-head"><span>Action</span><span>Key</span><span>Button</span></div>
         {ORDER.map((id) => (

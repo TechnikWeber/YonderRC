@@ -3,6 +3,35 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.30.0
+**English**
+- **Panic-disarm now ships unbound** — for every vehicle type and input method. It used
+  to default to **Escape**, and it is the one control with *no hold and no
+  confirmation*: an accidental press cuts the motors, which on an aircraft means a
+  crash. Bind it yourself in Setup › Controls to a key or controller button you can't
+  hit by accident — and if you fly with a controller, bind it *on the controller*, since
+  a keyboard key is no use with both hands on the sticks.
+- **Existing installs are migrated**: bindings move to `yonderrc.actions.v2`, and a
+  stored panic binding that is exactly the old shipped `Escape` default is dropped —
+  it was never a deliberate choice. Anything you actually picked (including Escape plus
+  a button) survives untouched.
+- The Controls panel now says why panic is unbound and what to bind it to.
+
+**Deutsch**
+- **Panic-Disarm ist jetzt ab Werk unbelegt** — für jeden Fahrzeugtyp und jede
+  Eingabemethode. Bisher lag es standardmäßig auf **Escape**, und es ist die einzige
+  Funktion *ohne Halten und ohne Rückfrage*: ein versehentlicher Druck kappt die
+  Motoren, bei einem Luftfahrzeug also Absturz. Selbst belegen unter Setup › Controls,
+  auf eine Taste oder Controller-Taste, die man nicht aus Versehen trifft — und wer mit
+  Controller fliegt, legt sie *auf den Controller*, denn eine Tastaturtaste nützt nichts,
+  wenn beide Hände an den Sticks sind.
+- **Bestehende Installationen werden migriert**: die Belegungen wandern nach
+  `yonderrc.actions.v2`, und eine gespeicherte Panic-Belegung, die exakt dem alten
+  `Escape`-Standard entspricht, wird entfernt — sie war nie eine bewusste Wahl. Alles
+  selbst Gewählte (auch Escape plus Button) bleibt unangetastet.
+- Das Controls-Panel erklärt jetzt, warum Panic unbelegt ist und worauf man es legen
+  sollte.
+
 ## v1.29.0
 **English**
 - **The arm hold now covers the bound key and controller button too.** Until now the

@@ -73,7 +73,9 @@ Buttons.*
   gelegte **Taste oder Controller-Taste**. Haltezeit einstellbar, der Schutz ganz
   abschaltbar unter Setup › Controls; **Panic-Disarm** bleibt in jedem Fall sofort.
 - **Pre-Arm-Check** (Gas muss in Ruhelage stehen) und **Panic-Disarm** auf belegbarer
-  Taste/Button, immer über die zuverlässige Verbindung gesendet.
+  Taste/Button, immer über die zuverlässige Verbindung gesendet. Panic ist **ab Werk
+  unbelegt**: es löst ohne Halten sofort aus, du wählst also selbst eine Taste oder
+  Controller-Taste, die du nicht versehentlich triffst.
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
 - **Optionales Shared Secret** (standardmäßig aus): einmal gesetzt, verlangen der
   Steuer-Link und die Setup-API es — erster Verbindungsaufbau bleibt schnell, bei

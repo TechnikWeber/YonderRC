@@ -478,6 +478,10 @@ Laptop oder die Tailscale-Adresse.
   unter **Setup › Controls**. Das belegbare **Panic-Disarm** bleibt in jedem
   Fall sofort, und das OSD zeigt nur noch DISARMED oder FAILSAFE, nie ein Badge für den
   Normalfall „gearmt".
+- **Panic-Disarm ist ab Werk unbelegt.** Es ist die einzige Funktion ohne Halten und ohne
+  Rückfrage — ein versehentlicher Druck kappt die Motoren, bei einem Luftfahrzeug also
+  Absturz. Unter **Setup › Controls** auf eine Taste oder Controller-Taste legen, die du
+  nicht aus Versehen triffst; wer mit Controller fliegt, legt sie *auf den Controller*.
 - **Treiber-Fallback:** Schlägt der Hardware-Treiber beim Start fehl, läuft der
   Dienst im Sim weiter und die Setup-UI bleibt erreichbar.
 - **systemd `Restart=always`:** Stürzt der Dienst ab, startet ihn systemd neu.

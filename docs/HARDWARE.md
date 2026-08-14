@@ -464,6 +464,10 @@ Tailscale address as usual.
   a bumped controller cuts motors just as well as a mis-touch. Hold time (0.5–10 s) and
   an off switch live in the ground app under **Setup › Controls**. The bindable **panic-disarm** stays instant either way, and the OSD only
   ever shows DISARMED or FAILSAFE, never a badge for the normal armed case.
+- **Panic-disarm ships unbound.** It is the one control with no hold and no
+  confirmation, so an accidental press cuts the motors — on an aircraft, that is a
+  crash. Bind it in **Setup › Controls** to a key or controller button you can't hit by
+  accident; with a controller in your hands, bind it *on the controller*.
 - **Driver fallback:** if the hardware driver fails to start, the service keeps running
   in sim and the setup UI stays reachable.
 - **systemd `Restart=always`:** if the service crashes, systemd restarts it.

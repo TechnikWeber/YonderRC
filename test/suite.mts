@@ -507,6 +507,23 @@ async function main() {
   for (let i = 0; i < 40; i++) up = engH.compute(hp, snap({ keys: new Set(['y']) }), 50)[15];
   ok('hold-ramp center holds toward max', up > 1900, `=${up}`);
 
+  // ---- action bindings: panic ships unbound, legacy Escape is dropped ----
+  const { migrateActions } = await import('../packages/ground/src/lib/actions');
+  const fresh = migrateActions(null);
+  ok('panic is unbound by default', fresh['panic-disarm'].key === null && fresh['panic-disarm'].button === null);
+  ok('arm is unbound by default', fresh['toggle-arm'].key === null && fresh['toggle-arm'].button === null);
+  ok('the harmless defaults stay', fresh['record-toggle'].key === 'r' && fresh.snapshot.key === 't');
+  // The old shipped default was never a choice — drop it on migration.
+  const legacy = migrateActions({ 'panic-disarm': { key: 'escape', button: null } });
+  ok('legacy escape default is dropped', legacy['panic-disarm'].key === null);
+  // Anything the operator actually picked survives, including Escape *plus* a button.
+  const chosen = migrateActions({ 'panic-disarm': { key: 'escape', button: 7 } });
+  ok('a deliberate escape+button survives', chosen['panic-disarm'].key === 'escape' && chosen['panic-disarm'].button === 7);
+  const custom = migrateActions({ 'panic-disarm': { key: 'p', button: null } });
+  ok('a custom panic key survives', custom['panic-disarm'].key === 'p');
+  const btnOnly = migrateActions({ 'panic-disarm': { key: null, button: 3 } });
+  ok('a controller-only panic survives', btnOnly['panic-disarm'].button === 3);
+
   // ---- auto-disarm on reconnect: type policy + operator override ----
   const { resolveAutoDisarm } = await import('../packages/ground/src/lib/templates');
   ok('auto follows car policy', resolveAutoDisarm('auto', 'car') === true);

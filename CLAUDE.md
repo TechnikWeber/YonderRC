@@ -62,7 +62,10 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   uses the throttle channel's detent to know the safe rest (centre vs idle).
 - **Actions** (`ground/src/lib/actions.ts`): panic-disarm, arm, next-camera, record,
   snapshot — bindable to key+button, edited in Setup › Controls. Add new bindable
-  features here rather than scattering hotkeys.
+  features here rather than scattering hotkeys. **panic-disarm and toggle-arm ship
+  unbound** (panic fires instantly with no hold — an accidental press is a crash);
+  storage is `yonderrc.actions.v2`, and `migrateActions` drops a stored panic binding
+  that is exactly the pre-v1.30 `escape` default while keeping deliberate choices.
 - **Video** (`ground/src/components/VideoPanel.tsx`): self-healing WHEP player. The
   watchdog uses **refs, not stale state**; a fresh connect bumps `genRef` so a
   superseded attempt can't attach a dead stream. Keep that invariant.

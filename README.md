@@ -70,7 +70,9 @@ second row, and below it the arm button with the touch joysticks and bindable bu
   arm/disarm. Hold time is adjustable and the protection can be switched off entirely in
   Setup › Controls; **panic-disarm** stays instant either way.
 - **Pre-arm check** (throttle must be at its rest position) and **panic-disarm** on a
-  bindable key/button, always sent over the reliable link.
+  bindable key/button, always sent over the reliable link. Panic ships **unbound**: it
+  fires instantly with no hold, so you choose a key or controller button you can't hit
+  by accident.
 - Model switching and settings are locked while armed.
 - **Optional shared secret** (off by default): when set, the control link and the
   setup API require it — quick to connect the first time, lockable when you want it.

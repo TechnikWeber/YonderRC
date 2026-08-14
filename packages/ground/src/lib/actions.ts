@@ -28,21 +28,55 @@ export const ACTION_LABELS: Record<ActionId, string> = {
   snapshot: 'Snapshot',
 };
 
-const KEY = 'yonderrc.actions.v1';
+const KEY = 'yonderrc.actions.v2';
+const LEGACY_KEY = 'yonderrc.actions.v1';
+
+/**
+ * Panic-disarm ships **unbound on purpose**. It cuts the motors instantly and
+ * without a hold, so a stray Escape — or a controller button you forgot you had
+ * mapped — is a crash on an aircraft. Bind it yourself once you know which key or
+ * button you want, ideally one you can't hit by accident.
+ *
+ * Bindings are global (not per model), so this is the default for every vehicle
+ * type and input method.
+ */
 const DEFAULTS: ActionBindings = {
-  'panic-disarm': { key: 'escape', button: null },
+  'panic-disarm': { key: null, button: null },
   'toggle-arm': { key: null, button: null },
   'next-camera': { key: 'c', button: null },
   'record-toggle': { key: 'r', button: null },
   snapshot: { key: 't', button: null },
 };
 
+/** The panic binding that used to ship by default, up to v1.29.0. */
+const LEGACY_PANIC = { key: 'escape', button: null };
+
+/**
+ * Merge stored bindings over the defaults. A panic binding that is exactly the
+ * old shipped default is dropped: it was never a deliberate choice, and keeping
+ * it would leave existing installs with the very hair-trigger this change
+ * removes. Anything the operator actually picked survives.
+ */
+export function migrateActions(stored: Partial<ActionBindings> | null | undefined): ActionBindings {
+  const merged = { ...DEFAULTS, ...(stored ?? {}) };
+  const panic = merged['panic-disarm'];
+  if (panic && panic.key === LEGACY_PANIC.key && panic.button === LEGACY_PANIC.button) {
+    merged['panic-disarm'] = { ...DEFAULTS['panic-disarm'] };
+  }
+  return merged;
+}
+
 export function loadActions(): ActionBindings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<ActionBindings>;
-      return { ...DEFAULTS, ...parsed };
+    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<ActionBindings>) };
+    // First run after the upgrade: take the old bindings across, minus the
+    // legacy Escape default, and persist under the new key.
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const migrated = migrateActions(JSON.parse(legacy) as Partial<ActionBindings>);
+      saveActions(migrated);
+      return migrated;
     }
   } catch {
     /* ignore */
