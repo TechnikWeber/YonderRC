@@ -63,6 +63,9 @@ second row, and below it the arm button with the touch joysticks and bindable bu
 - **Arming**; every new connection starts disarmed. **Auto-disarm on reconnect is
   coupled to the vehicle type** (car/boat on, plane/drone off — pushed from the
   ground) so a reconnect can't cut an aircraft's motors in flight.
+- **Hold-to-arm**: the arm button has to be held for 3 s (with a countdown filling the
+  button) to arm *or* disarm, so a mis-touch on a phone can't cut the motors.
+  **Panic-disarm** stays instant.
 - **Pre-arm check** (throttle must be at its rest position) and **panic-disarm** on a
   bindable key/button, always sent over the reliable link.
 - Model switching and settings are locked while armed.

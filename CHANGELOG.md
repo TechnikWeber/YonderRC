@@ -3,6 +3,42 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.22.0
+**English**
+- **Hold-to-arm (3 s)**: the arm button no longer toggles on a tap. Press and hold it
+  for 3 seconds — the button fills up and counts down ("ARMING IN 1.6 s") — and the
+  same hold is required to *disarm*, which is the accidental touch that actually hurts.
+  Releasing early cancels; losing the link mid-hold cancels too. Works with a finger,
+  the mouse and Space/Enter, with a short haptic buzz on phones that support it.
+  **Panic-disarm (Setup › Controls) stays instant** — that's the emergency path.
+- **OSD shows only DISARMED / FAILSAFE**, never ARMED. Armed is the normal case and is
+  already obvious from the flight timer and the channel bars, so the badge is dropped —
+  one element less over the picture on a phone.
+- **Fixed the stretched OSD badge**: the top-centre strip inherited `flex-direction:
+  column` from `.osd > div`, so LINK and DISARMED were stacked *and* the shorter badge
+  was stretched to the wider one — the blank tail behind "LINK" that vanished as soon
+  as you armed. Both centre strips are proper rows again.
+- **More room between the touch joysticks** (gap 18px → up to 64px, scaled with the
+  viewport): easier two-thumb control on a phone, in every stick mode, and still no
+  wrapping on narrow screens.
+
+**Deutsch**
+- **Halten zum Armen (3 s)**: der Arm-Button schaltet nicht mehr auf Antippen. 3 Sekunden
+  gedrückt halten — der Button füllt sich und zählt herunter („ARMING IN 1.6 s") — und
+  dasselbe Halten gilt fürs *Disarmen*, denn das ist der Fehlgriff, der wirklich weh tut.
+  Früher loslassen bricht ab; ein Link-Verlust während des Haltens ebenfalls. Geht mit
+  Finger, Maus und Leertaste/Enter, mit kurzem Vibrieren auf Handys, die das können.
+  **Panic-Disarm (Setup › Controls) bleibt sofort** — das ist der Notfallweg.
+- **Im OSD steht nur noch DISARMED / FAILSAFE**, nie ARMED. Gearmt ist der Normalfall und
+  am Flight-Timer und den Kanalbalken ohnehin sichtbar — ein Element weniger im Bild.
+- **Verzerrtes OSD-Badge behoben**: der obere Mittelstreifen hat `flex-direction: column`
+  von `.osd > div` geerbt, dadurch standen LINK und DISARMED untereinander *und* das
+  kürzere Badge wurde auf die Breite des längeren gestreckt — das leere Feld hinter
+  „LINK", das beim Armen verschwand. Beide Mittelstreifen sind wieder echte Zeilen.
+- **Mehr Platz zwischen den Touch-Joysticks** (Abstand 18px → bis 64px, mit der
+  Viewport-Breite skaliert): bessere Zwei-Daumen-Bedienung am Handy, in allen Stick-Modes,
+  ohne auf schmalen Displays umzubrechen.
+
 ## v1.21.1
 **English**
 - **Documentation pass over all four docs** (EN + DE), correcting what had gone stale:

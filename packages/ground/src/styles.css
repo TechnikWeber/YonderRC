@@ -199,6 +199,8 @@ body {
 
 /* ---- control pad ---- */
 .arm-btn {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   padding: 16px;
   font-size: 17px;
@@ -209,12 +211,36 @@ body {
   color: var(--idle);
   background: color-mix(in srgb, var(--idle) 10%, var(--panel-2));
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: none; /* holding the button must not scroll or zoom the page */
+  user-select: none;
+  -webkit-user-select: none;
 }
 .arm-btn.armed {
   border-color: var(--arm);
   color: #06210f;
   background: var(--arm);
+}
+/* Hold-to-confirm: the fill sweeps left→right over the 3 s hold (v1.22). */
+.arm-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: color-mix(in srgb, var(--idle) 45%, transparent);
+  pointer-events: none;
+}
+.arm-btn.armed .arm-fill {
+  background: rgba(6, 33, 15, 0.32);
+}
+.arm-btn.holding {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--idle) 45%, transparent);
+}
+.arm-btn.armed.holding {
+  box-shadow: 0 0 0 2px rgba(6, 33, 15, 0.45);
+}
+.arm-text {
+  position: relative; /* above the fill */
 }
 .arm-btn:focus-visible {
   outline: 2px solid #fff;
@@ -423,7 +449,9 @@ body {
 /* ---- virtual joystick ---- */
 .joy-row {
   display: flex;
-  gap: 18px;
+  /* Thumbs need room between the sticks on a phone; grows with the viewport but
+     never so far that the two 128px sticks wrap on a narrow screen. */
+  gap: clamp(18px, 12vw, 64px);
   justify-content: center;
   flex-wrap: wrap;
   margin: 14px 0 4px;
@@ -1129,20 +1157,31 @@ body {
 @media (max-width: 640px) { .rec-grid { grid-template-columns: 1fr 1fr; } }
 
 /* ---- OSD top-center armed + stats (v1.7) ---- */
-.osd-tc {
+/* Both centre strips are rows — `.osd > div` sets column, which stacked the
+   badges AND stretched the shorter one to the widest sibling (the LINK badge
+   grew a blank tail next to DISARMED). Keep the row + centre the badges. */
+/* Two classes so these win over `.osd > div` (class + type), which is what
+   forced the column in the first place. */
+.osd > .osd-tc {
   position: absolute;
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
 }
-.osd-bc {
+.osd > .osd-bc {
   position: absolute;
   bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 .osd-tr,

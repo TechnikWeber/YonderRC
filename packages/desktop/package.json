@@ -1,6 +1,6 @@
 {
   "name": "@yonderrc/desktop",
-  "version": "1.21.1",
+  "version": "1.22.0",
   "private": true,
   "description": "YonderRC desktop shell (Electron) with native SDL2 controller input and rumble.",
   "main": "dist/main.js",

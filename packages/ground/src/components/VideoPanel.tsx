@@ -621,10 +621,14 @@ export function VideoPanel({
     });
   }
 
-  const armBadge = (
-    <span className={`osd-badge ${failsafe ? 'bad' : armed ? 'go' : 'idle'}`}>
-      {failsafe ? 'FAILSAFE' : armed ? 'ARMED' : 'DISARMED'}
-    </span>
+  // Only the states worth interrupting the picture for: FAILSAFE and DISARMED
+  // ("why doesn't it move?"). ARMED is deliberately silent — that's the normal
+  // case, the flight timer and the channel bars already show it, and on a phone
+  // one badge less keeps the OSD off the middle of the frame.
+  const armBadge = failsafe ? (
+    <span className="osd-badge bad">FAILSAFE</span>
+  ) : armed ? null : (
+    <span className="osd-badge idle">DISARMED</span>
   );
 
   return (
@@ -785,7 +789,7 @@ export function VideoPanel({
                   badge would sit under the (wider) telemetry block. */}
               {compactOsd && armBadge}
             </div>
-            {!compactOsd && <div className="osd-bc">{armBadge}</div>}
+            {!compactOsd && armBadge && <div className="osd-bc">{armBadge}</div>}
             {osdFields.batteryBar && (
               <div className="osd-tr">
                 {telemetry && <TelemetryBar t={telemetry} />}

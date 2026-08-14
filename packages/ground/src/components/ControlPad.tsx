@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Detent, Profile } from '@yonderrc/protocol';
 import type { InputManager } from '../lib/input/inputManager';
 import type { BindingEngine } from '../lib/input/bindingEngine';
+import { ARM_HOLD_MS, holdProgress, holdRemainingS } from '../lib/hold';
 import { VirtualJoystick } from './VirtualJoystick';
 
 interface JoyCfg {
@@ -63,13 +64,62 @@ export function ControlPad({
   const handleJoy = useCallback((jid: string, x: number, y: number) => input.setJoystick(jid, x, y), [input]);
 
   const armDisabled = !connected || calibrationActive;
+
+  // Hold-to-confirm: a single tap can't arm (or, worse, disarm in flight) any
+  // more — the button has to be held for ARM_HOLD_MS and fills up while you do.
+  const [progress, setProgress] = useState(0);
+  const startedAt = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const firedRef = useRef(false);
+
+  const cancelHold = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    startedAt.current = null;
+    firedRef.current = false;
+    setProgress(0);
+  }, []);
+
+  const beginHold = useCallback(() => {
+    if (armDisabled || startedAt.current !== null) return;
+    startedAt.current = performance.now();
+    firedRef.current = false;
+    const step = () => {
+      const p = holdProgress(startedAt.current, performance.now());
+      setProgress(p);
+      if (p >= 1) {
+        if (!firedRef.current) {
+          firedRef.current = true;
+          navigator.vibrate?.(60); // haptic confirm on phones that support it
+          onToggleArm();
+        }
+        cancelHold();
+        return;
+      }
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }, [armDisabled, cancelHold, onToggleArm]);
+
+  // Losing the link (or starting ESC calibration) mid-hold must not leave a
+  // half-filled button that fires the moment it comes back.
+  useEffect(() => {
+    if (armDisabled) cancelHold();
+  }, [armDisabled, cancelHold]);
+  useEffect(() => () => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const holding = progress > 0;
   const armLabel = !connected
     ? 'Connect the vehicle to arm'
     : calibrationActive
       ? 'ESC calibration active — cancel it to arm'
-      : armed
-        ? 'ARMED — tap to disarm'
-        : 'DISARMED — tap to arm';
+      : holding
+        ? `${armed ? 'DISARMING' : 'ARMING'} IN ${holdRemainingS(progress).toFixed(1)} s — keep holding`
+        : armed
+          ? `ARMED — hold ${ARM_HOLD_MS / 1000} s to disarm`
+          : `DISARMED — hold ${ARM_HOLD_MS / 1000} s to arm`;
 
   const methodHint =
     profile.inputMethod === 'keyboard'
@@ -84,12 +134,28 @@ export function ControlPad({
         {profile.name} · {profile.vehicleType} · {profile.inputMethod}
       </span>
       <button
-        className={`arm-btn${armed ? ' armed' : ''}`}
-        onClick={onToggleArm}
+        className={`arm-btn${armed ? ' armed' : ''}${holding ? ' holding' : ''}`}
+        onPointerDown={(e) => {
+          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          beginHold();
+        }}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        onPointerCancel={cancelHold}
+        // Space/Enter hold works too; the browser's synthetic click is ignored.
+        onKeyDown={(e) => {
+          if (!e.repeat && (e.key === ' ' || e.key === 'Enter')) beginHold();
+        }}
+        onKeyUp={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') cancelHold();
+        }}
+        onBlur={cancelHold}
+        onClick={(e) => e.preventDefault()}
         disabled={armDisabled}
         aria-pressed={armed}
       >
-        {armLabel}
+        <i className="arm-fill" style={{ width: `${Math.round(progress * 100)}%` }} aria-hidden="true" />
+        <span className="arm-text">{armLabel}</span>
       </button>
 
       {hasJoys && (

@@ -66,6 +66,9 @@ Buttons.*
 - **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect ist
   an den Fahrzeugtyp gekoppelt** (Auto/Boot an, Flugzeug/Drohne aus — vom Ground
   gepusht), damit ein Reconnect einem Luftfahrzeug nicht im Flug die Motoren kappt.
+- **Halten zum Armen**: der Arm-Button muss 3 s gehalten werden (mit Countdown, der
+  den Button füllt), zum Armen *und* zum Disarmen — ein Fehlgriff am Handy kappt so
+  nicht die Motoren. **Panic-Disarm** bleibt sofort.
 - **Pre-Arm-Check** (Gas muss in Ruhelage stehen) und **Panic-Disarm** auf belegbarer
   Taste/Button, immer über die zuverlässige Verbindung gesendet.
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.

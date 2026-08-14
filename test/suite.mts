@@ -368,6 +368,18 @@ async function main() {
   low[pThr] = 1000;
   ok('plane arms at idle throttle', preArmCheck(planeP, low).ok);
 
+  // ---- hold-to-arm timing ----
+  const { holdProgress, holdRemainingS, ARM_HOLD_MS } = await import('../packages/ground/src/lib/hold');
+  ok('hold is 3 s', ARM_HOLD_MS === 3000);
+  ok('not holding = 0', holdProgress(null, 12345) === 0);
+  ok('hold starts at 0', holdProgress(1000, 1000) === 0);
+  ok('hold half way', near(holdProgress(1000, 2500), 0.5));
+  ok('hold completes', holdProgress(1000, 4000) === 1);
+  ok('hold clamps past the end', holdProgress(1000, 99999) === 1);
+  ok('clock jumping back does not fire', holdProgress(1000, 500) === 0);
+  ok('zero hold fires at once', holdProgress(1000, 1000, 0) === 1);
+  ok('remaining counts down', holdRemainingS(0) === 3 && holdRemainingS(0.5) === 1.5 && holdRemainingS(1) === 0);
+
   // ---- low-battery warning ----
   const { evaluateBattery, BATTERY_DEFAULTS } = await import('../packages/ground/src/lib/battery');
   const mk = (over: Partial<import('@yonderrc/protocol').TelemetryMessage>): import('@yonderrc/protocol').TelemetryMessage => ({
