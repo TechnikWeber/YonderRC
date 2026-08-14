@@ -40,8 +40,12 @@ go2rtc, does `npm install`, and enables three services:
 ## 3. First boot / onboarding
 
 - If the Pi joins a network you preconfigured, open `http://<pi-ip>:8080/setup`.
-- If it has **no** network, it starts a WiFi hotspot **`YonderRC-setup`**
-  (password `yonderrc123`). Join it and open `http://192.168.4.1:8080/setup`.
+- If it has **no** network, it starts an **open** WiFi hotspot **`YonderRC-setup`**
+  (no password, so the captive portal can open the page straight away). Join it and the
+  setup page appears; otherwise open `http://192.168.4.1:8080/setup`.
+  From there, **Setup › WiFi** scans for networks and joins one — the hotspot closes as
+  soon as the Pi is on your WiFi. Set a hotspot password (and an API secret) in the same
+  panel before the vehicle leaves the bench.
 
 On the setup page you can set the vehicle name, output driver (sim / pca9685 /
 gpio-pwm / sbus), cameras, watchdog, throttle channels, connect LTE (enter your

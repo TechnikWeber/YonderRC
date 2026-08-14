@@ -73,6 +73,71 @@ export interface WifiStatus {
   ip: string | null;
 }
 
+/** One network from a scan. */
+export interface WifiNetwork {
+  ssid: string;
+  /** 0..100 as reported by NetworkManager. */
+  signal: number;
+  /** False for an open network. */
+  secured: boolean;
+  /** Already connected to this one. */
+  active: boolean;
+}
+
+/**
+ * The onboarding hotspot. An **open** AP by default: the captive portal then puts
+ * the setup page in front of the operator with nothing to type, and a shared
+ * default password published in the README protected nothing anyway. Set a
+ * password here once the vehicle leaves the bench.
+ */
+export interface HotspotConfig {
+  ssid: string;
+  /** null/'' = open network. WPA2 needs at least 8 characters. */
+  password: string | null;
+}
+
+export const HOTSPOT_DEFAULTS: HotspotConfig = { ssid: 'YonderRC-setup', password: null };
+
+/**
+ * Parse `nmcli -t -f IN-USE,SIGNAL,SECURITY,SSID dev wifi list`. Terse output is
+ * colon-separated with `\:` escaping inside fields (SSIDs may contain colons),
+ * so unescape before use. Hidden networks (empty SSID) are dropped, duplicates
+ * (same SSID on several bands) collapse to the strongest, and the result is
+ * sorted strongest first.
+ */
+export function parseWifiScan(out: string): WifiNetwork[] {
+  const best = new Map<string, WifiNetwork>();
+  for (const line of out.split('\n')) {
+    if (!line.trim()) continue;
+    // Split on unescaped colons, then unescape.
+    const parts = line.split(/(?<!\\):/).map((p) => p.replace(/\\:/g, ':'));
+    const [inUse, signalRaw, security, ...rest] = parts;
+    const ssid = rest.join(':').trim();
+    if (!ssid) continue;
+    const signal = Number(signalRaw);
+    const net: WifiNetwork = {
+      ssid,
+      signal: Number.isFinite(signal) ? signal : 0,
+      secured: !!security && security.trim() !== '' && security.trim() !== '--',
+      active: inUse.trim() === '*',
+    };
+    const prev = best.get(ssid);
+    if (!prev || net.signal > prev.signal) best.set(ssid, { ...net, active: net.active || !!prev?.active });
+  }
+  return [...best.values()].sort((a, b) => b.signal - a.signal);
+}
+
+/**
+ * nmcli arguments that create the onboarding hotspot. Without a password the
+ * hotspot is open; nmcli rejects a WPA key shorter than 8 characters, so a too
+ * short one is treated as "no password" rather than failing the whole bring-up.
+ */
+export function hotspotArgs(cfg: HotspotConfig, iface = 'wlan0'): string[] {
+  const args = ['device', 'wifi', 'hotspot', 'ifname', iface, 'ssid', cfg.ssid || HOTSPOT_DEFAULTS.ssid];
+  if (cfg.password && cfg.password.length >= 8) args.push('password', cfg.password);
+  return args;
+}
+
 export interface SystemStatus {
   kind: string; // "sim" | "real"
   hostname: string;
@@ -130,6 +195,16 @@ export interface SystemManager {
   linkSignal(): Promise<LinkSignal>;
   /** Probe attached hardware (I²C devices, modem, cameras) to suggest a config. */
   detectHardware(): Promise<DetectResult>;
+  /** Nearby WiFi networks (triggers a rescan). */
+  wifiScan(): Promise<WifiNetwork[]>;
+  /**
+   * Join a WiFi network. On a single-radio Pi this tears down the onboarding
+   * hotspot, so the caller loses the connection it asked over; on failure the
+   * hotspot is brought back up so the vehicle can't lock itself out.
+   */
+  wifiConnect(ssid: string, password: string | null): Promise<ActionResult>;
+  /** (Re)start the onboarding hotspot with the given settings. */
+  hotspotStart(cfg: HotspotConfig): Promise<ActionResult>;
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */
   tailscaleUp(authKey?: string): Promise<ActionResult>;
   tailscaleDown(): Promise<ActionResult>;

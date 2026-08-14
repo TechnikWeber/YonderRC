@@ -14,8 +14,10 @@ import type {
   SystemStatus,
   TailscaleStatus,
   WifiStatus,
+  WifiNetwork,
+  HotspotConfig,
 } from './SystemManager.js';
-import { normaliseWireguardConf } from './SystemManager.js';
+import { normaliseWireguardConf, parseWifiScan, hotspotArgs, HOTSPOT_DEFAULTS } from './SystemManager.js';
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c } from './detect.js';
@@ -24,6 +26,9 @@ const run = promisify(exec);
 const runFile = promisify(execFile);
 
 /** Shell helper — ONLY for static commands (pipes/grep). Never pass user input. */
+/** The Pi's built-in WiFi. Same assumption as the signal readout. */
+const WIFI_IFACE = 'wlan0';
+
 async function sh(cmd: string): Promise<{ ok: boolean; out: string }> {
   try {
     const { stdout } = await run(cmd, { timeout: 15000 });
@@ -127,6 +132,9 @@ export class RealSystem implements SystemManager {
     };
   }
 
+  /** Remembered so a failed join can restore the same hotspot settings. */
+  private lastHotspot: HotspotConfig | null = null;
+
   private async wifiStatus(): Promise<WifiStatus> {
     const mode = await sh("nmcli -t -f DEVICE,TYPE,STATE device | grep ':wifi:' | head -1");
     const ssid = await sh("nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2");
@@ -135,6 +143,45 @@ export class RealSystem implements SystemManager {
       mode: mode.out.includes('connected') ? 'client' : 'unknown',
       ssid: ssid.ok ? ssid.out || null : null,
       ip: ip.ok ? (ip.out.split('/')[0] || null) : null,
+    };
+  }
+
+  /** Nearby networks. `--rescan yes` costs a few seconds but avoids a stale list. */
+  async wifiScan(): Promise<WifiNetwork[]> {
+    const r = await shArgs('nmcli', ['-t', '-f', 'IN-USE,SIGNAL,SECURITY,SSID', 'device', 'wifi', 'list', '--rescan', 'yes']);
+    return r.ok ? parseWifiScan(r.out) : [];
+  }
+
+  /**
+   * Join a network. The Pi has one radio, so NetworkManager drops the hotspot the
+   * moment it associates — the HTTP response usually never reaches the phone that
+   * asked. That's expected; what must not happen is a vehicle stuck with neither:
+   * on failure the hotspot is brought straight back up.
+   */
+  async wifiConnect(ssid: string, password: string | null): Promise<ActionResult> {
+    const args = ['device', 'wifi', 'connect', ssid, 'ifname', WIFI_IFACE];
+    if (password) args.push('password', password);
+    const r = await shArgs('nmcli', args);
+    if (r.ok) {
+      // Make sure the hotspot profile doesn't fight the new connection.
+      await shArgs('nmcli', ['connection', 'down', 'Hotspot']);
+      const ip = (await sh(`nmcli -t -f IP4.ADDRESS dev show ${WIFI_IFACE} | head -1 | cut -d: -f2`)).out.split('/')[0];
+      return { ok: true, message: `Connected to "${ssid}"${ip ? ` — ${ip}` : ''}. The hotspot is closing; rejoin your own WiFi.` };
+    }
+    await this.hotspotStart(this.lastHotspot ?? HOTSPOT_DEFAULTS);
+    return { ok: false, message: `Could not join "${ssid}": ${r.out.split('\n').slice(-1)[0] || 'unknown error'}. Hotspot restarted.` };
+  }
+
+  async hotspotStart(cfg: HotspotConfig): Promise<ActionResult> {
+    this.lastHotspot = cfg;
+    const r = await shArgs('nmcli', hotspotArgs(cfg, WIFI_IFACE));
+    if (!r.ok) return { ok: false, message: `Hotspot failed: ${r.out}` };
+    // NetworkManager defaults to 10.42.0.1; the docs and captive portal use .4.1.
+    await shArgs('nmcli', ['connection', 'modify', 'Hotspot', 'ipv4.addresses', '192.168.4.1/24', 'ipv4.method', 'shared']);
+    await shArgs('nmcli', ['connection', 'up', 'Hotspot']);
+    return {
+      ok: true,
+      message: `Hotspot "${cfg.ssid}" up (${cfg.password ? 'WPA2' : 'open'}) at http://192.168.4.1:8080/setup`,
     };
   }
 

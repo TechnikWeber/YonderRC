@@ -10,6 +10,8 @@ import type {
   SystemStatus,
   TailscaleStatus,
   WifiStatus,
+  WifiNetwork,
+  HotspotConfig,
 } from './SystemManager.js';
 
 /**
@@ -39,6 +41,13 @@ export class SimSystem implements SystemManager {
     backendState: 'Stopped',
   };
   private wifi: WifiStatus = { mode: 'ap', ssid: 'YonderRC-setup', ip: '192.168.4.1' };
+  /** Mock neighbourhood, so the WiFi panel is fully usable without a Pi. */
+  private networks: WifiNetwork[] = [
+    { ssid: 'Weber-Home', signal: 88, secured: true, active: false },
+    { ssid: 'Weber-Home-5G', signal: 74, secured: true, active: false },
+    { ssid: 'FRITZ!Box 7590', signal: 51, secured: true, active: false },
+    { ssid: 'Gastnetz', signal: 33, secured: false, active: false },
+  ];
 
   async status(): Promise<SystemStatus> {
     return {
@@ -48,6 +57,24 @@ export class SimSystem implements SystemManager {
       lte: { ...this.lte },
       wifi: { ...this.wifi },
     };
+  }
+
+  async wifiScan(): Promise<WifiNetwork[]> {
+    return this.networks.map((n) => ({ ...n, active: n.ssid === this.wifi.ssid && this.wifi.mode === 'client' }));
+  }
+
+  async wifiConnect(ssid: string, password: string | null): Promise<ActionResult> {
+    const net = this.networks.find((n) => n.ssid === ssid);
+    if (net?.secured && !password) {
+      return { ok: false, message: `"${ssid}" needs a password.` };
+    }
+    this.wifi = { mode: 'client', ssid, ip: '192.168.178.42' };
+    return { ok: true, message: `Connected to "${ssid}" — 192.168.178.42 (simulated). The hotspot is closing.` };
+  }
+
+  async hotspotStart(cfg: HotspotConfig): Promise<ActionResult> {
+    this.wifi = { mode: 'ap', ssid: cfg.ssid, ip: '192.168.4.1' };
+    return { ok: true, message: `Hotspot "${cfg.ssid}" up (${cfg.password ? 'WPA2' : 'open'}) (simulated).` };
   }
 
   async lteConnect(cfg: LteConfig): Promise<ActionResult> {

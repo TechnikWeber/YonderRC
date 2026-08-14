@@ -3,6 +3,41 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.27.0
+**English**
+- **Wi-Fi onboarding from the phone.** New **Setup › WiFi** panel: scan for networks
+  (SSID, signal, lock state), pick one, enter the password, connect. The Pi has a single
+  radio, so joining your network closes the setup hotspot — the page stops responding,
+  which is the expected sign it worked. **If the password was wrong the vehicle restarts
+  the hotspot**, so it can't lock itself out.
+- **The onboarding hotspot is now open by default.** The captive portal can then put the
+  setup page in front of you with nothing to type; a default password published in a
+  public README protected nothing anyway. **Set an SSID and a password** (min. 8
+  characters, WPA2) in the same panel — *Save* applies at the next hotspot start,
+  *Save & start now* restarts it immediately.
+- **Generate button for the API secret**: 20 random characters from a confusable-free
+  alphabet, shown once so you can copy it, then applied to the vehicle.
+- **The status header no longer claims "Tailscale"** when another method is configured.
+  The row is now **Remote access** and shows the selected method with its state
+  (`ZeroTier · up (joined …)`, `WireGuard · down`, `none`).
+
+**Deutsch**
+- **WLAN-Einrichtung vom Handy.** Neues Panel **Setup › WiFi**: Netze scannen (SSID,
+  Signal, verschlüsselt ja/nein), auswählen, Passwort eingeben, verbinden. Der Pi hat
+  nur eine Funkeinheit — das Verbinden schließt also den Setup-Hotspot, die Seite
+  antwortet nicht mehr, und genau das ist das erwartete Zeichen. **War das Passwort
+  falsch, fährt das Fahrzeug den Hotspot wieder hoch**, es sperrt sich also nicht aus.
+- **Der Onboarding-Hotspot ist jetzt standardmäßig offen.** So stellt das Captive Portal
+  die Setup-Seite ohne Tipparbeit vor dich; ein in einem öffentlichen README
+  dokumentiertes Standardpasswort hat ohnehin nichts geschützt. **SSID und Passwort**
+  (mind. 8 Zeichen, WPA2) lassen sich im selben Panel setzen — *Save* wirkt beim
+  nächsten Hotspot-Start, *Save & start now* startet ihn sofort neu.
+- **Generieren-Button für das API-Secret**: 20 Zufallszeichen aus einem Alphabet ohne
+  verwechselbare Zeichen, einmal sichtbar zum Kopieren, dann ans Fahrzeug übernommen.
+- **Die Statuszeile behauptet nicht mehr „Tailscale"**, wenn eine andere Methode
+  konfiguriert ist. Die Zeile heißt jetzt **Remote access** und zeigt die gewählte
+  Methode mit ihrem Zustand (`ZeroTier · up (joined …)`, `WireGuard · down`, `none`).
+
 ## v1.26.0
 **English**
 - **Auto-disarm on reconnect is now selectable** in Setup › Controls: **Auto** (default,

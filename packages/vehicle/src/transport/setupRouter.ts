@@ -12,6 +12,7 @@ import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { secretOk, readSecretFromReq } from './auth.js';
 import {
+  HOTSPOT_DEFAULTS,
   redactRemoteConfig,
   normaliseWireguardConf,
   looksLikeWireguardConf,
@@ -227,6 +228,54 @@ export async function handleSetup(
   }
   if (url === '/api/remote/down' && method === 'POST') {
     json(res, 200, await ctx.system.remoteDown(ctx.config.remoteAccess));
+    return true;
+  }
+
+  // --- WiFi: join a network from the onboarding hotspot, and the hotspot itself ---
+  if (url === '/api/wifi' && method === 'GET') {
+    const st = await ctx.system.status();
+    json(res, 200, {
+      wifi: st.wifi,
+      hotspot: { ssid: ctx.config.hotspot.ssid, hasPassword: !!ctx.config.hotspot.password },
+    });
+    return true;
+  }
+  if (url === '/api/wifi/scan' && method === 'POST') {
+    json(res, 200, { networks: await ctx.system.wifiScan() });
+    return true;
+  }
+  if (url === '/api/wifi/connect' && method === 'POST') {
+    const body = (await readBody(req)) as { ssid?: string; password?: string | null };
+    const ssid = (body.ssid ?? '').trim();
+    if (!ssid) {
+      json(res, 400, { ok: false, message: 'Pick a network first.' });
+      return true;
+    }
+    // On a single-radio Pi this drops the hotspot mid-request, so the caller may
+    // never see this response — the UI says so before it asks.
+    const r = await ctx.system.wifiConnect(ssid, body.password?.trim() || null);
+    json(res, r.ok ? 200 : 500, r);
+    return true;
+  }
+  if (url === '/api/wifi/hotspot' && method === 'POST') {
+    const body = (await readBody(req)) as { ssid?: string; password?: string | null; start?: boolean };
+    const password = body.password === undefined ? ctx.config.hotspot.password : body.password || null;
+    if (password && password.length < 8) {
+      json(res, 400, { ok: false, message: 'A WiFi password needs at least 8 characters — leave it empty for an open hotspot.' });
+      return true;
+    }
+    const hotspot = { ssid: (body.ssid ?? ctx.config.hotspot.ssid).trim() || HOTSPOT_DEFAULTS.ssid, password };
+    savePersisted(ctx.config.configPath, { hotspot });
+    ctx.config.hotspot = hotspot;
+    if (body.start) {
+      const r = await ctx.system.hotspotStart(hotspot);
+      json(res, r.ok ? 200 : 500, r);
+      return true;
+    }
+    json(res, 200, {
+      ok: true,
+      message: `Saved. ${password ? 'The hotspot will use the new password' : 'The hotspot will be open'} the next time it starts (reboot, or use "Start hotspot now").`,
+    });
     return true;
   }
 

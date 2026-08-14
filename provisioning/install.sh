@@ -68,5 +68,6 @@ systemctl enable --now go2rtc.service yonderrc-vehicle.service yonderrc-onboard.
 echo
 echo "== Done =="
 echo "Setup UI:   http://<pi-ip>:8080/setup"
-echo "If the Pi has no network, it starts a WiFi hotspot 'YonderRC-setup'"
-echo "(password yonderrc123) — join it and open http://192.168.4.1:8080/setup"
+echo "If the Pi has no network, it starts an OPEN WiFi hotspot 'YonderRC-setup'"
+echo "— join it; the captive portal opens http://192.168.4.1:8080/setup"
+echo "There, Setup > WiFi scans and joins your network (and sets a hotspot password)."

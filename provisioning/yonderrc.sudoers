@@ -12,7 +12,8 @@
 #   zerotier-cli — join/leave a ZeroTier network         (Setup › Remote access)
 #   reboot       — the "Reboot vehicle" button           (Setup › System)
 #   (NetworkManager/`nmcli` is NOT listed — grant it to the user via polkit or
-#    the `netdev` group instead of sudo.)
+#    the `netdev` group instead of sudo. It is what Setup › WiFi uses to scan,
+#    join a network and (re)start the onboarding hotspot, and what LTE dials with.)
 #
 # INSTALL (replace "yonderrc" with your actual service user)
 #   sudo cp provisioning/yonderrc.sudoers /etc/sudoers.d/yonderrc

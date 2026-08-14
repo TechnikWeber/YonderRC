@@ -374,14 +374,34 @@ Under **Setup › Remote access** you pick **one** method:
 ## 5. Operate locally with no network (AP mode + phone)
 
 If the Pi finds **neither a known Wi-Fi nor LTE**, after boot it automatically starts
-its own **Wi-Fi hotspot "YonderRC-setup"** (password `yonderrc123`). This lets you
-control and configure entirely **without a laptop, using only a phone**:
+its own **Wi-Fi hotspot "YonderRC-setup"** — **open, with no password**, so the captive
+portal can put the page in front of you with nothing to type. This lets you control and
+configure entirely **without a laptop, using only a phone**:
 
 1. On the phone, connect to the Wi-Fi **"YonderRC-setup"**.
 2. Thanks to the **captive portal** the YonderRC page opens automatically (if not, open
    `http://192.168.4.1:8080/` in the browser).
 3. There you have **both**: the **control** (the ground app, served directly by the Pi)
    and under **Setup** the full configuration.
+
+### 5.1 Put the Pi on your Wi-Fi from the phone
+
+**Setup › WiFi** does the whole onboarding without a keyboard on the Pi:
+
+1. **Scan for networks** — the list shows SSID, signal and whether it's encrypted.
+2. Tap your network, type the password, **Connect**.
+3. The Pi has **one radio**, so joining your network **closes the hotspot** — the page
+   stops responding, which is the expected sign that it worked. Rejoin your own Wi-Fi
+   and open `http://yonderrc.local:8080/setup` (or the Pi's new IP).
+4. If the password was wrong, the vehicle **brings the hotspot back up** so you can't
+   lock yourself out. Join it again and retry.
+
+### 5.2 Hotspot password
+
+Under **Setup › WiFi › Setup hotspot** you can rename the hotspot and give it a
+password (min. 8 characters, WPA2). Leave the password empty to keep it open. *Save*
+applies it the next time the hotspot starts; *Save & start now* restarts it immediately
+— which of course drops you if you're connected through it.
 
 So the vehicle serves the ground app itself — the ground app connects back
 automatically to the same host (the Pi), including video. That makes the Pi
@@ -392,9 +412,10 @@ Tailscale address as usual.
 > too. You don't have to switch auto-disarm off for a plane/drone by hand — the ground
 > app sets it from the model type (car/boat on, plane/drone off).
 
-> **Who can reach it:** the hotspot is WPA2-protected, but anyone joined to it can talk
-> to the vehicle unless you set an **API secret** (6.1). The same applies on a shared
-> Wi-Fi.
+> **Who can reach it:** the hotspot is **open by default**, so anyone in range can join
+> and talk to the vehicle. On the bench that's convenient; before you go out, set a
+> **hotspot password** (5.2) and an **API secret** (6.1). A published default password
+> would have protected nothing, which is why there isn't one.
 
 ---
 

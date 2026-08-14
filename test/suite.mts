@@ -563,6 +563,36 @@ async function main() {
   ok('mAh threshold triggers', evaluateBattery(mahCfg, mk({ mah: 1850 })).low === true);
   ok('mAh below threshold ok', evaluateBattery(mahCfg, mk({ mah: 1000 })).low === false);
 
+  // ---- WiFi scan parsing + hotspot arguments ----
+  const { parseWifiScan, hotspotArgs, HOTSPOT_DEFAULTS } = await import('../packages/vehicle/src/system/SystemManager');
+  const scan = parseWifiScan(
+    [
+      '*:88:WPA2:Weber-Home',
+      ' :74:WPA2:Weber-Home-5G',
+      ' :51:WPA1 WPA2:FRITZ\\!Box 7590',
+      ' :33::Gastnetz', // open network → empty SECURITY
+      ' :20:WPA2:', // hidden SSID → dropped
+      ' :44:WPA2:Weber-Home', // same SSID on another band → keep the strongest
+      ' :12:WPA2:Cafe\\: Central', // escaped colon inside the SSID
+    ].join('\n'),
+  );
+  ok('scan drops hidden networks', !scan.some((n) => n.ssid === ''));
+  ok('scan dedupes by ssid', scan.filter((n) => n.ssid === 'Weber-Home').length === 1);
+  ok('scan keeps the strongest', scan.find((n) => n.ssid === 'Weber-Home')?.signal === 88);
+  ok('scan sorts strongest first', scan[0].ssid === 'Weber-Home' && scan[scan.length - 1].signal <= scan[0].signal);
+  ok('scan marks the active network', scan.find((n) => n.ssid === 'Weber-Home')?.active === true);
+  ok('scan detects open networks', scan.find((n) => n.ssid === 'Gastnetz')?.secured === false);
+  ok('scan keeps secured flag', scan.find((n) => n.ssid === 'Weber-Home-5G')?.secured === true);
+  ok('scan unescapes colons', scan.some((n) => n.ssid === 'Cafe: Central'), scan.map((n) => n.ssid).join('|'));
+  ok('scan of nothing is empty', parseWifiScan('').length === 0);
+
+  ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
+  const openArgs = hotspotArgs(HOTSPOT_DEFAULTS);
+  ok('open hotspot has no password arg', !openArgs.includes('password') && openArgs.includes('YonderRC-setup'));
+  ok('secured hotspot passes the key', hotspotArgs({ ssid: 'X', password: 'longenough' }).slice(-2).join(' ') === 'password longenough');
+  ok('too short key falls back to open', !hotspotArgs({ ssid: 'X', password: 'short' }).includes('password'));
+  ok('hotspot honours the interface', hotspotArgs(HOTSPOT_DEFAULTS, 'wlan1').includes('wlan1'));
+
   // ---- blackbox log CSV ----
   const { logToCsv } = await import('../packages/ground/src/lib/logger');
   const csv = logToCsv([{ t: 0, armed: 1, failsafe: 0, link: 'connected', rtt: 40, bitrate: 2500, loss: 0.5, fps: 30, vlat: 120, volt: 12.1, amp: 3.2, mah: 150, pct: 88 }]);

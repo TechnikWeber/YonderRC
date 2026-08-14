@@ -381,15 +381,35 @@ Unter **Setup › Remote access** wählst du **eine** Methode:
 ## 5. Lokal ohne Netz betreiben (AP-Modus + Handy)
 
 Wenn der Pi **weder ein bekanntes WLAN noch LTE** findet, startet er nach dem
-Booten automatisch einen eigenen **WLAN-Hotspot „YonderRC-setup"** (Passwort
-`yonderrc123`). So steuerst und konfigurierst du komplett **ohne Laptop, nur mit
-dem Handy**:
+Booten automatisch einen eigenen **WLAN-Hotspot „YonderRC-setup"** — **offen, ohne
+Passwort**, damit das Captive Portal die Seite ohne Tipparbeit vor dich stellt. So
+steuerst und konfigurierst du komplett **ohne Laptop, nur mit dem Handy**:
 
 1. Am Handy mit dem WLAN **„YonderRC-setup"** verbinden.
 2. Dank **Captive Portal** öffnet sich automatisch die YonderRC-Seite (falls nicht,
    im Browser `http://192.168.4.1:8080/` öffnen).
 3. Dort hast du **beides**: die **Steuerung** (Boden-App, direkt vom Pi ausgeliefert)
    und unter **Setup** die komplette Konfiguration.
+
+### 5.1 Den Pi vom Handy aus ins WLAN bringen
+
+**Setup › WiFi** erledigt das ganze Onboarding ohne Tastatur am Pi:
+
+1. **Scan for networks** — die Liste zeigt SSID, Signal und ob verschlüsselt.
+2. Dein Netz antippen, Passwort eingeben, **Connect**.
+3. Der Pi hat **eine Funkeinheit**, das Verbinden **schließt also den Hotspot** — die
+   Seite antwortet nicht mehr, und genau das ist das erwartete Zeichen, dass es
+   geklappt hat. Wieder ins eigene WLAN gehen und `http://yonderrc.local:8080/setup`
+   öffnen (oder die neue IP des Pi).
+4. War das Passwort falsch, **fährt das Fahrzeug den Hotspot wieder hoch** — du sperrst
+   dich also nicht aus. Erneut verbinden und nochmal probieren.
+
+### 5.2 Hotspot-Passwort
+
+Unter **Setup › WiFi › Setup hotspot** lassen sich Name und Passwort des Hotspots
+setzen (mind. 8 Zeichen, WPA2). Passwortfeld leer = offener Hotspot. *Save* wirkt beim
+nächsten Start des Hotspots, *Save & start now* startet ihn sofort neu — was dich
+natürlich rauswirft, wenn du gerade darüber verbunden bist.
 
 Das Fahrzeug liefert die Boden-App also selbst aus — die Boden-App verbindet sich
 automatisch zurück auf denselben Host (den Pi), inklusive Video. Damit ist der Pi
@@ -401,9 +421,11 @@ Laptop oder die Tailscale-Adresse.
 > abschalten — die Boden-App setzt ihn nach Modelltyp (Auto/Boot an,
 > Flugzeug/Drohne aus).
 
-> **Wer drankommt:** Der Hotspot ist WPA2-geschützt, aber jeder, der darin ist, kann
-> mit dem Fahrzeug reden, solange kein **API-Secret** gesetzt ist (6.1). Dasselbe gilt
-> in einem geteilten WLAN.
+> **Wer drankommt:** Der Hotspot ist **standardmäßig offen**, jeder in Reichweite kann
+> also beitreten und mit dem Fahrzeug reden. Auf der Werkbank ist das praktisch; vor dem
+> Rausgehen ein **Hotspot-Passwort** (5.2) und ein **API-Secret** (6.1) setzen. Ein
+> öffentlich dokumentiertes Standardpasswort hätte nichts geschützt — darum gibt es
+> keines. Dasselbe gilt in einem geteilten WLAN.
 
 ---
 

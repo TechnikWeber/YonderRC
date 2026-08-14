@@ -137,8 +137,10 @@ disarm — the throttle channel is visibly held safe while disarmed.*
 
 **Operation & setup**
 - Graphical **setup page** served by the vehicle itself (`/setup`): driver, cameras,
-  telemetry, watchdog, LTE, remote access, security — from a phone/laptop, no screen
-  needed. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
+  telemetry, watchdog, **Wi-Fi**, LTE, remote access, security — from a phone/laptop, no
+  screen needed. **Wi-Fi onboarding from the phone**: scan, pick a network, connect —
+  the setup hotspot closes once the Pi is on your Wi-Fi, and comes back if the password
+  was wrong. The **API secret** can be generated with one click. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
   vehicle (works over LAN, the Pi's AP, or a VPN address).
 
   ![Vehicle setup page: system status (LTE modem, operator, Tailscale, Wi-Fi) and the LTE section with APN, SIM PIN, APN auth and network mode](docs/screenshots/VehicleConfig_Setup.png?v=2)

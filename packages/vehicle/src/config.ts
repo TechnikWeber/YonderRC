@@ -4,7 +4,8 @@ import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg, GpsConfig } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
-import type { RemoteAccessConfig, LteConfig } from './system/SystemManager.js';
+import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';
+import { HOTSPOT_DEFAULTS } from './system/SystemManager.js';
 
 /**
  * Config is env-defaulted and file-persisted. The on-Pi setup UI writes a small
@@ -32,6 +33,8 @@ export interface VehicleConfig {
   lte: LteConfig;
   /** Remote access (Tailscale / ZeroTier / WireGuard); brought up at boot if kind≠none. */
   remoteAccess: RemoteAccessConfig;
+  /** Onboarding hotspot settings (SSID, optional password). */
+  hotspot: HotspotConfig;
   /**
    * Auto-disarm whenever a new ground connects. Safe for cars (prevents runaway);
    * turn OFF for aircraft, where disarming in flight would cut the motors.
@@ -70,6 +73,8 @@ export interface PersistentConfig {
   disarmOnReconnect?: boolean;
   apiSecret?: string | null;
   remoteAccess?: RemoteAccessConfig;
+  /** Onboarding hotspot (open by default — see HotspotConfig). */
+  hotspot?: HotspotConfig;
   telemetry?: TelemetryConfig;
   gps?: GpsConfig;
   cameras?: CameraCfg[];
@@ -134,6 +139,7 @@ export function loadConfig(): VehicleConfig {
     disarmOnReconnect: p.disarmOnReconnect ?? true,
     apiSecret: (p.apiSecret ?? process.env.YRC_API_SECRET ?? null) || null,
     remoteAccess: p.remoteAccess ?? { kind: 'none' },
+    hotspot: p.hotspot ?? { ...HOTSPOT_DEFAULTS },
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

@@ -47,6 +47,10 @@
       .btn.tiny { padding: 4px 10px; font-size: 12px; }
       .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
       .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
+      .mono { font-family: var(--mono); font-size: .92em; }
+      /* WiFi scan results: one full-width row per network, signal right-aligned. */
+      .wifi-row { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; margin-bottom: 6px; font-weight: 500; }
+      .wifi-sig { color: var(--muted); font-family: var(--mono); font-size: 12px; }
     </style>
   </head>
   <body>
@@ -96,6 +100,33 @@
 
         <div class="btns" style="margin-top:8px"><button class="btn" onclick="lteDiag()">Diagnostics (detect modem)</button></div>
         <pre id="lte-diag" style="white-space:pre-wrap;overflow-x:auto;font-size:12px;color:var(--muted)"></pre>
+      </section>
+
+      <section class="panel">
+        <div class="eyebrow">WiFi</div>
+        <div id="wifi-status" class="msg">…</div>
+        <div class="btns">
+          <button class="btn" onclick="scanWifi()">Scan for networks</button>
+        </div>
+        <div id="wifi-list"></div>
+        <label>Password<input id="wifiPass" type="password" autocomplete="off" placeholder="empty for an open network" /></label>
+        <div class="btns">
+          <button class="btn primary" onclick="connectWifi()">Connect</button>
+        </div>
+        <p class="msg">The Pi has one radio: joining a network <b>closes the setup hotspot</b>, so this page will stop responding. Rejoin your own WiFi and open <span class="mono">http://yonderrc.local:8080/setup</span>. If the password is wrong, the vehicle brings the hotspot back up.</p>
+        <div class="msg" id="wifi-msg"></div>
+
+        <div class="eyebrow2" style="margin-top:12px">Setup hotspot</div>
+        <div class="grid2">
+          <label>SSID<input id="apSsid" placeholder="YonderRC-setup" /></label>
+          <label>Password<input id="apPass" type="password" autocomplete="new-password" placeholder="empty = open network" /></label>
+        </div>
+        <div class="btns">
+          <button class="btn primary" onclick="saveHotspot(false)">Save</button>
+          <button class="btn" onclick="saveHotspot(true)">Save &amp; start now</button>
+        </div>
+        <p class="msg">The hotspot starts automatically when the Pi finds no known network. <b>Open by default</b> so the captive portal can put this page in front of you with nothing to type — set a password (min. 8 characters) once the vehicle leaves the bench, and an <b>API secret</b> above if the network isn't yours.</p>
+        <div class="msg" id="ap-msg"></div>
       </section>
 
       <section class="panel">
@@ -162,9 +193,11 @@
         <p class="msg">Optional shared secret. When set, saving settings here and the control link both require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted. <b>Off by default</b>, so first-time connect and setup need nothing.</p>
         <label>API secret<input id="apiSecret" type="password" placeholder="leave empty = off" autocomplete="new-password" /></label>
         <div class="btns">
+          <button class="btn" onclick="generateSecret()">Generate</button>
           <button class="btn primary" onclick="applySecret()">Apply secret</button>
           <button class="btn" onclick="clearSecret()">Disable</button>
         </div>
+        <p class="msg" id="sec-gen"></p>
         <div class="msg" id="sec-msg"></div>
       </section>
 
@@ -314,6 +347,28 @@
         return r.json();
       }
 
+      // The status row follows the CONFIGURED method, so it can't claim "Tailscale
+      // stopped" while ZeroTier is the one selected. `remote` is filled by loadRemote().
+      let remoteKindNow = 'none';
+      let remoteStatusNow = null;
+      const RKIND_LABEL = { none: 'none', tailscale: 'Tailscale', zerotier: 'ZeroTier', wireguard: 'WireGuard' };
+      function remoteLabel(s) {
+        const name = RKIND_LABEL[remoteKindNow] || remoteKindNow;
+        if (remoteKindNow === 'none') return 'none';
+        if (remoteKindNow === 'tailscale') return `${name} · ${s.tailscale.backendState}`;
+        const st = remoteStatusNow;
+        return `${name} · ${st ? (st.running ? 'up' : 'down') : '—'}${st && st.detail ? ' (' + st.detail + ')' : ''}`;
+      }
+      function remoteOk(s) {
+        if (remoteKindNow === 'none') return false;
+        if (remoteKindNow === 'tailscale') return s.tailscale.running;
+        return !!(remoteStatusNow && remoteStatusNow.running);
+      }
+      function remoteAddress(s) {
+        if (remoteKindNow === 'tailscale') return s.tailscale.ip;
+        return remoteStatusNow ? remoteStatusNow.address : null;
+      }
+
       function renderStatus(s) {
         const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
         const ts = s.tailscale, lte = s.lte, wifi = s.wifi;
@@ -326,8 +381,8 @@
           (lte.present ? row('· operator', (lte.operator || '—') + (lte.signal != null ? ` · ${lte.signal}%` : '')) : '') +
           (lte.apn ? row('· APN', lte.apn) : '') +
           (lte.ip ? row('· IP', lte.ip) : '') +
-          row('Tailscale', ts.backendState, ts.running ? 'go' : 'warn') +
-          (ts.ip ? row('· IP', ts.ip) : '') +
+          row('Remote access', remoteLabel(s), remoteOk(s) ? 'go' : 'warn') +
+          (remoteAddress(s) ? row('· IP', remoteAddress(s)) : '') +
           row('WiFi', `${wifi.mode}${wifi.ssid ? ' · ' + wifi.ssid : ''}`);
         if (ts.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${ts.loginUrl}" target="_blank" rel="noreferrer">${ts.loginUrl}</a>`;
       }
@@ -434,6 +489,18 @@
       function updateSecState(authRequired) {
         $('sec-msg').textContent = authRequired ? 'A secret is currently required.' : 'No secret set (open).';
       }
+      /** 20 random chars from a confusable-free alphabet — long enough to be worth having. */
+      function generateSecret() {
+        const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const bytes = new Uint8Array(20);
+        crypto.getRandomValues(bytes);
+        const secret = [...bytes].map((b) => alphabet[b % alphabet.length]).join('');
+        const el = $('apiSecret');
+        el.type = 'text'; // it has to be readable once — it is never shown again
+        el.value = secret;
+        $('sec-gen').innerHTML = '<b>Copy this now</b> — it is stored on the vehicle and never shown again. Then press “Apply secret”.';
+      }
+
       async function applySecret() {
         const v = $('apiSecret').value;
         if (!v) { $('sec-msg').textContent = 'Enter a secret first, or use Disable.'; return; }
@@ -482,6 +549,71 @@
         $('ltePin').value = ''; $('ltePass').value = '';
         refresh();
       }
+      // ---- WiFi (join a network from the hotspot; hotspot settings) ----
+      let pickedSsid = null;
+      async function loadWifi() {
+        try {
+          const w = await getJSON('/api/wifi');
+          const st = w.wifi || {};
+          $('wifi-status').textContent =
+            st.mode === 'ap'
+              ? `Hotspot mode · ${st.ssid || '—'} · ${st.ip || ''} — pick your network below to put the vehicle on your WiFi.`
+              : `${st.mode === 'client' ? 'Connected' : 'WiFi'} · ${st.ssid || '—'}${st.ip ? ' · ' + st.ip : ''}`;
+          $('apSsid').value = (w.hotspot && w.hotspot.ssid) || '';
+          $('apPass').placeholder = w.hotspot && w.hotspot.hasPassword ? 'stored — leave empty to keep' : 'empty = open network';
+        } catch {}
+      }
+      async function scanWifi() {
+        $('wifi-msg').textContent = 'Scanning…';
+        try {
+          const r = await post('/api/wifi/scan');
+          const nets = r.networks || [];
+          $('wifi-list').innerHTML = nets.length
+            ? nets.map((n) => `<button class="btn wifi-row${n.ssid === pickedSsid ? ' primary' : ''}" onclick="pickWifi(${JSON.stringify(n.ssid).replace(/"/g, '&quot;')})">
+                 <span>${n.secured ? '🔒' : '🔓'} ${n.ssid}</span><span class="wifi-sig">${n.signal}%${n.active ? ' · connected' : ''}</span>
+               </button>`).join('')
+            : '<div class="msg">No networks found.</div>';
+          $('wifi-msg').textContent = `${nets.length} network(s).`;
+        } catch (e) {
+          $('wifi-msg').textContent = 'Scan failed.';
+        }
+      }
+      function pickWifi(ssid) {
+        pickedSsid = ssid;
+        $('wifi-msg').textContent = `Selected "${ssid}".`;
+        for (const b of document.querySelectorAll('.wifi-row')) {
+          b.classList.toggle('primary', b.textContent.includes(ssid));
+        }
+      }
+      async function connectWifi() {
+        if (!pickedSsid) { $('wifi-msg').textContent = 'Scan and pick a network first.'; return; }
+        $('wifi-msg').textContent = `Joining "${pickedSsid}"… the hotspot closes now, this page may stop responding.`;
+        try {
+          const r = await post('/api/wifi/connect', { ssid: pickedSsid, password: $('wifiPass').value });
+          $('wifi-msg').textContent = r.message || (r.ok ? 'Connected.' : 'Failed.');
+          $('wifiPass').value = '';
+          loadWifi();
+        } catch {
+          // Expected on a successful switch: the AP is gone before the reply arrives.
+          $('wifi-msg').textContent = 'Connection dropped — that usually means it worked. Rejoin your WiFi and open http://yonderrc.local:8080/setup';
+        }
+      }
+      async function saveHotspot(start) {
+        const body = { ssid: $('apSsid').value.trim(), start: !!start };
+        const pw = $('apPass').value;
+        if (pw !== '') body.password = pw; // empty = keep what's stored
+        const r = await post('/api/wifi/hotspot', body);
+        $('ap-msg').textContent = r.message || 'Saved.';
+        $('apPass').value = '';
+        loadWifi();
+      }
+      /** Open the hotspot again: send an explicit empty password. */
+      async function openHotspot() {
+        const r = await post('/api/wifi/hotspot', { ssid: $('apSsid').value.trim(), password: '' });
+        $('ap-msg').textContent = r.message || 'Saved.';
+        loadWifi();
+      }
+
       // ---- Remote access (Tailscale / ZeroTier / WireGuard) ----
       let wgConf = null; // holds an uploaded WireGuard .conf until Bring up
       function renderRemote() {
@@ -501,6 +633,8 @@
         try {
           const r = await getJSON('/api/remote');
           const c = r.config || {};
+          remoteKindNow = c.kind || 'none';
+          remoteStatusNow = r.status || null;
           $('remoteKind').value = c.kind || 'none';
           if (c.zerotierNetworkId) $('ztNetwork').value = c.zerotierNetworkId;
           if (c.hasWireguardConf) $('wg-file-msg').textContent = 'A WireGuard .conf is stored. Upload a new file only to replace it.';
@@ -510,6 +644,8 @@
       }
       function showRemoteStatus(s) {
         if (!s) return;
+        remoteStatusNow = s;
+        remoteKindNow = s.kind || remoteKindNow;
         if (s.loginUrl) { $('ts-msg').innerHTML = `Login: <a href="${s.loginUrl}" target="_blank" rel="noreferrer">${s.loginUrl}</a>`; return; }
         $('ts-msg').textContent = `${s.kind}: ${s.running ? 'up' : 'down'}${s.address ? ' · ' + s.address : ''} · ${s.detail || ''}`;
       }
@@ -778,6 +914,7 @@
       loadCameras();
       loadTelemetry();
       loadRemote();
+      loadWifi();
       loadGps();
       refresh();
       setInterval(refresh, 3000);
