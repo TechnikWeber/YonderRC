@@ -363,7 +363,7 @@ sudo systemctl restart yonderrc-vehicle
    **Sammel-Schreibvorgang** in alle Kanäle, keine Begrenzung — jeder Kanal lässt sich
    danach einzeln anpassen.
 4. Erst wenn alles stimmt: Antrieb scharf, den **Arm-Button halten**, bis der Countdown
-   durch ist (standardmäßig 2 s), vorsichtig Gas geben.
+   durch ist (standardmäßig 1 s), vorsichtig Gas geben.
 5. **Video** sollte im FPV-Panel laufen (der `go2rtc`-Dienst läuft dauerhaft).
 6. **Telemetrie** im OSD prüfen: zeigt es echte Pack-Spannung? Steht dort **nicht**
    „SIM"? Dann liest der Sensor korrekt. Falls „SIM" erscheint, greift der Fallback
@@ -534,7 +534,7 @@ Laptop oder die Tailscale-Adresse.
   Aufbau wirklich nicht.
 - **Pre-Arm-Check:** Armen wird verweigert, solange das Gas nicht in seiner Ruhelage
   steht (Mitte oder Leerlauf, je nach Detent des Kanals).
-- **Halten zum Armen:** Der Arm-Button löst erst nach Halten aus (standardmäßig 2 s; er
+- **Halten zum Armen:** Der Arm-Button löst erst nach Halten aus (standardmäßig 1 s; er
   füllt sich und zählt herunter), beim Armen *und* beim Disarmen — ein Fehlgriff am Handy
   kappt so nicht die Motoren. Dasselbe Halten gilt für eine auf Arm/Disarm gelegte
   **Taste oder Controller-Taste** — ein angestoßener Controller kappt die Motoren genauso

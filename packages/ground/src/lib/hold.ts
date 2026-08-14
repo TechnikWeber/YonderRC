@@ -11,11 +11,11 @@
  */
 
 /**
- * Default hold time. 2 s is long enough that no pocket-touch or fat finger gets
- * through, short enough that arming doesn't feel like a ceremony. Adjustable —
- * and switchable off — in Setup › Controls.
+ * Default hold time. 1 s still filters out a tap or a bumped controller button,
+ * while keeping arming quick. Adjustable — and switchable off — in Setup ›
+ * Controls; a stored setting is untouched by this default.
  */
-export const ARM_HOLD_MS = 2000;
+export const ARM_HOLD_MS = 1000;
 
 /** Bounds for the configurable hold, so a typo can't make the button useless. */
 export const HOLD_MIN_S = 0.5;

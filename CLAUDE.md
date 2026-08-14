@@ -122,7 +122,7 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   `primary` flag, and one blackbox CSV column per channel. **All register/bus access is
   hardware-only-verified** — only the maths and the sim path are proven.
 - **Hold-to-arm — DONE (v1.22.0, configurable since v1.28.0)**: press-and-hold for arm
-  *and* disarm (`ground/src/lib/hold.ts`; default 2 s, 0.5–10 s, switchable off in
+  *and* disarm (`ground/src/lib/hold.ts`; default 1 s, 0.5–10 s, switchable off in
   Setup › Controls — `holdMsFor` returns 0 and the button becomes a plain toggle).
   Since v1.29.0 the same hold gates the **bound key / gamepad button** via
   `useActionHotkeys(..., { holdMs, actions: ['toggle-arm'], onProgress })`, whose

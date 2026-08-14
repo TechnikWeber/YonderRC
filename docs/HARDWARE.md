@@ -356,7 +356,7 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    if you want a reduced range. The profile-wide *Endpoints* field is a **batch write**
    into every channel, not a cap — a channel can be adjusted individually afterwards.
 4. Only once everything is right: arm the drive, **hold the arm button** until the
-   countdown completes (2 s by default), throttle up carefully.
+   countdown completes (1 s by default), throttle up carefully.
 5. **Video** should run in the FPV panel (the `go2rtc` service runs continuously).
 6. Check **telemetry** in the OSD: does it show real pack voltage? Does it **not** say
    "SIM"? Then the sensor reads correctly. If "SIM" appears, the fallback kicked in
@@ -519,7 +519,7 @@ Tailscale address as usual.
   it on **auto** unless your setup really isn't described by the vehicle type.
 - **Pre-arm check:** arming is refused while the throttle isn't at its rest position
   (centre or idle, depending on the channel's detent).
-- **Hold to arm:** the arm button only acts after being held (2 s by default; it fills
+- **Hold to arm:** the arm button only acts after being held (1 s by default; it fills
   up and counts down), for arming *and* disarming — a mis-touch on a phone can't cut the
   motors. The same hold applies to a **key or controller button** bound to arm/disarm —
   a bumped controller cuts motors just as well as a mis-touch. Hold time (0.5–10 s) and

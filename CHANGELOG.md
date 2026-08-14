@@ -3,6 +3,20 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.31.3
+**English**
+- **The default arm hold is now 1 s** (was 2 s). Still long enough to filter out a tap or
+  a bumped controller button, but quicker to arm. An already-stored hold time is
+  untouched — this only changes the default for a fresh install or after a factory reset;
+  the time stays adjustable (0.5–10 s) and switchable off in Setup › Controls.
+
+**Deutsch**
+- **Die Standard-Haltezeit zum Armen ist jetzt 1 s** (vorher 2 s). Immer noch lang genug,
+  um ein Antippen oder einen angestoßenen Controller-Button abzufangen, aber schneller
+  beim Armen. Eine bereits gespeicherte Haltezeit bleibt unverändert — das ändert nur die
+  Vorgabe für eine frische Installation bzw. nach einem Factory Reset; die Zeit bleibt
+  einstellbar (0,5–10 s) und abschaltbar unter Setup › Controls.
+
 ## v1.31.2
 **English**
 - **ESC calibration now uses the throttle channel's own endpoints.** It sent the
