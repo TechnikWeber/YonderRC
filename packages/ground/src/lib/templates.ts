@@ -258,6 +258,20 @@ export function throttleChannelsOf(profile: Profile): number[] {
   return unique.length ? unique : profile.throttleChannels;
 }
 
+/**
+ * The travel limits an ESC on this channel will actually see: the channel's own
+ * endpoints, falling back to the profile-wide ones when it has none. Used by the
+ * calibration wizard, which must teach the ESC the range it is driven with — not
+ * the profile default, which the channel may deliberately have narrowed.
+ */
+export function channelEndpoints(profile: Profile, channel: number): Endpoints {
+  const b = profile.bindings.find((x) => x.channel === channel);
+  return {
+    minUs: b?.shaping.minUs ?? profile.endpoints.minUs,
+    maxUs: b?.shaping.maxUs ?? profile.endpoints.maxUs,
+  };
+}
+
 /** Store the derived list back, so the persisted model is self-consistent. */
 export function withResolvedThrottle(profile: Profile): Profile {
   const ch = throttleChannelsOf(profile);

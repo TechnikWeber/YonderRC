@@ -51,6 +51,14 @@ body {
   gap: 12px;
 }
 
+/* Units inside an uppercased heading. CSS `text-transform: uppercase` maps the
+   MICRO SIGN (U+00B5) to GREEK CAPITAL MU (U+039C), which is indistinguishable
+   from a Latin M — "µs" then reads as "MS", i.e. milliseconds. Opt those spans
+   out of the transform instead of spelling the unit differently. */
+.nocaps {
+  text-transform: none;
+}
+
 .eyebrow {
   font-size: 11px;
   letter-spacing: 0.14em;
@@ -925,6 +933,18 @@ body {
   padding: 12px;
   margin-bottom: 12px;
 }
+/* What the calibration is about to do — shown before the motor is driven. */
+.calib-range {
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
 .calib-step .step-name {
   font-family: var(--mono);
   font-size: 12px;

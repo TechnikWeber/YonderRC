@@ -350,7 +350,11 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    `ws://yonderrc.local:8080`, **Connect**.
 2. Do **not arm** yet. In the channel monitor check: does steering/rudder move the
    right channel? Endpoints ok? Adjust trim/EPA/reverse in the setup if needed.
-3. **ESC calibration** (if needed) — start it in the setup, instructions follow.
+3. **ESC calibration** (if needed) — start it in the setup, instructions follow. It
+   teaches the ESC the **throttle channel's own endpoints** (shown above the start
+   button, e.g. "CH03: max 1800 µs → min 1200 µs"), so set that channel's travel first
+   if you want a reduced range. The profile-wide *Endpoints* field is a **batch write**
+   into every channel, not a cap — a channel can be adjusted individually afterwards.
 4. Only once everything is right: arm the drive, **hold the arm button** until the
    countdown completes (2 s by default), throttle up carefully.
 5. **Video** should run in the FPV panel (the `go2rtc` service runs continuously).

@@ -593,6 +593,19 @@ async function main() {
   const withAux = repairAxisBindings(brokenCar);
   ok('aux channels are left alone', withAux.bindings.find((b) => b.label === 'Lights')?.element === 'btn');
 
+  // ---- ESC calibration uses the CHANNEL's endpoints, not the profile default ----
+  const { channelEndpoints } = await import('../packages/ground/src/lib/templates');
+  const epCar = buildProfile('car');
+  ok('falls back to the profile endpoints', JSON.stringify(channelEndpoints(epCar, 2)) === JSON.stringify(epCar.endpoints));
+  const narrowed = {
+    ...epCar,
+    bindings: epCar.bindings.map((b) => (b.label === 'Throttle' ? { ...b, shaping: { ...b.shaping, minUs: 1200, maxUs: 1800 } } : b)),
+  };
+  const narrowEp = channelEndpoints(narrowed, 2);
+  ok('a narrowed throttle channel wins', narrowEp.minUs === 1200 && narrowEp.maxUs === 1800);
+  ok('other channels keep the profile range', channelEndpoints(narrowed, 0).maxUs === 2000);
+  ok('an unbound channel falls back', channelEndpoints(narrowed, 15).maxUs === epCar.endpoints.maxUs);
+
   // ---- throttle limiter (three speeds) ----
   const TL = await import('../packages/ground/src/lib/throttleLimit');
   const { neutralChannels: neutral } = await import('../packages/protocol/src/channels');

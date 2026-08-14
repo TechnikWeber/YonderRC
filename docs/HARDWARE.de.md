@@ -356,7 +356,12 @@ sudo systemctl restart yonderrc-vehicle
    `ws://yonderrc.local:8080`, **Connect**.
 2. Noch **nicht armen**. Im Kanal-Monitor prüfen: Lenkung/Ruder bewegt den
    richtigen Kanal? Endpunkte ok? Bei Bedarf im Setup Trim/EPA/Reverse anpassen.
-3. **ESC-Kalibrierung** (falls nötig) im Setup starten — Anweisungen folgen.
+3. **ESC-Kalibrierung** (falls nötig) im Setup starten — Anweisungen folgen. Sie lehrt
+   dem ESC die **Endpunkte des Gaskanals selbst** (stehen über dem Start-Knopf, z. B.
+   „CH03: max 1800 µs → min 1200 µs"). Wer einen reduzierten Bereich will, stellt also
+   zuerst den Weg dieses Kanals ein. Das profilweite *Endpoints*-Feld ist ein
+   **Sammel-Schreibvorgang** in alle Kanäle, keine Begrenzung — jeder Kanal lässt sich
+   danach einzeln anpassen.
 4. Erst wenn alles stimmt: Antrieb scharf, den **Arm-Button halten**, bis der Countdown
    durch ist (standardmäßig 2 s), vorsichtig Gas geben.
 5. **Video** sollte im FPV-Panel laufen (der `go2rtc`-Dienst läuft dauerhaft).

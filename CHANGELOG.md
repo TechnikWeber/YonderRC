@@ -3,6 +3,43 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.31.2
+**English**
+- **ESC calibration now uses the throttle channel's own endpoints.** It sent the
+  profile-wide *Endpoints* values, so narrowing just the throttle channel (say to
+  1200–1800 µs) still calibrated the ESC to 1000–2000 — teaching it a range it is never
+  driven with. The channel's values now win, with the profile-wide ones as a fallback.
+- **The calibration panel says what it is about to do** before the motor runs:
+  "Will teach the ESC CH03: max 1800 µs → min 1200 µs", and warns when the selected
+  channel isn't this model's throttle.
+- **The channel field follows the model.** It was filled in once when the panel mounted,
+  so switching models (or moving the throttle) left it pointing at the previous channel.
+- **Fixed "Endpoints (ms)" in the UI.** The label always said µs in the source, but CSS
+  `text-transform: uppercase` maps the MICRO SIGN to GREEK CAPITAL MU — visually a Latin
+  M, so it read as milliseconds. Units in uppercased headings now opt out of the
+  transform.
+- The *Endpoints* field is now labelled and described as what it is: a **batch write**
+  into every channel, adjustable per channel afterwards — not a cap that keeps applying.
+
+**Deutsch**
+- **Die ESC-Kalibrierung nimmt jetzt die Endpunkte des Gaskanals selbst.** Sie hat die
+  profilweiten *Endpoints* geschickt — wer nur den Gaskanal enger stellte (etwa auf
+  1200–1800 µs), kalibrierte den ESC trotzdem auf 1000–2000 und lehrte ihm damit einen
+  Bereich, mit dem er nie gefahren wird. Jetzt gewinnen die Werte des Kanals, die
+  profilweiten sind nur noch Rückfallebene.
+- **Das Kalibrier-Panel sagt vorher, was es tun wird**, bevor der Motor läuft: „Will
+  teach the ESC CH03: max 1800 µs → min 1200 µs" — mit Warnung, wenn der gewählte Kanal
+  nicht der Gaskanal des Modells ist.
+- **Das Kanal-Feld folgt dem Modell.** Es wurde einmalig beim Aufbau des Panels gefüllt;
+  ein Modellwechsel (oder ein verschobener Gaskanal) ließ es auf dem alten Kanal stehen.
+- **„Endpoints (ms)" in der Oberfläche behoben.** Im Quelltext stand immer µs, aber CSS
+  `text-transform: uppercase` bildet das MICRO SIGN auf das griechische große My ab —
+  optisch ein lateinisches M, also las es sich als Millisekunden. Einheiten in
+  großgeschriebenen Überschriften sind jetzt von der Umwandlung ausgenommen.
+- Das *Endpoints*-Feld heißt und erklärt sich jetzt als das, was es ist: ein
+  **Sammel-Schreibvorgang** in alle Kanäle, danach pro Kanal anpassbar — keine dauerhaft
+  wirkende Begrenzung.
+
 ## v1.31.1
 **English**
 - **Fixed: a touch model could come up with a missing joystick and refuse to arm.**

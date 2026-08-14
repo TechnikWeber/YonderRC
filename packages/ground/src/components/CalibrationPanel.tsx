@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CalibrationStatus, Profile } from '@yonderrc/protocol';
-import { throttleChannelsOf } from '../lib/templates';
+import { channelEndpoints, throttleChannelsOf } from '../lib/templates';
 
 /**
  * ESC throttle-range calibration wizard. Runs against the vehicle's non-blocking
@@ -18,12 +18,22 @@ export function CalibrationPanel({
   profile: Profile;
   calibration: CalibrationStatus | undefined;
   connected: boolean;
-  onStart: (channel: number) => void;
+  onStart: (channel: number, minUs: number, maxUs: number) => void;
   onNext: () => void;
   onCancel: () => void;
 }) {
-  const [channel, setChannel] = useState((throttleChannelsOf(profile)[0] ?? 2) + 1);
+  const derived = (throttleChannelsOf(profile)[0] ?? 2) + 1;
+  const [channel, setChannel] = useState(derived);
+  // Follow the model: switching profiles (or moving the throttle) must not leave
+  // the field pointing at the previous model's channel.
+  useEffect(() => {
+    if (!(calibration?.active ?? false)) setChannel(derived);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derived, profile.id]);
   const active = calibration?.active ?? false;
+  // The ESC has to learn the range it is actually driven with, so use the
+  // channel's own endpoints (the profile-wide ones are only a fallback).
+  const ep = channelEndpoints(profile, channel - 1);
 
   return (
     <section className="panel calib">
@@ -46,10 +56,15 @@ export function CalibrationPanel({
               onChange={(e) => setChannel(Number(e.target.value))}
             />
           </label>
+          <p className="calib-range">
+            Will teach the ESC <b>CH{String(channel).padStart(2, '0')}</b>: max{' '}
+            <b>{ep.maxUs} µs</b> → min <b>{ep.minUs} µs</b>
+            {channel !== derived && <> · ⚠ not this model's throttle channel (CH{String(derived).padStart(2, '0')})</>}
+          </p>
           <button
             className="btn wide primary"
             disabled={!connected}
-            onClick={() => onStart(channel - 1)}
+            onClick={() => onStart(channel - 1, ep.minUs, ep.maxUs)}
           >
             {connected ? 'Start calibration' : 'Connect vehicle first'}
           </button>

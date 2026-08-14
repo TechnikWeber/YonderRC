@@ -47,7 +47,7 @@ export function ChannelMonitor({
   return (
     <section className={`panel monitor${failsafe ? ' failsafe' : ''}`}>
       <div className="mon-head">
-        <span className="eyebrow">Channel output · µs</span>
+        <span className="eyebrow">Channel output · <span className="nocaps">µs</span></span>
         {failsafe && <span className="fs-tag">FAILSAFE</span>}
       </div>
       {Array.from({ length: CHANNEL_COUNT }, (_, i) => {

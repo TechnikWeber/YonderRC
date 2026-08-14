@@ -213,7 +213,7 @@ export function BindingEditor({
       </div>
 
       <div className="field">
-        <div className="eyebrow">Endpoints (µs) — applied to all channels</div>
+        <div className="eyebrow">Endpoints <span className="nocaps">(µs)</span> — write to all channels</div>
         <div className="grid2">
           <label>min µs
             <input
@@ -230,7 +230,12 @@ export function BindingEditor({
             />
           </label>
         </div>
-        <p className="note">Typical is 1000–2000 µs (absolute limit 500–2500). A channel below can override this.</p>
+        <p className="note">
+          A <b>batch write</b>: changing a value here stamps it into <i>every</i> channel below, and
+          each channel can be adjusted individually afterwards — this is not a cap that keeps
+          applying. Typical is 1000–2000 µs (absolute limit 500–2500). ESC calibration uses the
+          throttle channel's own values, not these.
+        </p>
       </div>
 
       {showDetents && presentAxes.length > 0 && (
