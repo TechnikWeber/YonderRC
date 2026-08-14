@@ -3,6 +3,34 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.27.1
+**English**
+- **The setup hotspot can now stay up next to LTE.** New *when to start it* setting in
+  Setup › WiFi: **auto** (default, unchanged — only when the Pi has no uplink at boot),
+  **always** (also next to a working LTE link, so you can always walk up to the vehicle
+  for diagnostics) and **off**. Plus a **Stop hotspot** button.
+- A WiFi *client* connection always wins over `always`: one radio can't serve an access
+  point and stay joined to a network, and dropping the WiFi link would cut the vehicle
+  off your LAN. The onboarding checks that before starting anything and says so in the
+  log.
+- Documented what actually closes the hotspot: joining a network, *Stop hotspot*, or a
+  reboot with an uplink in `auto` mode — a remote service (Tailscale/ZeroTier/WireGuard)
+  or LTE does **not**, those ride on other interfaces.
+
+**Deutsch**
+- **Der Setup-Hotspot kann jetzt neben LTE oben bleiben.** Neue Einstellung *when to
+  start it* in Setup › WiFi: **auto** (Standard, unverändert — nur wenn der Pi beim
+  Booten keinen Uplink hat), **always** (auch neben laufendem LTE, damit du fürs
+  Diagnostizieren immer ans Fahrzeug herankommst) und **off**. Dazu ein Button
+  **Stop hotspot**.
+- Eine WLAN-*Client*-Verbindung schlägt `always` immer: eine Funkeinheit kann nicht
+  gleichzeitig Access Point sein und in einem Netz hängen, und den WLAN-Link abzureißen
+  würde das Fahrzeug aus dem LAN werfen. Das Onboarding prüft das vorher und schreibt es
+  ins Log.
+- Dokumentiert, was den Hotspot tatsächlich schließt: einem Netz beitreten, *Stop
+  hotspot*, oder ein Neustart mit Uplink im Modus `auto` — ein Remote-Dienst
+  (Tailscale/ZeroTier/WireGuard) oder LTE **nicht**, die laufen über andere Interfaces.
+
 ## v1.27.0
 **English**
 - **Wi-Fi onboarding from the phone.** New **Setup › WiFi** panel: scan for networks

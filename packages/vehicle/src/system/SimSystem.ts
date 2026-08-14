@@ -77,6 +77,11 @@ export class SimSystem implements SystemManager {
     return { ok: true, message: `Hotspot "${cfg.ssid}" up (${cfg.password ? 'WPA2' : 'open'}) (simulated).` };
   }
 
+  async hotspotStop(): Promise<ActionResult> {
+    this.wifi = { mode: 'unknown', ssid: null, ip: null };
+    return { ok: true, message: 'Hotspot stopped (simulated).' };
+  }
+
   async lteConnect(cfg: LteConfig): Promise<ActionResult> {
     const apn = cfg.apn ?? '';
     this.lte = { ...this.lte, connected: true, apn, ip: '10.64.12.34', state: 'connected' };

@@ -593,6 +593,18 @@ async function main() {
   ok('too short key falls back to open', !hotspotArgs({ ssid: 'X', password: 'short' }).includes('password'));
   ok('hotspot honours the interface', hotspotArgs(HOTSPOT_DEFAULTS, 'wlan1').includes('wlan1'));
 
+  // When the boot-time onboarding starts the hotspot (mirrored in onboard.sh).
+  const { shouldStartHotspot } = await import('../packages/vehicle/src/system/SystemManager');
+  ok('auto: no uplink → start', shouldStartHotspot('auto', false, false).start === true);
+  ok('auto: uplink → skip', shouldStartHotspot('auto', true, false).start === false);
+  ok('default (undefined) behaves like auto', shouldStartHotspot(undefined, true, false).start === false);
+  ok('always: starts next to LTE', shouldStartHotspot('always', true, false).start === true);
+  ok('off: never starts', shouldStartHotspot('off', false, false).start === false);
+  // One radio: an active WiFi client connection beats every mode.
+  ok('wifi client blocks always', shouldStartHotspot('always', true, true).start === false);
+  ok('wifi client blocks auto', shouldStartHotspot('auto', false, true).start === false);
+  ok('and it says why', shouldStartHotspot('always', true, true).reason.includes('one radio'));
+
   // ---- blackbox log CSV ----
   const { logToCsv } = await import('../packages/ground/src/lib/logger');
   const csv = logToCsv([{ t: 0, armed: 1, failsafe: 0, link: 'connected', rtt: 40, bitrate: 2500, loss: 0.5, fps: 30, vlat: 120, volt: 12.1, amp: 3.2, mah: 150, pct: 88 }]);

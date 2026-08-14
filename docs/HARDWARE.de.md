@@ -404,12 +404,31 @@ steuerst und konfigurierst du komplett **ohne Laptop, nur mit dem Handy**:
 4. War das Passwort falsch, **fährt das Fahrzeug den Hotspot wieder hoch** — du sperrst
    dich also nicht aus. Erneut verbinden und nochmal probieren.
 
-### 5.2 Hotspot-Passwort
+### 5.2 Hotspot-Passwort und wann er startet
 
-Unter **Setup › WiFi › Setup hotspot** lassen sich Name und Passwort des Hotspots
-setzen (mind. 8 Zeichen, WPA2). Passwortfeld leer = offener Hotspot. *Save* wirkt beim
-nächsten Start des Hotspots, *Save & start now* startet ihn sofort neu — was dich
-natürlich rauswirft, wenn du gerade darüber verbunden bist.
+Unter **Setup › WiFi › Setup hotspot** lassen sich Name und Passwort des Hotspots setzen
+(mind. 8 Zeichen, WPA2 — leer bleibt offen) und **wann er startet**:
+
+| Modus | Verhalten |
+|---|---|
+| **auto** (Standard) | Nur, wenn der Pi beim Booten **gar keinen Uplink** hat. |
+| **always** | Auch **neben einer laufenden LTE-Verbindung** — du kommst also immer ans Fahrzeug heran, selbst wenn Modem und VPN sauber laufen. |
+| **off** | Startet nie von selbst. |
+
+*Save* wirkt beim nächsten Hotspot-Start, *Save & start now* startet ihn sofort neu
+(was dich rauswirft, wenn du darüber verbunden bist), *Stop hotspot* fährt ihn herunter.
+
+> **Eine Funkeinheit, eine Aufgabe.** Das eingebaute WLAN des Pi kann entweder den
+> Hotspot bereitstellen **oder** in einem Netz sein — nicht beides. `always` startet den
+> Hotspot also neben **LTE**, aber nie, solange der Pi WLAN-Client ist; das Onboarding
+> prüft das zuerst, denn den WLAN-Link abzureißen würde das Fahrzeug aus deinem LAN
+> werfen. Wer Hotspot *und* WLAN gleichzeitig will, steckt einen **zweiten
+> USB-WLAN-Adapter** an.
+
+> **Was den Hotspot schließt:** ein Netz über **Setup › WiFi** beitreten (eine
+> Funkeinheit), *Stop hotspot*, oder ein Neustart mit funktionierendem Uplink im Modus
+> `auto`. Ein Remote-Dienst (Tailscale / ZeroTier / WireGuard) oder eine LTE-Verbindung
+> **nicht** — die laufen über andere Interfaces, der AP bleibt also schlicht oben.
 
 Das Fahrzeug liefert die Boden-App also selbst aus — die Boden-App verbindet sich
 automatisch zurück auf denselben Host (den Pi), inklusive Video. Damit ist der Pi

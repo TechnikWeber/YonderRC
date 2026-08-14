@@ -145,7 +145,8 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Telemetrie, Watchdog, **WLAN**, LTE, Fernzugriff, Sicherheit — vom Handy/Laptop, ohne
   Bildschirm. **WLAN-Einrichtung vom Handy**: scannen, Netz auswählen, verbinden — der
   Setup-Hotspot schließt sich, sobald der Pi im WLAN ist, und kommt zurück, wenn das
-  Passwort falsch war. Das **API-Secret** lässt sich per Klick erzeugen. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
+  Passwort falsch war. Der Hotspot kann für Felddiagnose **neben LTE oben bleiben**.
+  Das **API-Secret** lässt sich per Klick erzeugen. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
   verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
   ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png?v=2)

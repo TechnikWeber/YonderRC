@@ -15,6 +15,7 @@ CONFIG="${YRC_CONFIG:-/opt/yonderrc/yonderrc-config.json}"
 IFACE="${YRC_WIFI_IFACE:-wlan0}"
 SSID="YonderRC-setup"
 PASS=""
+MODE="auto"   # auto | always | off — see HotspotConfig.mode
 
 # Read SSID/password from the persisted config, if the setup UI wrote any. Two
 # separate lines, so an SSID with spaces survives; an empty line means "not set".
@@ -28,30 +29,51 @@ except Exception:
     h = {}
 print((h.get('ssid') or '').strip())
 print((h.get('password') or '').strip())
+print((h.get('mode') or '').strip())
 PY
 ) || true
   [ -n "${cfg[0]:-}" ] && SSID="${cfg[0]}"
   [ -n "${cfg[1]:-}" ] && PASS="${cfg[1]}"
+  [ -n "${cfg[2]:-}" ] && MODE="${cfg[2]}"
 fi
 
 # Give normal connections a chance first.
 sleep 25
 
 have_route() { ip route | grep -q '^default'; }
+# Is wlan0 joined to a normal network (i.e. NOT our own Hotspot profile)? One radio
+# can't serve an AP and stay joined, and tearing that link down would cut the vehicle
+# off the LAN — so a WiFi client connection always wins over "always".
+wifi_is_client() {
+  nmcli -t -f DEVICE,STATE,CONNECTION device 2>/dev/null |
+    awk -F: -v i="$IFACE" '$1==i && $2=="connected" && $3!="Hotspot" { found=1 } END { exit !found }'
+}
 
-if have_route; then
+if [ "$MODE" = "off" ]; then
+  echo "[onboard] hotspot disabled in the config — nothing to do"
+  exit 0
+fi
+
+if wifi_is_client; then
+  echo "[onboard] $IFACE is joined to a WiFi network — no hotspot (one radio)"
+  exit 0
+fi
+
+if [ "$MODE" = "always" ]; then
+  echo "[onboard] hotspot mode 'always' — starting it regardless of the uplink"
+elif have_route; then
   echo "[onboard] network present — no hotspot needed"
   exit 0
 fi
 
 if [ -n "$PASS" ] && [ "${#PASS}" -ge 8 ]; then
-  echo "[onboard] no default route — starting WPA2 hotspot $SSID on $IFACE"
+  echo "[onboard] starting WPA2 hotspot $SSID on $IFACE"
   nmcli device wifi hotspot ifname "$IFACE" ssid "$SSID" password "$PASS" || {
     echo "[onboard] hotspot failed (is $IFACE available?)"
     exit 0
   }
 else
-  echo "[onboard] no default route — starting OPEN hotspot $SSID on $IFACE"
+  echo "[onboard] starting OPEN hotspot $SSID on $IFACE"
   nmcli device wifi hotspot ifname "$IFACE" ssid "$SSID" || {
     echo "[onboard] hotspot failed (is $IFACE available?)"
     exit 0

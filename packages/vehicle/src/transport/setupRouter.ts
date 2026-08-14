@@ -236,7 +236,11 @@ export async function handleSetup(
     const st = await ctx.system.status();
     json(res, 200, {
       wifi: st.wifi,
-      hotspot: { ssid: ctx.config.hotspot.ssid, hasPassword: !!ctx.config.hotspot.password },
+      hotspot: {
+        ssid: ctx.config.hotspot.ssid,
+        hasPassword: !!ctx.config.hotspot.password,
+        mode: ctx.config.hotspot.mode ?? 'auto',
+      },
     });
     return true;
   }
@@ -258,23 +262,43 @@ export async function handleSetup(
     return true;
   }
   if (url === '/api/wifi/hotspot' && method === 'POST') {
-    const body = (await readBody(req)) as { ssid?: string; password?: string | null; start?: boolean };
+    const body = (await readBody(req)) as {
+      ssid?: string;
+      password?: string | null;
+      mode?: 'auto' | 'always' | 'off';
+      start?: boolean;
+      stop?: boolean;
+    };
     const password = body.password === undefined ? ctx.config.hotspot.password : body.password || null;
     if (password && password.length < 8) {
       json(res, 400, { ok: false, message: 'A WiFi password needs at least 8 characters — leave it empty for an open hotspot.' });
       return true;
     }
-    const hotspot = { ssid: (body.ssid ?? ctx.config.hotspot.ssid).trim() || HOTSPOT_DEFAULTS.ssid, password };
+    const hotspot = {
+      ssid: (body.ssid ?? ctx.config.hotspot.ssid).trim() || HOTSPOT_DEFAULTS.ssid,
+      password,
+      mode: body.mode ?? ctx.config.hotspot.mode ?? 'auto',
+    };
     savePersisted(ctx.config.configPath, { hotspot });
     ctx.config.hotspot = hotspot;
+    if (body.stop) {
+      json(res, 200, await ctx.system.hotspotStop());
+      return true;
+    }
     if (body.start) {
       const r = await ctx.system.hotspotStart(hotspot);
       json(res, r.ok ? 200 : 500, r);
       return true;
     }
+    const modeNote =
+      hotspot.mode === 'always'
+        ? ' It will also come up next to a working LTE link (but not while the Pi is a WiFi client — one radio).'
+        : hotspot.mode === 'off'
+          ? ' It will not start on its own any more.'
+          : ' It starts on its own only when the Pi has no uplink.';
     json(res, 200, {
       ok: true,
-      message: `Saved. ${password ? 'The hotspot will use the new password' : 'The hotspot will be open'} the next time it starts (reboot, or use "Start hotspot now").`,
+      message: `Saved. ${password ? 'The hotspot will use the new password' : 'The hotspot will be open'} the next time it starts.${modeNote}`,
     });
     return true;
   }

@@ -121,11 +121,19 @@
           <label>SSID<input id="apSsid" placeholder="YonderRC-setup" /></label>
           <label>Password<input id="apPass" type="password" autocomplete="new-password" placeholder="empty = open network" /></label>
         </div>
+        <label>When to start it
+          <select id="apMode">
+            <option value="auto">auto — only when the Pi has no uplink (default)</option>
+            <option value="always">always — also next to LTE, so you can always walk up to it</option>
+            <option value="off">off — never start it on its own</option>
+          </select>
+        </label>
         <div class="btns">
-          <button class="btn primary" onclick="saveHotspot(false)">Save</button>
-          <button class="btn" onclick="saveHotspot(true)">Save &amp; start now</button>
+          <button class="btn primary" onclick="saveHotspot()">Save</button>
+          <button class="btn" onclick="saveHotspot({ start: true })">Save &amp; start now</button>
+          <button class="btn" onclick="saveHotspot({ stop: true })">Stop hotspot</button>
         </div>
-        <p class="msg">The hotspot starts automatically when the Pi finds no known network. <b>Open by default</b> so the captive portal can put this page in front of you with nothing to type — set a password (min. 8 characters) once the vehicle leaves the bench, and an <b>API secret</b> above if the network isn't yours.</p>
+        <p class="msg">The hotspot is <b>open by default</b> so the captive portal can put this page in front of you with nothing to type — set a password (min. 8 characters) once the vehicle leaves the bench, and an <b>API secret</b> above if the network isn't yours. <b>always</b> keeps it up next to a working LTE link (handy for diagnostics in the field); it can never run while the Pi is joined to a WiFi network, because one radio can't do both.</p>
         <div class="msg" id="ap-msg"></div>
       </section>
 
@@ -560,6 +568,7 @@
               ? `Hotspot mode · ${st.ssid || '—'} · ${st.ip || ''} — pick your network below to put the vehicle on your WiFi.`
               : `${st.mode === 'client' ? 'Connected' : 'WiFi'} · ${st.ssid || '—'}${st.ip ? ' · ' + st.ip : ''}`;
           $('apSsid').value = (w.hotspot && w.hotspot.ssid) || '';
+          $('apMode').value = (w.hotspot && w.hotspot.mode) || 'auto';
           $('apPass').placeholder = w.hotspot && w.hotspot.hasPassword ? 'stored — leave empty to keep' : 'empty = open network';
         } catch {}
       }
@@ -598,19 +607,13 @@
           $('wifi-msg').textContent = 'Connection dropped — that usually means it worked. Rejoin your WiFi and open http://yonderrc.local:8080/setup';
         }
       }
-      async function saveHotspot(start) {
-        const body = { ssid: $('apSsid').value.trim(), start: !!start };
+      async function saveHotspot(opts) {
+        const body = { ssid: $('apSsid').value.trim(), mode: $('apMode').value, ...(opts || {}) };
         const pw = $('apPass').value;
         if (pw !== '') body.password = pw; // empty = keep what's stored
         const r = await post('/api/wifi/hotspot', body);
         $('ap-msg').textContent = r.message || 'Saved.';
         $('apPass').value = '';
-        loadWifi();
-      }
-      /** Open the hotspot again: send an explicit empty password. */
-      async function openHotspot() {
-        const r = await post('/api/wifi/hotspot', { ssid: $('apSsid').value.trim(), password: '' });
-        $('ap-msg').textContent = r.message || 'Saved.';
         loadWifi();
       }
 

@@ -396,12 +396,30 @@ configure entirely **without a laptop, using only a phone**:
 4. If the password was wrong, the vehicle **brings the hotspot back up** so you can't
    lock yourself out. Join it again and retry.
 
-### 5.2 Hotspot password
+### 5.2 Hotspot password and when it starts
 
-Under **Setup › WiFi › Setup hotspot** you can rename the hotspot and give it a
-password (min. 8 characters, WPA2). Leave the password empty to keep it open. *Save*
-applies it the next time the hotspot starts; *Save & start now* restarts it immediately
-— which of course drops you if you're connected through it.
+Under **Setup › WiFi › Setup hotspot** you can rename the hotspot, give it a password
+(min. 8 characters, WPA2 — empty keeps it open) and choose **when it starts**:
+
+| Mode | Behaviour |
+|---|---|
+| **auto** (default) | Only when the Pi has **no uplink at all** at boot. |
+| **always** | Also **next to a working LTE link** — you can always walk up to the vehicle and reach the setup page, even when the modem and the VPN are fine. |
+| **off** | Never starts on its own. |
+
+*Save* applies at the next hotspot start, *Save & start now* restarts it immediately
+(which drops you if you're connected through it) and *Stop hotspot* takes it down.
+
+> **One radio, one job.** The Pi's built-in WiFi can either serve the hotspot **or** be
+> joined to a network — not both. So `always` starts the hotspot next to **LTE**, but
+> never while the Pi is a WiFi client; the onboarding checks that first, because tearing
+> the WiFi link down would cut the vehicle off your LAN. If you want a hotspot *and* WiFi
+> at the same time, add a **second USB WiFi adapter**.
+
+> **What closes the hotspot:** joining a network from **Setup › WiFi** (single radio),
+> *Stop hotspot*, or a reboot with a working uplink while the mode is `auto`. A remote
+> service (Tailscale / ZeroTier / WireGuard) or an LTE connection does **not** — those
+> ride on other interfaces, so the AP simply stays up.
 
 So the vehicle serves the ground app itself — the ground app connects back
 automatically to the same host (the Pi), including video. That makes the Pi

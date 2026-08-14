@@ -94,9 +94,41 @@ export interface HotspotConfig {
   ssid: string;
   /** null/'' = open network. WPA2 needs at least 8 characters. */
   password: string | null;
+  /**
+   * When the onboarding hotspot starts at boot:
+   *  - auto   : only when the Pi has no uplink at all (the historic behaviour)
+   *  - always : also next to a working LTE link, so the vehicle stays reachable
+   *             on the field for diagnostics even when the modem or the VPN is fine
+   *  - off    : never (you always reach the vehicle some other way)
+   * "always" cannot override physics: with one radio the Pi is either an access
+   * point or a WiFi client, so an active WiFi client connection always wins.
+   */
+  mode?: HotspotMode;
 }
 
-export const HOTSPOT_DEFAULTS: HotspotConfig = { ssid: 'YonderRC-setup', password: null };
+export type HotspotMode = 'auto' | 'always' | 'off';
+
+export const HOTSPOT_DEFAULTS: HotspotConfig = { ssid: 'YonderRC-setup', password: null, mode: 'auto' };
+
+/**
+ * Should the boot-time onboarding start the hotspot? Pure so the decision is
+ * testable; `onboard.sh` mirrors it in shell.
+ *
+ * `wifiIsClient` is the hard stop: one radio can't serve an AP and stay joined to
+ * a network, and tearing down the WiFi link would cut the vehicle off the LAN.
+ */
+export function shouldStartHotspot(
+  mode: HotspotMode | undefined,
+  hasUplink: boolean,
+  wifiIsClient: boolean,
+): { start: boolean; reason: string } {
+  if (mode === 'off') return { start: false, reason: 'hotspot disabled in the config' };
+  if (wifiIsClient) return { start: false, reason: 'wlan0 is joined to a WiFi network (one radio)' };
+  if (mode === 'always') return { start: true, reason: 'hotspot mode "always"' };
+  return hasUplink
+    ? { start: false, reason: 'uplink present — no hotspot needed' }
+    : { start: true, reason: 'no uplink' };
+}
 
 /**
  * Parse `nmcli -t -f IN-USE,SIGNAL,SECURITY,SSID dev wifi list`. Terse output is
@@ -205,6 +237,8 @@ export interface SystemManager {
   wifiConnect(ssid: string, password: string | null): Promise<ActionResult>;
   /** (Re)start the onboarding hotspot with the given settings. */
   hotspotStart(cfg: HotspotConfig): Promise<ActionResult>;
+  /** Take the onboarding hotspot down (leaves any other connection alone). */
+  hotspotStop(): Promise<ActionResult>;
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */
   tailscaleUp(authKey?: string): Promise<ActionResult>;
   tailscaleDown(): Promise<ActionResult>;

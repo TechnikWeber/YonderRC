@@ -185,6 +185,13 @@ export class RealSystem implements SystemManager {
     };
   }
 
+  async hotspotStop(): Promise<ActionResult> {
+    const r = await shArgs('nmcli', ['connection', 'down', 'Hotspot']);
+    return r.ok
+      ? { ok: true, message: 'Hotspot stopped.' }
+      : { ok: false, message: `Could not stop the hotspot: ${r.out}` };
+  }
+
   async lteConnect(cfg: LteConfig): Promise<ActionResult> {
     const apn = cfg.apn ?? '';
     const modemId = parseModemId((await sh('mmcli -L')).out);
