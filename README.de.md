@@ -252,7 +252,7 @@ Treiber-Auswahl per Env (Details in `docs/HARDWARE.de.md` und `provisioning/READ
 
 ```bash
 YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C-PWM, 16 Kanäle
-YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio
+YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio; Pins: docs/HARDWARE.de.md 2.8
 YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS an einen Flight Controller
 ```
 

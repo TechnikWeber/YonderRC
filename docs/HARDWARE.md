@@ -184,6 +184,63 @@ the OSD under voltage and current. Pick by how the sensor is read:
 
 ---
 
+### 2.8 GPIO-PWM (instead of the PCA9685)
+
+With `YRC_DRIVER=gpio-pwm` the Pi generates the servo pulses itself, via `pigpio`
+(DMA-timed, so far less jitter than software PWM). No extra board — but the CPU and one
+GPIO per channel are now part of the signal path. **For anything beyond a couple of
+channels the PCA9685 stays the better answer**: its own timer, unaffected by CPU load,
+and it leaves the GPIOs alone.
+
+Default pin map (BCM numbering), channel 1 → 16 in this order:
+
+| CH | BCM | Header pin | | CH | BCM | Header pin |
+|---|---|---|---|---|---|---|
+| 1 | 17 | 11 | | 9 | 6 | 31 |
+| 2 | 18 | 12 | | 10 | 12 | 32 |
+| 3 | 27 | 13 | | 11 | 13 | 33 |
+| 4 | 22 | 15 | | 12 | 16 | 36 |
+| 5 | 23 | 16 | | 13 | 19 | 35 |
+| 6 | 24 | 18 | | 14 | 20 | 38 |
+| 7 | 25 | 22 | | 15 | 21 | 40 |
+| 8 | 5 | 29 | | 16 | 26 | 37 |
+
+- **Change it with `YRC_GPIO_PINS`** (comma-separated BCM numbers, in channel order),
+  e.g. `YRC_GPIO_PINS=17,18,27,22` in the systemd unit. The **length caps the channel
+  count** — four pins means four channels. There is no setup-UI field for this.
+- The service logs the map it actually uses at start: `[gpio-pwm] ready on BCM pins […]`.
+- **Channel 3 (BCM 27) is the default throttle**, because `YRC_THROTTLE_CH` is `2` and
+  that index is 0-based.
+- All pins start at **1500 µs** so nothing lurches at boot, and the pulses are dropped
+  (off) on shutdown.
+- `pigpio` **needs root** — the shipped systemd unit already runs as root.
+
+#### It fits the reference build
+
+The default map deliberately avoids every bus this guide uses, so **GPIO-PWM,
+the INA228, a GPS and a temperature sensor can all run at once**:
+
+| Left free | Pins | Used by |
+|---|---|---|
+| I²C1 | BCM 2/3 (header 3/5) | INA228/226, MCP9808/TMP102/TMP117, BMP280/BME280, ADS1115 |
+| UART0 | BCM 14/15 (header 8/10) | serial GPS — and SBUS for a flight controller |
+| SPI0 | BCM 7–11 (header 19/21/23/24/26) | MAX6675/31855/31856/31865, MCP3008 |
+| 1-Wire | BCM 4 (header 7) | DS18B20 (`dtoverlay=w1-gpio` default) |
+
+Two things to watch anyway:
+
+- **BCM 18/19/20/21 double as I²S** (PCM). Only a problem with an audio HAT — drop those
+  channels from `YRC_GPIO_PINS` if you use one.
+- **Move the 1-Wire pin, don't reuse one.** If you set `dtoverlay=w1-gpio,gpiopin=17`,
+  GPIO 17 is the kernel's from then on and channel 1 goes silent. Leave the DS18B20 on
+  its default GPIO 4.
+
+> **Power stays the same as 2.3:** servo/ESC power comes from the BEC, never from the
+> Pi's 5 V pins. The Pi only contributes the **signal** — and a **common ground** is
+> mandatory, otherwise the pulses are measured against nothing.
+
+---
+
 ## 3. Software — step by step (Wi-Fi first)
 
 ### 3.1 Flash Raspberry Pi OS
@@ -253,7 +310,7 @@ cleanly. Add the one you need:
 ```bash
 cd /opt/yonderrc
 npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA2xx
-npm install pigpio     -w @yonderrc/vehicle    # (only for GPIO-PWM instead of PCA9685)
+npm install pigpio     -w @yonderrc/vehicle    # (only for GPIO-PWM instead of PCA9685 — pin map: 2.8)
 npm install serialport -w @yonderrc/vehicle    # (only for SBUS/drone, and serial GPS)
 sudo systemctl restart yonderrc-vehicle
 ```
@@ -266,8 +323,8 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 0. **Detect hardware** (in *Vehicle configuration*) scans the I²C bus, `mmcli` and the
    camera devices and suggests a driver/sensors — a good starting point before you fill
    anything in by hand.
-1. **Vehicle:** set the name, **Output driver = `pca9685`** (drone: `sbus`), check the
-   throttle channel. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
+1. **Vehicle:** set the name, **Output driver = `pca9685`** (drone: `sbus`; without an
+   extra board: `gpio-pwm`, pin map in 2.8), check the throttle channel. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
    — as soon as a ground station connects, it pushes the setting that matches the model
    type (car/boat on, plane/drone off).
 2. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →

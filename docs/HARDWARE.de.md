@@ -187,6 +187,64 @@ im OSD unterhalb von Spannung und Strom. Auswahl nach Anschlussart:
 
 ---
 
+### 2.8 GPIO-PWM (statt PCA9685)
+
+Mit `YRC_DRIVER=gpio-pwm` erzeugt der Pi die Servo-Impulse selbst, über `pigpio`
+(DMA-getaktet, also deutlich jitterärmer als Software-PWM). Kein Zusatzboard — dafür
+liegen jetzt die CPU und ein GPIO pro Kanal im Signalweg. **Ab ein paar Kanälen bleibt
+der PCA9685 die bessere Antwort**: eigener Timer, unabhängig von der CPU-Last, und die
+GPIOs bleiben frei.
+
+Standardbelegung (BCM-Nummern), Kanal 1 → 16 in dieser Reihenfolge:
+
+| CH | BCM | Header-Pin | | CH | BCM | Header-Pin |
+|---|---|---|---|---|---|---|
+| 1 | 17 | 11 | | 9 | 6 | 31 |
+| 2 | 18 | 12 | | 10 | 12 | 32 |
+| 3 | 27 | 13 | | 11 | 13 | 33 |
+| 4 | 22 | 15 | | 12 | 16 | 36 |
+| 5 | 23 | 16 | | 13 | 19 | 35 |
+| 6 | 24 | 18 | | 14 | 20 | 38 |
+| 7 | 25 | 22 | | 15 | 21 | 40 |
+| 8 | 5 | 29 | | 16 | 26 | 37 |
+
+- **Änderbar über `YRC_GPIO_PINS`** (komma-getrennte BCM-Nummern in Kanalreihenfolge),
+  z. B. `YRC_GPIO_PINS=17,18,27,22` in der systemd-Unit. Die **Länge begrenzt die
+  Kanalzahl** — vier Pins heißt vier Kanäle. Ein Feld im Setup-UI gibt es dafür nicht.
+- Der Dienst loggt beim Start die tatsächlich genutzte Belegung:
+  `[gpio-pwm] ready on BCM pins […]`.
+- **Kanal 3 (BCM 27) ist der Standard-Throttle**, denn `YRC_THROTTLE_CH` ist `2` und
+  dieser Index ist 0-basiert.
+- Alle Pins starten auf **1500 µs**, damit beim Booten nichts zuckt; beim Herunterfahren
+  werden die Impulse abgeschaltet.
+- `pigpio` **braucht root** — die mitgelieferte systemd-Unit läuft bereits als root.
+
+#### Passt zum Referenzaufbau
+
+Die Standardbelegung meidet bewusst jeden Bus, den dieser Guide benutzt — **GPIO-PWM,
+INA228, GPS und ein Temperatursensor laufen also gleichzeitig**:
+
+| Bleibt frei | Pins | Wird genutzt von |
+|---|---|---|
+| I²C1 | BCM 2/3 (Header 3/5) | INA228/226, MCP9808/TMP102/TMP117, BMP280/BME280, ADS1115 |
+| UART0 | BCM 14/15 (Header 8/10) | serielles GPS — und SBUS zum Flight Controller |
+| SPI0 | BCM 7–11 (Header 19/21/23/24/26) | MAX6675/31855/31856/31865, MCP3008 |
+| 1-Wire | BCM 4 (Header 7) | DS18B20 (Standard von `dtoverlay=w1-gpio`) |
+
+Zwei Dinge trotzdem im Blick behalten:
+
+- **BCM 18/19/20/21 sind zugleich I²S** (PCM). Nur mit Audio-HAT ein Problem — dann diese
+  Kanäle aus `YRC_GPIO_PINS` streichen.
+- **Den 1-Wire-Pin verschieben, nicht doppelt belegen.** Wer `dtoverlay=w1-gpio,gpiopin=17`
+  setzt, gibt GPIO 17 an den Kernel ab — Kanal 1 ist dann still. Den DS18B20 auf seinem
+  Standard-GPIO 4 lassen.
+
+> **Die Versorgung bleibt wie in 2.3:** Servo-/ESC-Strom kommt vom BEC, nie aus den
+> 5-V-Pins des Pi. Der Pi liefert nur das **Signal** — und eine **gemeinsame Masse** ist
+> Pflicht, sonst wird der Impuls gegen nichts gemessen.
+
+---
+
 ## 3. Software — Schritt für Schritt (zuerst WLAN)
 
 ### 3.1 Raspberry Pi OS flashen
@@ -256,7 +314,7 @@ Hardware sauber durch. Installiere die, die du brauchst:
 ```bash
 cd /opt/yonderrc
 npm install i2c-bus    -w @yonderrc/vehicle    # PCA9685 + INA2xx
-npm install pigpio     -w @yonderrc/vehicle    # (nur bei GPIO-PWM statt PCA9685)
+npm install pigpio     -w @yonderrc/vehicle    # (nur bei GPIO-PWM statt PCA9685 — Pinbelegung: 2.8)
 npm install serialport -w @yonderrc/vehicle    # (nur bei SBUS/Drohne und seriellem GPS)
 sudo systemctl restart yonderrc-vehicle
 ```
@@ -269,7 +327,8 @@ sudo systemctl restart yonderrc-vehicle
 0. **Detect hardware** (unter *Vehicle configuration*) scannt den I²C-Bus, `mmcli` und
    die Kamera-Geräte und schlägt Treiber/Sensoren vor — ein guter Startpunkt, bevor du
    etwas von Hand einträgst.
-1. **Vehicle:** Name setzen, **Output driver = `pca9685`** (Drohne: `sbus`),
+1. **Vehicle:** Name setzen, **Output driver = `pca9685`** (Drohne: `sbus`; ohne
+   Zusatzboard: `gpio-pwm`, Pinbelegung in 2.8),
    Throttle-Kanal prüfen. Die Checkbox *Auto-disarm on reconnect* ist hier nur ein
    **Fallback** — sobald sich eine Bodenstation verbindet, pusht sie den zum Modelltyp
    passenden Wert (Auto/Boot an, Flugzeug/Drohne aus).

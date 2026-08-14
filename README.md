@@ -246,7 +246,7 @@ Driver selection via env (details in `docs/HARDWARE.md` and `provisioning/README
 
 ```bash
 YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C PWM, 16 channels
-YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio
+YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio; pins: docs/HARDWARE.md 2.8
 YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS to a flight controller
 ```
 
