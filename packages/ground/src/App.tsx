@@ -33,7 +33,7 @@ import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWar
 import { beep } from './lib/beep';
 import { logToCsv, downloadText, sensorSnapshot, LOG_CAP, type LogRow } from './lib/logger';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
-import { buildProfile, vehicleTypes, disarmOnReconnectForType } from './lib/templates';
+import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, type AutoDisarmMode } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -55,6 +55,9 @@ function effectiveVideoBase(reported: string | null | undefined, wsUrl: string):
     return reported;
   }
 }
+
+/** Auto-disarm override, per browser; 'auto' = the vehicle-type policy. */
+const AUTO_DISARM_KEY = 'yonderrc.autoDisarm.v1';
 
 export function App() {
   const [url, setUrl] = useState(DEFAULT_URL);
@@ -95,6 +98,11 @@ export function App() {
 
   // Safety + action bindings.
   const [preArm, setPreArm] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('yonderrc.preArm.v1') !== 'off' : true));
+  // Auto-disarm on reconnect: 'auto' follows the vehicle-type policy (default).
+  const [autoDisarmMode, setAutoDisarmModeState] = useState<AutoDisarmMode>(() => {
+    const v = typeof localStorage !== 'undefined' ? localStorage.getItem(AUTO_DISARM_KEY) : null;
+    return v === 'on' || v === 'off' ? v : 'auto';
+  });
   const [actions, setActionsState] = useState(loadActions);
   const [preArmMsg, setPreArmMsg] = useState<string | null>(null);
   const [batteryCfg, setBatteryCfgState] = useState(loadBattery);
@@ -105,6 +113,16 @@ export function App() {
   const setActions = (b: ActionBindings) => {
     setActionsState(b);
     saveActions(b);
+  };
+  const autoDisarmRef = useRef(autoDisarmMode);
+  autoDisarmRef.current = autoDisarmMode;
+  const setAutoDisarmMode = (m: AutoDisarmMode) => {
+    setAutoDisarmModeState(m);
+    try {
+      localStorage.setItem(AUTO_DISARM_KEY, m);
+    } catch {
+      /* ignore */
+    }
   };
   const setPreArmPersist = (v: boolean) => {
     setPreArm(v);
@@ -141,7 +159,8 @@ export function App() {
       profileFailsafeUs(p),
       p.throttleChannels,
       profileDisarmedUs(p),
-      disarmOnReconnectForType(p.vehicleType), // vehicle-type policy: car/boat on, aircraft off
+      // 'auto' = vehicle-type policy (car/boat on, aircraft off); the operator can force it.
+      resolveAutoDisarm(autoDisarmRef.current, p.vehicleType),
     );
   }
 
@@ -206,11 +225,13 @@ export function App() {
     return () => clearInterval(id);
   }, [linkState]);
 
-  // Re-push config whenever the active profile (or its contents) change while connected.
+  // Re-push config whenever the active profile (or its contents) change while
+  // connected — and when the auto-disarm override changes, so it takes effect
+  // without a reconnect.
   useEffect(() => {
     if (connected) pushConfig(active);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, active]);
+  }, [connected, active, autoDisarmMode]);
 
   const armed = status?.armed ?? false;
   const failsafe = connected ? status?.failsafeActive ?? false : false;
@@ -409,7 +430,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.25.0</span>
+        <span className="ver">ground · v1.26.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -461,7 +482,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} autoDisarm={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>

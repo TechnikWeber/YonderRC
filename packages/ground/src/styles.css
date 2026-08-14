@@ -737,9 +737,12 @@ body {
   gap: 4px;
   text-shadow: 0 1px 3px #000;
 }
-.osd-tl { top: 0; left: 0; }
+/* The left columns must hug their content: without an explicit alignment the
+   flex default (stretch) makes every badge as wide as the widest sibling, which
+   left a blank tail behind the short ones (timer, GPS). */
+.osd-tl { top: 0; left: 0; align-items: flex-start; }
 .osd-tr { top: 0; right: 0; align-items: flex-end; }
-.osd-bl { bottom: 0; left: 0; }
+.osd-bl { bottom: 0; left: 0; align-items: flex-start; }
 .osd-br { bottom: 0; right: 0; align-items: flex-end; }
 .osd-badge {
   font-weight: 700;
@@ -968,6 +971,10 @@ body {
 }
 .field > .eyebrow {
   margin-bottom: 8px;
+}
+/* Inline warning under a setting that was deliberately forced off its default. */
+.warn-note {
+  color: var(--idle);
 }
 .radios {
   display: inline-flex;

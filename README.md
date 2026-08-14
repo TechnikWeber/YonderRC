@@ -60,9 +60,10 @@ second row, and below it the arm button with the touch joysticks and bindable bu
   goes to its failsafe value. **Vehicle-type aware and separate from disarming** —
   a drone *holds* on link loss (throttle mid), a car/boat *stops*, a plane goes to
   *motor off*.
-- **Arming**; every new connection starts disarmed. **Auto-disarm on reconnect is
-  coupled to the vehicle type** (car/boat on, plane/drone off — pushed from the
-  ground) so a reconnect can't cut an aircraft's motors in flight.
+- **Arming**; every new connection starts disarmed. **Auto-disarm on reconnect follows
+  the vehicle type** (car/boat on, plane/drone off — pushed from the ground) so a
+  reconnect can't cut an aircraft's motors in flight; **overridable** to always on/off
+  in Setup › Controls, with *auto* as the default.
 - **Hold-to-arm**: the arm button has to be held for 3 s (with a countdown filling the
   button) to arm *or* disarm, so a mis-touch on a phone can't cut the motors.
   **Panic-disarm** stays instant.

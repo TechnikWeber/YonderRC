@@ -424,6 +424,9 @@ Laptop oder die Tailscale-Adresse.
   Flugzeug/Drohne **nicht** — ein kurzer Verbindungsabriss darf einem Luftfahrzeug im
   Flug nicht die Motoren kappen. Die Boden-App pusht das anhand des Modelltyps; die
   Checkbox in der Setup-Seite ist nur der Fallback, bis sich eine Bodenstation verbindet.
+  In der Boden-App lässt sich die Regel unter **Setup › Controls** auf *immer an* oder
+  *immer aus* zwingen — steh lassen auf **auto**, außer der Fahrzeugtyp beschreibt deinen
+  Aufbau wirklich nicht.
 - **Pre-Arm-Check:** Armen wird verweigert, solange das Gas nicht in seiner Ruhelage
   steht (Mitte oder Leerlauf, je nach Detent des Kanals).
 - **Halten zum Armen:** Der Arm-Button löst erst nach 3 s Halten aus (er füllt sich und

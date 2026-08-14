@@ -63,9 +63,10 @@ Buttons.*
   auf ihren Failsafe-Wert. **Modellabhängig und getrennt vom Disarmen** — eine
   Drohne *hält* bei Link-Verlust (Gas mittig), Auto/Boot *stoppt*, Flugzeug geht
   auf *Motor aus*.
-- **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect ist
-  an den Fahrzeugtyp gekoppelt** (Auto/Boot an, Flugzeug/Drohne aus — vom Ground
-  gepusht), damit ein Reconnect einem Luftfahrzeug nicht im Flug die Motoren kappt.
+- **Arming**; jede neue Verbindung startet disarmed. **Auto-Disarm bei Reconnect folgt
+  dem Fahrzeugtyp** (Auto/Boot an, Flugzeug/Drohne aus — vom Ground gepusht), damit ein
+  Reconnect einem Luftfahrzeug nicht im Flug die Motoren kappt; in Setup › Controls
+  **überschreibbar** auf immer an/aus, Standard bleibt *auto*.
 - **Halten zum Armen**: der Arm-Button muss 3 s gehalten werden (mit Countdown, der
   den Button füllt), zum Armen *und* zum Disarmen — ein Fehlgriff am Handy kappt so
   nicht die Motoren. **Panic-Disarm** bleibt sofort.

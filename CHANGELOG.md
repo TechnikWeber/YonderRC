@@ -3,6 +3,29 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.26.0
+**English**
+- **Auto-disarm on reconnect is now selectable** in Setup › Controls: **Auto** (default,
+  follows the vehicle type — on for car/boat, off for plane/drone), **Always on** or
+  **Always off**. The choice is pushed to the vehicle immediately, not only on the next
+  connect, and forcing it against the type policy shows a warning saying what that means
+  in the air or on the ground.
+- **Fixed the stretched OSD badges (top left).** The left-hand OSD columns had no
+  alignment, so the flex default stretched every badge to the width of the widest one —
+  the session timer and the GPS badge carried a blank tail. Same class of bug as the
+  LINK badge in v1.22.0, now fixed for both left columns.
+
+**Deutsch**
+- **Auto-Disarm bei Reconnect ist jetzt wählbar** unter Setup › Controls: **Auto**
+  (Standard, folgt dem Fahrzeugtyp — an für Auto/Boot, aus für Flugzeug/Drohne),
+  **immer an** oder **immer aus**. Die Wahl geht sofort ans Fahrzeug, nicht erst beim
+  nächsten Verbinden; wer gegen die Typregel erzwingt, bekommt einen Warnhinweis, was
+  das in der Luft bzw. am Boden bedeutet.
+- **Verzerrte OSD-Badges oben links behoben.** Den linken OSD-Spalten fehlte die
+  Ausrichtung, dadurch streckte der Flex-Default jedes Badge auf die Breite des
+  breitesten — Session-Timer und GPS-Badge hatten einen leeren Fortsatz. Dieselbe
+  Fehlerklasse wie beim LINK-Badge in v1.22.0, jetzt für beide linken Spalten behoben.
+
 ## v1.25.0
 **English**
 - **The blackbox CSV now holds every telemetry channel.** Next to the fixed link/video

@@ -246,6 +246,20 @@ export function disarmOnReconnectForType(vehicleType: VehicleType): boolean {
   return vehicleType === 'car' || vehicleType === 'boat';
 }
 
+/**
+ * How the operator wants auto-disarm decided. 'auto' keeps the vehicle-type
+ * policy above (the default and the safe choice); 'on'/'off' override it for a
+ * setup the type doesn't describe — e.g. a bench rig, or a boat you want to keep
+ * running through a link drop.
+ */
+export type AutoDisarmMode = 'auto' | 'on' | 'off';
+
+export function resolveAutoDisarm(mode: AutoDisarmMode, vehicleType: VehicleType): boolean {
+  if (mode === 'on') return true;
+  if (mode === 'off') return false;
+  return disarmOnReconnectForType(vehicleType);
+}
+
 function buildBindings(
   t: VehicleTemplate,
   method: InputMethod,

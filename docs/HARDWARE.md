@@ -414,7 +414,9 @@ Tailscale address as usual.
   **vehicle-type dependent**: for a car/boat the vehicle disarms on reconnect, for a
   plane/drone it does **not** — a brief link drop must not cut an aircraft's motors in
   flight. The ground app pushes this from the model type; the checkbox in the setup page
-  is only the fallback used until a ground station connects.
+  is only the fallback used until a ground station connects. In the ground app under
+  **Setup › Controls** the policy can be forced to *always on* or *always off* — leave
+  it on **auto** unless your setup really isn't described by the vehicle type.
 - **Pre-arm check:** arming is refused while the throttle isn't at its rest position
   (centre or idle, depending on the channel's detent).
 - **Hold to arm:** the arm button only acts after being held for 3 s (it fills up and

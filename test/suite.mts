@@ -507,6 +507,14 @@ async function main() {
   for (let i = 0; i < 40; i++) up = engH.compute(hp, snap({ keys: new Set(['y']) }), 50)[15];
   ok('hold-ramp center holds toward max', up > 1900, `=${up}`);
 
+  // ---- auto-disarm on reconnect: type policy + operator override ----
+  const { resolveAutoDisarm } = await import('../packages/ground/src/lib/templates');
+  ok('auto follows car policy', resolveAutoDisarm('auto', 'car') === true);
+  ok('auto follows boat policy', resolveAutoDisarm('auto', 'boat') === true);
+  ok('auto keeps aircraft armed', resolveAutoDisarm('auto', 'plane') === false && resolveAutoDisarm('auto', 'drone') === false);
+  ok('forced on overrides the policy', resolveAutoDisarm('on', 'drone') === true);
+  ok('forced off overrides the policy', resolveAutoDisarm('off', 'car') === false);
+
   // ---- pre-arm safety check ----
   const { preArmCheck, throttleSafeUs } = await import('../packages/ground/src/lib/safety');
   const { neutralChannels } = await import('../packages/protocol/src/channels');

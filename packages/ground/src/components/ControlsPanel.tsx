@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ACTION_LABELS, type ActionBindings, type ActionId } from '../lib/actions';
 import type { BatteryWarnCfg } from '../lib/battery';
 import type { InputManager } from '../lib/input/inputManager';
+import type { AutoDisarmMode } from '../lib/templates';
 
 const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'next-camera', 'record-toggle', 'snapshot'];
 
@@ -19,6 +20,9 @@ export function ControlsPanel({
   onClearLog,
   input,
   autoDisarm,
+  autoDisarmMode,
+  onAutoDisarmMode,
+  typeDefault,
   vehicleType,
 }: {
   bindings: ActionBindings;
@@ -34,6 +38,10 @@ export function ControlsPanel({
   onClearLog: () => void;
   input: InputManager;
   autoDisarm: boolean;
+  autoDisarmMode: AutoDisarmMode;
+  onAutoDisarmMode: (m: AutoDisarmMode) => void;
+  /** What the vehicle-type policy alone would pick — shown next to "Auto". */
+  typeDefault: boolean;
   vehicleType: string;
 }) {
   const [learn, setLearn] = useState<{ id: ActionId; what: 'key' | 'button' } | null>(null);
@@ -77,8 +85,42 @@ export function ControlsPanel({
 
       <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>
         Auto-disarm on reconnect: <b>{autoDisarm ? 'ON' : 'OFF'}</b>
-        <span className="info-sub"> — set automatically from vehicle type (<b>{vehicleType}</b>): on for car/boat, off for plane/drone (so a reconnect can't cut motors in flight). Pushed to the vehicle on connect.</span>
+        <span className="info-sub"> — pushed to the vehicle on connect and whenever you change it here.</span>
       </div>
+      <div className="radios">
+        {([
+          ['auto', `Auto (${vehicleType} → ${typeDefault ? 'on' : 'off'})`],
+          ['on', 'Always on'],
+          ['off', 'Always off'],
+        ] as [AutoDisarmMode, string][]).map(([val, label]) => (
+          <label key={val} className={`radio${autoDisarmMode === val ? ' on' : ''}`}>
+            <input
+              type="radio"
+              name="autodisarm"
+              checked={autoDisarmMode === val}
+              onChange={() => onAutoDisarmMode(val)}
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+      <p className="note">
+        <b>Auto</b> follows the vehicle type — on for car/boat (stopping is always safe), off for
+        plane/drone, so a brief link drop can't cut an aircraft's motors in flight. Override it only
+        when the type doesn't describe your setup.
+      </p>
+      {autoDisarmMode === 'on' && !typeDefault && (
+        <p className="note warn-note">
+          ⚠ Forced ON for a <b>{vehicleType}</b>: every reconnect will disarm — in the air that means
+          motors off.
+        </p>
+      )}
+      {autoDisarmMode === 'off' && typeDefault && (
+        <p className="note warn-note">
+          ⚠ Forced OFF for a <b>{vehicleType}</b>: after a link drop the vehicle stays armed and will
+          keep driving as soon as control frames resume.
+        </p>
+      )}
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Action bindings</div>
       <p className="note">Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over the reliable link.</p>
