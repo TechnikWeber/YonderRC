@@ -29,11 +29,11 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
   selectable input method, and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
 
-![Touch control with throttle/steering joysticks, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png?v=2)
+![Touch control with steering/throttle joysticks, the hold-to-arm button, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png?v=3)
 
-*Touch control (multitouch joysticks, bindable buttons), the optional **WebRTC control
-channel** toggle, and a status strip: link, state, round-trip, input method,
-vehicle/driver, telemetry.*
+*Touch control (multitouch joysticks, bindable buttons), the **hold-to-arm** button, the
+optional **WebRTC control channel** toggle, and a status strip: link, state, session
+time, round-trip, input method, vehicle/driver, telemetry.*
 
 **On a phone**
 - The ground app is a normal web page — open it from a phone over the LAN, the Pi's
@@ -86,8 +86,8 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   **Auto**: it steps down quickly when loss/latency rise and back up slowly when the
   link is clearly good again (thresholds are editable).
 - OSD with status, channels, **bitrate/packet loss/FPS/video latency** and telemetry.
-  Every block can be **switched off individually**, and the whole overlay has a
-  **compact mode** for phones.
+  Every block **and every single sensor value** can be switched off individually, and
+  the whole overlay has a **compact mode** for phones.
 - **Recording & snapshots** locally (pick a folder once; bindable to a key or a
   controller button).
 
@@ -121,8 +121,10 @@ disarm — the throttle channel is visibly held safe while disarmed.*
 - **Low-battery warning** on percent / voltage / consumed mAh, with a blinking OSD
   marker, controller rumble and a beep.
 - **Blackbox logging** (optional, off by default): 2 Hz CSV of arm/failsafe state,
-  link, round-trip, bitrate, loss, FPS, video latency, voltage, current, mAh and
-  percent — up to ~5 h, downloadable from Setup › Controls.
+  link, round-trip, bitrate, loss, FPS, video latency, mAh and percent — plus **one
+  column per telemetry channel** (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`…), so every
+  voltage, current and temperature you configured lands in the log. Up to ~5 h,
+  downloadable from Setup › Controls.
 
 **GPS & navigation**
 - **Selectable GPS source**: a local NMEA receiver over serial (Adafruit Ultimate GPS,
@@ -173,7 +175,7 @@ npm run dev
 - Vehicle service: `ws://localhost:8080` (sim driver), setup at `/setup`.
 - Ground station: `http://localhost:5173`.
 
-Press **Connect**, then **Arm**, and drive with `W A S D` / arrow keys. From a phone
+Press **Connect**, **hold Arm for 3 s**, and drive with `W A S D` / arrow keys. From a phone
 open `http://<PC-LAN-IP>:5173` (the dev server and the vehicle listen on all
 interfaces).
 

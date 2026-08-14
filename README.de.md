@@ -29,11 +29,11 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
   wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 
-![Touch-Steuerung mit Gas-/Lenk-Joysticks, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=2)
+![Touch-Steuerung mit Lenk-/Gas-Joysticks, Halten-zum-Armen-Button, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=3)
 
-*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons), der optionale
-**WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Round-Trip,
-Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
+*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons), der **Halten-zum-Armen**-
+Button, der optionale **WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link,
+Zustand, Session-Zeit, Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
 
 **Am Handy**
 - Die Boden-App ist eine normale Webseite — vom Handy über das LAN, den eigenen
@@ -90,8 +90,8 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   **Auto**: schaltet bei steigendem Verlust/Latenz schnell herunter und erst wieder
   hoch, wenn die Verbindung klar gut ist (Schwellen einstellbar).
 - OSD mit Status, Kanälen, **Bitrate/Paketverlust/FPS/Video-Latenz** und Telemetrie.
-  Jeder Block ist **einzeln abschaltbar**, und die ganze Einblendung hat einen
-  **Kompakt-Modus** fürs Handy.
+  Jeder Block **und jeder einzelne Sensorwert** ist abschaltbar, und die ganze
+  Einblendung hat einen **Kompakt-Modus** fürs Handy.
 - **Aufnahme & Standbild** lokal (Ordner einmal vorwählen; auf Taste oder
   Controller-Button legbar).
 
@@ -126,8 +126,10 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
 - **Akku-Warnung** über Prozent / Spannung / verbrauchte mAh, mit blinkender
   OSD-Markierung, Controller-Rumble und Ton.
 - **Blackbox-Logging** (optional, standardmäßig aus): 2-Hz-CSV mit Arm-/Failsafe-
-  Zustand, Link, Round-Trip, Bitrate, Loss, FPS, Video-Latenz, Spannung, Strom, mAh
-  und Prozent — bis ca. 5 h, herunterladbar unter Setup › Controls.
+  Zustand, Link, Round-Trip, Bitrate, Loss, FPS, Video-Latenz, mAh und Prozent — dazu
+  **je eine Spalte pro Telemetriekanal** (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`…), damit
+  jede konfigurierte Spannung, jeder Strom und jede Temperatur im Log landet. Bis ca.
+  5 h, herunterladbar unter Setup › Controls.
 
 **GPS & Navigation**
 - **Wählbare GPS-Quelle**: lokaler NMEA-Empfänger über Serial (Adafruit Ultimate GPS,
@@ -178,7 +180,7 @@ npm run dev
 - Fahrzeug-Dienst: `ws://localhost:8080` (Sim-Treiber), Setup unter `/setup`.
 - Bodenstation: `http://localhost:5173`.
 
-**Connect** drücken, dann **Arm**, und mit `W A S D` / Pfeiltasten fahren. Vom Handy
+**Connect** drücken, **Arm 3 s halten**, und mit `W A S D` / Pfeiltasten fahren. Vom Handy
 `http://<PC-LAN-IP>:5173` öffnen (Dev-Server und Fahrzeug lauschen auf allen
 Interfaces).
 

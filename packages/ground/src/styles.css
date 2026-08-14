@@ -549,6 +549,12 @@ body {
   color: var(--muted);
   margin-bottom: 12px;
 }
+/* Inline monospace snippet inside note/hint copy (CSV column names, ids). */
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--text);
+}
 .mono-input {
   background: var(--panel-2);
   border: 1px solid var(--line-bright);

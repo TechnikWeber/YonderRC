@@ -80,7 +80,7 @@ export function StatusStrip({
   gamepad,
   gamepadKind,
   telemetrySource,
-  flightSeconds,
+  sessionSeconds,
   sessionMah,
 }: {
   linkState: LinkState;
@@ -92,11 +92,11 @@ export function StatusStrip({
   gamepad: string | null;
   gamepadKind: 'browser' | 'sdl';
   telemetrySource: 'sim' | 'real' | 'nodata' | null;
-  flightSeconds: number | null;
+  sessionSeconds: number | null;
   sessionMah: number | null;
 }) {
   const linkClass = linkState === 'connected' ? 'link' : 'warn';
-  const mmss = flightSeconds === null ? null : `${Math.floor(flightSeconds / 60)}:${String(flightSeconds % 60).padStart(2, '0')}`;
+  const mmss = sessionSeconds === null ? null : `${Math.floor(sessionSeconds / 60)}:${String(sessionSeconds % 60).padStart(2, '0')}`;
   return (
     <section className="status-strip">
       <div className="stat">
@@ -110,7 +110,8 @@ export function StatusStrip({
         </div>
       </div>
       <div className="stat">
-        <div className="k">Flight</div>
+        {/* "Session", not "Flight" — the same strip serves cars and boats. */}
+        <div className="k">Session</div>
         <div className={`v ${mmss ? 'good' : ''}`}>{mmss ?? '—'}{sessionMah != null ? ` · ${sessionMah} mAh` : ''}</div>
       </div>
       <div className="stat">

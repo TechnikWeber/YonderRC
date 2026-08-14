@@ -561,6 +561,32 @@ async function main() {
   ok('csv has header + row', csv.split('\n').length === 2 && csv.includes('t_ms,armed'));
   ok('csv null renders empty', logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1] === '5,0,0,connected,,,,,,,,,');
 
+  // Every telemetry channel gets its own column, named after its label.
+  const { sensorSnapshot } = await import('../packages/ground/src/lib/logger');
+  const snapMsg = {
+    type: 'telemetry', source: 'sim', ok: true,
+    voltages: [{ label: 'Pack', value: 16.4 }, { label: 'BEC', value: 5.1 }],
+    currents: [{ label: 'I1', value: 9.2 }],
+    temperatures: [{ label: 'Motor °C', value: 62.5 }, { label: '', value: 41 }],
+    mah: 0, wh: 0, capacityMah: null, batteryPercent: null, displayMode: 'remaining',
+  } as import('@yonderrc/protocol').TelemetryMessage;
+  const cols = sensorSnapshot(snapMsg);
+  ok('snapshot names columns by label', cols.Pack_V === 16.4 && cols.BEC_V === 5.1 && cols.I1_A === 9.2);
+  ok('snapshot sanitises labels', cols['Motor_C_C'] === 62.5, Object.keys(cols).join('|'));
+  ok('snapshot falls back for empty labels', cols.C2_C === 41);
+  ok('snapshot of nothing is empty', Object.keys(sensorSnapshot(null)).length === 0);
+  const dup = sensorSnapshot({ ...snapMsg, voltages: [{ label: 'V', value: 1 }, { label: 'V', value: 2 }], currents: [], temperatures: [] });
+  ok('duplicate labels stay distinct', dup.V_V === 1 && dup.V2_V === 2, Object.keys(dup).join('|'));
+  // A channel that drops out mid-log must not shift the columns of later rows.
+  const base = { armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null } as const;
+  const grown = logToCsv([
+    { t: 0, ...base, sensors: { Pack_V: 16.4, Motor_C: 60 } },
+    { t: 500, ...base, sensors: { Pack_V: 16.3 } }, // temperature sensor dropped out
+    { t: 1000, ...base, sensors: { Pack_V: 16.2, Motor_C: 61, ESC_C: 55 } }, // and a new one appeared
+  ]).split('\n');
+  ok('csv header unions all channels', grown[0].endsWith(',Pack_V,Motor_C,ESC_C'), grown[0]);
+  ok('csv keeps columns aligned', grown[2].endsWith(',16.3,,') && grown[3].endsWith(',16.2,61,55'), grown[2]);
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

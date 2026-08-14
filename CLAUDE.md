@@ -97,8 +97,20 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   LTE signal % from `mmcli`, else parses the WiFi RSSI from `iw dev wlan0 link` (pure
   helpers + tests in `vehicle/system/signal.ts`); shown in the OSD link block, with the
   weak-link warning below 25 %. Interface name is hardcoded to `wlan0`.
+- **Telemetry expansion — DONE (v1.23.0 / v1.24.0)**: INA228 (hardware CHARGE/ENERGY
+  counter, `chargeSource` auto/sensor/pi) plus INA237/238; temperature channels
+  (Pi SoC, DS18B20, MCP9808/TMP102/TMP117/BMP280/BME280, MAX6675/31855/31856/31865,
+  ADS1115/MCP3008 + NTC/PT100) with pure conversions in `vehicle/sensors/convert.ts`;
+  per-channel OSD visibility, labels from the second channel of a kind on, explicit
+  `primary` flag, and one blackbox CSV column per channel. **All register/bus access is
+  hardware-only-verified** — only the maths and the sim path are proven.
+- **Hold-to-arm — DONE (v1.22.0)**: 3 s press-and-hold for arm *and* disarm
+  (`ground/src/lib/hold.ts`), panic-disarm stays instant, OSD shows only
+  DISARMED/FAILSAFE.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
+- Screenshots: `Mobile_FPV.jpeg` is a real phone screenshot and still shows the
+  pre-v1.22 arm button — retake it on a phone when convenient.
 
 Done in the v1.16.2–v1.18.0 review/feature pass: arm-over-WS, no-shell-injection, camera
 name/device hardening, INA voltage, per-channel detents, optional shared secret,

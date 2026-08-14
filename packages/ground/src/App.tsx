@@ -31,7 +31,7 @@ import { loadActions, saveActions, useActionHotkeys, type ActionBindings } from 
 import { preArmCheck } from './lib/safety';
 import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWarnCfg } from './lib/battery';
 import { beep } from './lib/beep';
-import { logToCsv, downloadText, LOG_CAP, type LogRow } from './lib/logger';
+import { logToCsv, downloadText, sensorSnapshot, LOG_CAP, type LogRow } from './lib/logger';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
 import { buildProfile, vehicleTypes, disarmOnReconnectForType } from './lib/templates';
 
@@ -236,8 +236,8 @@ export function App() {
   };
   useActionHotkeys(actions, { 'panic-disarm': panicDisarm, 'toggle-arm': () => requestArm(!armed) }, input);
 
-  // Flight timer + session: runs while armed; captures mAh consumed since arming.
-  const [flightSeconds, setFlightSeconds] = useState(0);
+  // Session timer: runs while armed; also captures mAh consumed since arming.
+  const [sessionSeconds, setFlightSeconds] = useState(0);
   const armedSince = useRef<number | null>(null);
   const mahAtArm = useRef<number | null>(null);
   const [sessionMah, setSessionMah] = useState<number | null>(null);
@@ -296,6 +296,7 @@ export function App() {
         amp: primaryCurrent(t)?.value ?? null,
         mah: t?.mah ?? null,
         pct: t?.batteryPercent ?? null,
+        sensors: sensorSnapshot(t),
       });
       if (logRef.current.length > LOG_CAP) logRef.current.shift();
       setLogRows(logRef.current.length);
@@ -408,7 +409,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.24.0</span>
+        <span className="ver">ground · v1.25.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -487,7 +488,7 @@ export function App() {
             telemetry={connected ? telemetry : null}
             input={input}
             actions={actions}
-            flightSeconds={armed ? flightSeconds : null}
+            sessionSeconds={armed ? sessionSeconds : null}
             batteryLow={battery.low && batteryCfg.osdBlink}
             batteryReason={battery.reason}
             linkSignal={connected ? status?.link ?? null : null}
@@ -531,7 +532,7 @@ export function App() {
             latencyMs={rttDisplay}
             gamepad={gamepad}
             gamepadKind={input.gamepadKind}
-            flightSeconds={armed ? flightSeconds : null}
+            sessionSeconds={armed ? sessionSeconds : null}
             sessionMah={sessionMah}
             telemetrySource={
               !connected || !telemetry

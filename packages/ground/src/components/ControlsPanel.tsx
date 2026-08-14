@@ -158,7 +158,7 @@ export function ControlsPanel({
         <button className="btn tiny" onClick={onDownloadLog} disabled={logRows === 0}>Download CSV</button>
         <button className="btn tiny" onClick={onClearLog} disabled={logRows === 0}>Clear</button>
       </div>
-      <p className="note">Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs stay in this browser tab until you download or clear them.</p>
+      <p className="note">Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs stay in this browser tab until you download or clear them. The CSV holds link/video stats plus <b>every telemetry channel</b> the vehicle reports, one column per channel (<span className="mono">Pack_V</span>, <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>); <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary channel.</p>
     </section>
   );
 }

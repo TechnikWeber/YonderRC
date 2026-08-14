@@ -369,7 +369,7 @@ export function VideoPanel({
   telemetry,
   input,
   actions,
-  flightSeconds,
+  sessionSeconds,
   batteryLow,
   batteryReason,
   linkSignal,
@@ -389,7 +389,7 @@ export function VideoPanel({
   telemetry: TelemetryMessage | null;
   input: InputManager;
   actions: ActionBindings;
-  flightSeconds: number | null;
+  sessionSeconds: number | null;
   batteryLow: boolean;
   batteryReason: string | null;
   linkSignal: LinkSignal | null;
@@ -694,7 +694,7 @@ export function VideoPanel({
 
   // Only the states worth interrupting the picture for: FAILSAFE and DISARMED
   // ("why doesn't it move?"). ARMED is deliberately silent — that's the normal
-  // case, the flight timer and the channel bars already show it, and on a phone
+  // case, the session timer and the channel bars already show it, and on a phone
   // one badge less keeps the OSD off the middle of the frame.
   const armBadge = failsafe ? (
     <span className="osd-badge bad">FAILSAFE</span>
@@ -763,7 +763,7 @@ export function VideoPanel({
           <p className="note">Show or hide OSD blocks. Kept per browser.</p>
           <div className="osd-fields">
             {([
-              ['timer', 'Flight timer'],
+              ['timer', 'Session timer'],
               ['gps', 'GPS (fix / sats / home)'],
               ['homeArrow', 'Home arrow / compass'],
               ['channels', 'Channel bars (THR/STR)'],
@@ -854,12 +854,12 @@ export function VideoPanel({
 
         {showOsd && (
           <div className={`osd${compactOsd ? ' compact' : ''}`}>
-            {((osdFields.timer && flightSeconds !== null) ||
+            {((osdFields.timer && sessionSeconds !== null) ||
               (osdFields.gps && gps && gps.source !== 'off') ||
               (osdFields.homeArrow && gpsHome)) && (
               <div className="osd-tl">
-                {osdFields.timer && flightSeconds !== null && (
-                  <span className="osd-badge go">⏱ {Math.floor(flightSeconds / 60)}:{String(flightSeconds % 60).padStart(2, '0')}</span>
+                {osdFields.timer && sessionSeconds !== null && (
+                  <span className="osd-badge go">⏱ {Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, '0')}</span>
                 )}
                 {osdFields.gps && gps && gps.source !== 'off' && (
                   <span className={`osd-badge ${gps.hasFix ? 'go' : 'idle'}`}>

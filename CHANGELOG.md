@@ -3,6 +3,36 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.25.0
+**English**
+- **The blackbox CSV now holds every telemetry channel.** Next to the fixed link/video
+  columns it gets **one column per configured channel**, named after its label
+  (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`), so temperatures and extra voltages/currents
+  finally land in the log. `volt`/`amp` stay as the **primary** channel so a script
+  always finds the pack in a known place. Columns are the union over the whole log, so
+  a probe that drops out mid-run leaves a gap instead of shifting everything.
+- **"Flight" is now "Session"** in the status strip and the OSD field list — the same
+  app drives cars and boats, and the timer measures armed time, not flight.
+- **Docs pass** for everything since v1.21.1: hold-to-arm in the safety chapter and the
+  first-test steps (both languages), per-value OSD switches, the temperature-sensor and
+  INA228 additions in the feature list, the new CSV columns, and a refreshed
+  touch/status screenshot showing the hold-to-arm button and the Session stat.
+
+**Deutsch**
+- **Die Blackbox-CSV enthält jetzt jeden Telemetriekanal.** Neben den festen Link-/
+  Video-Spalten gibt es **je eine Spalte pro konfiguriertem Kanal**, benannt nach dessen
+  Label (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`) — Temperaturen und zusätzliche
+  Spannungen/Ströme landen also endlich im Log. `volt`/`amp` bleiben der **primäre**
+  Kanal, damit ein Skript den Pack immer an derselben Stelle findet. Die Spalten sind
+  die Vereinigung über das ganze Log: ein zeitweise ausfallender Sensor hinterlässt eine
+  Lücke, statt alles zu verschieben.
+- **Aus „Flight" wird „Session"** in der Status-Leiste und der OSD-Feldliste — dieselbe
+  App fährt Autos und Boote, und der Timer misst die gearmte Zeit, keinen Flug.
+- **Doku-Durchgang** für alles seit v1.21.1: Halten-zum-Armen im Sicherheitskapitel und
+  in den Erst-Test-Schritten (beide Sprachen), die Einzelschalter im OSD, Temperatur-
+  sensoren und INA228 in der Feature-Liste, die neuen CSV-Spalten sowie ein
+  aufgefrischter Touch-/Status-Screenshot mit Halten-zum-Armen und Session-Anzeige.
+
 ## v1.24.0
 **English**
 - **Temperature sensors, 1..n.** New temperature channels in Setup › Telemetry, shown in

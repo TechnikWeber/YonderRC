@@ -298,7 +298,8 @@ sudo systemctl restart yonderrc-vehicle
 2. Noch **nicht armen**. Im Kanal-Monitor prüfen: Lenkung/Ruder bewegt den
    richtigen Kanal? Endpunkte ok? Bei Bedarf im Setup Trim/EPA/Reverse anpassen.
 3. **ESC-Kalibrierung** (falls nötig) im Setup starten — Anweisungen folgen.
-4. Erst wenn alles stimmt: Antrieb scharf, **Arm** drücken, vorsichtig Gas.
+4. Erst wenn alles stimmt: Antrieb scharf, den **Arm-Button 3 s halten**, bis der
+   Countdown durch ist, vorsichtig Gas geben.
 5. **Video** sollte im FPV-Panel laufen (der `go2rtc`-Dienst läuft dauerhaft).
 6. **Telemetrie** im OSD prüfen: zeigt es echte Pack-Spannung? Steht dort **nicht**
    „SIM"? Dann liest der Sensor korrekt. Falls „SIM" erscheint, greift der Fallback
@@ -425,6 +426,10 @@ Laptop oder die Tailscale-Adresse.
   Checkbox in der Setup-Seite ist nur der Fallback, bis sich eine Bodenstation verbindet.
 - **Pre-Arm-Check:** Armen wird verweigert, solange das Gas nicht in seiner Ruhelage
   steht (Mitte oder Leerlauf, je nach Detent des Kanals).
+- **Halten zum Armen:** Der Arm-Button löst erst nach 3 s Halten aus (er füllt sich und
+  zählt herunter), beim Armen *und* beim Disarmen — ein Fehlgriff am Handy kappt so
+  nicht die Motoren. Das belegbare **Panic-Disarm** bleibt sofort, und das OSD zeigt nur
+  noch DISARMED oder FAILSAFE, nie ein Badge für den Normalfall „gearmt".
 - **Treiber-Fallback:** Schlägt der Hardware-Treiber beim Start fehl, läuft der
   Dienst im Sim weiter und die Setup-UI bleibt erreichbar.
 - **systemd `Restart=always`:** Stürzt der Dienst ab, startet ihn systemd neu.
