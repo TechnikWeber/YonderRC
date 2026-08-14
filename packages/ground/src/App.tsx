@@ -33,8 +33,9 @@ import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWar
 import { beep } from './lib/beep';
 import { logToCsv, downloadText, sensorSnapshot, LOG_CAP, type LogRow } from './lib/logger';
 import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
+import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
-import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, type AutoDisarmMode } from './lib/templates';
+import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, throttleChannelsOf, type AutoDisarmMode } from './lib/templates';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -163,7 +164,7 @@ export function App() {
   function pushConfig(p: Profile) {
     linkRef.current?.sendConfig(
       profileFailsafeUs(p),
-      p.throttleChannels,
+      throttleChannelsOf(p), // derived, not the (possibly stale) stored list
       profileDisarmedUs(p),
       // 'auto' = vehicle-type policy (car/boat on, aircraft off); the operator can force it.
       resolveAutoDisarm(autoDisarmRef.current, p.vehicleType),
@@ -197,12 +198,15 @@ export function App() {
       const name = input.pollGamepadName();
       setGamepad((prev) => (prev === name ? prev : name));
 
+      // RAW command first: the pre-arm check must see what the sticks really
+      // ask for, so the speed limiter can never soften that check.
       const channels = engine.compute(activeRef.current, input.snapshot(), dt);
       liveChannelsRef.current = channels;
-      linkRef.current?.sendControl(channels);
+      const sent = applyThrottleLimit(activeRef.current, channels);
+      linkRef.current?.sendControl(sent);
 
       if (++n % 3 === 0) {
-        setPreviewChannels(channels);
+        setPreviewChannels(sent);
         setTick((t) => (t + 1) % 1_000_000);
       }
     }, CONTROL_PERIOD_MS);
@@ -267,7 +271,11 @@ export function App() {
   const [hotkeyHold, setHotkeyHold] = useState(0);
   useActionHotkeys(
     actions,
-    { 'panic-disarm': panicDisarm, 'toggle-arm': () => requestArm(!armed) },
+    {
+      'panic-disarm': panicDisarm,
+      'toggle-arm': () => requestArm(!armed),
+      'throttle-limit': () => updateProfile(withStep(activeRef.current, nextStep(limitOf(activeRef.current).step))),
+    },
     input,
     { holdMs: holdMsFor(holdCfg), actions: ['toggle-arm'], onProgress: setHotkeyHold },
   );
@@ -445,7 +453,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.30.0</span>
+        <span className="ver">ground · v1.31.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -544,6 +552,8 @@ export function App() {
             calibrationActive={status?.calibration?.active ?? false}
             holdMs={holdMsFor(holdCfg)}
             externalProgress={hotkeyHold}
+            limit={limitOf(active)}
+            onLimitStep={(step) => updateProfile(withStep(active, step))}
             version={tick}
           />
           <div className="link-opts">

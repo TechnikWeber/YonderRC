@@ -5,7 +5,7 @@ import type { InputManager } from '../lib/input/inputManager';
 import type { AutoDisarmMode } from '../lib/templates';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
 
-const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'next-camera', 'record-toggle', 'snapshot'];
+const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'next-camera', 'record-toggle', 'snapshot'];
 
 export function ControlsPanel({
   bindings,

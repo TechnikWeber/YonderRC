@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CalibrationStatus, Profile } from '@yonderrc/protocol';
+import { throttleChannelsOf } from '../lib/templates';
 
 /**
  * ESC throttle-range calibration wizard. Runs against the vehicle's non-blocking
@@ -21,7 +22,7 @@ export function CalibrationPanel({
   onNext: () => void;
   onCancel: () => void;
 }) {
-  const [channel, setChannel] = useState((profile.throttleChannels[0] ?? 2) + 1);
+  const [channel, setChannel] = useState((throttleChannelsOf(profile)[0] ?? 2) + 1);
   const active = calibration?.active ?? false;
 
   return (

@@ -1,6 +1,6 @@
 import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/protocol';
 import type { Profile } from '@yonderrc/protocol';
-import { buildProfile, disarmedThrottleUs } from './templates';
+import { buildProfile, disarmedThrottleUs, throttleChannelsOf } from './templates';
 
 const PROFILES_KEY = 'yonderrc.profiles.v3';
 const ACTIVE_KEY = 'yonderrc.activeProfile.v3';
@@ -70,7 +70,7 @@ export function profileFailsafeUs(profile: Profile): number[] {
 export function profileDisarmedUs(profile: Profile): number[] {
   const arr = neutralChannels();
   const off = disarmedThrottleUs(profile.vehicleType, profile.endpoints);
-  for (const ch of profile.throttleChannels) {
+  for (const ch of throttleChannelsOf(profile)) {
     if (ch >= 0 && ch < CHANNEL_COUNT) arr[ch] = off;
   }
   return arr;

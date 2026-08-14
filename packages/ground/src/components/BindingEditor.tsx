@@ -9,7 +9,10 @@ import {
   rebuildForMethod,
   setDetent,
   stickModes,
+  throttleChannelsOf,
+  withResolvedThrottle,
 } from '../lib/templates';
+import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import type { InputManager } from '../lib/input/inputManager';
 
 const METHODS: InputMethod[] = ['keyboard', 'gamepad', 'touch'];
@@ -27,7 +30,7 @@ export function BindingEditor({
   profile,
   locked = false,
   input,
-  onChange,
+  onChange: onChangeRaw,
   onRename,
   onDelete,
   onDuplicate,
@@ -40,6 +43,20 @@ export function BindingEditor({
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
+  // Every edit re-derives which channels carry throttle, so the stored list can
+  // never drift away from the bindings — it drives the disarmed value, the
+  // failsafe array and the pre-arm check.
+  const onChange = (next: Profile) => onChangeRaw(withResolvedThrottle(next));
+
+  // Speed-limit steps live on the throttle channel, where you'd look for them.
+  const throttleSet = new Set(throttleChannelsOf(profile));
+  const limit = limitOf(profile);
+  const setLimitStepPct = (i: 0 | 1 | 2, pct: number) => {
+    const steps = [...limit.steps] as [number, number, number];
+    steps[i] = clampPercent(pct);
+    onChange({ ...profile, throttleLimit: { ...limit, steps } });
+  };
+
   const patchShaping = (id: string, patch: Partial<ChannelBinding['shaping']>) =>
     onChange({
       ...profile,
@@ -261,6 +278,34 @@ export function BindingEditor({
                 <label>failsafe µs<input type="number" value={b.shaping.failsafeUs} onChange={(e) => patchShaping(b.id, { failsafeUs: Number(e.target.value) })} /></label>
                 <label className="rev">reverse<input type="checkbox" checked={b.shaping.reverse} onChange={(e) => patchShaping(b.id, { reverse: e.target.checked })} /></label>
               </div>
+              {throttleSet.has(b.channel) && (
+                <>
+                  <div className="eyebrow2" style={{ marginTop: 10 }}>Speed limit steps (%)</div>
+                  <div className="shaping-grid">
+                    {([0, 1, 2] as const).map((i) => (
+                      <label key={i}>
+                        {LIMIT_STEP_LABELS[i]}
+                        <input
+                          type="number"
+                          min={LIMIT_MIN_PCT}
+                          max={LIMIT_MAX_PCT}
+                          value={limit.steps[i]}
+                          onChange={(e) => setLimitStepPct(i, Number(e.target.value))}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <p className="note">
+                    Switched while driving with the three buttons under the sticks (and a bindable
+                    controller button). The command is scaled around this channel's rest position:
+                    with <b>rest {REST_LABEL[b.detent ?? 'center']}</b> that means{' '}
+                    {(b.detent ?? 'center') === 'center'
+                      ? 'forward and reverse are capped equally'
+                      : 'idle stays exactly at minimum and only the upper half is capped'}.
+                    Endpoints, failsafe, the disarmed value and the pre-arm check are untouched.
+                  </p>
+                </>
+              )}
             </details>
           </div>
         ))}

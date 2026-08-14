@@ -532,6 +532,76 @@ async function main() {
   ok('forced on overrides the policy', resolveAutoDisarm('on', 'drone') === true);
   ok('forced off overrides the policy', resolveAutoDisarm('off', 'car') === false);
 
+  // ---- which channel is the throttle (must follow the bindings, not the template) ----
+  const { throttleChannelsOf, withResolvedThrottle } = await import('../packages/ground/src/lib/templates');
+  const carT = buildProfile('car');
+  ok('derives the template channel', throttleChannelsOf(carT).join() === carT.throttleChannels.join());
+  // Move the throttle binding to another channel — the stored list stays behind.
+  const moved = {
+    ...carT,
+    bindings: carT.bindings.map((b) => (b.label === 'Throttle' ? { ...b, channel: 7 } : b)),
+  };
+  ok('stored list goes stale', moved.throttleChannels.join() === '2');
+  ok('derivation follows the binding', throttleChannelsOf(moved).join() === '7');
+  ok('normalising writes it back', withResolvedThrottle(moved).throttleChannels.join() === '7');
+  ok('normalising is a no-op when in sync', withResolvedThrottle(carT) === carT);
+  // The label is what marks a throttle; an unrecognised one falls back to the list.
+  const renamed = { ...carT, bindings: carT.bindings.map((b) => (b.label === 'Throttle' ? { ...b, label: 'Gas' } : b)) };
+  ok('unknown label falls back to the stored list', throttleChannelsOf(renamed).join() === '2');
+  const deleted = { ...carT, bindings: carT.bindings.filter((b) => b.label !== 'Throttle') };
+  ok('deleted binding falls back too', throttleChannelsOf(deleted).join() === '2');
+  // Twin motors: two throttle bindings, both must be guarded.
+  const twin = {
+    ...carT,
+    bindings: [...carT.bindings, { ...carT.bindings.find((b) => b.label === 'Throttle')!, id: 'twin', channel: 3 }],
+  };
+  ok('two throttles are both derived', throttleChannelsOf(twin).join() === '2,3');
+
+  // …and the safety arrays follow it. A car's OFF value is centre (= neutral), so
+  // the plane is the case that actually proves it: OFF there is min.
+  const movedPlane = (() => {
+    const p = buildProfile('plane');
+    return { ...p, bindings: p.bindings.map((b) => (b.label === 'Throttle' ? { ...b, channel: 7 } : b)) };
+  })();
+  const planeDisarm = profileDisarmedUs(movedPlane);
+  ok('moved plane throttle is still cut when disarmed', planeDisarm[7] === 1000, `=${planeDisarm[7]}`);
+  ok('the old channel is no longer forced', planeDisarm[2] === 1500, `=${planeDisarm[2]}`);
+
+  // ---- throttle limiter (three speeds) ----
+  const TL = await import('../packages/ground/src/lib/throttleLimit');
+  const { neutralChannels: neutral } = await import('../packages/protocol/src/channels');
+  // Centre detent (car with reverse): capped in BOTH directions around 1500.
+  ok('centre: full forward at 50%', TL.limitUs(2000, 1500, 50) === 1750);
+  ok('centre: full reverse at 50%', TL.limitUs(1000, 1500, 50) === 1250);
+  ok('centre: rest stays rest', TL.limitUs(1500, 1500, 50) === 1500);
+  // Min detent (plane/ratcheted): idle untouched, only the top is capped.
+  ok('min: idle stays exactly at min', TL.limitUs(1000, 1000, 50) === 1000);
+  ok('min: full throttle at 50%', TL.limitUs(2000, 1000, 50) === 1500);
+  ok('min: half throttle at 50%', TL.limitUs(1500, 1000, 50) === 1250);
+  // Scaling, not clipping: the whole stick travel keeps mapping proportionally.
+  ok('scales linearly', TL.limitUs(1750, 1500, 40) === 1600);
+  ok('100% is a no-op', TL.limitUs(1873, 1500, 100) === 1873);
+  ok('percent is clamped', TL.clampPercent(0) === 10 && TL.clampPercent(500) === 100 && TL.clampPercent(Number.NaN) === 100);
+
+  const limCar = buildProfile('car'); // throttle ch 2, centre detent
+  ok('no limiter configured → full travel', TL.activePercent(limCar) === 100);
+  const pushed2 = neutral();
+  pushed2[2] = 2000;
+  pushed2[0] = 2000; // steering must NOT be limited
+  const limited = TL.applyThrottleLimit(TL.withStep({ ...limCar, throttleLimit: { steps: [40, 70, 100], step: 0 } }, 0), pushed2);
+  ok('limits the throttle channel', limited[2] === 1700, `=${limited[2]}`);
+  ok('leaves other channels alone', limited[0] === 2000);
+  ok('unlimited returns the same array', TL.applyThrottleLimit(limCar, pushed2) === pushed2);
+  // It has to follow a throttle that was moved to another channel.
+  const limMoved = { ...movedPlane, throttleLimit: { steps: [50, 70, 100], step: 0 as const } };
+  const planePush = neutral();
+  planePush[7] = 2000;
+  const limPlane = TL.applyThrottleLimit(limMoved, planePush);
+  ok('follows the moved throttle channel', limPlane[7] === 1500, `=${limPlane[7]}`);
+  ok('step cycling wraps', TL.nextStep(0) === 1 && TL.nextStep(1) === 2 && TL.nextStep(2) === 0);
+  ok('withStep keeps the steps', TL.withStep(limCar, 1).throttleLimit?.step === 1);
+  ok('garbage config falls back', TL.limitOf({ ...limCar, throttleLimit: { steps: [0, 999, Number.NaN] as [number, number, number], step: 9 as 0 } }).steps.join() === '10,100,100');
+
   // ---- pre-arm safety check ----
   const { preArmCheck, throttleSafeUs } = await import('../packages/ground/src/lib/safety');
   const { neutralChannels } = await import('../packages/protocol/src/channels');
@@ -549,6 +619,13 @@ async function main() {
   const low = neutralChannels();
   low[pThr] = 1000;
   ok('plane arms at idle throttle', preArmCheck(planeP, low).ok);
+  // …and it follows a throttle that was moved to another channel in the editor.
+  const upOnSeven = neutralChannels();
+  upOnSeven[7] = 2000;
+  ok('pre-arm blocks on the moved throttle', !preArmCheck(movedPlane, upOnSeven).ok);
+  const idleOnSeven = neutralChannels();
+  idleOnSeven[7] = 1000;
+  ok('pre-arm passes at idle on the moved throttle', preArmCheck(movedPlane, idleOnSeven).ok);
 
   // ---- hold-to-arm timing ----
   const { holdProgress, holdRemainingS, ARM_HOLD_MS, clampHoldSeconds, holdMsFor, HOLD_DEFAULTS, HOLD_MIN_S, HOLD_MAX_S } =

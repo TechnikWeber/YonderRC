@@ -5,6 +5,7 @@ import {
   CHANNEL_NEUTRAL_US,
   type Profile,
 } from '@yonderrc/protocol';
+import { throttleChannelsOf } from '../lib/templates';
 
 /** Position of the fill for a value within THIS channel's own endpoint range. */
 function fillGeometry(us: number, min: number, max: number): { left: number; width: number } {
@@ -42,7 +43,7 @@ export function ChannelMonitor({
   armed: boolean;
 }) {
   const labels = labelsFor(profile);
-  const throttleSet = new Set(profile.throttleChannels);
+  const throttleSet = new Set(throttleChannelsOf(profile));
   return (
     <section className={`panel monitor${failsafe ? ' failsafe' : ''}`}>
       <div className="mon-head">

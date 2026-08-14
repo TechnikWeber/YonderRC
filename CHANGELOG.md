@@ -3,6 +3,51 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.31.0
+**English**
+- **Fixed: the throttle channel could go stale.** A profile stored `throttleChannels`
+  from its template, but moving a binding to another channel in the editor never updated
+  that list — and the **disarmed value, the failsafe array, the pre-arm check**, the OSD
+  bar and the ESC calibration all read it. A plane whose throttle had been moved held
+  *centre* on link loss instead of motor-off, and passed the stick straight through while
+  "disarmed". The channel is now derived from the bindings (`throttleChannelsOf`), with
+  the stored list as a fallback, and the editor writes the derived list back on every
+  edit, so older models heal themselves.
+- **Speed limiter with three steps.** Low / Mid / High (percent per model, default
+  40/70/100) as three buttons under the sticks and the channel buttons; the values are
+  edited on the throttle channel in Setup, and a bindable controller button cycles them.
+- The command is **scaled around the throttle's rest position**, so one rule covers both
+  cases: a **centre** detent (car with reverse, drone) is capped forwards *and*
+  backwards, a **low/free** detent (plane, ratcheted throttle) keeps its exact idle and
+  is capped only upwards. Scaled, not clipped — the full stick travel stays usable.
+- The limiter only changes what is **sent**: endpoints, failsafe, the disarmed value and
+  the pre-arm check keep working off the true rest position, and the pre-arm check still
+  sees the raw stick command. The OSD shows `LIM 40%` next to the throttle bar while a
+  limit is active.
+
+**Deutsch**
+- **Behoben: der Gaskanal konnte veralten.** Ein Profil speicherte `throttleChannels` aus
+  seiner Vorlage, aber das Verschieben einer Bindung auf einen anderen Kanal im Editor
+  hat diese Liste nie aktualisiert — und **Disarm-Wert, Failsafe-Array, Pre-Arm-Check**,
+  OSD-Balken und ESC-Kalibrierung lesen genau sie. Ein Flugzeug mit verschobenem Gas
+  hielt bei Link-Verlust *Mitte* statt Motor aus und reichte den Stick im „disarmten"
+  Zustand einfach durch. Der Kanal wird jetzt aus den Bindungen abgeleitet
+  (`throttleChannelsOf`), mit der gespeicherten Liste als Rückfallebene, und der Editor
+  schreibt die abgeleitete Liste bei jeder Änderung zurück — alte Modelle heilen sich
+  damit selbst.
+- **Tempolimit mit drei Stufen.** Low / Mid / High (Prozent pro Modell, Vorgabe
+  40/70/100) als drei Buttons unter den Sticks und den Kanal-Buttons; die Werte werden am
+  Gaskanal im Setup eingestellt, ein belegbarer Controller-Button schaltet durch.
+- Der Befehl wird **um die Ruhelage des Gaskanals skaliert**, eine Regel deckt damit
+  beide Fälle: **Mitte** (Auto mit Rückwärtsgang, Drohne) wird nach oben *und* unten
+  begrenzt, **min/frei** (Flugzeug, gerastertes Gas) behält den exakten Leerlauf und wird
+  nur nach oben begrenzt. Skaliert statt abgeschnitten — der volle Stickweg bleibt
+  nutzbar.
+- Das Limit ändert nur das, was **gesendet** wird: Endpunkte, Failsafe, Disarm-Wert und
+  Pre-Arm-Check arbeiten weiter mit der echten Ruhelage, und der Pre-Arm-Check sieht
+  weiterhin den rohen Stickbefehl. Im OSD steht `LIM 40%` neben dem Gasbalken, solange
+  ein Limit aktiv ist.
+
 ## v1.30.0
 **English**
 - **Panic-disarm now ships unbound** — for every vehicle type and input method. It used

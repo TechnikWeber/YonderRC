@@ -12,7 +12,8 @@ export type ActionId =
   | 'toggle-arm'
   | 'next-camera'
   | 'record-toggle'
-  | 'snapshot';
+  | 'snapshot'
+  | 'throttle-limit';
 
 export interface ActionBinding {
   key: string | null; // keyboard key (lower-case)
@@ -26,6 +27,7 @@ export const ACTION_LABELS: Record<ActionId, string> = {
   'next-camera': 'Next camera',
   'record-toggle': 'Record start/stop',
   snapshot: 'Snapshot',
+  'throttle-limit': 'Speed limit — next step',
 };
 
 const KEY = 'yonderrc.actions.v2';
@@ -46,6 +48,7 @@ const DEFAULTS: ActionBindings = {
   'next-camera': { key: 'c', button: null },
   'record-toggle': { key: 'r', button: null },
   snapshot: { key: 't', button: null },
+  'throttle-limit': { key: null, button: null },
 };
 
 /** The panic binding that used to ship by default, up to v1.29.0. */

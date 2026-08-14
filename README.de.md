@@ -28,6 +28,12 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
   wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
+- **Tempolimit mit drei Stufen** (Low / Mid / High, Prozentwerte pro Modell): drei
+  Buttons unter den Sticks schalten im Fahrbetrieb um, alternativ ein belegbarer
+  Controller-Button. Der Befehl wird **um die Ruhelage des Gaskanals** skaliert — ein
+  Auto mit Rückwärtsgang wird in beide Richtungen begrenzt, ein Flugzeug behält seinen
+  exakten Leerlauf und wird nur nach oben begrenzt. Endpunkte, Failsafe, Disarm-Wert und
+  Pre-Arm-Check bleiben unangetastet.
 
 ![Touch-Steuerung mit Lenk-/Gas-Joysticks, Halten-zum-Armen-Button, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=3)
 

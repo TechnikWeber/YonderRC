@@ -85,7 +85,25 @@ export interface Profile {
   throttleChannels: number[];
   /** Transmitter stick mode (1–4): which stick controls throttle/elevator/etc. */
   stickMode?: StickMode;
+  /** Speed limiter for the throttle channel(s). Optional — absent = full travel. */
+  throttleLimit?: ThrottleLimit;
   bindings: ChannelBinding[];
+}
+
+/**
+ * Throttle limiter: three named steps the operator switches between while
+ * driving, in percent of full travel. It scales the command **around the
+ * channel's rest position**, so a centre-detent throttle is capped forwards and
+ * backwards while a min-detent one keeps its idle and is only capped upwards.
+ *
+ * It is a ground-side comfort/training limit — it never touches the endpoints,
+ * the failsafe value, the disarmed value or the pre-arm check.
+ */
+export interface ThrottleLimit {
+  /** Percent per step, in order Low / Mid / High. */
+  steps: [number, number, number];
+  /** Which step is active (0..2). */
+  step: 0 | 1 | 2;
 }
 
 /** Transmitter mode 1–4 (which stick carries throttle vs elevator, etc.). */

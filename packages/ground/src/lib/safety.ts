@@ -1,4 +1,5 @@
 import { CHANNEL_NEUTRAL_US, CHANNEL_MIN_US, type ChannelBinding, type Profile } from '@yonderrc/protocol';
+import { throttleChannelsOf } from './templates';
 
 /**
  * The µs a throttle stick is expected to sit at when "safe to arm", taken from the
@@ -25,7 +26,7 @@ export interface PreArmResult {
  * safe-held output. Tolerance defaults to 120 µs (~12%).
  */
 export function preArmCheck(profile: Profile, live: number[], tolUs = 120): PreArmResult {
-  for (const ch of profile.throttleChannels) {
+  for (const ch of throttleChannelsOf(profile)) {
     const b = profile.bindings.find((x) => x.channel === ch);
     const safe = throttleSafeUs(b);
     if (safe === null) continue;

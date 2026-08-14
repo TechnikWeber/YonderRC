@@ -57,6 +57,15 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
 - **Stick modes 1–4** (`ground/src/lib/templates.ts`, `applyStickMode`): remap the
   primary stick axes by *function* (derived from the label). Custom channels (added
   in the binding editor) are untouched by mode and **survive method switches**.
+- **Which channel is throttle** comes from `throttleChannelsOf(profile)`
+  (`ground/src/lib/templates.ts`), derived from the bindings' labels with the stored
+  `profile.throttleChannels` as fallback — the stored list used to go stale whenever a
+  binding was moved, and it drives the disarmed value, the failsafe array, the pre-arm
+  check, the OSD bar and the speed limiter. Never read `profile.throttleChannels`
+  directly; the binding editor normalises it via `withResolvedThrottle` on every edit.
+- **Speed limiter** (`ground/src/lib/throttleLimit.ts`): three per-model steps, scaled
+  around the channel's rest position (`throttleSafeUs`), applied to what is SENT while
+  the pre-arm check keeps seeing the raw command.
 - **Per-channel rest position** (`detent`: center/low/free) drives where hold-ramp /
   momentary / toggle settle, and the **pre-arm check** (`ground/src/lib/safety.ts`)
   uses the throttle channel's detent to know the safe rest (centre vs idle).

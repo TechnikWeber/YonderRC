@@ -17,6 +17,8 @@ import type { InputManager } from '../lib/input/inputManager';
 import { useRecorder } from '../lib/recorder';
 import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
+import { throttleChannelsOf } from '../lib/templates';
+import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -639,7 +641,9 @@ export function VideoPanel({
     input,
   );
 
-  const throttleCh = profile.throttleChannels[0] ?? 2;
+  const throttleCh = throttleChannelsOf(profile)[0] ?? 2;
+  const limitPct = activePercent(profile);
+  const limitStep = (profile.throttleLimit?.step ?? 2) as 0 | 1 | 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
   // Unified weak-link warning: control RTT, video packet loss, OR low uplink signal.
   const weakLink =
@@ -903,6 +907,11 @@ export function VideoPanel({
                 <div className="osd-ch">
                   <span>THR</span>
                   <div className="osd-bar"><i style={{ width: `${bar(channels[throttleCh] ?? CHANNEL_NEUTRAL_US)}%` }} /></div>
+                  {limitPct < 100 && (
+                    <span className="osd-lim" title={`Speed limit ${LIMIT_STEP_LABELS[limitStep]} — ${limitPct}% of full travel`}>
+                      LIM {limitPct}%
+                    </span>
+                  )}
                 </div>
                 <div className="osd-ch">
                   <span>STR</span>

@@ -521,6 +521,9 @@ Tailscale address as usual.
   a bumped controller cuts motors just as well as a mis-touch. Hold time (0.5–10 s) and
   an off switch live in the ground app under **Setup › Controls**. The bindable **panic-disarm** stays instant either way, and the OSD only
   ever shows DISARMED or FAILSAFE, never a badge for the normal armed case.
+- **The speed limiter is comfort, not safety.** The three steps under the sticks scale
+  the throttle command on the ground side; they do not change the failsafe value, the
+  disarmed value or the pre-arm check, and a limited vehicle is not a disarmed one.
 - **Panic-disarm ships unbound.** It is the one control with no hold and no
   confirmation, so an accidental press cuts the motors — on an aircraft, that is a
   crash. Bind it in **Setup › Controls** to a key or controller button you can't hit by

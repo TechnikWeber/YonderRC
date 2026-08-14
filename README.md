@@ -28,6 +28,11 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
 - **Models** for car / boat / plane / drone with matching channel templates,
   selectable input method, and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
+- **Speed limiter with three steps** (Low / Mid / High, percentages per model): three
+  buttons under the sticks switch while driving, or a bindable controller button cycles
+  them. The command is scaled **around the throttle's rest position** — a car with
+  reverse is capped in both directions, a plane keeps its exact idle and is capped only
+  upwards. Endpoints, failsafe, the disarmed value and the pre-arm check stay untouched.
 
 ![Touch control with steering/throttle joysticks, the hold-to-arm button, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png?v=3)
 

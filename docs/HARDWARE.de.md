@@ -537,6 +537,9 @@ Laptop oder die Tailscale-Adresse.
   unter **Setup › Controls**. Das belegbare **Panic-Disarm** bleibt in jedem
   Fall sofort, und das OSD zeigt nur noch DISARMED oder FAILSAFE, nie ein Badge für den
   Normalfall „gearmt".
+- **Das Tempolimit ist Komfort, keine Sicherheitsfunktion.** Die drei Stufen unter den
+  Sticks skalieren den Gasbefehl auf der Bodenseite; sie ändern weder Failsafe-Wert noch
+  Disarm-Wert noch den Pre-Arm-Check — ein begrenztes Fahrzeug ist kein disarmtes.
 - **Panic-Disarm ist ab Werk unbelegt.** Es ist die einzige Funktion ohne Halten und ohne
   Rückfrage — ein versehentlicher Druck kappt die Motoren, bei einem Luftfahrzeug also
   Absturz. Unter **Setup › Controls** auf eine Taste oder Controller-Taste legen, die du

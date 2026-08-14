@@ -236,6 +236,36 @@ export function disarmedThrottleUs(vehicleType: VehicleType, endpoints: Endpoint
 }
 
 /**
+ * Which channels actually carry throttle **right now**.
+ *
+ * A profile stores `throttleChannels` from its template, but the binding editor
+ * lets you move a binding to another channel without touching that list — and
+ * everything safety-relevant hangs off it: the disarmed value the vehicle forces,
+ * the failsafe array, the pre-arm check, the OSD bar. A stale list means the
+ * vehicle guards a channel that isn't the throttle and passes the real one
+ * straight through while "disarmed".
+ *
+ * So derive it from the bindings (same label→function mapping the stick modes
+ * use) and only fall back to the stored list when nothing matches — renaming the
+ * label to something we don't recognise then behaves exactly as before.
+ */
+export function throttleChannelsOf(profile: Profile): number[] {
+  const derived = profile.bindings
+    .filter((b) => funcFromLabel(b.label) === 'throttle')
+    .map((b) => b.channel)
+    .filter((ch) => Number.isInteger(ch) && ch >= 0);
+  const unique = [...new Set(derived)].sort((a, b) => a - b);
+  return unique.length ? unique : profile.throttleChannels;
+}
+
+/** Store the derived list back, so the persisted model is self-consistent. */
+export function withResolvedThrottle(profile: Profile): Profile {
+  const ch = throttleChannelsOf(profile);
+  const same = ch.length === profile.throttleChannels.length && ch.every((c, i) => c === profile.throttleChannels[i]);
+  return same ? profile : { ...profile, throttleChannels: ch };
+}
+
+/**
  * Should the vehicle auto-disarm when a new ground connects? Vehicle-type policy:
  * car/boat → YES (stopping is always safe; prevents runaway on reconnect), but
  * plane/drone → NO, because disarming in flight cuts the motors and it falls. The

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Detent, Profile } from '@yonderrc/protocol';
+import type { Detent, Profile, ThrottleLimit } from '@yonderrc/protocol';
 import type { InputManager } from '../lib/input/inputManager';
 import type { BindingEngine } from '../lib/input/bindingEngine';
 import { holdProgress, holdRemainingS } from '../lib/hold';
+import { LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { VirtualJoystick } from './VirtualJoystick';
 
 interface JoyCfg {
@@ -47,6 +48,8 @@ export function ControlPad({
   calibrationActive,
   holdMs,
   externalProgress = 0,
+  limit,
+  onLimitStep,
   version,
 }: {
   profile: Profile;
@@ -58,6 +61,9 @@ export function ControlPad({
   holdMs: number;
   /** Hold progress coming from the bound arm key/button, so the fill matches. */
   externalProgress?: number;
+  /** Speed-limit steps for this model, and the active one. */
+  limit: ThrottleLimit;
+  onLimitStep: (step: 0 | 1 | 2) => void;
   connected: boolean;
   calibrationActive: boolean;
   version: number;
@@ -218,6 +224,21 @@ export function ControlPad({
           })}
         </div>
       )}
+
+      <div className="limit-row" role="group" aria-label="Speed limit">
+        <span className="limit-label">Speed</span>
+        {([0, 1, 2] as const).map((i) => (
+          <button
+            key={i}
+            className={`limitbtn${limit.step === i ? ' on' : ''}`}
+            onClick={() => onLimitStep(i)}
+            aria-pressed={limit.step === i}
+          >
+            <span>{LIMIT_STEP_LABELS[i]}</span>
+            <span className="sub">{limit.steps[i]}%</span>
+          </button>
+        ))}
+      </div>
 
       <p className="hint">{methodHint}</p>
     </section>
