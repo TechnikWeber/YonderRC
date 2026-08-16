@@ -6,7 +6,7 @@
 import * as C from '../packages/vehicle/src/sensors/convert';
 import { TelemetryService } from '../packages/vehicle/src/sensors/TelemetryService';
 import { cameraSource, scaleCamera } from '../packages/vehicle/src/video/cameraManager';
-import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents, applyStickMode, createBinding, nextFreeChannel, funcFromLabel, disarmOnReconnectForType } from '../packages/ground/src/lib/templates';
+import { buildProfile, rebuildForMethod, applyEndpoints, setDetent, currentDetents, applyStickMode, createBinding, nextFreeChannel, funcFromLabel, disarmOnReconnectForType, failsafeStickPosition, throttleFailsafeRisk } from '../packages/ground/src/lib/templates';
 import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib/profiles';
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
@@ -429,6 +429,29 @@ async function main() {
   ok('orphaned throttle channel still disarms safe', profileDisarmedUs(orphan)[dch] === 1000, `=${profileDisarmedUs(orphan)[dch]}`);
   // Non-throttle channels are untouched by any of this.
   ok('non-throttle channels stay neutral', profileDisarmedUs(drone).filter((_, i) => i !== dch).every((v) => v === 1500));
+
+  // The failsafe is a RAW µs and never passes through shaping, so on a reversed
+  // channel a stored 1000 (seeded as "motor off") silently becomes full throttle.
+  const planeThr = plane.bindings.find((b) => b.channel === pch)!.shaping;
+  ok('plane failsafe reads as idle', failsafeStickPosition(planeThr) === -1, `=${failsafeStickPosition(planeThr)}`);
+  ok('normal plane failsafe raises no warning', throttleFailsafeRisk('plane', planeThr) === null);
+  const revThr = { ...planeThr, reverse: true };
+  ok('reversed plane failsafe reads as FULL', failsafeStickPosition(revThr) === 1, `=${failsafeStickPosition(revThr)}`);
+  const risk = throttleFailsafeRisk('plane', revThr);
+  ok('reversed plane failsafe warns', risk !== null);
+  ok('warning reports 100% throttle', risk?.percent === 100, `=${risk?.percent}`);
+  ok('warning names the safe value', risk?.safeUs === 2000, `=${risk?.safeUs}`);
+  // Fixing the value the warning suggests must clear it.
+  ok('corrected failsafe clears the warning', throttleFailsafeRisk('plane', { ...revThr, failsafeUs: 2000 }) === null);
+  // Centre-failsafe types are reverse-symmetric and must never warn.
+  const droneThr = drone.bindings.find((b) => b.channel === dch)!.shaping;
+  ok('drone centre failsafe never warns', throttleFailsafeRisk('drone', droneThr) === null
+    && throttleFailsafeRisk('drone', { ...droneThr, reverse: true }) === null);
+  // A deliberate low cruise-throttle failsafe stays under the threshold.
+  ok('low cruise failsafe does not warn', throttleFailsafeRisk('plane', { ...planeThr, failsafeUs: 1300 }) === null);
+  ok('but a high one does', throttleFailsafeRisk('plane', { ...planeThr, failsafeUs: 1900 }) !== null);
+  // Degenerate endpoints must not divide by zero.
+  ok('zero-span channel is inert', failsafeStickPosition({ ...planeThr, minUs: 1500, maxUs: 1500 }) === 0);
   // auto-disarm on reconnect is coupled to vehicle type (aircraft = OFF)
   ok('car auto-disarm on reconnect', disarmOnReconnectForType('car') === true);
   ok('boat auto-disarm on reconnect', disarmOnReconnectForType('boat') === true);

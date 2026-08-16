@@ -11,6 +11,7 @@ import {
   setDetent,
   stickModes,
   throttleChannelsOf,
+  throttleFailsafeRisk,
   withResolvedThrottle,
 } from '../lib/templates';
 import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
@@ -279,6 +280,21 @@ export function BindingEditor({
                 <button className="btn tiny danger" onClick={() => removeBinding(b.id)} title="Remove channel">Remove</button>
               </div>
             </div>
+            {/* Shown outside the collapsed <details>: a failsafe that opens the
+                throttle is not something you should have to expand a row to find.
+                The value is a raw µs, so on a reversed channel a perfectly
+                innocent-looking 1000 means full power. */}
+            {throttleSet.has(b.channel) && (() => {
+              const risk = throttleFailsafeRisk(profile.vehicleType, b.shaping);
+              if (!risk) return null;
+              return (
+                <p className="ch-warn">
+                  ⚠ Failsafe {b.shaping.failsafeUs} µs = <b>{risk.percent}% throttle</b> on this channel
+                  {b.shaping.reverse ? ' (reverse is on, so the endpoints are swapped)' : ''} — on link loss it
+                  would open up, not shut down. Motor-off here is <b>{risk.safeUs} µs</b>.
+                </p>
+              );
+            })()}
             <details className="shaping">
               {/* The disarmed value is only shown on a throttle channel, because
                   that's the only place it differs from the failsafe — and seeing

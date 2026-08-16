@@ -258,6 +258,56 @@ export function disarmedThrottleUs(vehicleType: VehicleType, shape: ChannelShapi
 }
 
 /**
+ * The stick position a stored failsafe µs corresponds to on this channel, -1..1.
+ *
+ * The failsafe is sent as a RAW µs — it never passes through shaping — so reading
+ * it back is the only way to know what it physically means on a channel that has
+ * been reversed, retrimmed or given its own endpoints. Expo is deliberately not
+ * undone: it only compresses the middle, and this is used to judge positions near
+ * the top, where it is the identity.
+ */
+export function failsafeStickPosition(shape: ChannelShaping): number {
+  const half = (shape.maxUs - shape.minUs) / 2;
+  if (half === 0) return 0;
+  const center = (shape.minUs + shape.maxUs) / 2;
+  const v = Math.max(-1, Math.min(1, (shape.failsafeUs - shape.trimUs - center) / half));
+  return shape.reverse ? -v : v;
+}
+
+/** How much throttle counts as "this must be a mistake" for a link-loss value. */
+const FAILSAFE_HIGH_THROTTLE = 0.5;
+
+export interface ThrottleFailsafeRisk {
+  /** Stick position the stored failsafe maps to, -1..1 (1 = full throttle). */
+  position: number;
+  /** Percent of travel, for a readable message. */
+  percent: number;
+  /** The µs on THIS channel that means "off" for this vehicle type. */
+  safeUs: number;
+}
+
+/**
+ * Non-null when a throttle channel's stored failsafe would open the throttle on
+ * link loss. No vehicle type wants that, so the threshold can be blunt rather than
+ * second-guessing a deliberate setting — a plane cruising home on a low failsafe
+ * throttle stays under it.
+ *
+ * The case this exists for: the failsafe µs is seeded when the profile is built,
+ * before anyone ticks `reverse`. Tick it afterwards and the stored 1000 µs, which
+ * meant "motor off", now means full power — while the number in the editor still
+ * reads 1000 and looks entirely reasonable.
+ */
+export function throttleFailsafeRisk(vehicleType: VehicleType, shape: ChannelShaping): ThrottleFailsafeRisk | null {
+  const position = failsafeStickPosition(shape);
+  if (position <= FAILSAFE_HIGH_THROTTLE) return null;
+  return {
+    position,
+    percent: Math.round(((position + 1) / 2) * 100),
+    safeUs: disarmedThrottleUs(vehicleType, shape),
+  };
+}
+
+/**
  * Which channels actually carry throttle **right now**.
  *
  * A profile stores `throttleChannels` from its template, but the binding editor

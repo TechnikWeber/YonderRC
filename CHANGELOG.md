@@ -3,6 +3,40 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.34.1
+**English**
+- **Setup › Channels now warns when a throttle failsafe would open the throttle.** The
+  failsafe is stored as a raw µs and never passes through shaping, so on a channel with
+  `reverse` ticked the seeded 1000 µs — which meant "motor off" when the profile was
+  built — silently becomes **full power on link loss**, while the number in the editor
+  still reads a perfectly innocent 1000. v1.34.0 fixed the disarmed value, which is
+  derived; this covers the failsafe, which is yours to set and so is flagged rather
+  than rewritten behind your back.
+- The warning names the actual figure and the fix: *"Failsafe 1000 µs = 100% throttle on
+  this channel (reverse is on) — Motor-off here is 2000 µs."* It sits above the collapsed
+  shaping row, so it's visible without expanding anything, and clears the moment the
+  value is corrected.
+- Threshold is blunt on purpose — it only fires above half throttle, so a plane
+  deliberately set to cruise home on a low failsafe throttle stays quiet. Drone, car and
+  boat failsafe at centre, which is reverse-symmetric, and never trigger it.
+
+**Deutsch**
+- **Setup › Channels warnt jetzt, wenn ein Gas-Failsafe das Gas aufziehen würde.** Der
+  Failsafe wird als roher µs-Wert gespeichert und läuft nie durch die Shaping — auf
+  einem Kanal mit gesetztem `reverse` wird aus den beim Anlegen gesetzten 1000 µs, die
+  „Motor aus" bedeuteten, klammheimlich **volle Leistung bei Verbindungsabriss**,
+  während im Editor weiterhin unverdächtige 1000 stehen. v1.34.0 hat den Disarmed-Wert
+  behoben, der abgeleitet wird; das hier deckt den Failsafe ab, den du selbst setzt und
+  der deshalb markiert statt hinter deinem Rücken überschrieben wird.
+- Die Warnung nennt die konkrete Zahl und die Lösung: *„Failsafe 1000 µs = 100 % Gas auf
+  diesem Kanal (reverse ist an) — Motor aus ist hier 2000 µs."* Sie steht über der
+  zugeklappten Shaping-Zeile, ist also ohne Aufklappen sichtbar, und verschwindet, sobald
+  der Wert korrigiert ist.
+- Die Schwelle ist bewusst grob — sie greift erst oberhalb von halbem Gas, damit ein
+  Flugzeug, das absichtlich mit wenig Gas heimfliegen soll, still bleibt. Drohne, Auto
+  und Boot haben ihren Failsafe in der Mitte, was reverse-symmetrisch ist, und lösen ihn
+  nie aus.
+
 ## v1.34.0
 **English**
 - **Fixed (safety): a reversed throttle channel disarmed to FULL THROTTLE.** The

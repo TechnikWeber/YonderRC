@@ -1377,6 +1377,18 @@ input[type='range'] {
 }
 .binding-top .ch-label { grid-area: label; }
 .binding-top .ch-actions { grid-area: actions; display: flex; gap: 8px; }
+/* A throttle failsafe that would open up on link loss. Sits above the collapsed
+   shaping details, because it must be visible without expanding anything. */
+.ch-warn {
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
 /* The mode is the only thing that yields, and it yields by truncating rather
    than by wrapping: its full text is on the element's `title`, and squeezing a
    monospace string into a few pixels turns it into a column of letters. */
