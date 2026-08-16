@@ -3,6 +3,42 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.33.0
+**English**
+- **The blackbox now logs the GPS track.** `lat`, `lon`, `alt_m`, `sats`, `hdop`,
+  `speed_ms` and `course_deg` are written into the *same row* as the electrics and the
+  link stats, at the same 2 Hz. That's the point of putting them there rather than in a
+  separate file: in QGIS or kepler.gl you can colour the route by pack voltage or
+  round-trip and see **where** the link gets bad, not just that it did.
+- **New "Download GPX" button** (Setup › Controls) writes a GPX 1.1 track — elevation,
+  satellites and HDOP per point, speed and course in the Garmin `TrackPointExtension`.
+  Google Earth, [gpx.studio](https://gpx.studio), Garmin BaseCamp, GPSBabel, QGIS and
+  Strava read it as-is. The button stays disabled until a row actually carries a fix,
+  and the status line shows the fix count next to the row count.
+- Rows recorded **without** a fix log empty coordinates rather than the last known
+  position — a frozen point would look like the vehicle parked there. Satellite count is
+  still logged while searching, so you can see the receiver coming up.
+- **The GPS sim now circles over Balingen (72336)** at ~517 m instead of Berlin, so a
+  sim track lands where the project does.
+
+**Deutsch**
+- **Die Blackbox loggt jetzt die GPS-Strecke.** `lat`, `lon`, `alt_m`, `sats`, `hdop`,
+  `speed_ms` und `course_deg` stehen in *derselben Zeile* wie Elektrik und
+  Link-Statistik, mit denselben 2 Hz. Genau deshalb stecken sie dort und nicht in einer
+  zweiten Datei: In QGIS oder kepler.gl lässt sich die Route nach Akkuspannung oder
+  Round-Trip einfärben — man sieht also, **wo** die Verbindung schlecht wird, nicht nur
+  dass sie es war.
+- **Neuer Button „Download GPX"** (Setup › Controls) schreibt eine GPX-1.1-Strecke — Höhe,
+  Satelliten und HDOP je Punkt, Geschwindigkeit und Kurs in der Garmin-Erweiterung
+  `TrackPointExtension`. Google Earth, [gpx.studio](https://gpx.studio), Garmin BaseCamp,
+  GPSBabel, QGIS und Strava lesen das direkt. Der Button bleibt gesperrt, solange keine
+  Zeile einen Fix trägt; die Statuszeile zeigt die Zahl der Fixe neben der Zeilenzahl.
+- Zeilen **ohne** Fix loggen leere Koordinaten statt der letzten bekannten Position — ein
+  eingefrorener Punkt sähe aus, als stünde das Fahrzeug dort. Die Satellitenzahl wird
+  auch während der Suche geloggt, damit man den Empfänger hochkommen sieht.
+- **Die GPS-Sim kreist jetzt über Balingen (72336)** auf ca. 517 m statt über Berlin,
+  damit eine Sim-Strecke dort landet, wo das Projekt herkommt.
+
 ## v1.32.0
 **English**
 - **The Car template now defaults to stick mode 2.** A car needs only two axes, and mode 2

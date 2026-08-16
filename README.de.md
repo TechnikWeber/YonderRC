@@ -141,6 +141,14 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   **je eine Spalte pro Telemetriekanal** (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`…), damit
   jede konfigurierte Spannung, jeder Strom und jede Temperatur im Log landet. Bis ca.
   5 h, herunterladbar unter Setup › Controls.
+- **Die Wegstrecke steckt im selben Log**: `lat`, `lon`, `alt_m`, `sats`, `hdop`,
+  `speed_ms` und `course_deg` stehen in *derselben Zeile* wie Elektrik und
+  Link-Statistik — damit lässt sich die Route in QGIS oder kepler.gl nach
+  Akkuspannung oder Round-Trip einfärben, also buchstäblich eine Karte davon, wo die
+  Verbindung schlecht wird. Ein zweiter Button exportiert die reine **GPX**-Strecke
+  (mit Höhe, Satelliten, Geschwindigkeit und Kurs), die Google Earth,
+  [gpx.studio](https://gpx.studio), Garmin BaseCamp, GPSBabel und jedes andere
+  Kartenprogramm ohne Umwandlung lesen.
 
 **GPS & Navigation**
 - **Wählbare GPS-Quelle**: lokaler NMEA-Empfänger über Serial (Adafruit Ultimate GPS,

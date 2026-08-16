@@ -15,6 +15,9 @@ interface GpsSource {
 }
 
 /** Synthetic receiver: sats ramp up, then a slow circular track — for dev. */
+/** Where the sim flies: Balingen (72336), ~517 m above sea level. */
+const SIM_CENTER = { lat: 48.275833, lon: 8.853611, altM: 517 };
+
 class SimGpsSource implements GpsSource {
   readonly kind = 'sim';
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -27,9 +30,10 @@ class SimGpsSource implements GpsSource {
       const r = 0.0009; // ~100 m circle
       onFix({
         source: 'sim', hasFix: has, fixType: has ? '3d' : 'none',
-        lat: 52.520008 + r * Math.sin(this.t / 20),
-        lon: 13.404954 + r * Math.cos(this.t / 20),
-        altM: has ? 38 + 2 * Math.sin(this.t / 7) : null,
+        // Circling over Balingen (72336), Baden-Württemberg.
+        lat: SIM_CENTER.lat + r * Math.sin(this.t / 20),
+        lon: SIM_CENTER.lon + r * Math.cos(this.t / 20),
+        altM: has ? SIM_CENTER.altM + 2 * Math.sin(this.t / 7) : null,
         satellites: sats, hdop: has ? 0.9 : null,
         speedMs: has ? 3.2 : null, courseDeg: has ? (this.t * 5) % 360 : null,
         timeUtc: new Date().toISOString().slice(0, 19) + 'Z',

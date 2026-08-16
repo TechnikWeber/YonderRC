@@ -135,6 +135,13 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   column per telemetry channel** (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`…), so every
   voltage, current and temperature you configured lands in the log. Up to ~5 h,
   downloadable from Setup › Controls.
+- **The track goes in the same log**: `lat`, `lon`, `alt_m`, `sats`, `hdop`,
+  `speed_ms` and `course_deg` ride in the *same row* as the electrics and the link
+  stats, so you can colour the route by pack voltage or round-trip in QGIS or
+  kepler.gl — literally a map of where the link gets bad. A second button exports
+  the plain **GPX** track (with elevation, satellites, speed and course) that Google
+  Earth, [gpx.studio](https://gpx.studio), Garmin BaseCamp, GPSBabel and every other
+  mapping tool read without conversion.
 
 **GPS & navigation**
 - **Selectable GPS source**: a local NMEA receiver over serial (Adafruit Ultimate GPS,

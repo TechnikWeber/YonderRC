@@ -19,7 +19,9 @@ export function ControlsPanel({
   logging,
   onLogging,
   logRows,
+  logFixes,
   onDownloadLog,
+  onDownloadGpx,
   onClearLog,
   input,
   autoDisarm,
@@ -39,7 +41,10 @@ export function ControlsPanel({
   logging: boolean;
   onLogging: (v: boolean) => void;
   logRows: number;
+  /** Rows that carry a GPS fix — 0 disables the GPX export. */
+  logFixes: number;
   onDownloadLog: () => void;
+  onDownloadGpx: () => void;
   onClearLog: () => void;
   input: InputManager;
   autoDisarm: boolean;
@@ -222,14 +227,17 @@ export function ControlsPanel({
       <div className="eyebrow" style={{ marginTop: 14 }}>Blackbox logging</div>
       <label className="opt big">
         <input type="checkbox" checked={logging} onChange={(e) => onLogging(e.target.checked)} />
-        Record telemetry + link stats to a downloadable log
+        Record telemetry, link stats and GPS track to a downloadable log
       </label>
       <div className="log-row">
-        <span className="log-status">{logging ? `● recording · ${logRows} rows` : 'off'}</span>
+        <span className="log-status">
+          {logging ? `● recording · ${logRows} rows${logFixes ? ` · ${logFixes} fixes` : ''}` : 'off'}
+        </span>
         <button className="btn tiny" onClick={onDownloadLog} disabled={logRows === 0}>Download CSV</button>
+        <button className="btn tiny" onClick={onDownloadGpx} disabled={logFixes === 0} title={logFixes === 0 ? 'No GPS fix recorded yet' : `${logFixes} track points`}>Download GPX</button>
         <button className="btn tiny" onClick={onClearLog} disabled={logRows === 0}>Clear</button>
       </div>
-      <p className="note">Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs stay in this browser tab until you download or clear them. The CSV holds link/video stats plus <b>every telemetry channel</b> the vehicle reports, one column per channel (<span className="mono">Pack_V</span>, <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>); <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary channel.</p>
+      <p className="note">Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs stay in this browser tab until you download or clear them. The CSV holds link/video stats, <b>position</b> (<span className="mono">lat</span>, <span className="mono">lon</span>, <span className="mono">alt_m</span>, <span className="mono">sats</span>, <span className="mono">speed_ms</span>) plus <b>every telemetry channel</b> the vehicle reports, one column per channel (<span className="mono">Pack_V</span>, <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>); <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary channel. Because position and telemetry share a row, you can colour the track by voltage or RTT in QGIS or kepler.gl. <b>GPX</b> is the plain track for Google Earth, gpx.studio or any mapping tool — it needs a GPS fix (Setup › GPS).</p>
     </section>
   );
 }

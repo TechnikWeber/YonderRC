@@ -31,7 +31,7 @@ import { loadActions, saveActions, useActionHotkeys, type ActionBindings } from 
 import { preArmCheck } from './lib/safety';
 import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWarnCfg } from './lib/battery';
 import { beep } from './lib/beep';
-import { logToCsv, downloadText, sensorSnapshot, LOG_CAP, type LogRow } from './lib/logger';
+import { logToCsv, logToGpx, downloadText, sensorSnapshot, gpsSnapshot, fixCount, LOG_CAP, type LogRow } from './lib/logger';
 import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
 import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
@@ -308,11 +308,14 @@ export function App() {
   }, []);
   const telemetryRef = useRef(telemetry);
   telemetryRef.current = telemetry;
+  const gpsRef = useRef(gps);
+  gpsRef.current = gps;
 
   // Blackbox logging — OFF by default; only samples while explicitly enabled, so
   // it costs nothing otherwise. Snapshot ref keeps the current values for the loop.
   const [logging, setLogging] = useState(false);
   const [logRows, setLogRows] = useState(0);
+  const [logFixes, setLogFixes] = useState(0);
   const logRef = useRef<LogRow[]>([]);
   const logStartRef = useRef(0);
   const videoStatsRef = useRef<VideoStats | null>(null);
@@ -322,6 +325,7 @@ export function App() {
     logStartRef.current = Date.now();
     logRef.current = [];
     setLogRows(0);
+    setLogFixes(0);
     const id = setInterval(() => {
       const t = telemetryRef.current;
       const vs = videoStatsRef.current;
@@ -340,21 +344,33 @@ export function App() {
         amp: primaryCurrent(t)?.value ?? null,
         mah: t?.mah ?? null,
         pct: t?.batteryPercent ?? null,
+        ...gpsSnapshot(gpsRef.current),
         sensors: sensorSnapshot(t),
       });
       if (logRef.current.length > LOG_CAP) logRef.current.shift();
       setLogRows(logRef.current.length);
+      setLogFixes(fixCount(logRef.current));
     }, 500);
     return () => clearInterval(id);
   }, [logging]);
+  const logStamp = () => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const downloadLog = () => {
     if (!logRef.current.length) return;
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    downloadText(`yonderrc-log-${stamp}.csv`, logToCsv(logRef.current));
+    downloadText(`yonderrc-log-${logStamp()}.csv`, logToCsv(logRef.current));
+  };
+  const downloadGpx = () => {
+    if (!logFixes) return;
+    const stamp = logStamp();
+    downloadText(
+      `yonderrc-track-${stamp}.gpx`,
+      logToGpx(logRef.current, logStartRef.current, `YonderRC ${stamp}`),
+      'application/gpx+xml',
+    );
   };
   const clearLog = () => {
     logRef.current = [];
     setLogRows(0);
+    setLogFixes(0);
   };
 
   // Low-battery warning: evaluate, then pulse rumble + beep while low.
@@ -453,7 +469,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.32.0</span>
+        <span className="ver">ground · v1.33.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -505,7 +521,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} onDownloadLog={downloadLog} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>

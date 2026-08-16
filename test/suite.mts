@@ -771,7 +771,7 @@ async function main() {
   const { logToCsv } = await import('../packages/ground/src/lib/logger');
   const csv = logToCsv([{ t: 0, armed: 1, failsafe: 0, link: 'connected', rtt: 40, bitrate: 2500, loss: 0.5, fps: 30, vlat: 120, volt: 12.1, amp: 3.2, mah: 150, pct: 88 }]);
   ok('csv has header + row', csv.split('\n').length === 2 && csv.includes('t_ms,armed'));
-  ok('csv null renders empty', logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1] === '5,0,0,connected,,,,,,,,,');
+  ok('csv null renders empty', logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1] === '5,0,0,connected' + ','.repeat(16), logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1]);
 
   // Every telemetry channel gets its own column, named after its label.
   const { sensorSnapshot } = await import('../packages/ground/src/lib/logger');
@@ -798,6 +798,44 @@ async function main() {
   ]).split('\n');
   ok('csv header unions all channels', grown[0].endsWith(',Pack_V,Motor_C,ESC_C'), grown[0]);
   ok('csv keeps columns aligned', grown[2].endsWith(',16.3,,') && grown[3].endsWith(',16.2,61,55'), grown[2]);
+
+  // ---- GPS in the blackbox + GPX export ----
+  const { gpsSnapshot, hasFixRow, fixCount, logToGpx } = await import('../packages/ground/src/lib/logger');
+  const fixMsg = {
+    type: 'gps', source: 'sim', hasFix: true, fixType: '3d',
+    lat: 48.275833, lon: 8.853611, altM: 517, satellites: 9, hdop: 0.9,
+    speedMs: 3.2, courseDeg: 45, timeUtc: '2026-08-16T09:00:00Z', home: null,
+  } as import('@yonderrc/protocol').GpsMessage;
+  const snapFix = gpsSnapshot(fixMsg);
+  ok('gps snapshot carries the fix', snapFix.lat === 48.275833 && snapFix.lon === 8.853611 && snapFix.altM === 517);
+  // No fix must not log a stale position — that would look like the vehicle parked there.
+  const noFix = gpsSnapshot({ ...fixMsg, hasFix: false });
+  ok('no fix logs empty position', noFix.lat === null && noFix.lon === null && noFix.altM === null);
+  ok('no fix still logs sats', noFix.sats === 9);
+  ok('no gps at all is empty', gpsSnapshot(null).lat === null);
+  ok('hasFixRow needs both coords', !hasFixRow({ t: 0, ...base, lat: 48.2, lon: null }) && hasFixRow({ t: 0, ...base, lat: 48.2, lon: 8.8 }));
+
+  const gpsRows = [
+    { t: 0, ...base, lat: null, lon: null }, // indoors, no fix yet
+    { t: 500, ...base, ...snapFix },
+    { t: 1000, ...base, lat: 48.276, lon: 8.854, altM: 518, sats: 10, hdop: null, speedMs: null, courseDeg: null },
+  ];
+  ok('fixCount ignores fixless rows', fixCount(gpsRows) === 2);
+  const gpsCsv = logToCsv(gpsRows).split('\n');
+  ok('csv has gps columns', gpsCsv[0].includes(',lat,lon,alt_m,sats,hdop,speed_ms,course_deg'), gpsCsv[0]);
+  ok('csv writes full coordinate precision', gpsCsv[2].includes('48.2758330,8.8536110'), gpsCsv[2]);
+
+  const started = Date.UTC(2026, 7, 16, 9, 0, 0);
+  const gpx = logToGpx(gpsRows, started, 'Balingen');
+  ok('gpx is well-formed enough', gpx.startsWith('<?xml') && gpx.trimEnd().endsWith('</gpx>'));
+  ok('gpx skips rows without a fix', (gpx.match(/<trkpt /g) ?? []).length === 2, gpx);
+  ok('gpx timestamps are absolute UTC', gpx.includes('<time>2026-08-16T09:00:00.500Z</time>'), gpx);
+  ok('gpx carries elevation + sats', gpx.includes('<ele>517</ele>') && gpx.includes('<sat>9</sat>'));
+  ok('gpx puts speed in the extension', gpx.includes('<gpxtpx:speed>3.2</gpxtpx:speed>'));
+  ok('gpx omits the extension when empty', (gpx.match(/TrackPointExtension>/g) ?? []).length === 2, gpx);
+  ok('gpx escapes the track name', logToGpx(gpsRows, started, 'A & B<x>').includes('A &amp; B&lt;x&gt;'));
+  const emptyGpx = logToGpx([{ t: 0, ...base }], started);
+  ok('gpx with no fixes is still valid', emptyGpx.includes('<trkseg>') && !emptyGpx.includes('<trkpt'));
 
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
