@@ -136,6 +136,31 @@ body {
   touch-action: manipulation;
   user-select: none;
 }
+/*
+ * Holding a button must never turn into "select the label".
+ *
+ * Since v1.35 several buttons need a ~0.3 s press, and on iOS that is exactly the
+ * gesture that starts a text selection and pops the callout menu. `user-select`
+ * alone is not enough there — Safari needs `-webkit-touch-callout: none` as well,
+ * and it was missing everywhere. Applied to every control at once rather than
+ * per button, because the next button to grow a hold would hit the same thing.
+ */
+button,
+summary,
+.btn,
+.padbtn,
+.limitbtn,
+.arm-btn,
+.trim-btn,
+.trim-reset,
+.joy-base,
+.radio,
+.opt {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -1130,8 +1155,9 @@ body {
   padding: 10px 8px;
   font-weight: 600;
   cursor: pointer;
-  touch-action: manipulation;
-  user-select: none;
+  /* `none`, not `manipulation`: this is a hold button, and a page scroll starting
+     on it would cancel the press half way through. */
+  touch-action: none;
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -3,6 +3,31 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.36.1
+**English**
+- **Fixed: holding a button on iOS selected its label.** Since v1.35 several buttons
+  need a ~0.3 s press, and on iOS that is precisely the gesture that starts a text
+  selection and pops the callout menu — so holding the lights toggle or a trim
+  highlighted the text instead of feeling like a press. `user-select: none` alone
+  doesn't stop it on Safari; `-webkit-touch-callout: none` was missing everywhere and
+  is now set on every control at once, rather than per button, so the next control that
+  grows a hold doesn't hit the same thing.
+- The speed-limit buttons also lacked `-webkit-user-select` entirely, and used
+  `touch-action: manipulation` — a page scroll starting on one could cancel the press
+  half way through. Both corrected to match the other hold buttons.
+
+**Deutsch**
+- **Behoben: Ein Button gedrückt zu halten markierte unter iOS seine Beschriftung.** Seit
+  v1.35 brauchen mehrere Buttons ca. 0,3 s Druck — und genau diese Geste startet unter
+  iOS eine Textauswahl samt Kontextmenü. Den Licht-Toggle oder einen Trim zu halten
+  markierte also den Text, statt sich nach einem Druck anzufühlen. `user-select: none`
+  allein reicht in Safari nicht; `-webkit-touch-callout: none` fehlte überall und steht
+  jetzt für alle Bedienelemente gemeinsam, nicht pro Button — damit das nächste Element
+  mit Haltezeit nicht in dieselbe Falle läuft.
+- Den Speed-Limit-Buttons fehlte zusätzlich `-webkit-user-select` komplett, und sie
+  nutzten `touch-action: manipulation` — ein auf ihnen beginnendes Scrollen konnte den
+  Druck auf halbem Weg abbrechen. Beides an die übrigen Halte-Buttons angeglichen.
+
 ## v1.36.0
 **English**
 - **Response curves per stick channel** — the thing expo cannot express. Expo is one
