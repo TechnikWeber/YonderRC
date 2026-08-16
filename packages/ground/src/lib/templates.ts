@@ -1,4 +1,4 @@
-import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
+import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, shapeProportional } from '@yonderrc/protocol';
 import type {
   ChannelBinding,
   ChannelShaping,
@@ -227,15 +227,34 @@ function failsafeFor(
   return center; // car, boat, drone throttle → neutral/hold
 }
 
+/** A channel's neutral shaping, for the rare throttle channel with no binding. */
+export function plainShaping(endpoints: Endpoints): ChannelShaping {
+  return shaping(endpoints, centerUs(endpoints));
+}
+
+/**
+ * Where the stick sits, normalized, when a vehicle of this type is OFF:
+ *  - car/boat → centre (neutral = stop; min could be full reverse!)
+ *  - plane/drone → idle (motors off)
+ */
+function offPosition(vehicleType: VehicleType): number {
+  return vehicleType === 'car' || vehicleType === 'boat' ? 0 : -1;
+}
+
 /**
  * Value a throttle channel takes when DELIBERATELY disarmed (on the bench / landed).
- * This is NOT the failsafe value — a disarmed drone must have motors OFF (min),
- * even though its in-flight failsafe holds at center.
- *  - car/boat → center (stop)
- *  - plane/drone → min (motors off)
+ * This is NOT the failsafe value — a disarmed drone must have motors OFF, even
+ * though its in-flight failsafe holds at centre.
+ *
+ * It is DERIVED by running the resting stick position through the channel's own
+ * shaping, rather than being read off the profile's endpoints. That is what makes
+ * it correct on a **reversed** channel: with `reverse` ticked, the idle stick maps
+ * to maxUs, so "motors off" is 2000 µs, not 1000 — and the old version, which
+ * returned `endpoints.minUs` flat, commanded FULL throttle on disarm there.
+ * Per-channel endpoints and trim come along for the same reason.
  */
-export function disarmedThrottleUs(vehicleType: VehicleType, endpoints: Endpoints): number {
-  return vehicleType === 'car' || vehicleType === 'boat' ? centerUs(endpoints) : endpoints.minUs;
+export function disarmedThrottleUs(vehicleType: VehicleType, shape: ChannelShaping): number {
+  return shapeProportional(offPosition(vehicleType), shape);
 }
 
 /**

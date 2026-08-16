@@ -19,6 +19,7 @@ import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
+import { enterRealFullscreen, exitRealFullscreen } from '../lib/immersive';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -401,6 +402,9 @@ export function VideoPanel({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  // "Fullscreen" is a CSS mode, not the Fullscreen API — that API doesn't exist on
+  // iPhone (see lib/immersive.ts), which is exactly where the button used to do
+  // nothing at all.
   const [isFull, setIsFull] = useState(false);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [camera, setCamera] = useState(cameras[0] ?? '');
@@ -620,14 +624,31 @@ export function VideoPanel({
 
   // Fullscreen the whole stage (video + OSD overlays stay together).
   useEffect(() => {
-    const onFs = () => setIsFull(document.fullscreenElement === stageRef.current);
+    if (!isFull) return;
+    void enterRealFullscreen(stageRef.current);
+    // Leaving fullscreen by the browser's own route (Esc, Android back, the system
+    // gesture) must take the CSS mode with it, or the page stays "fullscreen"
+    // inside a normal window with no way back.
+    const onFs = () => {
+      if (!document.fullscreenElement) setIsFull(false);
+    };
+    // Esc is the universal way out, and on a browser without the Fullscreen API
+    // nothing else would handle it.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFull(false);
+    };
     document.addEventListener('fullscreenchange', onFs);
-    return () => document.removeEventListener('fullscreenchange', onFs);
-  }, []);
-  const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void stageRef.current?.requestFullscreen?.();
-  };
+    window.addEventListener('keydown', onKey);
+    // The page behind the fixed stage must not scroll under a finger.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      void exitRealFullscreen();
+    };
+  }, [isFull]);
 
   // Record / snapshot / next-camera via the unified action bindings.
   const nextCamera = () => {
@@ -737,7 +758,11 @@ export function VideoPanel({
           <button className="btn tiny" onClick={() => setShowRecSettings((v) => !v)} title="Recording settings">
             ⚙
           </button>
-          <button className="btn tiny" onClick={toggleFullscreen} title="Fullscreen">
+          <button
+            className="btn tiny"
+            onClick={() => setIsFull((v) => !v)}
+            title="Fill the screen with the video and the OSD (works on phones too, where real fullscreen doesn't exist)"
+          >
             {isFull ? '⤢ Exit' : '⛶ Full'}
           </button>
           <button className="btn tiny" onClick={() => setShowOsd((v) => !v)}>
@@ -837,7 +862,7 @@ export function VideoPanel({
         </div>
       )}
 
-      <div className="video-stage" ref={stageRef}>
+      <div className={`video-stage${isFull ? ' immersive' : ''}`} ref={stageRef}>
         <video ref={videoRef} autoPlay playsInline muted />
         {rec.recording && <div className="rec-badge">● REC</div>}
         {batteryLow && <div className="batt-warn">⚠ BATTERY LOW{batteryReason ? ` · ${batteryReason}` : ''}</div>}
@@ -940,6 +965,22 @@ export function VideoPanel({
               {osdFields.batteryData && (telemetry ? <TelemetryData t={telemetry} compact={compactOsd} hidden={hidden} /> : <div className="osd-block osd-tel"><span className="osd-batt">-- V</span></div>)}
             </div>
           </div>
+        )}
+
+        {isFull && (
+          <>
+            {/* The toolbar's Exit button is off-screen in this mode, so the stage
+                carries its own. Esc works too. */}
+            <button className="btn tiny fs-exit" onClick={() => setIsFull(false)} title="Leave fullscreen (Esc)">
+              ⤢ Exit
+            </button>
+            {/* The touch sticks live on the page underneath and can't be reached
+                from here. Only worth saying while armed — that's when not being
+                able to steer actually matters. */}
+            {armed && profile.bindings.some((b) => b.source === 'virtual') && (
+              <div className="fs-hint">Touch sticks are on the page behind — Exit to steer</div>
+            )}
+          </>
         )}
       </div>
     </section>

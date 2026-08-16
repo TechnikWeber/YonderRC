@@ -391,6 +391,44 @@ async function main() {
   const plane = buildProfile('plane');
   const pch = plane.throttleChannels[0];
   ok('plane failsafe throttle = min', profileFailsafeUs(plane)[pch] === 1000);
+
+  // The disarmed value is DERIVED from the channel's own shaping, not read off the
+  // profile endpoints. On a REVERSED throttle the idle stick maps to maxUs, so
+  // "off" is 2000 — the flat endpoints.minUs used to command FULL THROTTLE there.
+  const reverseThrottle = (p: typeof drone) => ({
+    ...p,
+    bindings: p.bindings.map((b) =>
+      b.channel === p.throttleChannels[0] ? { ...b, shaping: { ...b.shaping, reverse: true } } : b,
+    ),
+  });
+  for (const [type, offUs] of [['drone', 1000], ['plane', 1000], ['car', 1500], ['boat', 1500]] as const) {
+    const p = buildProfile(type);
+    const ch = p.throttleChannels[0];
+    ok(`${type} disarmed throttle = ${offUs} (off)`, profileDisarmedUs(p)[ch] === offUs, `=${profileDisarmedUs(p)[ch]}`);
+    const rev = reverseThrottle(p);
+    // car/boat sit at centre, which is reverse-symmetric; plane/drone must flip.
+    const expect = offUs === 1500 ? 1500 : 2000;
+    ok(`${type} reversed throttle disarms to ${expect}`, profileDisarmedUs(rev)[ch] === expect, `=${profileDisarmedUs(rev)[ch]}`);
+  }
+  // Per-channel endpoints must come from the CHANNEL, not the profile.
+  const narrowThrottle = {
+    ...drone,
+    bindings: drone.bindings.map((b) =>
+      b.channel === dch ? { ...b, shaping: { ...b.shaping, minUs: 1100, maxUs: 1900 } } : b,
+    ),
+  };
+  ok('disarmed follows the channel endpoints', profileDisarmedUs(narrowThrottle)[dch] === 1100, `=${profileDisarmedUs(narrowThrottle)[dch]}`);
+  // Trim shifts where the resting stick actually lands, so it counts too.
+  const trimmed = {
+    ...car,
+    bindings: car.bindings.map((b) => (b.channel === cch ? { ...b, shaping: { ...b.shaping, trimUs: 40 } } : b)),
+  };
+  ok('disarmed includes trim', profileDisarmedUs(trimmed)[cch] === 1540, `=${profileDisarmedUs(trimmed)[cch]}`);
+  // A stored throttle channel with nothing bound to it must still get a safe value.
+  const orphan = { ...drone, bindings: drone.bindings.filter((b) => b.channel !== dch), throttleChannels: [dch] };
+  ok('orphaned throttle channel still disarms safe', profileDisarmedUs(orphan)[dch] === 1000, `=${profileDisarmedUs(orphan)[dch]}`);
+  // Non-throttle channels are untouched by any of this.
+  ok('non-throttle channels stay neutral', profileDisarmedUs(drone).filter((_, i) => i !== dch).every((v) => v === 1500));
   // auto-disarm on reconnect is coupled to vehicle type (aircraft = OFF)
   ok('car auto-disarm on reconnect', disarmOnReconnectForType('car') === true);
   ok('boat auto-disarm on reconnect', disarmOnReconnectForType('boat') === true);
@@ -836,6 +874,14 @@ async function main() {
   ok('gpx escapes the track name', logToGpx(gpsRows, started, 'A & B<x>').includes('A &amp; B&lt;x&gt;'));
   const emptyGpx = logToGpx([{ t: 0, ...base }], started);
   ok('gpx with no fixes is still valid', emptyGpx.includes('<trkseg>') && !emptyGpx.includes('<trkpt'));
+
+  // ---- fullscreen capability detection ----
+  const { supportsRealFullscreen } = await import('../packages/ground/src/lib/immersive');
+  // iPhone Safari has no requestFullscreen on elements at all — the helper must
+  // report that rather than throwing, because the CSS mode is then the only path.
+  ok('iPhone reports no real fullscreen', supportsRealFullscreen({ documentElement: {}, fullscreenEnabled: false } as unknown as Document) === false);
+  ok('Chrome reports real fullscreen', supportsRealFullscreen({ documentElement: { requestFullscreen: () => Promise.resolve() }, fullscreenEnabled: true } as unknown as Document) === true);
+  ok('a blocking permissions policy counts as unsupported', supportsRealFullscreen({ documentElement: { requestFullscreen: () => Promise.resolve() }, fullscreenEnabled: false } as unknown as Document) === false);
 
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);

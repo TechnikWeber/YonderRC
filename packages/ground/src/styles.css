@@ -1608,3 +1608,62 @@ input[type='range'] {
   background: #000; display: flex; align-items: center; justify-content: center;
 }
 .video-stage:fullscreen video { width: 100%; height: 100%; object-fit: contain; }
+
+/* ---- fullscreen that also works on a phone (v1.34) ----
+   iPhone Safari has no Fullscreen API for elements, so the mode can't depend on
+   one: the stage is simply pinned over the viewport. `dvh` is what makes it fit —
+   it tracks Safari's toolbar sliding in and out, where `vh` would leave a strip of
+   the page showing underneath. Real fullscreen is layered on top where it exists,
+   so both rules have to describe the same thing. */
+.video-stage.immersive {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: 100%;
+  height: 100dvh;
+  /* The wide-screen rule above caps the stage at 60vh so the panel doesn't eat the
+     page. In fullscreen that cap is exactly wrong — and because it only applies
+     from 880px up, it left the desktop stage two-thirds height while the phone
+     looked right. */
+  max-height: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  border: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* No browser gesture may steal a touch here: no scroll, no pinch-zoom, no
+     pull-to-refresh. iOS ignores `user-scalable=no` in the viewport meta, so this
+     is the defence that actually counts. */
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.video-stage.immersive video { width: 100%; height: 100%; object-fit: contain; }
+/* Keep the OSD clear of the notch and the home indicator. */
+.video-stage.immersive .osd {
+  inset: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right))
+         max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
+}
+.fs-exit {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 2;
+  opacity: 0.85;
+}
+.fs-hint {
+  position: absolute;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  color: var(--idle);
+  background: rgba(8, 12, 16, 0.72);
+  border: 1px solid var(--idle);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}

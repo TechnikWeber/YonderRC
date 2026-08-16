@@ -51,10 +51,6 @@ export function BindingEditor({
 
   // Speed-limit steps live on the throttle channel, where you'd look for them.
   const throttleSet = new Set(throttleChannelsOf(profile));
-  // What the vehicle forces onto the throttle while deliberately disarmed. Shown
-  // on the throttle row so the difference to the failsafe value is visible where
-  // people actually look at it.
-  const disarmedUs = disarmedThrottleUs(profile.vehicleType, profile.endpoints);
   const limit = limitOf(profile);
   const setLimitStepPct = (i: 0 | 1 | 2, pct: number) => {
     const steps = [...limit.steps] as [number, number, number];
@@ -290,7 +286,7 @@ export function BindingEditor({
                   puzzle rather than information. */}
               <summary title={throttleSet.has(b.channel) ? `Failsafe = link loss WHILE ARMED. Disarmed = deliberately off, on the ground. For a ${profile.vehicleType} these are different on purpose.` : undefined}>
                 trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}
-                {throttleSet.has(b.channel) ? ` · disarmed ${disarmedUs}` : ''}
+                {throttleSet.has(b.channel) ? ` · disarmed ${disarmedThrottleUs(profile.vehicleType, b.shaping)}` : ''}
                 {b.shaping.reverse ? ' · rev' : ''}
                 {b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}
               </summary>

@@ -3,6 +3,59 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.34.0
+**English**
+- **Fixed (safety): a reversed throttle channel disarmed to FULL THROTTLE.** The
+  disarmed value was read flat off the profile endpoints (`endpoints.minUs` for plane
+  and drone), ignoring the channel's own `reverse` flag. With `reverse` ticked the idle
+  stick maps to **max**, so "motors off" is 2000 µs on that channel — and sending 1000
+  µs meant full power the moment you disarmed. It is now **derived** by running the
+  resting stick position through the channel's own shaping, so reverse, per-channel
+  endpoints and trim all count. Car and boat were never affected (they stop at centre,
+  which is reverse-symmetric); an unreversed channel gets exactly the same value as
+  before. Covered by tests across all four vehicle types with reverse on and off.
+- **The fullscreen button now works on a phone.** It never did on iPhone: Safari has no
+  `Element.requestFullscreen` there (iPadOS 13+ does), so the old `requestFullscreen?.()`
+  quietly evaluated to nothing. Fullscreen is a CSS mode now — a fixed, `100dvh` stage
+  that tracks Safari's sliding toolbar — so it behaves the same everywhere, and the real
+  Fullscreen API is layered on top where it exists to hide the browser chrome too. The
+  **OSD comes along**; leave with the Exit button in the corner or Esc.
+- While fullscreen the page can't scroll or zoom under a finger (`touch-action: none`
+  — iOS ignores `user-scalable=no`, so that meta tag was never the defence). The OSD
+  keeps clear of the notch and home indicator via the safe-area insets.
+- Touch sticks stay on the page behind and can't be reached from fullscreen; while
+  **armed** a line says so, since that's when not being able to steer matters.
+- Fixed on the way: the wide-screen `max-height: 60vh` cap on the video stage also
+  applied in fullscreen, leaving the desktop picture at two-thirds height while the
+  phone looked right.
+
+**Deutsch**
+- **Behoben (Sicherheit): ein reversierter Gaskanal ging beim Disarm auf VOLLGAS.** Der
+  Disarmed-Wert wurde pauschal aus den Profil-Endpoints gelesen (`endpoints.minUs` bei
+  Flugzeug und Drohne) und ignorierte das `reverse`-Flag des Kanals. Mit gesetztem
+  `reverse` liegt der Leerlauf-Stick auf **max**, „Motoren aus" ist auf diesem Kanal
+  also 2000 µs — 1000 µs zu senden bedeutete volle Leistung im Moment des Entschärfens.
+  Der Wert wird jetzt **abgeleitet**: die Ruhelage des Sticks läuft durch die Shaping
+  des Kanals, damit zählen Reverse, kanaleigene Endpoints und Trim. Auto und Boot waren
+  nie betroffen (sie stoppen in der Mitte, das ist reverse-symmetrisch); ein nicht
+  reversierter Kanal bekommt exakt den bisherigen Wert. Durch Tests über alle vier
+  Fahrzeugtypen mit Reverse an und aus abgedeckt.
+- **Der Fullscreen-Button funktioniert jetzt am Handy.** Auf dem iPhone tat er noch nie
+  etwas: Safari hat dort kein `Element.requestFullscreen` (iPadOS 13+ schon), das alte
+  `requestFullscreen?.()` lief also ins Leere. Fullscreen ist jetzt ein CSS-Modus — eine
+  fixierte `100dvh`-Bühne, die Safaris ein- und ausfahrende Leiste mitrechnet — und
+  verhält sich überall gleich; die echte Fullscreen-API kommt obendrauf, wo es sie gibt,
+  um zusätzlich die Browserleiste auszublenden. Das **OSD bleibt sichtbar**; raus über
+  den Exit-Button in der Ecke oder Esc.
+- Im Vollbild kann die Seite unter dem Finger weder scrollen noch zoomen
+  (`touch-action: none` — iOS ignoriert `user-scalable=no`, dieses Meta-Tag war nie der
+  Schutz). Das OSD hält sich per Safe-Area-Insets von Notch und Home-Indikator frei.
+- Die Touch-Sticks bleiben auf der Seite dahinter und sind im Vollbild nicht erreichbar;
+  im **armierten** Zustand weist eine Zeile darauf hin — dann zählt es.
+- Nebenbei behoben: der `max-height: 60vh`-Deckel der Videobühne für breite Fenster galt
+  auch im Vollbild und ließ das Desktop-Bild auf zwei Dritteln Höhe stehen, während es
+  am Handy passte.
+
 ## v1.33.2
 **English**
 - **The throttle row in Setup › Channels now shows its disarmed value** next to the

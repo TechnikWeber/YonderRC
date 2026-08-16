@@ -1,6 +1,6 @@
 import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/protocol';
 import type { Profile } from '@yonderrc/protocol';
-import { buildProfile, disarmedThrottleUs, repairAxisBindings, throttleChannelsOf, withResolvedThrottle } from './templates';
+import { buildProfile, disarmedThrottleUs, plainShaping, repairAxisBindings, throttleChannelsOf, withResolvedThrottle } from './templates';
 
 const PROFILES_KEY = 'yonderrc.profiles.v3';
 const ACTIVE_KEY = 'yonderrc.activeProfile.v3';
@@ -71,14 +71,20 @@ export function profileFailsafeUs(profile: Profile): number[] {
 
 /**
  * Build the disarmed-value array. Throttle channels take their OFF/STOP value
- * (car/boat = neutral/stop, plane/drone = min/motors-off) — distinct from the
+ * (car/boat = neutral/stop, plane/drone = motors off) — distinct from the
  * in-flight failsafe so a disarmed drone never holds throttle.
+ *
+ * The value is computed per channel from that channel's OWN shaping, so a
+ * reversed throttle gets the endpoint that actually means "off" on it.
  */
 export function profileDisarmedUs(profile: Profile): number[] {
   const arr = neutralChannels();
-  const off = disarmedThrottleUs(profile.vehicleType, profile.endpoints);
   for (const ch of throttleChannelsOf(profile)) {
-    if (ch >= 0 && ch < CHANNEL_COUNT) arr[ch] = off;
+    if (ch < 0 || ch >= CHANNEL_COUNT) continue;
+    // throttleChannelsOf normally derives from the bindings, but it can fall back
+    // to the stored list, which may name a channel nothing is bound to.
+    const b = profile.bindings.find((x) => x.channel === ch);
+    arr[ch] = disarmedThrottleUs(profile.vehicleType, b?.shaping ?? plainShaping(profile.endpoints));
   }
   return arr;
 }
