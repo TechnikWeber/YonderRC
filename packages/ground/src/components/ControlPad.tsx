@@ -5,6 +5,8 @@ import type { BindingEngine } from '../lib/input/bindingEngine';
 import { holdProgress, holdRemainingS } from '../lib/hold';
 import { LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { VirtualJoystick } from './VirtualJoystick';
+import { HoldButton } from './HoldButton';
+import { TrimPanel } from './TrimPanel';
 
 interface JoyCfg {
   axisX: boolean;
@@ -50,6 +52,9 @@ export function ControlPad({
   externalProgress = 0,
   limit,
   onLimitStep,
+  buttonHoldMs,
+  onTrim,
+  onTrimClear,
   version,
 }: {
   profile: Profile;
@@ -64,6 +69,13 @@ export function ControlPad({
   /** Speed-limit steps for this model, and the active one. */
   limit: ThrottleLimit;
   onLimitStep: (step: 0 | 1 | 2) => void;
+  /**
+   * Short hold for the buttons that change something lasting (toggle channels,
+   * speed limiter, trims). 0 = plain taps. Momentary channels are never affected.
+   */
+  buttonHoldMs: number;
+  onTrim: (bindingId: string, deltaUs: number) => void;
+  onTrimClear: (bindingId: string) => void;
   connected: boolean;
   calibrationActive: boolean;
   version: number;
@@ -203,10 +215,13 @@ export function ControlPad({
           {onscreen.map((b) => {
             const isToggle = b.mode === 'toggle';
             const activeState = isToggle ? engine.getToggle(b.id) : input.isPressed(b.id);
+            // Toggles are held in the engine (it owns the flip), so the fill is
+            // read back from there. Momentary buttons fire at once and never fill.
+            const fill = isToggle ? engine.holdProgress(b.id) : 0;
             return (
               <button
                 key={b.id}
-                className={`padbtn${activeState ? ' active' : ''}`}
+                className={`padbtn${activeState ? ' active' : ''}${fill > 0 ? ' holding' : ''}`}
                 onPointerDown={(e) => {
                   (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
                   input.setPressed(b.id, true);
@@ -215,8 +230,9 @@ export function ControlPad({
                 onPointerLeave={() => input.setPressed(b.id, false)}
                 onPointerCancel={() => input.setPressed(b.id, false)}
               >
-                <span>{b.label ?? `CH${b.channel + 1}`}</span>
-                <span className="sub">
+                <i className="hold-fill" style={{ width: `${Math.round(fill * 100)}%` }} aria-hidden="true" />
+                <span className="hold-text">{b.label ?? `CH${b.channel + 1}`}</span>
+                <span className="sub hold-text">
                   CH{String(b.channel + 1).padStart(2, '0')} · {isToggle ? (activeState ? 'on' : 'off') : b.mode}
                 </span>
               </button>
@@ -228,17 +244,25 @@ export function ControlPad({
       <div className="limit-row" role="group" aria-label="Speed limit">
         <span className="limit-label">Speed</span>
         {([0, 1, 2] as const).map((i) => (
-          <button
+          <HoldButton
             key={i}
             className={`limitbtn${limit.step === i ? ' on' : ''}`}
-            onClick={() => onLimitStep(i)}
-            aria-pressed={limit.step === i}
+            holdMs={buttonHoldMs}
+            onFire={() => onLimitStep(i)}
+            ariaPressed={limit.step === i}
           >
             <span>{LIMIT_STEP_LABELS[i]}</span>
             <span className="sub">{limit.steps[i]}%</span>
-          </button>
+          </HoldButton>
         ))}
       </div>
+
+      <TrimPanel
+        profile={profile}
+        holdMs={buttonHoldMs}
+        onNudge={onTrim}
+        onClear={onTrimClear}
+      />
 
       <p className="hint">{methodHint}</p>
     </section>

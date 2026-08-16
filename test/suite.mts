@@ -906,6 +906,89 @@ async function main() {
   ok('Chrome reports real fullscreen', supportsRealFullscreen({ documentElement: { requestFullscreen: () => Promise.resolve() }, fullscreenEnabled: true } as unknown as Document) === true);
   ok('a blocking permissions policy counts as unsupported', supportsRealFullscreen({ documentElement: { requestFullscreen: () => Promise.resolve() }, fullscreenEnabled: false } as unknown as Document) === false);
 
+  // ---- short button hold: toggles, and what it must NOT touch ----
+  const { buttonHoldMsFor, clampButtonHoldSeconds, BUTTON_HOLD_DEFAULTS, BUTTON_HOLD_MIN_S, BUTTON_HOLD_MAX_S } =
+    await import('../packages/ground/src/lib/buttonHold');
+  ok('button hold defaults to 0.3 s', buttonHoldMsFor(BUTTON_HOLD_DEFAULTS) === 300);
+  ok('switched off means no hold at all', buttonHoldMsFor({ ...BUTTON_HOLD_DEFAULTS, enabled: false }) === 0);
+  ok('button hold clamps low', clampButtonHoldSeconds(0.001) === BUTTON_HOLD_MIN_S);
+  ok('button hold clamps high', clampButtonHoldSeconds(99) === BUTTON_HOLD_MAX_S);
+  ok('button hold survives nonsense', clampButtonHoldSeconds(NaN) === BUTTON_HOLD_DEFAULTS.seconds);
+
+  const { BindingEngine: Eng } = await import('../packages/ground/src/lib/input/bindingEngine');
+  const holdProfile = buildProfile('car', { inputMethod: 'touch' });
+  // Give the car a toggle and a momentary channel to press.
+  const tog = { ...holdProfile.bindings.find((b) => b.mode === 'toggle')! };
+  const mom = holdProfile.bindings.find((b) => b.mode === 'momentary');
+  const withModes = {
+    ...holdProfile,
+    bindings: [
+      { ...tog, id: 'tog', channel: 7, mode: 'toggle' as const },
+      { ...(mom ?? tog), id: 'mom', channel: 8, mode: 'momentary' as const },
+    ],
+  } as typeof holdProfile;
+  const snapWith = (pressed: string[]) => ({
+    keys: new Set<string>(),
+    pressed: new Set(pressed),
+    joystick: () => null,
+    gamepadAxis: () => null,
+    gamepadButton: () => false,
+  });
+  // Both bindings read from `pressed` (source 'onscreen'); force that.
+  withModes.bindings = withModes.bindings.map((b) => ({ ...b, source: 'onscreen' as const, element: 'btn' }));
+
+  const hEng = new Eng();
+  const tick = (pressed: string[], ms = 50, holdMs = 300) => hEng.compute(withModes, snapWith(pressed), ms, holdMs);
+  const on = (out: number[], ch: number) => out[ch] > 1500;
+  // A press shorter than the hold must not flip the toggle.
+  tick(['tog'], 100);
+  ok('toggle ignores a brush', !on(tick([], 50), 7), 'flipped on a 100 ms press');
+  // Held past the threshold it flips exactly once, however long you keep holding.
+  tick(['tog'], 200);
+  tick(['tog'], 200);
+  ok('toggle flips after the hold', on(tick(['tog'], 50), 7));
+  tick(['tog'], 1000);
+  ok('and only once per press', on(tick(['tog'], 1000), 7), 'flipped back while still held');
+  tick([], 50); // release
+  tick(['tog'], 400);
+  ok('a second held press flips it back', !on(tick(['tog'], 50), 7));
+
+  // Momentary is never delayed — a horn has to answer immediately.
+  const eng2 = new Eng();
+  ok('momentary fires on the first frame', on(eng2.compute(withModes, snapWith(['mom']), 16, 300), 8));
+  ok('momentary releases immediately', !on(eng2.compute(withModes, snapWith([]), 16, 300), 8));
+
+  // With the hold switched off a toggle flips on the first frame, exactly as before.
+  const eng3 = new Eng();
+  ok('no hold = old rising-edge behaviour', on(eng3.compute(withModes, snapWith(['tog']), 16, 0), 7));
+
+  // ---- live trims ----
+  const { nudgeTrim, clearTrim, clampTrim, hasTrim, trimmableBindings, TRIM_LIMIT_US, TRIM_STEP_US } =
+    await import('../packages/ground/src/lib/trim');
+  const trimBase = buildProfile('car', { inputMethod: 'touch' });
+  const steerId = trimBase.bindings.find((b) => b.mode === 'proportional')!.id;
+  ok('nothing is trimmed to begin with', !hasTrim(trimBase));
+  const t1 = nudgeTrim(trimBase, steerId, TRIM_STEP_US);
+  ok('a nudge moves one step', t1.bindings.find((b) => b.id === steerId)!.shaping.trimUs === TRIM_STEP_US);
+  ok('and shows as trimmed', hasTrim(t1));
+  ok('the original profile is untouched', trimBase.bindings.find((b) => b.id === steerId)!.shaping.trimUs === 0);
+  // Trim must stop at the limit rather than eating the channel's travel.
+  let far = trimBase;
+  for (let i = 0; i < 200; i++) far = nudgeTrim(far, steerId, TRIM_STEP_US);
+  ok('trim stops at the limit', far.bindings.find((b) => b.id === steerId)!.shaping.trimUs === TRIM_LIMIT_US);
+  ok('at the limit a nudge is a no-op', nudgeTrim(far, steerId, TRIM_STEP_US) === far);
+  ok('reset returns to centre', clearTrim(far, steerId).bindings.find((b) => b.id === steerId)!.shaping.trimUs === 0);
+  ok('clamp is symmetric', clampTrim(-9999) === -TRIM_LIMIT_US && clampTrim(9999) === TRIM_LIMIT_US);
+  // Only stick axes get trims — a toggle or momentary channel has no neutral to shift.
+  ok('only proportional channels are trimmable', trimmableBindings(trimBase).every((b) => b.mode === 'proportional'));
+  const togId = trimBase.bindings.find((b) => b.mode !== 'proportional')?.id;
+  if (togId) ok('a switch channel refuses a trim', nudgeTrim(trimBase, togId, TRIM_STEP_US) === trimBase);
+  // Trim feeds the existing shaping, so the neutral really moves.
+  const { shapeProportional: shapeP } = await import('../packages/protocol/src/shaping');
+  const trimmedShape = t1.bindings.find((b) => b.id === steerId)!.shaping;
+  ok('trim shifts the shaped neutral', shapeP(0, trimmedShape) === 1500 + TRIM_STEP_US,
+    `=${shapeP(0, trimmedShape)}`);
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

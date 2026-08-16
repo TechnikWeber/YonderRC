@@ -292,6 +292,43 @@ body {
   outline-offset: 1px;
 }
 
+/* ---- short button hold (v1.35) ----
+   The fill is what makes the delay legible: a button that ignores the first
+   300 ms of a press and shows nothing reads as broken, not as protected. Same
+   visual language as the arm button, just quicker. */
+.hold-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.hold-text {
+  position: relative; /* above the fill */
+}
+/* Any button that can fill needs to be a positioning context and to clip. */
+.padbtn,
+.limitbtn,
+.trim-btn,
+.trim-reset {
+  position: relative;
+  overflow: hidden;
+}
+.limitbtn.holding,
+.padbtn.holding,
+.trim-btn.holding,
+.trim-reset.holding {
+  border-color: var(--accent);
+}
+/* Holding must not be mistaken for scrolling on a phone. */
+.trim-btn,
+.trim-reset {
+  touch-action: none;
+}
+
 .hint {
   font-size: 12px;
   color: var(--muted);
@@ -1047,6 +1084,90 @@ body {
 }
 .limitbtn.on .sub {
   color: var(--accent);
+}
+
+/* ---- live trims (v1.35) ----
+   Collapsed by default: reached for occasionally, and open it would put four more
+   rows of buttons right where the thumbs already are. */
+.trim-panel {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.trim-panel > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.trim-panel[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.trim-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+.trim-rows {
+  padding: 10px 12px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trim-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(84px, auto) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+.trim-label {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trim-btn,
+.trim-reset {
+  min-width: 40px;
+  padding: 9px 10px;
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1;
+}
+.trim-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.trim-value.set {
+  color: var(--accent);
+}
+.trim-neutral {
+  font-size: 10px;
+  font-style: normal;
+  opacity: 0.7;
+}
+.trim-panel .hint {
+  padding: 0 12px 10px;
+  margin-top: 6px;
 }
 .limitbtn:focus-visible {
   outline: 2px solid var(--accent);

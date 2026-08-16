@@ -33,7 +33,9 @@ import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWar
 import { beep } from './lib/beep';
 import { logToCsv, logToGpx, downloadText, sensorSnapshot, gpsSnapshot, fixCount, LOG_CAP, type LogRow } from './lib/logger';
 import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
+import { loadButtonHoldCfg, saveButtonHoldCfg, buttonHoldMsFor, type ButtonHoldCfg } from './lib/buttonHold';
 import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
+import { nudgeTrim, clearTrim } from './lib/trim';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
 import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, throttleChannelsOf, type AutoDisarmMode } from './lib/templates';
 
@@ -107,6 +109,16 @@ export function App() {
   });
   const [actions, setActionsState] = useState(loadActions);
   const [holdCfg, setHoldCfgState] = useState<HoldCfg>(loadHoldCfg);
+  // Short hold for the buttons that change something lasting (toggles, speed
+  // limiter, trims). A ref as well, because the control loop reads it every tick.
+  const [buttonHoldCfg, setButtonHoldCfgState] = useState<ButtonHoldCfg>(loadButtonHoldCfg);
+  const buttonHoldMs = buttonHoldMsFor(buttonHoldCfg);
+  const buttonHoldRef = useRef(buttonHoldMs);
+  buttonHoldRef.current = buttonHoldMs;
+  const setButtonHoldCfg = (c: ButtonHoldCfg) => {
+    setButtonHoldCfgState(c);
+    saveButtonHoldCfg(c);
+  };
   const [preArmMsg, setPreArmMsg] = useState<string | null>(null);
   const [batteryCfg, setBatteryCfgState] = useState(loadBattery);
   const setBatteryCfg = (c: BatteryWarnCfg) => {
@@ -200,7 +212,7 @@ export function App() {
 
       // RAW command first: the pre-arm check must see what the sticks really
       // ask for, so the speed limiter can never soften that check.
-      const channels = engine.compute(activeRef.current, input.snapshot(), dt);
+      const channels = engine.compute(activeRef.current, input.snapshot(), dt, buttonHoldRef.current);
       liveChannelsRef.current = channels;
       const sent = applyThrottleLimit(activeRef.current, channels);
       linkRef.current?.sendControl(sent);
@@ -277,7 +289,13 @@ export function App() {
       'throttle-limit': () => updateProfile(withStep(activeRef.current, nextStep(limitOf(activeRef.current).step))),
     },
     input,
-    { holdMs: holdMsFor(holdCfg), actions: ['toggle-arm'], onProgress: setHotkeyHold },
+    {
+      // Arming is a confirmation; the speed limiter only needs the short filter.
+      // Panic-disarm is absent on purpose and must stay instant.
+      holdMs: { 'toggle-arm': holdMsFor(holdCfg), 'throttle-limit': buttonHoldMs },
+      progressFor: 'toggle-arm',
+      onProgress: setHotkeyHold,
+    },
   );
 
   // Session timer: runs while armed; also captures mAh consumed since arming.
@@ -469,7 +487,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.34.1</span>
+        <span className="ver">ground · v1.35.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -521,7 +539,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>
@@ -570,6 +588,9 @@ export function App() {
             externalProgress={hotkeyHold}
             limit={limitOf(active)}
             onLimitStep={(step) => updateProfile(withStep(active, step))}
+            buttonHoldMs={buttonHoldMs}
+            onTrim={(id, delta) => updateProfile(nudgeTrim(active, id, delta))}
+            onTrimClear={(id) => updateProfile(clearTrim(active, id))}
             version={tick}
           />
           <div className="link-opts">

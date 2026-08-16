@@ -101,9 +101,20 @@ export function saveActions(b: ActionBindings): void {
  * behaviour — panic-disarm is never in here, it must stay instant.
  */
 export interface HoldOptions {
-  holdMs: number;
-  actions: ActionId[];
-  /** 0..1 while a held action is being pressed, so the UI can show the same fill. */
+  /**
+   * Hold time per action, ms. An action that isn't listed (or is <= 0) keeps the
+   * historic rising-edge behaviour. Per-action because the times differ by an
+   * order of magnitude on purpose: arming is a ~1 s confirmation, while the speed
+   * limiter just needs the ~0.3 s that filters out a bumped controller button.
+   */
+  holdMs: Partial<Record<ActionId, number>>;
+  /**
+   * Which action's progress `onProgress` reports. Only one can drive the arm
+   * button's fill, and it must be arming — a speed-limit press filling the arm
+   * button would read as "about to arm".
+   */
+  progressFor?: ActionId;
+  /** 0..1 while that action is being pressed, so the UI can show the same fill. */
   onProgress?: (p: number) => void;
 }
 
@@ -132,8 +143,8 @@ export function useActionHotkeys(
   /** Action → when its key/button went down; only for actions that need a hold. */
   const pressedAt = useRef(new Map<ActionId, number>());
   const needsHold = (id: ActionId): number => {
-    const h = holdRef.current;
-    return h && h.holdMs > 0 && h.actions.includes(id) ? h.holdMs : 0;
+    const ms = holdRef.current?.holdMs[id] ?? 0;
+    return ms > 0 ? ms : 0;
   };
   const report = (p: number) => holdRef.current?.onProgress?.(p);
   const release = (id: ActionId) => {
@@ -197,20 +208,21 @@ export function useActionHotkeys(
 
       // Anything held long enough fires once, then waits for a release.
       const now = performance.now();
-      let maxProgress = 0;
+      const watched = holdRef.current?.progressFor;
+      let progress = 0;
       for (const [actionId, since] of [...pressedAt.current]) {
         const ms = needsHold(actionId);
         if (ms <= 0) continue;
         const p = Math.min(1, (now - since) / ms);
-        maxProgress = Math.max(maxProgress, p);
+        if (actionId === watched) progress = p;
         if (p >= 1) {
           pressedAt.current.delete(actionId);
-          maxProgress = 0;
+          if (actionId === watched) progress = 0;
           navigator.vibrate?.(60);
           hRef.current[actionId]?.();
         }
       }
-      if (pressedAt.current.size > 0 || maxProgress === 0) report(maxProgress);
+      report(progress);
     }, 60);
     return () => clearInterval(id);
   }, [input]);

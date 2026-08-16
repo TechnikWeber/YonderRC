@@ -33,8 +33,13 @@ const KEY_RAMP_PER_SEC = 2.4; // keyboard proportional ramp
  */
 export class BindingEngine {
   private toggles = new Map<string, boolean>();
-  private prevActive = new Map<string, boolean>();
   private ramp = new Map<string, number>();
+  /** How long a toggle's input has been held, ms — drives the short hold. */
+  private heldMs = new Map<string, number>();
+  /** Toggles that already flipped during the current press, so it flips once. */
+  private fired = new Set<string>();
+  /** Hold required before a toggle flips; 0 = flip on the press, as before. */
+  private buttonHoldMs = 0;
 
   getToggle(id: string): boolean {
     return this.toggles.get(id) ?? false;
@@ -45,18 +50,35 @@ export class BindingEngine {
     this.toggles.set(id, !this.toggles.get(id));
   }
 
-  compute(profile: Profile, snap: InputSnapshot, dtMs: number): number[] {
+  /**
+   * How far into its hold a toggle is, 0..1. Lets the on-screen button fill up
+   * the way the arm button does — a button that silently ignores the first 300 ms
+   * of a press reads as broken unless it shows what it is waiting for.
+   */
+  holdProgress(id: string): number {
+    if (this.buttonHoldMs <= 0) return 0;
+    if (this.fired.has(id)) return 0;
+    return Math.min(1, (this.heldMs.get(id) ?? 0) / this.buttonHoldMs);
+  }
+
+  /**
+   * @param buttonHoldMs Hold required before a TOGGLE flips. Momentary, hold-ramp
+   *   and proportional bindings are untouched: a horn must sound at once, holding
+   *   is already the gesture for a ramp, and steering may never be delayed.
+   */
+  compute(profile: Profile, snap: InputSnapshot, dtMs: number, buttonHoldMs = 0): number[] {
     const dt = dtMs / 1000;
+    this.buttonHoldMs = buttonHoldMs;
     const channels = neutralChannels();
 
     for (const b of profile.bindings) {
       if (b.channel < 0 || b.channel >= CHANNEL_COUNT) continue;
-      channels[b.channel] = this.evalBinding(b, snap, dt);
+      channels[b.channel] = this.evalBinding(b, snap, dt, dtMs);
     }
     return channels;
   }
 
-  private evalBinding(b: ChannelBinding, snap: InputSnapshot, dt: number): number {
+  private evalBinding(b: ChannelBinding, snap: InputSnapshot, dt: number, dtMs: number): number {
     switch (b.mode) {
       case 'proportional':
         return shapeProportional(this.readAxis(b, snap, dt), b.shaping);
@@ -64,9 +86,21 @@ export class BindingEngine {
         return shapeSwitch(this.readActive(b, snap), b.shaping, restUsFor(b));
       case 'toggle': {
         const active = this.readActive(b, snap);
-        const prev = this.prevActive.get(b.id) ?? false;
-        if (active && !prev) this.flipToggle(b.id); // rising edge
-        this.prevActive.set(b.id, active);
+        if (!active) {
+          // Released: forget the press entirely, so a hold that was let go early
+          // starts from zero next time instead of resuming where it stopped.
+          this.heldMs.delete(b.id);
+          this.fired.delete(b.id);
+        } else {
+          const held = (this.heldMs.get(b.id) ?? 0) + dtMs;
+          this.heldMs.set(b.id, held);
+          // With no hold configured this is true on the first frame, which is
+          // exactly the old rising-edge behaviour.
+          if (!this.fired.has(b.id) && held >= this.buttonHoldMs) {
+            this.flipToggle(b.id);
+            this.fired.add(b.id);
+          }
+        }
         return shapeSwitch(this.getToggle(b.id), b.shaping, restUsFor(b));
       }
       case 'hold-ramp':

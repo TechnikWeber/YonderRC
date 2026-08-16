@@ -4,6 +4,7 @@ import type { BatteryWarnCfg } from '../lib/battery';
 import type { InputManager } from '../lib/input/inputManager';
 import type { AutoDisarmMode } from '../lib/templates';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
+import { clampButtonHoldSeconds, BUTTON_HOLD_MAX_S, BUTTON_HOLD_MIN_S, type ButtonHoldCfg } from '../lib/buttonHold';
 
 const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'next-camera', 'record-toggle', 'snapshot'];
 
@@ -14,6 +15,8 @@ export function ControlsPanel({
   onPreArm,
   hold,
   onHold,
+  buttonHold,
+  onButtonHold,
   battery,
   onBattery,
   logging,
@@ -36,6 +39,8 @@ export function ControlsPanel({
   onPreArm: (v: boolean) => void;
   hold: HoldCfg;
   onHold: (c: HoldCfg) => void;
+  buttonHold: ButtonHoldCfg;
+  onButtonHold: (c: ButtonHoldCfg) => void;
   battery: BatteryWarnCfg;
   onBattery: (c: BatteryWarnCfg) => void;
   logging: boolean;
@@ -115,6 +120,36 @@ export function ControlsPanel({
         one — and to a key or controller button bound to <b>Arm / disarm</b> below, since a bumped
         controller is just as capable of it. Switched off, both toggle on a plain press again.
         {HOLD_MIN_S}–{HOLD_MAX_S} s; panic-disarm stays instant either way.
+      </p>
+
+      <label className="opt big">
+        <input
+          type="checkbox"
+          checked={buttonHold.enabled}
+          onChange={(e) => onButtonHold({ ...buttonHold, enabled: e.target.checked })}
+        />
+        Hold the other buttons too — a short press is ignored
+      </label>
+      <label className="batt-th hold-row">
+        <span>Button hold</span>
+        <input
+          type="number"
+          step={0.05}
+          min={BUTTON_HOLD_MIN_S}
+          max={BUTTON_HOLD_MAX_S}
+          value={buttonHold.seconds}
+          disabled={!buttonHold.enabled}
+          onChange={(e) => onButtonHold({ ...buttonHold, seconds: clampButtonHoldSeconds(Number(e.target.value)) })}
+        />
+        <span className="unit">s</span>
+      </label>
+      <p className="note">
+        A much shorter filter than the arm hold, for the buttons that change something <b>lasting</b>:
+        <b> toggle channels</b>, the <b>speed limiter</b> and the <b>trims</b> — on the screen and on a
+        controller alike. Deliberately <b>not</b> applied to <b>momentary channels</b> (a horn has to
+        sound the instant you press it), <b>hold-ramp channels</b> (holding is already the gesture),
+        or the <b>sticks</b> — steering and throttle are never delayed. Arm keeps its own longer hold,
+        panic-disarm stays instant. {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
       </p>
 
       <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>

@@ -3,6 +3,51 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.35.0
+**English**
+- **Live trims.** A collapsible *Trims* panel under the sticks (and under the video for
+  keyboard/gamepad models) nudges a stick channel's neutral by 5 µs a press, up to
+  ±150 µs, with a reset per channel. The car pulls left, you tap right — no trip to
+  Setup. The value lands in the channel's existing `shaping.trimUs`, so it's the same
+  number as `trim µs` in Setup › Channels and is saved with the model.
+- **A short hold on the buttons that change something lasting.** Toggle channels, the
+  speed limiter and the trims now need ~0.3 s of press before they act, on the screen
+  and on a controller alike — long enough to reject brushing one with a thumb, short
+  enough not to feel broken. Each button fills up while you hold it, the way the arm
+  button does.
+- Deliberately **not** covered, and this is the point of the list: **momentary channels**
+  (a horn has to sound the instant you press it), **hold-ramp channels** (holding is
+  already the gesture), and the **sticks** — steering and throttle are never delayed.
+  Arm keeps its own longer, separate hold; panic-disarm stays instant.
+- Configurable in Setup › Controls (0.1–3 s, or off — off restores exactly the previous
+  tap behaviour). Per browser, like the other ground-side safety options.
+- The action hold is now **per action** rather than one time for all of them, because
+  arming (~1 s confirmation) and the speed limiter (~0.3 s filter) want different
+  things from the same mechanism.
+
+**Deutsch**
+- **Live-Trims.** Ein aufklappbares *Trims*-Feld unter den Sticks (bzw. unter dem Video
+  bei Tastatur-/Gamepad-Modellen) verschiebt die Mittelstellung eines Stick-Kanals um
+  5 µs pro Druck, bis ±150 µs, mit Reset je Kanal. Das Auto zieht nach links, du tippst
+  nach rechts — ohne Umweg über Setup. Der Wert landet im vorhandenen
+  `shaping.trimUs` des Kanals, ist also dieselbe Zahl wie `trim µs` unter Setup ›
+  Channels und wird mit dem Modell gespeichert.
+- **Kurze Haltezeit für die Buttons, die etwas Dauerhaftes verstellen.** Toggle-Kanäle,
+  der Speed-Limiter und die Trims brauchen jetzt ca. 0,3 s Druck, bevor sie auslösen —
+  am Bildschirm wie am Controller. Lang genug, um ein versehentliches Streifen
+  abzuweisen, kurz genug, um sich nicht kaputt anzufühlen. Jeder Button füllt sich
+  während des Haltens, so wie der Arm-Button.
+- Bewusst **nicht** betroffen, und darum geht es bei dieser Liste: **Momentary-Kanäle**
+  (eine Hupe muss im Moment des Drückens kommen), **Hold-Ramp-Kanäle** (Halten ist dort
+  bereits die Geste) und die **Sticks** — Lenkung und Gas werden nie verzögert. Arm
+  behält seine eigene, längere Haltezeit; Panic-Disarm bleibt sofort.
+- Einstellbar unter Setup › Controls (0,1–3 s, oder aus — aus stellt exakt das bisherige
+  Tipp-Verhalten wieder her). Pro Browser, wie die anderen Sicherheitsoptionen der
+  Bodenstation.
+- Die Haltezeit für Aktionen ist jetzt **pro Aktion** statt einer Zeit für alle, weil
+  Armieren (~1 s Bestätigung) und Speed-Limiter (~0,3 s Filter) vom selben Mechanismus
+  Unterschiedliches wollen.
+
 ## v1.34.1
 **English**
 - **Setup › Channels now warns when a throttle failsafe would open the throttle.** The
