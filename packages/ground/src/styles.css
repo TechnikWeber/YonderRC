@@ -1115,7 +1115,8 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--muted);
-  margin-left: auto;
+  /* Placement is the grid's job (see .binding-top). An auto margin here would
+     override the grid's stretch and shrink the box back to its content. */
 }
 
 .arm-btn:disabled {
@@ -1356,8 +1357,49 @@ input[type='range'] {
 }
 
 /* ---- add/remove channels (v1.10) ---- */
-.binding-top { display: flex; align-items: center; gap: 8px; }
-.binding-top .ch-mode { margin-left: auto; }
+/*
+ * The row must degrade the same way for every channel. It used to wrap, and
+ * because `.ch-mode` carries `margin-left: auto` the leftovers landed wherever
+ * the auto margin put them — so the row with the longest label (CH03 · Throttle)
+ * broke apart while its neighbours stayed on one line.
+ *
+ * Now the mode text is the only thing that gives: it shrinks (`min-width: 0` is
+ * what actually permits a flex item to go below its content width) and wraps
+ * inside its own box. The label and the button group keep their size, so every
+ * row looks alike no matter how long the label is.
+ */
+.binding-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'label mode actions';
+  align-items: center;
+  gap: 8px;
+}
+.binding-top .ch-label { grid-area: label; }
+.binding-top .ch-actions { grid-area: actions; display: flex; gap: 8px; }
+/* The mode is the only thing that yields, and it yields by truncating rather
+   than by wrapping: its full text is on the element's `title`, and squeezing a
+   monospace string into a few pixels turns it into a column of letters. */
+.binding-top .ch-mode {
+  grid-area: mode;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Narrow: give the mode its own full-width line under the label — for EVERY row,
+   so the layout no longer depends on how long a particular channel's label is. */
+@media (max-width: 640px) {
+  .binding-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label actions'
+      'mode  mode';
+    row-gap: 4px;
+  }
+  .binding-top .ch-mode { text-align: left; }
+}
 .btn.tiny.danger { border-color: #6b2b2b; color: #e08a8a; }
 .btn.tiny.danger:hover { background: #2a1518; }
 .btn.add-btn { margin-top: 8px; }

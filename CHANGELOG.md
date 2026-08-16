@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.33.1
+**English**
+- **Fixed: a channel row in Setup › Channels broke apart when its label was long.**
+  The row was a wrapping flexbox whose mode text carried `margin-left: auto`, so once
+  the content no longer fitted, the auto margin scattered the leftovers — the Throttle
+  row (the longest label) split with "Remove" dropping to a second line while every
+  other row stayed intact. The row is a grid now: above 640 px it's one line, below it
+  the mode moves to its own full-width line under the label — the same way for **every**
+  channel, whatever the label is called. The mode text truncates rather than wrapping
+  into a column of single letters, with the full value on its tooltip.
+
+**Deutsch**
+- **Behoben: eine Kanalzeile unter Setup › Channels ist bei langem Label zerfallen.**
+  Die Zeile war eine umbrechende Flexbox, deren Modus-Text `margin-left: auto` trug —
+  sobald der Inhalt nicht mehr passte, verteilte die Auto-Margin die Reste: Die
+  Throttle-Zeile (das längste Label) brach auf, „Remove" rutschte in eine zweite Zeile,
+  während alle anderen Zeilen einzeilig blieben. Jetzt ist die Zeile ein Grid: über
+  640 px einzeilig, darunter wandert der Modus in eine eigene Zeile über die volle
+  Breite unter das Label — für **jeden** Kanal gleich, egal wie das Label heißt. Der
+  Modus-Text wird abgeschnitten statt zu einer Buchstabensäule umzubrechen, der
+  vollständige Wert steht im Tooltip.
+
 ## v1.33.0
 **English**
 - **The blackbox now logs the GPS track.** `lat`, `lon`, `alt_m`, `sats`, `hdop`,

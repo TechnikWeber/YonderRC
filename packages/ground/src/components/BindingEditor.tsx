@@ -269,9 +269,14 @@ export function BindingEditor({
           <div className="binding" key={b.id}>
             <div className="binding-top">
               <span className="ch-label">CH{String(b.channel + 1).padStart(2, '0')} · {b.label ?? '—'}</span>
-              <span className="ch-mode">{b.source}/{b.mode}{b.element ? ` · ${b.element}` : ''}</span>
-              <button className="btn tiny" onClick={() => openEdit(b)} title="Edit channel">Edit</button>
-              <button className="btn tiny danger" onClick={() => removeBinding(b.id)} title="Remove channel">Remove</button>
+              <span className="ch-mode" title={`${b.source}/${b.mode}${b.element ? ` · ${b.element}` : ''}`}>
+                {b.source}/{b.mode}{b.element ? ` · ${b.element}` : ''}
+              </span>
+              {/* Grouped so the two buttons can never end up on separate lines. */}
+              <div className="ch-actions">
+                <button className="btn tiny" onClick={() => openEdit(b)} title="Edit channel">Edit</button>
+                <button className="btn tiny danger" onClick={() => removeBinding(b.id)} title="Remove channel">Remove</button>
+              </div>
             </div>
             <details className="shaping">
               <summary>trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}{b.shaping.reverse ? ' · rev' : ''}{b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}</summary>
