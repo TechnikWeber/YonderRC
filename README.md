@@ -138,6 +138,15 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   85 V family without the counter (the Pi integrates), INA226 stays fine up to 36 V.
 - **Low-battery warning** on percent / voltage / consumed mAh, with a blinking OSD
   marker, controller rumble and a beep.
+- **Voice callouts** (on by default, browser's built-in voice, no network): link lost /
+  restored, failsafe, armed / disarmed and low battery with the percentage. On FPV you
+  are watching the picture — a beep says *that* something happened, a voice says *what*.
+  Deliberately nothing beyond that, so it never becomes something you mute.
+- **Link health as one number**: round-trip, packet loss and radio signal boiled down to
+  a 0–100 score with a trend arrow, coloured green / amber / red. The score is the
+  **worst** of the three, not an average, so a perfect signal can't hide 15% packet loss.
+  The individual numbers stay hidden while the link is good and **come back by
+  themselves** the moment it isn't — that's when you need to know *which* one went bad.
 - **Blackbox logging** (optional, off by default): 2 Hz CSV of arm/failsafe state,
   link, round-trip, bitrate, loss, FPS, video latency, mAh and percent — plus **one
   column per telemetry channel** (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`…), so every

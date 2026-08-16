@@ -5,6 +5,7 @@ import type { InputManager } from '../lib/input/inputManager';
 import type { AutoDisarmMode } from '../lib/templates';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
 import { clampButtonHoldSeconds, BUTTON_HOLD_MAX_S, BUTTON_HOLD_MIN_S, type ButtonHoldCfg } from '../lib/buttonHold';
+import { speechAvailable, speak, type SpeechCfg } from '../lib/speech';
 
 const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'next-camera', 'record-toggle', 'snapshot'];
 
@@ -17,6 +18,8 @@ export function ControlsPanel({
   onHold,
   buttonHold,
   onButtonHold,
+  speech,
+  onSpeech,
   battery,
   onBattery,
   logging,
@@ -41,6 +44,8 @@ export function ControlsPanel({
   onHold: (c: HoldCfg) => void;
   buttonHold: ButtonHoldCfg;
   onButtonHold: (c: ButtonHoldCfg) => void;
+  speech: SpeechCfg;
+  onSpeech: (c: SpeechCfg) => void;
   battery: BatteryWarnCfg;
   onBattery: (c: BatteryWarnCfg) => void;
   logging: boolean;
@@ -150,6 +155,49 @@ export function ControlsPanel({
         sound the instant you press it), <b>hold-ramp channels</b> (holding is already the gesture),
         or the <b>sticks</b> — steering and throttle are never delayed. Arm keeps its own longer hold,
         panic-disarm stays instant. {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
+      </p>
+
+      <div className="eyebrow" style={{ marginTop: 14 }}>Voice callouts</div>
+      <label className="opt big">
+        <input
+          type="checkbox"
+          checked={speech.enabled}
+          disabled={!speechAvailable()}
+          onChange={(e) => onSpeech({ ...speech, enabled: e.target.checked })}
+        />
+        Speak state changes out loud
+      </label>
+      <div className="log-row">
+        <label className="batt-th">
+          <span>Rate</span>
+          <input
+            type="number"
+            step={0.1}
+            min={0.5}
+            max={2}
+            value={speech.rate}
+            disabled={!speech.enabled || !speechAvailable()}
+            onChange={(e) => onSpeech({ ...speech, rate: Number(e.target.value) })}
+          />
+          <span className="unit">×</span>
+        </label>
+        <button
+          className="btn tiny"
+          disabled={!speech.enabled || !speechAvailable()}
+          onClick={() => speak({ text: 'Battery low, 25 percent', urgent: false }, speech)}
+        >
+          Test
+        </button>
+      </div>
+      <p className="note">
+        {speechAvailable()
+          ? <>On FPV you watch the picture, not the OSD — a beep says <i>that</i> something happened,
+            a voice says <i>what</i>. Spoken: <b>link lost / restored</b>, <b>failsafe</b>,
+            <b> armed / disarmed</b> and <b>low battery</b> (repeated every 30 s while it stays low).
+            Deliberately nothing else: a chatty voice gets muted, and then the ones that matter are
+            gone too. Uses the browser's built-in voice — no network. On iOS it stays silent until
+            you have tapped the page once.</>
+          : <>This browser has no speech engine, so callouts are unavailable here.</>}
       </p>
 
       <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>

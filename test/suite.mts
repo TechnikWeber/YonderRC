@@ -1059,6 +1059,83 @@ async function main() {
   // Switch channels never get one — shapeSwitch doesn't consult the curve at all.
   ok('a curve cannot affect a switch', shapeSwitch(true, curved, 1000) === shapeSwitch(true, plainCh, 1000));
 
+  // ---- link health ----
+  const { linkHealth, linkTrend, trendArrow, showLinkDetail, rttScore, lossScore, LINK_FAIR, LINK_BAD } =
+    await import('../packages/ground/src/lib/linkHealth');
+  ok('a perfect link scores 100', linkHealth({ rttMs: 20, lossPct: 0, signalPct: 100 }).score === 100);
+  ok('and reads as good', linkHealth({ rttMs: 20, lossPct: 0, signalPct: 100 }).level === 'good');
+  ok('nothing known = no score', linkHealth({ rttMs: null, lossPct: null, signalPct: null }).score === null);
+  // The score is the WORST part, not an average — a perfect signal must not hide
+  // 15% packet loss.
+  const lossy = linkHealth({ rttMs: 20, lossPct: 15, signalPct: 100 });
+  ok('one bad part drags the score down', lossy.score === 0, `=${lossy.score}`);
+  ok('and it is named', lossy.worst === 'loss', `worst=${lossy.worst}`);
+  ok('bad level below the threshold', lossy.level === 'bad');
+  const laggy = linkHealth({ rttMs: 350, lossPct: 0, signalPct: 90 });
+  ok('latency can be the culprit', laggy.worst === 'rtt' && laggy.level !== 'good', `${laggy.worst}/${laggy.level}`);
+  const weakRadio = linkHealth({ rttMs: 30, lossPct: 0, signalPct: 20 });
+  ok('so can the radio', weakRadio.worst === 'signal' && weakRadio.score === 20);
+  // A good link names no culprit — at 95 there is nothing to fix.
+  ok('a good link blames nobody', linkHealth({ rttMs: 40, lossPct: 0.5, signalPct: 95 }).worst === null);
+  // Missing inputs are skipped rather than counted as zero.
+  ok('a missing radio does not score 0', linkHealth({ rttMs: 20, lossPct: 0, signalPct: null }).score === 100);
+  ok('parts report what was known', linkHealth({ rttMs: 20, lossPct: null, signalPct: null }).parts.loss === null);
+  ok('rtt band ends where documented', rttScore(50) === 100 && rttScore(500) === 0);
+  ok('loss band ends where documented', lossScore(0) === 100 && lossScore(10) === 0);
+  ok('thresholds are ordered', LINK_BAD < LINK_FAIR);
+
+  ok('a short history has no trend', linkTrend([80, 70]) === 'flat');
+  ok('falling is detected', linkTrend([95, 95, 92, 60, 55, 50]) === 'down', linkTrend([95, 95, 92, 60, 55, 50]));
+  ok('rising is detected', linkTrend([40, 45, 50, 85, 90, 92]) === 'up');
+  // Noise must not flip the arrow back and forth.
+  ok('wobble stays flat', linkTrend([80, 84, 79, 82, 81, 83]) === 'flat');
+  ok('arrows match the trend', trendArrow('down') === '▼' && trendArrow('up') === '▲' && trendArrow('flat') === '');
+
+  // The detail numbers appear by themselves once the link stops being good.
+  ok('detail hidden while good', !showLinkDetail('good', false));
+  ok('detail shown when fair', showLinkDetail('fair', false));
+  ok('detail shown when bad', showLinkDetail('bad', false));
+  ok('user can force it on', showLinkDetail('good', true));
+
+  // ---- voice callouts ----
+  const { announcementsFor, batteryRepeat, BATTERY_REPEAT_MS, SPEECH_DEFAULTS, loadSpeechCfg } =
+    await import('../packages/ground/src/lib/speech');
+  const sBase = { connected: true, everConnected: true, armed: false, failsafe: false, batteryLow: false, batteryPercent: 80, linkBad: false };
+  ok('speech is on by default', SPEECH_DEFAULTS.enabled === true);
+  ok('the first observation says nothing', announcementsFor(null, sBase).length === 0);
+  // The first connect of a session is not "restored" — you just pressed Connect.
+  const firstConnect = { ...sBase, connected: false, everConnected: false };
+  ok('the first connect says nothing', announcementsFor(firstConnect, { ...sBase, everConnected: true }).length === 0,
+    announcementsFor(firstConnect, { ...sBase, everConnected: true }).map((a) => a.text).join('|'));
+  ok('but a reconnect is announced',
+    announcementsFor({ ...sBase, connected: false }, sBase)[0].text === 'Link restored');
+  ok('a steady state says nothing', announcementsFor(sBase, sBase).length === 0);
+  ok('arming is announced', announcementsFor(sBase, { ...sBase, armed: true })[0].text === 'Armed');
+  ok('disarming too', announcementsFor({ ...sBase, armed: true }, sBase)[0].text === 'Disarmed');
+  const fs = announcementsFor(sBase, { ...sBase, failsafe: true })[0];
+  ok('failsafe is announced', fs.text === 'Failsafe');
+  ok('and is urgent', fs.urgent === true, 'failsafe must jump the queue');
+  ok('link loss is urgent', announcementsFor(sBase, { ...sBase, connected: false })[0].urgent === true);
+  // A tick where several things change puts the most consequential first.
+  const many = announcementsFor({ ...sBase, armed: true }, { ...sBase, connected: false, armed: false, failsafe: true });
+  ok('link loss is spoken first', many[0].text === 'Link lost', many.map((a) => a.text).join(' | '));
+  ok('failsafe comes before armed state', many[1].text === 'Failsafe', many.map((a) => a.text).join(' | '));
+  const lowMsg = announcementsFor(sBase, { ...sBase, batteryLow: true, batteryPercent: 24.6 })[0];
+  ok('low battery names the percentage', lowMsg.text === 'Battery low, 25 percent', lowMsg.text);
+  ok('and is urgent', lowMsg.urgent === true);
+  ok('an unknown percentage still warns', announcementsFor(sBase, { ...sBase, batteryLow: true, batteryPercent: null })[0].text === 'Battery low');
+  ok('a weak link is announced', announcementsFor(sBase, { ...sBase, linkBad: true })[0].text === 'Weak link');
+  ok('and its recovery', announcementsFor({ ...sBase, linkBad: true }, sBase)[0].text === 'Link recovered');
+
+  // The low-battery repeat runs on its own clock, not on state changes.
+  const lowState = { ...sBase, batteryLow: true, batteryPercent: 20 };
+  ok('no repeat while the battery is fine', batteryRepeat(sBase, null, 1_000_000) === null);
+  ok('first repeat fires immediately', batteryRepeat(lowState, null, 1_000_000)?.text === 'Battery 20 percent');
+  ok('and then waits', batteryRepeat(lowState, 1_000_000, 1_000_000 + BATTERY_REPEAT_MS - 1) === null);
+  ok('before firing again', batteryRepeat(lowState, 1_000_000, 1_000_000 + BATTERY_REPEAT_MS)?.text === 'Battery 20 percent');
+  ok('the repeat is not urgent', batteryRepeat(lowState, null, 0)?.urgent === false, 'it must not cut off a failsafe callout');
+  ok('speech config survives no storage', typeof loadSpeechCfg().enabled === 'boolean');
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

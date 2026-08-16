@@ -146,6 +146,17 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   85-V-Familie ohne Zähler (dann integriert der Pi), INA226 reicht bis 36 V.
 - **Akku-Warnung** über Prozent / Spannung / verbrauchte mAh, mit blinkender
   OSD-Markierung, Controller-Rumble und Ton.
+- **Sprachansagen** (standardmäßig an, eingebaute Browserstimme, ohne Netz):
+  Verbindung verloren/wieder da, Failsafe, armiert/entschärft und niedriger Akku mit
+  Prozentwert. Bei FPV schaust du aufs Bild — ein Piepser sagt, *dass* etwas ist, eine
+  Stimme sagt, *was*. Bewusst nichts darüber hinaus, damit sie nichts wird, das man
+  stummschaltet.
+- **Link-Gesundheit als eine Zahl**: Round-Trip, Paketverlust und Funksignal
+  zusammengefasst zu 0–100 mit Trendpfeil, grün / gelb / rot. Die Zahl ist das
+  **Schlechteste** der drei, kein Mittelwert — ein perfektes Funksignal kann also keine
+  15 % Paketverlust verdecken. Die Einzelwerte bleiben ausgeblendet, solange der Link
+  gut ist, und **kommen von selbst zurück**, sobald er es nicht mehr ist — dann willst
+  du wissen, *welcher* davon eingebrochen ist.
 - **Blackbox-Logging** (optional, standardmäßig aus): 2-Hz-CSV mit Arm-/Failsafe-
   Zustand, Link, Round-Trip, Bitrate, Loss, FPS, Video-Latenz, mAh und Prozent — dazu
   **je eine Spalte pro Telemetriekanal** (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`…), damit

@@ -3,6 +3,57 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.37.0
+**English**
+- **Voice callouts, on by default.** On FPV you watch the picture, not the OSD — a beep
+  says *that* something happened, a voice says *what*. Spoken: **link lost / restored**,
+  **failsafe**, **armed / disarmed**, and **low battery with the percentage**, repeated
+  every 30 s while it stays low. Uses the browser's built-in speech engine, so no
+  dependency and no network. Rate adjustable, with a Test button, in Setup › Controls.
+- Deliberately nothing beyond that list. A voice that comments on everything is a voice
+  you mute, and then the callouts that matter are gone with it. Urgent ones (failsafe,
+  link lost, low battery) cut off whatever is still being spoken — by the time "armed"
+  has finished playing, "failsafe" is stale news.
+- The first connect of a session says nothing: you just pressed Connect and are looking
+  at the screen. Only an actual **re**connect is announced.
+- **Link health as one number.** Round-trip, packet loss and radio signal become a
+  single 0–100 score with a trend arrow, green / amber / red. The score is the **worst**
+  of the three, not an average — a perfect radio signal must not be able to hide 15%
+  packet loss, which averaging would do.
+- **The individual numbers are hidden while the link is good and come back by
+  themselves the moment it isn't.** That's the point: "link 34, falling" tells you to
+  react but not how, while "packet loss 12%" and "signal 18%" point at different fixes —
+  and a dying link is the worst moment to go hunting for a setting. A second badge names
+  what is dragging the score down. Setup can force the numbers on permanently.
+- The trend arrow uses a deadband over a ~12 s history, so a single noisy sample can't
+  flip it back and forth.
+
+**Deutsch**
+- **Sprachansagen, standardmäßig an.** Bei FPV schaust du aufs Bild, nicht aufs OSD — ein
+  Piepser sagt, *dass* etwas ist, eine Stimme sagt, *was*. Angesagt werden: **Verbindung
+  verloren / wieder da**, **Failsafe**, **armiert / entschärft** und **niedriger Akku mit
+  Prozentwert**, alle 30 s wiederholt, solange er niedrig bleibt. Nutzt die eingebaute
+  Sprachausgabe des Browsers — keine Abhängigkeit, kein Netz. Geschwindigkeit einstellbar,
+  mit Test-Button, unter Setup › Controls.
+- Bewusst nichts darüber hinaus. Eine Stimme, die alles kommentiert, ist eine Stimme, die
+  man stummschaltet — und dann sind die wichtigen Ansagen mit weg. Dringende (Failsafe,
+  Verbindung verloren, Akku leer) unterbrechen das, was gerade läuft: bis „armiert"
+  zu Ende gesprochen ist, ist „Failsafe" alte Nachricht.
+- Der erste Verbindungsaufbau einer Sitzung sagt nichts — du hast gerade Connect gedrückt
+  und schaust hin. Nur ein echter **Wieder**verbindungsaufbau wird angesagt.
+- **Link-Gesundheit als eine Zahl.** Round-Trip, Paketverlust und Funksignal werden zu
+  einem Wert von 0–100 mit Trendpfeil, grün / gelb / rot. Die Zahl ist das
+  **Schlechteste** der drei, kein Mittelwert — ein perfektes Funksignal darf 15 %
+  Paketverlust nicht verdecken können, und genau das täte ein Mittelwert.
+- **Die Einzelwerte bleiben ausgeblendet, solange der Link gut ist, und kommen von
+  selbst zurück, sobald er es nicht mehr ist.** Darum geht es: „Link 34, fallend" sagt
+  dir, dass du reagieren musst, aber nicht wie — „Paketverlust 12 %" und „Signal 18 %"
+  verlangen unterschiedliche Reaktionen. Und ein sterbender Link ist der schlechteste
+  Moment, um eine Einstellung zu suchen. Ein zweites Badge benennt, was die Zahl
+  herunterzieht. Im Setup lassen sich die Zahlen dauerhaft einblenden.
+- Der Trendpfeil nutzt einen Totbereich über eine ca. 12 s lange Historie, damit ein
+  einzelner Ausreißer ihn nicht hin- und herspringen lässt.
+
 ## v1.36.1
 **English**
 - **Fixed: holding a button on iOS selected its label.** Since v1.35 several buttons

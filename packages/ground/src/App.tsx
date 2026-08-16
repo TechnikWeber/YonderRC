@@ -34,6 +34,11 @@ import { beep } from './lib/beep';
 import { logToCsv, logToGpx, downloadText, sensorSnapshot, gpsSnapshot, fixCount, LOG_CAP, type LogRow } from './lib/logger';
 import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
 import { loadButtonHoldCfg, saveButtonHoldCfg, buttonHoldMsFor, type ButtonHoldCfg } from './lib/buttonHold';
+import {
+  loadSpeechCfg, saveSpeechCfg, announcementsFor, batteryRepeat, speak, primeSpeech,
+  type SpeechCfg, type SpeechState,
+} from './lib/speech';
+import { linkHealth, linkTrend } from './lib/linkHealth';
 import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
 import { nudgeTrim, clearTrim } from './lib/trim';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
@@ -481,13 +486,88 @@ export function App() {
     selectProfile(p.id);
   };
 
+  // Link quality as one number, plus a short history for the trend arrow.
+  const health = linkHealth({
+    rttMs: connected ? rttDisplay : null,
+    lossPct: connected ? videoStatsRef.current?.lossPct ?? null : null,
+    signalPct: connected ? status?.link?.quality ?? null : null,
+  });
+  const healthRef = useRef(health);
+  healthRef.current = health;
+  const [healthTrend, setHealthTrend] = useState<'up' | 'flat' | 'down'>('flat');
+  const healthHistory = useRef<number[]>([]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const s = healthRef.current.score;
+      if (s === null) {
+        healthHistory.current = [];
+        setHealthTrend('flat');
+        return;
+      }
+      healthHistory.current = [...healthHistory.current, s].slice(-12); // ~12 s
+      setHealthTrend(linkTrend(healthHistory.current));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Spoken callouts. The pure part decides what is worth saying; this only hands
+  // it to the browser's voice.
+  const [speechCfg, setSpeechCfgState] = useState<SpeechCfg>(loadSpeechCfg);
+  const setSpeechCfg = (c: SpeechCfg) => {
+    setSpeechCfgState(c);
+    saveSpeechCfg(c);
+  };
+  const speechCfgRef = useRef(speechCfg);
+  speechCfgRef.current = speechCfg;
+  const prevSpeech = useRef<SpeechState | null>(null);
+  const batterySpokenAt = useRef<number | null>(null);
+  const everConnected = useRef(false);
+  if (connected) everConnected.current = true;
+  const speechState: SpeechState = {
+    connected,
+    everConnected: everConnected.current,
+    armed,
+    failsafe,
+    batteryLow: battery.low,
+    batteryPercent: telemetry?.batteryPercent ?? null,
+    // `score !== null` matters: with no measurement yet the level is 'bad', and
+    // announcing that at every connect would be pure noise.
+    linkBad: connected && health.score !== null && health.level === 'bad',
+  };
+  const speechStateRef = useRef(speechState);
+  speechStateRef.current = speechState;
+  useEffect(() => {
+    for (const a of announcementsFor(prevSpeech.current, speechStateRef.current)) speak(a, speechCfgRef.current);
+    prevSpeech.current = speechStateRef.current;
+    // Depends on the fields, not the object — that one is rebuilt every render.
+  }, [connected, armed, failsafe, battery.low, health.level]);
+  // A battery that stays low says so again now and then, on its own clock.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const rep = batteryRepeat(speechStateRef.current, batterySpokenAt.current, Date.now());
+      if (!rep) {
+        if (!speechStateRef.current.batteryLow) batterySpokenAt.current = null;
+        return;
+      }
+      batterySpokenAt.current = Date.now();
+      speak(rep, speechCfgRef.current);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+  // iOS stays silent until speech has been started from a real gesture once.
+  useEffect(() => {
+    const onFirst = () => primeSpeech();
+    window.addEventListener('pointerdown', onFirst, { once: true });
+    return () => window.removeEventListener('pointerdown', onFirst);
+  }, []);
+
   return (
     <div className="app">
       {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.36.1</span>
+        <span className="ver">ground · v1.37.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -539,7 +619,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>
@@ -571,6 +651,8 @@ export function App() {
             batteryReason={battery.reason}
             linkSignal={connected ? status?.link ?? null : null}
             gps={connected ? gps : null}
+            health={health}
+            healthTrend={healthTrend}
             onQuality={(q) => linkRef.current?.sendVideoQuality(q)}
             onStats={(s) => {
               videoStatsRef.current = s;

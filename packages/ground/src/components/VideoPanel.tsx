@@ -19,6 +19,7 @@ import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
+import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend } from '../lib/linkHealth';
 import { enterRealFullscreen, exitRealFullscreen } from '../lib/immersive';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -59,7 +60,10 @@ export interface OsdFields {
 }
 const OSD_FIELDS_KEY = 'yonderrc.osdFields.v1';
 const OSD_FIELDS_DEFAULT: OsdFields = {
-  timer: true, gps: true, homeArrow: true, channels: true, link: true, batteryBar: true, batteryData: true,
+  // `link` now means "always show the link NUMBERS". Off by default since v1.37:
+  // the single health score replaces them, and they come back by themselves the
+  // moment the link stops being good.
+  timer: true, gps: true, homeArrow: true, channels: true, link: false, batteryBar: true, batteryData: true,
 };
 function loadOsdFields(): OsdFields {
   try {
@@ -377,6 +381,8 @@ export function VideoPanel({
   batteryReason,
   linkSignal,
   gps,
+  health,
+  healthTrend,
   onQuality,
   onStats,
 }: {
@@ -397,6 +403,9 @@ export function VideoPanel({
   batteryReason: string | null;
   linkSignal: LinkSignal | null;
   gps: GpsMessage | null;
+  /** Round-trip, loss and radio signal boiled down to one score. */
+  health: LinkHealth;
+  healthTrend: LinkTrend;
   onQuality: (q: VideoQuality) => void;
   onStats?: (s: VideoStats | null) => void;
 }) {
@@ -796,7 +805,7 @@ export function VideoPanel({
               ['gps', 'GPS (fix / sats / home)'],
               ['homeArrow', 'Home arrow / compass'],
               ['channels', 'Channel bars (THR/STR)'],
-              ['link', 'Link block (WS / ms / fps / loss)'],
+              ['link', 'Link numbers always (else only when the link degrades)'],
               ['batteryBar', 'Battery bar (%)'],
               ['batteryData', 'Battery data (V / A / mAh)'],
             ] as [keyof OsdFields, string][]).map(([key, label]) => (
@@ -913,10 +922,25 @@ export function VideoPanel({
               </div>
             )}
             <div className="osd-tc">
-              <span className={`osd-badge ${linkState === 'connected' ? 'go' : 'bad'}`}>
-                {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● RECONNECTING…' : '● NO LINK'}
-              </span>
-              {weakLink && linkState === 'connected' && <span className="osd-badge bad">⚠ WEAK LINK</span>}
+              {/* One number instead of three readouts. The parts appear by
+                  themselves below once it stops being good — see showLinkDetail. */}
+              {linkState === 'connected' && health.score !== null ? (
+                <span
+                  className={`osd-badge ${health.level === 'good' ? 'go' : health.level === 'fair' ? 'idle' : 'bad'}`}
+                  title={`Link health ${health.score}/100 — the worst of round-trip, packet loss and radio signal${health.worst ? `. Right now: ${health.worst}` : ''}`}
+                >
+                  ⇅ {health.score}{trendArrow(healthTrend)}
+                </span>
+              ) : (
+                <span className={`osd-badge ${linkState === 'connected' ? 'go' : 'bad'}`}>
+                  {linkState === 'connected' ? '● LINK' : linkState === 'connecting' ? '● RECONNECTING…' : '● NO LINK'}
+                </span>
+              )}
+              {health.worst && linkState === 'connected' && (
+                <span className="osd-badge bad" title="What is dragging the score down">
+                  ⚠ {health.worst === 'rtt' ? 'LATENCY' : health.worst === 'loss' ? 'PACKET LOSS' : 'SIGNAL'}
+                </span>
+              )}
               {/* Compact keeps the arm state up top: on a phone the bottom-centre
                   badge would sit under the (wider) telemetry block. */}
               {compactOsd && armBadge}
@@ -945,7 +969,11 @@ export function VideoPanel({
               </div>
             )}
             <div className="osd-br">
-              {osdFields.link && (
+              {/* The numbers behind the score: hidden while the link is good, back
+                  on their own the moment it isn't — that's when you need to know
+                  WHICH of them went bad, and it's the worst moment to go hunting
+                  for a setting. `osdFields.link` forces them on permanently. */}
+              {showLinkDetail(health.level, osdFields.link) && (
                 <div className="osd-block">
                   <span>
                     {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
