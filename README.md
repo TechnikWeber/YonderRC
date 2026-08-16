@@ -291,6 +291,32 @@ The current changes are in [`CHANGELOG.md`](CHANGELOG.md) and in the
 [GitHub releases](https://github.com/TechnikWeber/YonderRC/releases). This README
 always describes the current state.
 
+## How this code was written
+
+YonderRC is written **with AI assistance** — the bulk of the code was produced by
+Anthropic's Claude, working from the author's specifications, and every change is
+reviewed and accepted by a human before it ships. Commits carry a
+`Co-Authored-By: Claude` trailer, so `git log` shows exactly which ones.
+
+What that means in practice, stated plainly because it affects how much you should
+trust this code:
+
+- **Everything is covered by the test suite** (`npm test`) and all four packages
+  typecheck. Safety-relevant logic — failsafe, disarmed values, arming, channel
+  maths, the pre-arm check — is written as pure functions in `protocol` and
+  `ground/src/lib` specifically so it can be tested without hardware.
+- **The simulator path is genuinely verified. The hardware path is not.** Anything
+  touching real drivers, I²C sensor registers, nmcli/mmcli, LTE or WebRTC reconnect
+  behaviour can only be proven on a Pi with the hardware attached. Those places say
+  so in the docs and the changelog rather than pretending otherwise.
+- **Review it yourself before you trust it with a vehicle.** That is good advice for
+  any RC software; it is not weaker or stronger here because of how it was written.
+
+There is no formal industry standard for disclosing AI involvement in a codebase —
+no SPDX field, no agreed licence header. The conventions that do exist are commit
+trailers (`Co-Authored-By:`, which the Linux kernel formalised as `Co-developed-by:`)
+and a plain statement like this one in the README. This project uses both.
+
 ## Disclaimer — safety & legal
 
 YonderRC controls **physical vehicles** and can cause property damage, injury or

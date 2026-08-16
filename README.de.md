@@ -299,6 +299,33 @@ Die aktuellen Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md) und in den
 [GitHub-Releases](https://github.com/TechnikWeber/YonderRC/releases). Diese README
 beschreibt immer den aktuellen Stand.
 
+## Wie dieser Code entstanden ist
+
+YonderRC wird **mit KI-Unterstützung** entwickelt — der Großteil des Codes stammt von
+Anthropics Claude, nach den Vorgaben des Autors, und jede Änderung wird vor der
+Veröffentlichung von einem Menschen geprüft und freigegeben. Die Commits tragen einen
+`Co-Authored-By: Claude`-Trailer, `git log` zeigt also genau, welche.
+
+Was das praktisch bedeutet — offen gesagt, weil es beeinflusst, wie sehr man diesem
+Code trauen sollte:
+
+- **Alles ist durch die Testsuite abgedeckt** (`npm test`), alle vier Pakete
+  typechecken. Sicherheitsrelevante Logik — Failsafe, Disarmed-Werte, Armierung,
+  Kanalmathematik, Pre-Arm-Check — ist bewusst als pure Funktionen in `protocol` und
+  `ground/src/lib` geschrieben, damit sie ohne Hardware prüfbar ist.
+- **Der Simulatorpfad ist wirklich verifiziert. Der Hardwarepfad nicht.** Alles, was
+  echte Treiber, I²C-Sensorregister, nmcli/mmcli, LTE oder das WebRTC-Reconnect-Verhalten
+  berührt, lässt sich nur auf einem Pi mit angeschlossener Hardware beweisen. Diese
+  Stellen sagen das in Doku und Changelog auch so, statt etwas anderes vorzugeben.
+- **Prüfe es selbst, bevor du ihm ein Fahrzeug anvertraust.** Das gilt für jede
+  RC-Software; durch die Entstehungsweise wird es hier weder schwächer noch stärker.
+
+Einen formalen Industriestandard für die Kennzeichnung von KI-Beteiligung an einer
+Codebasis gibt es nicht — kein SPDX-Feld, keinen vereinbarten Lizenzheader. Was es gibt,
+sind Commit-Trailer (`Co-Authored-By:`, vom Linux-Kernel als `Co-developed-by:`
+formalisiert) und eine schlichte Aussage wie diese in der README. Dieses Projekt nutzt
+beides.
+
 ## Haftungsausschluss — Sicherheit & Recht
 
 YonderRC steuert **echte Fahrzeuge** und kann Sach-, Personen- oder tödliche Schäden
