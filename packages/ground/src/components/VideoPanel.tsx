@@ -928,8 +928,11 @@ export function VideoPanel({
                   <span className="osd-budget-head">
                     ⏎ {budget.status === 'now' ? 'TURN BACK' : fmtDist(budget.furtherM!)}
                   </span>
+                  {/* "of" rather than "·": with the unit only at the end of the line
+                      the first number looked like it had none, and it wasn't obvious
+                      the two are the same quantity. */}
                   <span className="osd-budget-sub">
-                    home {Math.round(budget.homeCostMah!)} · left {Math.round(budget.remainingMah!)} mAh
+                    home {Math.round(budget.homeCostMah!)} of {Math.round(budget.remainingMah!)} mAh
                   </span>
                   <span className="osd-budget-sub">{Math.round(budget.mahPerKm!)} mAh/km</span>
                 </div>

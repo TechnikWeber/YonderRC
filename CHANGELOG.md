@@ -3,6 +3,19 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.38.1
+**English**
+- **Clearer wording in the return-home budget**: `home 64 of 2143 mAh` instead of
+  `home 64 · left 2143 mAh`. With the unit only at the end of the line, the first number
+  looked like it had none, and it wasn't obvious the two were the same quantity — the
+  cost of the trip home out of what is left in the pack.
+
+**Deutsch**
+- **Klarere Beschriftung im Heimkehr-Budget**: `home 64 of 2143 mAh` statt
+  `home 64 · left 2143 mAh`. Weil die Einheit nur am Zeilenende stand, sah die erste
+  Zahl aus, als hätte sie gar keine — und dass beide dieselbe Größe sind (Kosten des
+  Heimwegs von dem, was im Pack übrig ist), war nicht erkennbar.
+
 ## v1.38.0
 **English**
 - **Return-home energy budget** (off by default). A battery percentage cannot answer the
