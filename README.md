@@ -138,6 +138,13 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   85 V family without the counter (the Pi integrates), INA226 stays fine up to 36 V.
 - **Low-battery warning** on percent / voltage / consumed mAh, with a blinking OSD
   marker, controller rumble and a beep.
+- **Return-home energy budget** (off by default): measures what the vehicle actually
+  consumes per km and turns it into the number that is a decision — **how much further
+  you may go and still get home** with a reserve intact. A percentage can't answer that:
+  30% is plenty at 50 m and not enough at 800 m. Shown in the **full OSD**; the
+  **turn-back warning** also appears in the compact OSD and is spoken. Needs a battery
+  capacity, a current sensor and a GPS home point — **without them it simply shows
+  nothing**, which is the normal case for a vehicle that is only a servo driver.
 - **Voice callouts** (on by default, browser's built-in voice, no network): link lost /
   restored, failsafe, armed / disarmed and low battery with the percentage. On FPV you
   are watching the picture — a beep says *that* something happened, a voice says *what*.

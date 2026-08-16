@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CONTROL_PERIOD_MS,
   neutralChannels,
+  distanceMeters,
   type Profile,
   type StatusMessage,
   type TelemetryMessage,
@@ -39,6 +40,10 @@ import {
   type SpeechCfg, type SpeechState,
 } from './lib/speech';
 import { linkHealth, linkTrend } from './lib/linkHealth';
+import {
+  loadReturnBudgetCfg, saveReturnBudgetCfg, returnBudget, consumptionRate, pushSample, odoStep, latchReturnNow,
+  type ReturnBudgetCfg, type EnergySample,
+} from './lib/returnBudget';
 import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
 import { nudgeTrim, clearTrim } from './lib/trim';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
@@ -486,6 +491,73 @@ export function App() {
     selectProfile(p.id);
   };
 
+  // Trip odometer. Owned here rather than in the OSD, because the energy budget
+  // needs the same distance — a readout and an estimate that disagree about how
+  // far the vehicle has gone would be worse than either alone.
+  const [odoMeters, setOdoMeters] = useState(0);
+  const odoRef = useRef<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    if (!gps) {
+      odoRef.current = null;
+      setOdoMeters(0);
+      return;
+    }
+    if (!gps.hasFix || gps.lat == null || gps.lon == null) return;
+    const step = odoStep(odoRef.current, gps, distanceMeters);
+    if (step > 0) setOdoMeters((m) => m + step);
+    odoRef.current = { lat: gps.lat, lon: gps.lon };
+  }, [gps]);
+
+  // Return-home energy budget. Every input is optional: a vehicle that is just a
+  // PCA9685 has no capacity, no charge counter and no GPS, so this stays `unknown`
+  // and nothing is drawn or warned about.
+  const [budgetCfg, setBudgetCfgState] = useState<ReturnBudgetCfg>(loadReturnBudgetCfg);
+  const setBudgetCfg = (c: ReturnBudgetCfg) => {
+    setBudgetCfgState(c);
+    saveReturnBudgetCfg(c);
+  };
+  const connectedRef = useRef(false);
+  connectedRef.current = connected;
+  const samplesRef = useRef<EnergySample[]>([]);
+  const [rate, setRate] = useState<number | null>(null);
+  const odoRefForSamples = useRef(odoMeters);
+  odoRefForSamples.current = odoMeters;
+  useEffect(() => {
+    if (!budgetCfg.enabled) {
+      samplesRef.current = [];
+      setRate(null);
+      return;
+    }
+    const id = setInterval(() => {
+      const mah = telemetryRef.current?.mah;
+      if (mah == null || !connectedRef.current) {
+        samplesRef.current = [];
+        setRate(null);
+        return;
+      }
+      samplesRef.current = pushSample(samplesRef.current, { mah, odoM: odoRefForSamples.current });
+      setRate(consumptionRate(samplesRef.current));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [budgetCfg.enabled]);
+  const homeDistanceM =
+    gps?.hasFix && gps.home && gps.lat != null && gps.lon != null
+      ? distanceMeters(gps.home.lat, gps.home.lon, gps.lat, gps.lon)
+      : null;
+  const budget = returnBudget(
+    {
+      mah: connected ? telemetry?.mah ?? null : null,
+      capacityMah: connected ? telemetry?.capacityMah ?? null : null,
+      homeDistanceM: connected ? homeDistanceM : null,
+      mahPerMeter: rate,
+    },
+    budgetCfg,
+  );
+  // The alarm is latched; the block below it still shows the live status.
+  const warnReturnRef = useRef(false);
+  warnReturnRef.current = latchReturnNow(warnReturnRef.current, budget.status);
+  const warnReturn = warnReturnRef.current;
+
   // Link quality as one number, plus a short history for the trend arrow.
   const health = linkHealth({
     rttMs: connected ? rttDisplay : null,
@@ -533,6 +605,7 @@ export function App() {
     // `score !== null` matters: with no measurement yet the level is 'bad', and
     // announcing that at every connect would be pure noise.
     linkBad: connected && health.score !== null && health.level === 'bad',
+    returnNow: warnReturn,
   };
   const speechStateRef = useRef(speechState);
   speechStateRef.current = speechState;
@@ -540,7 +613,7 @@ export function App() {
     for (const a of announcementsFor(prevSpeech.current, speechStateRef.current)) speak(a, speechCfgRef.current);
     prevSpeech.current = speechStateRef.current;
     // Depends on the fields, not the object — that one is rebuilt every render.
-  }, [connected, armed, failsafe, battery.low, health.level]);
+  }, [connected, armed, failsafe, battery.low, health.level, warnReturn]);
   // A battery that stays low says so again now and then, on its own clock.
   useEffect(() => {
     const id = setInterval(() => {
@@ -567,7 +640,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.37.0</span>
+        <span className="ver">ground · v1.38.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -619,7 +692,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} budget={budgetCfg} onBudget={setBudgetCfg} budgetLive={budget} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>
@@ -651,6 +724,9 @@ export function App() {
             batteryReason={battery.reason}
             linkSignal={connected ? status?.link ?? null : null}
             gps={connected ? gps : null}
+            odoMeters={odoMeters}
+            budget={budget}
+            warnReturn={warnReturn}
             health={health}
             healthTrend={healthTrend}
             onQuality={(q) => linkRef.current?.sendVideoQuality(q)}

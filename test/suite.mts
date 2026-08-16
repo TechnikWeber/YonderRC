@@ -1136,6 +1136,117 @@ async function main() {
   ok('the repeat is not urgent', batteryRepeat(lowState, null, 0)?.urgent === false, 'it must not cut off a failsafe callout');
   ok('speech config survives no storage', typeof loadSpeechCfg().enabled === 'boolean');
 
+  // ---- return-home energy budget ----
+  const {
+    returnBudget, consumptionRate, pushSample, odoStep, clampReservePct,
+    RETURN_BUDGET_DEFAULTS, RATE_WINDOW, RATE_MIN_DISTANCE_M, ODO_MAX_STEP_M,
+  } = await import('../packages/ground/src/lib/returnBudget');
+  const { distanceMeters: dist } = await import('../packages/protocol/src/types/gps');
+  const budgetOn = { enabled: true, reservePct: 50 };
+
+  ok('the budget is off by default', RETURN_BUDGET_DEFAULTS.enabled === false);
+  // THE requirement: a vehicle that is just a servo driver has none of these
+  // inputs, and that must be silent, never an error.
+  const nothing = { mah: null, capacityMah: null, homeDistanceM: null, mahPerMeter: null };
+  ok('no sensors at all = unknown', returnBudget(nothing, budgetOn).status === 'unknown');
+  ok('and it says why', typeof returnBudget(nothing, budgetOn).missing === 'string');
+  ok('switched off = unknown even with data', returnBudget({ mah: 100, capacityMah: 2000, homeDistanceM: 100, mahPerMeter: 0.1 }, { ...budgetOn, enabled: false }).status === 'unknown');
+  ok('no capacity = unknown', returnBudget({ mah: 100, capacityMah: null, homeDistanceM: 100, mahPerMeter: 0.1 }, budgetOn).status === 'unknown');
+  ok('no charge counter = unknown', returnBudget({ mah: null, capacityMah: 2000, homeDistanceM: 100, mahPerMeter: 0.1 }, budgetOn).status === 'unknown');
+  ok('no home point = unknown', returnBudget({ mah: 100, capacityMah: 2000, homeDistanceM: null, mahPerMeter: 0.1 }, budgetOn).status === 'unknown');
+  ok('no measured rate = unknown', returnBudget({ mah: 100, capacityMah: 2000, homeDistanceM: 100, mahPerMeter: null }, budgetOn).status === 'unknown');
+  ok('a zero capacity cannot divide by zero', returnBudget({ mah: 0, capacityMah: 0, homeDistanceM: 100, mahPerMeter: 0.1 }, budgetOn).status === 'unknown');
+  ok('every unknown result has null numbers', [nothing, { mah: null, capacityMah: 2000, homeDistanceM: 5, mahPerMeter: 1 }]
+    .every((i) => { const r = returnBudget(i, budgetOn); return r.furtherM === null && r.homeCostMah === null && r.mahPerKm === null; }));
+
+  // Plenty of pack, close to home: keep going.
+  const roomy = returnBudget({ mah: 200, capacityMah: 2000, homeDistanceM: 200, mahPerMeter: 0.1 }, budgetOn);
+  ok('a healthy budget is ok', roomy.status === 'ok', `${roomy.status} further=${roomy.furtherM}`);
+  ok('home cost is distance times rate', roomy.homeCostMah === 20);
+  ok('remaining is capacity minus consumed', roomy.remainingMah === 1800);
+  ok('rate is reported per km', roomy.mahPerKm === 100);
+  // 1800 left, home costs 20*1.5=30 reserved; x = (1800-30)/(0.1*2.5) = 7080 m.
+  ok('further distance uses the closed form', Math.round(roomy.furtherM!) === 7080, `=${roomy.furtherM}`);
+
+  // Far out budgetOn a nearly empty pack: turn back.
+  const spent = returnBudget({ mah: 1900, capacityMah: 2000, homeDistanceM: 800, mahPerMeter: 0.1 }, budgetOn);
+  ok('an exhausted budget says turn back', spent.status === 'now', `${spent.status} further=${spent.furtherM}`);
+  ok('and clamps the distance at zero', spent.furtherM === 0);
+  // Exactly at the limit counts as "now", not "ok".
+  const edge = returnBudget({ mah: 2000 - 100 * 1.5, capacityMah: 2000, homeDistanceM: 1000, mahPerMeter: 0.1 }, budgetOn);
+  ok('the boundary turns back', edge.status === 'now', `${edge.status} further=${edge.furtherM}`);
+
+  // A bigger reserve turns you back earlier — that is the whole point of it.
+  const cautious = returnBudget({ mah: 1500, capacityMah: 2000, homeDistanceM: 1500, mahPerMeter: 0.2 }, { enabled: true, reservePct: 150 });
+  const relaxed = returnBudget({ mah: 1500, capacityMah: 2000, homeDistanceM: 1500, mahPerMeter: 0.2 }, { enabled: true, reservePct: 0 });
+  ok('more reserve leaves less range', cautious.furtherM! < relaxed.furtherM!, `${cautious.furtherM} vs ${relaxed.furtherM}`);
+  ok('reserve is clamped', clampReservePct(-50) === 0 && clampReservePct(9999) === 200 && clampReservePct(NaN) === 50);
+
+  // Consumption rate needs real movement before it will say anything.
+  ok('no samples, no rate', consumptionRate([]) === null);
+  ok('one sample, no rate', consumptionRate([{ mah: 0, odoM: 0 }]) === null);
+  ok('too little distance, no rate', consumptionRate([{ mah: 0, odoM: 0 }, { mah: 50, odoM: RATE_MIN_DISTANCE_M - 1 }]) === null);
+  ok('too little charge, no rate', consumptionRate([{ mah: 0, odoM: 0 }, { mah: 0.5, odoM: 1000 }]) === null);
+  ok('enough of both gives a rate', consumptionRate([{ mah: 0, odoM: 0 }, { mah: 100, odoM: 1000 }]) === 0.1);
+  // A standing vehicle must not produce an infinite rate.
+  ok('standing still gives no rate', consumptionRate([{ mah: 0, odoM: 500 }, { mah: 50, odoM: 500 }]) === null);
+  let buf: { mah: number; odoM: number }[] = [];
+  for (let i = 0; i < RATE_WINDOW + 50; i++) buf = pushSample(buf, { mah: i, odoM: i * 10 });
+  ok('the window is bounded', buf.length === RATE_WINDOW);
+  ok('and keeps the newest', buf[buf.length - 1].mah === RATE_WINDOW + 49);
+  // A counter that goes backwards has been reset. Spanning the reset gives a
+  // negative delta, which made the rate vanish and reappear — and that fired the
+  // turn-back callout a second time in the browser.
+  ok('a charge-counter reset starts over',
+    pushSample([{ mah: 100, odoM: 900 }, { mah: 180, odoM: 1500 }], { mah: 2, odoM: 1520 }).length === 1);
+  ok('an odometer reset starts over',
+    pushSample([{ mah: 100, odoM: 900 }], { mah: 110, odoM: 0 }).length === 1);
+  ok('normal growth keeps the history',
+    pushSample([{ mah: 100, odoM: 900 }], { mah: 110, odoM: 1000 }).length === 2);
+  ok('a reset never yields a negative rate',
+    consumptionRate(pushSample([{ mah: 500, odoM: 5000 }], { mah: 1, odoM: 5100 })) === null);
+
+  // Odometer: drift and re-acquired fixes must not add distance that never happened.
+  const odoHome = { lat: 48.2758, lon: 8.8536 };
+  const odoNext = { lat: 48.2761, lon: 8.8536, speedMs: 5, hasFix: true }; // ~33 m
+  ok('a real move counts', odoStep(odoHome, odoNext, dist) > 30);
+  ok('no previous fix adds nothing', odoStep(null, odoNext, dist) === 0);
+  ok('no fix adds nothing', odoStep(odoHome, { ...odoNext, hasFix: false }, dist) === 0);
+  ok('a standing receiver does not creep', odoStep(odoHome, { ...odoNext, speedMs: 0.1 }, dist) === 0);
+  ok('sub-metre jitter is ignored', odoStep(odoHome, { lat: 48.27580, lon: 8.85360, speedMs: 5, hasFix: true }, dist) === 0);
+  const jump = { lat: 48.4, lon: 8.8536, speedMs: 5, hasFix: true };
+  ok('an implausible jump is discarded', odoStep(odoHome, jump, dist) === 0, `=${odoStep(odoHome, jump, dist)} (limit ${ODO_MAX_STEP_M})`);
+  ok('a null coordinate is safe', odoStep(odoHome, { lat: null, lon: null, speedMs: 5, hasFix: true }, dist) === 0);
+
+  // The alarm latches, so a budget hovering at the threshold cannot nag. Without
+  // this it re-announces every time consumption or distance wobbles across the line.
+  const { latchReturnNow } = await import('../packages/ground/src/lib/returnBudget');
+  ok('now raises the alarm', latchReturnNow(false, 'now') === true);
+  ok('advise cannot raise it', latchReturnNow(false, 'advise') === false);
+  ok('advise cannot clear it either', latchReturnNow(true, 'advise') === true);
+  ok('only a comfortable ok clears it', latchReturnNow(true, 'ok') === false);
+  ok('losing the inputs clears it', latchReturnNow(true, 'unknown') === false);
+  // The flap that produced a double callout in the browser: now -> advise -> now
+  // must stay raised throughout, so the transition fires exactly once.
+  let latched = false;
+  const flap = ['now', 'advise', 'now', 'advise', 'now'] as const;
+  let raises = 0;
+  for (const st of flap) {
+    const next = latchReturnNow(latched, st);
+    if (next && !latched) raises++;
+    latched = next;
+  }
+  ok('a flapping budget announces once', raises === 1, `raised ${raises} times`);
+
+  // The turn-back callout is spoken, and only when the budget is actually enabled.
+  const bBase = { ...sBase, returnNow: false };
+  ok('turning back is announced', announcementsFor(bBase, { ...bBase, returnNow: true })[0].text === 'Turn back now');
+  ok('and is urgent', announcementsFor(bBase, { ...bBase, returnNow: true })[0].urgent === true);
+  ok('a disabled budget never announces it', announcementsFor(bBase, bBase).length === 0);
+  // Failsafe still outranks it in the same tick.
+  const both = announcementsFor(bBase, { ...bBase, returnNow: true, failsafe: true });
+  ok('failsafe is still spoken first', both[0].text === 'Failsafe', both.map((a) => a.text).join('|'));
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

@@ -6,6 +6,10 @@ import type { AutoDisarmMode } from '../lib/templates';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
 import { clampButtonHoldSeconds, BUTTON_HOLD_MAX_S, BUTTON_HOLD_MIN_S, type ButtonHoldCfg } from '../lib/buttonHold';
 import { speechAvailable, speak, type SpeechCfg } from '../lib/speech';
+import {
+  clampReservePct, RESERVE_MAX_PCT, RESERVE_MIN_PCT,
+  type ReturnBudgetCfg, type ReturnBudgetResult,
+} from '../lib/returnBudget';
 
 const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'next-camera', 'record-toggle', 'snapshot'];
 
@@ -20,6 +24,9 @@ export function ControlsPanel({
   onButtonHold,
   speech,
   onSpeech,
+  budget,
+  onBudget,
+  budgetLive,
   battery,
   onBattery,
   logging,
@@ -46,6 +53,10 @@ export function ControlsPanel({
   onButtonHold: (c: ButtonHoldCfg) => void;
   speech: SpeechCfg;
   onSpeech: (c: SpeechCfg) => void;
+  budget: ReturnBudgetCfg;
+  onBudget: (c: ReturnBudgetCfg) => void;
+  /** Live result, so the panel can explain why the OSD is showing nothing. */
+  budgetLive: ReturnBudgetResult;
   battery: BatteryWarnCfg;
   onBattery: (c: BatteryWarnCfg) => void;
   logging: boolean;
@@ -155,6 +166,55 @@ export function ControlsPanel({
         sound the instant you press it), <b>hold-ramp channels</b> (holding is already the gesture),
         or the <b>sticks</b> — steering and throttle are never delayed. Arm keeps its own longer hold,
         panic-disarm stays instant. {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
+      </p>
+
+      <div className="eyebrow" style={{ marginTop: 14 }}>Return-home budget</div>
+      <label className="opt big">
+        <input
+          type="checkbox"
+          checked={budget.enabled}
+          onChange={(e) => onBudget({ ...budget, enabled: e.target.checked })}
+        />
+        Work out how much further you can go and still get home
+      </label>
+      <label className="batt-th hold-row">
+        <span>Reserve</span>
+        <input
+          type="number"
+          step={10}
+          min={RESERVE_MIN_PCT}
+          max={RESERVE_MAX_PCT}
+          value={budget.reservePct}
+          disabled={!budget.enabled}
+          onChange={(e) => onBudget({ ...budget, reservePct: clampReservePct(Number(e.target.value)) })}
+        />
+        <span className="unit">%</span>
+      </label>
+      {/* The OSD stays silent when an input is missing — that has to be the
+          behaviour, since most vehicles have no current sensor and no GPS. So the
+          reason belongs here, where someone who switched it on comes looking. */}
+      {budget.enabled && budgetLive.missing && (
+        <div className="info-line idle">
+          Nothing to show yet: <b>{budgetLive.missing}</b>.
+        </div>
+      )}
+      {budget.enabled && !budgetLive.missing && budgetLive.mahPerKm != null && (
+        <div className="info-line go">
+          Measuring <b>{Math.round(budgetLive.mahPerKm)} mAh/km</b>
+          <span className="info-sub"> — {budgetLive.status === 'now' ? 'turn back now' : `${Math.round(budgetLive.furtherM ?? 0)} m of outbound range left`}.</span>
+        </div>
+      )}
+      <p className="note">
+        A percentage doesn't answer "can I still get home?" — 30% is plenty at 50 m and
+        not enough at 800 m. This measures what the vehicle actually consumes per km and
+        turns it into the number that <i>is</i> a decision: how much further you may go.
+        The <b>reserve</b> is the margin it insists on having left for the trip back
+        (headwind, detours, a hill, and a pack that sags at the end); 50% is a sane start.
+        Shown in the <b>full OSD</b> only, but the <b>turn-back warning</b> appears in the
+        compact OSD too and is spoken if callouts are on. <b>Needs a battery capacity set
+        on the vehicle, a current sensor and a GPS home point</b> — without any of them it
+        simply shows nothing, which is the normal case for a vehicle that is just a
+        servo driver.
       </p>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Voice callouts</div>

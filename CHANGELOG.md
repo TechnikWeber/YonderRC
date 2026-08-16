@@ -3,6 +3,53 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.38.0
+**English**
+- **Return-home energy budget** (off by default). A battery percentage cannot answer the
+  question you actually have beyond line of sight: 30% is plenty at 50 m and not enough
+  at 800 m into a headwind. This measures what the vehicle really consumes per km and
+  turns it into a decision — **how much further you may go and still get home** with the
+  reserve intact.
+- The headline is deliberately a **distance, not a percentage**: `⏎ 1.7 km` answers
+  "keep going?" directly. Under it, what the trip home costs and what is left, plus the
+  measured mAh/km — the efficiency figure that also shows up a dragging brake or a
+  fouled prop. Green while there is room, amber as it tightens, red at **TURN BACK**.
+- **Full OSD only** for the block; the **turn-back warning** rides in the badge row, so
+  it survives compact mode on a phone, and it is **spoken** when callouts are on.
+- **Reserve is configurable** (default 50%): the margin it insists on still having for
+  the trip back — headwind, detours, a hill, and a pack that sags at the end.
+- **It needs a battery capacity, a current sensor and a GPS home point, and without any
+  of them it shows nothing at all.** That is the design, not a limitation: most vehicles
+  have none of it, and a PCA9685 on its own is a complete way to drive. Setup › Controls
+  says which input is missing, since the OSD deliberately stays silent about it.
+- The odometer moved from the OSD into the app, so the distance readout and the energy
+  estimate can never disagree about how far the vehicle has gone.
+
+**Deutsch**
+- **Heimkehr-Energiebudget** (standardmäßig aus). Ein Akku-Prozentwert beantwortet die
+  Frage nicht, die man jenseits der Sichtweite wirklich hat: 30 % sind bei 50 m reichlich
+  und bei 800 m gegen den Wind zu wenig. Das hier misst, was das Fahrzeug tatsächlich pro
+  km verbraucht, und macht daraus eine Entscheidung — **wie weit du noch weiter darfst
+  und trotzdem mit Reserve heimkommst**.
+- Die Hauptzahl ist bewusst eine **Distanz, kein Prozentwert**: `⏎ 1,7 km` beantwortet
+  „weiterfahren?" direkt. Darunter, was der Heimweg kostet und was übrig ist, dazu die
+  gemessenen mAh/km — die Effizienzzahl, an der man auch eine schleifende Bremse oder
+  eine verdreckte Schraube sieht. Grün, solange Luft ist, gelb wenn es eng wird, rot bei
+  **TURN BACK**.
+- Der Block erscheint **nur im vollen OSD**; die **Umkehr-Warnung** sitzt in der
+  Badge-Zeile, überlebt also den Kompakt-Modus am Handy, und wird **angesagt**, wenn
+  Sprachansagen an sind.
+- **Reserve einstellbar** (Standard 50 %): die Marge, die er für den Rückweg
+  übrigbehalten will — Gegenwind, Umwege, eine Steigung, und ein Pack, das zum Schluss
+  einbricht.
+- **Es braucht Akkukapazität, einen Stromsensor und einen GPS-Home-Punkt — fehlt eines
+  davon, zeigt es gar nichts.** Das ist die Konstruktion, keine Einschränkung: die
+  meisten Fahrzeuge haben nichts davon, und ein PCA9685 allein ist eine vollständige Art,
+  ein Fahrzeug zu steuern. Unter Setup › Controls steht, welche Eingangsgröße fehlt —
+  das OSD schweigt dazu ja mit Absicht.
+- Der Odometer ist vom OSD in die App gewandert, damit Distanzanzeige und
+  Energieschätzung sich nie darüber uneinig sein können, wie weit das Fahrzeug gefahren ist.
+
 ## v1.37.0
 **English**
 - **Voice callouts, on by default.** On FPV you watch the picture, not the OSD — a beep

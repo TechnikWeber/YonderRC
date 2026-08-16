@@ -20,6 +20,7 @@ import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } f
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend } from '../lib/linkHealth';
+import type { ReturnBudgetResult } from '../lib/returnBudget';
 import { enterRealFullscreen, exitRealFullscreen } from '../lib/immersive';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -381,6 +382,9 @@ export function VideoPanel({
   batteryReason,
   linkSignal,
   gps,
+  odoMeters,
+  budget,
+  warnReturn,
   health,
   healthTrend,
   onQuality,
@@ -403,6 +407,12 @@ export function VideoPanel({
   batteryReason: string | null;
   linkSignal: LinkSignal | null;
   gps: GpsMessage | null;
+  /** Trip odometer, metres. Owned by App so the OSD and the energy budget agree. */
+  odoMeters: number;
+  /** "How much further can I go?" — status `unknown` means show nothing at all. */
+  budget: ReturnBudgetResult;
+  /** Latched turn-back alarm: raised by `now`, cleared only by a comfortable `ok`. */
+  warnReturn: boolean;
   /** Round-trip, loss and radio signal boiled down to one score. */
   health: LinkHealth;
   healthTrend: LinkTrend;
@@ -459,22 +469,6 @@ export function VideoPanel({
   const [videoLatency, setVideoLatency] = useState<number | null>(null);
   const [stats, setStats] = useState<VideoStats | null>(null);
 
-  // Trip odometer: sum of ground distance between successive fixes, with a jitter
-  // deadband so a stationary receiver's drift doesn't make it creep. Resets when the
-  // link drops (gps becomes null).
-  const [odoMeters, setOdoMeters] = useState(0);
-  const odoRef = useRef<{ lat: number; lon: number } | null>(null);
-  useEffect(() => {
-    if (!gps) { odoRef.current = null; setOdoMeters(0); return; }
-    if (!gps.hasFix || gps.lat == null || gps.lon == null) return;
-    const prev = odoRef.current;
-    if (prev) {
-      const d = distanceMeters(prev.lat, prev.lon, gps.lat, gps.lon);
-      const moving = gps.speedMs == null || gps.speedMs > 0.5; // ignore GPS drift while stopped
-      if (moving && d >= 1 && d < 500) setOdoMeters((m) => m + d);
-    }
-    odoRef.current = { lat: gps.lat, lon: gps.lon };
-  }, [gps]);
   const [quality, setQuality] = useState<QualitySel>(loadQuality);
   const [effectiveQuality, setEffectiveQuality] = useState<VideoQuality>(() => {
     const q = loadQuality();
@@ -921,6 +915,25 @@ export function VideoPanel({
                 )}
               </div>
             )}
+              {/* Full OSD only: the headline is how much further you MAY GO, not
+                  a percentage — that is the number that answers "keep going?".
+                  Hidden entirely when the inputs aren't there (no capacity, no
+                  current sensor, no fix), which is the normal case for a vehicle
+                  that is just a PCA9685. */}
+              {!compactOsd && budget.status !== 'unknown' && (
+                <div
+                  className={`osd-budget ${budget.status}`}
+                  title={`How much further you can go and still return with a reserve. Home costs about ${Math.round(budget.homeCostMah!)} mAh from here; ${Math.round(budget.remainingMah!)} mAh left.`}
+                >
+                  <span className="osd-budget-head">
+                    ⏎ {budget.status === 'now' ? 'TURN BACK' : fmtDist(budget.furtherM!)}
+                  </span>
+                  <span className="osd-budget-sub">
+                    home {Math.round(budget.homeCostMah!)} · left {Math.round(budget.remainingMah!)} mAh
+                  </span>
+                  <span className="osd-budget-sub">{Math.round(budget.mahPerKm!)} mAh/km</span>
+                </div>
+              )}
             <div className="osd-tc">
               {/* One number instead of three readouts. The parts appear by
                   themselves below once it stops being good — see showLinkDetail. */}
@@ -939,6 +952,14 @@ export function VideoPanel({
               {health.worst && linkState === 'connected' && (
                 <span className="osd-badge bad" title="What is dragging the score down">
                   ⚠ {health.worst === 'rtt' ? 'LATENCY' : health.worst === 'loss' ? 'PACKET LOSS' : 'SIGNAL'}
+                </span>
+              )}
+              {/* The one part of the energy budget that shows even in the compact
+                  OSD: by the time it fires, the detail no longer helps — the
+                  decision has already been made for you. */}
+              {warnReturn && (
+                <span className="osd-badge bad blink" title="The pack no longer has the configured reserve for the trip home">
+                  ⚠ TURN BACK
                 </span>
               )}
               {/* Compact keeps the arm state up top: on a phone the bottom-centre

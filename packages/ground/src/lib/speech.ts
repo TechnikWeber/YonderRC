@@ -70,6 +70,11 @@ export interface SpeechState {
    * followed a second later by "link recovered".
    */
   linkBad: boolean;
+  /**
+   * The return-home budget has run out. False whenever the feature is off or its
+   * inputs are missing, so a vehicle without a current sensor never hears this.
+   */
+  returnNow: boolean;
 }
 
 export interface Announcement {
@@ -106,6 +111,10 @@ export function announcementsFor(prev: SpeechState | null, next: SpeechState): A
     const pct = next.batteryPercent;
     out.push({ text: pct == null ? 'Battery low' : `Battery low, ${Math.round(pct)} percent`, urgent: true });
   }
+
+  // Ranked just under failsafe: it is the one callout that asks you to change
+  // what you are doing rather than telling you what already happened.
+  if (!prev.returnNow && next.returnNow) out.push({ text: 'Turn back now', urgent: true });
 
   if (!prev.linkBad && next.linkBad) out.push({ text: 'Weak link', urgent: false });
   if (prev.linkBad && !next.linkBad) out.push({ text: 'Link recovered', urgent: false });

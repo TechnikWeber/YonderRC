@@ -146,6 +146,14 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   85-V-Familie ohne Zähler (dann integriert der Pi), INA226 reicht bis 36 V.
 - **Akku-Warnung** über Prozent / Spannung / verbrauchte mAh, mit blinkender
   OSD-Markierung, Controller-Rumble und Ton.
+- **Heimkehr-Energiebudget** (standardmäßig aus): misst, was das Fahrzeug tatsächlich
+  pro km verbraucht, und macht daraus die Zahl, die eine Entscheidung ist — **wie weit
+  du noch weiter darfst und trotzdem mit Reserve heimkommst**. Ein Prozentwert kann das
+  nicht beantworten: 30 % sind bei 50 m reichlich und bei 800 m zu wenig. Angezeigt im
+  **vollen OSD**; die **Umkehr-Warnung** erscheint auch im kompakten OSD und wird
+  angesagt. Braucht Akkukapazität, Stromsensor und einen GPS-Home-Punkt — **ohne die
+  zeigt es schlicht nichts**, was für ein Fahrzeug, das nur ein Servotreiber ist, der
+  Normalfall ist.
 - **Sprachansagen** (standardmäßig an, eingebaute Browserstimme, ohne Netz):
   Verbindung verloren/wieder da, Failsafe, armiert/entschärft und niedriger Akku mit
   Prozentwert. Bei FPV schaust du aufs Bild — ein Piepser sagt, *dass* etwas ist, eine

@@ -876,6 +876,35 @@ summary,
 /* The left columns must hug their content: without an explicit alignment the
    flex default (stretch) makes every badge as wide as the widest sibling, which
    left a blank tail behind the short ones (timer, GPS). */
+/* ---- return-home budget (v1.38) ----
+   Sits under the home block on the left, where the other "where am I relative to
+   home" information already is. Full OSD only; the turn-back warning rides in the
+   top-centre badge row instead, so it survives compact mode. */
+.osd-budget {
+  position: absolute;
+  left: 8px;
+  top: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  /* Denser than the other OSD panels: this one sits low on the left, where bright
+     video is common, and the sub-lines are small mono text. */
+  background: rgba(8, 12, 16, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(2px);
+  font-family: var(--mono);
+}
+.osd-budget-head { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+.osd-budget-sub { font-size: 10px; color: rgba(255, 255, 255, 0.78); }
+.osd-budget.ok { color: var(--arm); border-color: color-mix(in srgb, var(--arm) 45%, transparent); }
+.osd-budget.advise { color: var(--idle); border-color: color-mix(in srgb, var(--idle) 55%, transparent); }
+.osd-budget.now { color: var(--danger); border-color: var(--danger); }
+.osd-badge.blink { animation: osd-blink 1s steps(2, start) infinite; }
+@keyframes osd-blink { to { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .osd-badge.blink { animation: none; } }
+
 .osd-tl { top: 0; left: 0; align-items: flex-start; }
 .osd-tr { top: 0; right: 0; align-items: flex-end; }
 .osd-bl { bottom: 0; left: 0; align-items: flex-start; }
