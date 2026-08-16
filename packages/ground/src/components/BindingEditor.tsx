@@ -5,6 +5,7 @@ import {
   applyEndpoints,
   applyStickMode,
   createBinding,
+  disarmedThrottleUs,
   nextFreeChannel,
   rebuildForMethod,
   setDetent,
@@ -50,6 +51,10 @@ export function BindingEditor({
 
   // Speed-limit steps live on the throttle channel, where you'd look for them.
   const throttleSet = new Set(throttleChannelsOf(profile));
+  // What the vehicle forces onto the throttle while deliberately disarmed. Shown
+  // on the throttle row so the difference to the failsafe value is visible where
+  // people actually look at it.
+  const disarmedUs = disarmedThrottleUs(profile.vehicleType, profile.endpoints);
   const limit = limitOf(profile);
   const setLimitStepPct = (i: 0 | 1 | 2, pct: number) => {
     const steps = [...limit.steps] as [number, number, number];
@@ -279,7 +284,16 @@ export function BindingEditor({
               </div>
             </div>
             <details className="shaping">
-              <summary>trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}{b.shaping.reverse ? ' · rev' : ''}{b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}</summary>
+              {/* The disarmed value is only shown on a throttle channel, because
+                  that's the only place it differs from the failsafe — and seeing
+                  "fs 1500" next to a channel sitting at 1000 is otherwise a
+                  puzzle rather than information. */}
+              <summary title={throttleSet.has(b.channel) ? `Failsafe = link loss WHILE ARMED. Disarmed = deliberately off, on the ground. For a ${profile.vehicleType} these are different on purpose.` : undefined}>
+                trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}
+                {throttleSet.has(b.channel) ? ` · disarmed ${disarmedUs}` : ''}
+                {b.shaping.reverse ? ' · rev' : ''}
+                {b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}
+              </summary>
               <div className="shaping-grid">
                 <label>trim µs<input type="number" value={b.shaping.trimUs} onChange={(e) => patchShaping(b.id, { trimUs: Number(e.target.value) })} /></label>
                 <label>expo<input type="number" step={0.05} min={0} max={1} value={b.shaping.expo} onChange={(e) => patchShaping(b.id, { expo: Number(e.target.value) })} /></label>

@@ -3,6 +3,24 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.33.2
+**English**
+- **The throttle row in Setup › Channels now shows its disarmed value** next to the
+  failsafe: `fs 1500 · disarmed 1000`. Those two are deliberately different on a drone
+  — failsafe is link loss *while armed* (hold, don't drop it), disarmed is switched off
+  on the ground (motors off) — and seeing only `fs 1500` next to a channel sitting at
+  1000 in the monitor looked like a contradiction. Shown on throttle channels only,
+  where it's the one value that differs, with the reasoning on the tooltip.
+
+**Deutsch**
+- **Die Throttle-Zeile unter Setup › Channels zeigt jetzt ihren Disarmed-Wert** neben
+  dem Failsafe: `fs 1500 · disarmed 1000`. Die beiden unterscheiden sich bei einer
+  Drohne mit Absicht — Failsafe ist Verbindungsabriss *im armierten Zustand* (halten,
+  nicht abstürzen lassen), Disarmed ist bewusst abgeschaltet am Boden (Motoren aus) —
+  und nur `fs 1500` neben einem Kanal zu sehen, der im Monitor auf 1000 steht, sah nach
+  einem Widerspruch aus. Nur auf Throttle-Kanälen, wo dieser Wert überhaupt abweicht;
+  die Begründung steht im Tooltip.
+
 ## v1.33.1
 **English**
 - **Fixed: a channel row in Setup › Channels broke apart when its label was long.**
