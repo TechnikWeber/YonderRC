@@ -28,6 +28,16 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
   wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
+- **Kennlinien** pro Stick-Kanal (standardmäßig aus): eine 3-/5-/7-/9-Punkt-Kurve mit
+  Live-Diagramm, für die Verläufe, die Expo nicht abbilden kann — ein Gas, das bis
+  Halbgas sanft bleibt und dann aufmacht, eine Lenkung, die an den Enden weich und in
+  der Mitte direkt ist. Wird vor dem Expo angewendet, beides ist also kombinierbar. Die
+  beiden Endpunkte sind auf ±100 % fixiert, damit der volle Weg erreichbar bleibt —
+  begrenzen über die Endpunkte, und Disarm-Wert wie Pre-Arm-Check funktionieren
+  unabhängig davon, welche Form du zeichnest.
+- **Live-Trims** in einem aufklappbaren Feld unter den Sticks: 5 µs pro Druck, bis
+  ±150 µs, Reset je Kanal. Derselbe Wert wie `trim µs` im Setup, mit dem Modell
+  gespeichert.
 - **Tempolimit mit drei Stufen** (Low / Mid / High, Prozentwerte pro Modell): drei
   Buttons unter den Sticks schalten im Fahrbetrieb um, alternativ ein belegbarer
   Controller-Button. Der Befehl wird **um die Ruhelage des Gaskanals** skaliert — ein

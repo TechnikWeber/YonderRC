@@ -680,6 +680,72 @@ body {
   color: var(--muted);
   padding: 4px 0;
 }
+/* ---- response curve (v1.36) ----
+   The plot earns its place: a row of numbers between -100 and 100 says almost
+   nothing about how a channel will feel, the shape says it at a glance. */
+.curve-editor {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.curve-body {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.curve-plot {
+  width: 148px;
+  height: 148px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+}
+.curve-bg { fill: var(--panel); stroke: var(--line-bright); stroke-width: 1; }
+.curve-axis { stroke: var(--line); stroke-width: 1; }
+/* The straight line stays visible underneath, so the deviation is the message. */
+.curve-linear { stroke: var(--line-bright); stroke-width: 1; stroke-dasharray: 3 3; }
+.curve-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.curve-dot { fill: var(--accent); }
+.curve-dot.pinned { fill: var(--muted); }
+
+.curve-points {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  flex: 1 1 240px;
+  min-width: 0;
+  align-content: start;
+}
+.curve-points label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.curve-points input[type='number'],
+.curve-points select {
+  background: var(--panel);
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  font-family: var(--mono);
+  border-radius: 7px;
+  padding: 6px 7px;
+  min-width: 0;
+}
+/* The pinned ends are shown, not hidden — seeing that they are fixed at ±100 is
+   the explanation for why full travel is always reachable. */
+.curve-pt.pinned input {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.curve-size { grid-column: 1 / -1; flex-direction: row !important; align-items: center; gap: 8px !important; }
+.curve-size select { flex: 0 0 72px; }
+.curve-points .btn.tiny { grid-column: 1 / -1; justify-self: start; }
+.curve-editor .note { margin-top: 8px; }
+
 .shaping-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

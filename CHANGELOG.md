@@ -3,6 +3,49 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.36.0
+**English**
+- **Response curves per stick channel** — the thing expo cannot express. Expo is one
+  number and always symmetric around centre; a curve gives you the actual shape: gentle
+  to half throttle and then opening up, soft at the extremes but direct in the middle,
+  a dead flat section, whatever the model wants. **Off by default** — a channel without
+  one behaves bit-for-bit as before.
+- 3, 5, 7 or 9 points, evenly spaced, linear interpolation between them, with a **live
+  plot** next to the numbers. The dashed diagonal stays visible underneath so the
+  deviation from linear is the thing you see. Changing the point count **resamples** the
+  shape you already have instead of discarding it.
+- **The two end points are fixed at ±100%.** Travel is limited with `min/max µs`, which
+  already exists — a curve that could also cut the ends would be a confusing second way
+  to do it, and it would quietly break the guarantee the safety chain rests on: that a
+  resting stick produces the channel's off value. With the ends pinned, the **disarmed
+  value, the failsafe and the pre-arm check keep working whatever shape you draw**, and
+  there are tests for exactly that, including a curve that tries to cut the ends off.
+- Applied **before** expo, so the curve's X axis is the stick position itself — which is
+  what makes the plot readable — and the two can be combined. Only proportional
+  channels get one: a switch has two positions and nothing in between to shape.
+
+**Deutsch**
+- **Kennlinien pro Stick-Kanal** — genau das, was Expo nicht kann. Expo ist eine Zahl und
+  immer symmetrisch um die Mitte; eine Kurve gibt dir den tatsächlichen Verlauf: bis
+  Halbgas sanft und dann aufmachend, an den Enden weich und in der Mitte direkt, ein
+  flacher Totbereich, was das Modell eben braucht. **Standardmäßig aus** — ein Kanal ohne
+  Kurve verhält sich exakt wie bisher.
+- 3, 5, 7 oder 9 gleichmäßig verteilte Punkte, linear interpoliert, mit einem
+  **Live-Diagramm** neben den Zahlen. Die gestrichelte Diagonale bleibt darunter
+  sichtbar, damit die Abweichung von der Geraden das ist, was man sieht. Ändert man die
+  Punktzahl, wird die vorhandene Form **neu abgetastet** statt verworfen.
+- **Die beiden Endpunkte sind auf ±100 % fixiert.** Den Weg begrenzt man mit
+  `min/max µs`, das gibt es bereits — eine Kurve, die die Enden ebenfalls kappen könnte,
+  wäre ein verwirrender zweiter Weg dorthin und würde stillschweigend die Garantie
+  brechen, auf der die Sicherheitskette steht: dass ein ruhender Stick den Aus-Wert des
+  Kanals erzeugt. Mit fixierten Enden funktionieren **Disarm-Wert, Failsafe und
+  Pre-Arm-Check unabhängig davon, welche Form du zeichnest** — dafür gibt es Tests,
+  inklusive einer Kurve, die versucht, die Enden abzuschneiden.
+- Wird **vor** dem Expo angewendet, damit die X-Achse der Kurve die Stickposition selbst
+  ist — das macht das Diagramm erst lesbar — und beides kombinierbar bleibt. Nur
+  proportionale Kanäle bekommen eine: ein Schalter hat zwei Stellungen und nichts
+  dazwischen zu formen.
+
 ## v1.35.0
 **English**
 - **Live trims.** A collapsible *Trims* panel under the sticks (and under the video for

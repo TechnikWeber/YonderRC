@@ -32,6 +32,25 @@ export type StickAxis = 'leftX' | 'leftY' | 'rightX' | 'rightY';
  */
 export type BindingMode = 'proportional' | 'momentary' | 'toggle' | 'hold-ramp';
 
+/**
+ * A multi-point response curve for one channel — what expo can't express: a
+ * throttle that stays gentle to half stick and then opens up, a steering that is
+ * soft at the extremes but direct in the middle, and so on.
+ *
+ * `points` are Y values at evenly spaced X from -1 (stick at one end) to +1 (the
+ * other), with linear interpolation between them.
+ *
+ * **The first and last point are pinned to -1 and +1** and cannot be edited. A
+ * channel's reachable travel is set by `minUs`/`maxUs`; letting the curve also cut
+ * the ends would be a confusing second way to do the same thing — and, more
+ * importantly, it would break the guarantee that the resting stick produces the
+ * channel's "off" value, which the disarmed value and the pre-arm check depend on.
+ * The curve shapes what happens BETWEEN the extremes.
+ */
+export interface ChannelCurve {
+  points: number[];
+}
+
 export interface ChannelShaping {
   /** Trim offset in µs applied after the raw value. */
   trimUs: number;
@@ -44,6 +63,11 @@ export interface ChannelShaping {
   maxUs: number;
   /** Value driven on the vehicle when the link is lost. */
   failsafeUs: number;
+  /**
+   * Optional response curve, applied before expo. Absent or null = off, which is
+   * the default and what every profile stored before curves existed has.
+   */
+  curve?: ChannelCurve | null;
 }
 
 export interface ChannelBinding {

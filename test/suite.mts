@@ -989,6 +989,76 @@ async function main() {
   ok('trim shifts the shaped neutral', shapeP(0, trimmedShape) === 1500 + TRIM_STEP_US,
     `=${shapeP(0, trimmedShape)}`);
 
+  // ---- response curves ----
+  const {
+    identityCurve, applyCurve, normalizeCurve, curveIsIdentity, CURVE_SIZES, CURVE_DEFAULT_SIZE,
+  } = await import('../packages/protocol/src/shaping');
+  const { shapeProportional: shapeC } = await import('../packages/protocol/src/shaping');
+
+  ok('identity curve spans -1..1', identityCurve(5).points[0] === -1 && identityCurve(5).points[4] === 1);
+  ok('identity curve is evenly spaced', identityCurve(5).points.join(',') === '-1,-0.5,0,0.5,1');
+  ok('identity reads as no curve', curveIsIdentity(identityCurve(CURVE_DEFAULT_SIZE)));
+  ok('absent curve reads as no curve', curveIsIdentity(null) && curveIsIdentity(undefined));
+  for (const n of CURVE_SIZES) {
+    ok(`identity ${n}pt is a straight line`, [-1, -0.4, 0, 0.7, 1].every(
+      (x) => Math.abs(applyCurve(x, identityCurve(n)) - x) < 1e-9,
+    ));
+  }
+
+  // A curve interpolates linearly between its points.
+  const soft = { points: [-1, -0.25, 0, 0.25, 1] }; // gentle in the middle, full at the ends
+  ok('curve hits its own points', applyCurve(-0.5, soft) === -0.25 && applyCurve(0.5, soft) === 0.25);
+  ok('curve interpolates between them', Math.abs(applyCurve(0.75, soft) - 0.625) < 1e-9, `=${applyCurve(0.75, soft)}`);
+  ok('curve clamps its input', applyCurve(5, soft) === 1 && applyCurve(-5, soft) === -1);
+
+  // The ends are pinned: full travel must stay reachable, because the disarmed
+  // value and the pre-arm check both assume the resting stick produces the
+  // channel's off value.
+  const cut = normalizeCurve({ points: [-0.2, -0.1, 0, 0.1, 0.2] })!;
+  ok('normalize pins the ends to ±1', cut.points[0] === -1 && cut.points[4] === 1);
+  ok('normalize keeps the middle', cut.points[1] === -0.1 && cut.points[2] === 0 && cut.points[3] === 0.1);
+  ok('normalize clamps out-of-range points', normalizeCurve({ points: [0, 9, 0, -9, 0] })!.points.join(',') === '-1,1,0,-1,1');
+  ok('normalize repairs a bad length', normalizeCurve({ points: [0, 0, 0, 0] })!.points.length === CURVE_DEFAULT_SIZE);
+  ok('normalize survives junk', normalizeCurve({ points: [NaN, NaN, NaN, NaN, NaN] })!.points.join(',') === '-1,-0.5,0,0.5,1');
+  ok('normalize of nothing is null', normalizeCurve(null) === null && normalizeCurve(undefined) === null);
+
+  // Integration with shaping: no curve must be bit-identical to before.
+  const plainCh = { trimUs: 0, expo: 0, reverse: false, minUs: 1000, maxUs: 2000, failsafeUs: 1500 };
+  for (const x of [-1, -0.5, 0, 0.33, 1]) {
+    ok(`no curve leaves ${x} unchanged`, shapeC(x, plainCh) === shapeC(x, { ...plainCh, curve: null }));
+  }
+  ok('identity curve changes nothing', shapeC(0.42, { ...plainCh, curve: identityCurve(9) }) === shapeC(0.42, plainCh));
+  // A real curve moves the middle but never the extremes.
+  const curved = { ...plainCh, curve: soft };
+  ok('curve softens the middle', shapeC(0.5, curved) === 1625, `=${shapeC(0.5, curved)}`);
+  ok('curve keeps full travel at the top', shapeC(1, curved) === 2000);
+  ok('curve keeps full travel at the bottom', shapeC(-1, curved) === 1000);
+
+  // THE safety property: whatever the curve, the resting stick still produces the
+  // channel's off value — so the disarmed value stays motors-off.
+  const droneCurved = {
+    ...drone,
+    bindings: drone.bindings.map((b) => (b.channel === dch ? { ...b, shaping: { ...b.shaping, curve: soft } } : b)),
+  };
+  ok('a curved throttle still disarms to min', profileDisarmedUs(droneCurved)[dch] === 1000, `=${profileDisarmedUs(droneCurved)[dch]}`);
+  const carCurved = {
+    ...car,
+    bindings: car.bindings.map((b) => (b.channel === cch ? { ...b, shaping: { ...b.shaping, curve: soft } } : b)),
+  };
+  ok('a curved car throttle still stops at centre', profileDisarmedUs(carCurved)[cch] === 1500, `=${profileDisarmedUs(carCurved)[cch]}`);
+  // Even a curve someone tried to cut the ends off cannot break it.
+  const sneaky = {
+    ...drone,
+    bindings: drone.bindings.map((b) => (b.channel === dch ? { ...b, shaping: { ...b.shaping, curve: { points: [-0.2, -0.1, 0, 0.1, 0.2] } } } : b)),
+  };
+  ok('a curve with cut ends cannot lift the disarmed value', profileDisarmedUs(sneaky)[dch] === 1000, `=${profileDisarmedUs(sneaky)[dch]}`);
+
+  // Curve composes with reverse and expo rather than fighting them.
+  ok('curve respects reverse', shapeC(0.5, { ...curved, reverse: true }) === 1375, `=${shapeC(0.5, { ...curved, reverse: true })}`);
+  ok('curve and expo stack', shapeC(0.5, { ...curved, expo: 1 }) < shapeC(0.5, curved));
+  // Switch channels never get one — shapeSwitch doesn't consult the curve at all.
+  ok('a curve cannot affect a switch', shapeSwitch(true, curved, 1000) === shapeSwitch(true, plainCh, 1000));
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CHANNEL_COUNT } from '@yonderrc/protocol';
+import { CHANNEL_COUNT, curveIsIdentity } from '@yonderrc/protocol';
 import type { BindingMode, ChannelBinding, Detent, InputMethod, Profile, StickAxis, StickMode } from '@yonderrc/protocol';
 import {
   applyEndpoints,
@@ -15,6 +15,7 @@ import {
   withResolvedThrottle,
 } from '../lib/templates';
 import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
+import { CurveEditor } from './CurveEditor';
 import type { InputManager } from '../lib/input/inputManager';
 
 const METHODS: InputMethod[] = ['keyboard', 'gamepad', 'touch'];
@@ -304,6 +305,7 @@ export function BindingEditor({
                 trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}
                 {throttleSet.has(b.channel) ? ` · disarmed ${disarmedThrottleUs(profile.vehicleType, b.shaping)}` : ''}
                 {b.shaping.reverse ? ' · rev' : ''}
+                {curveIsIdentity(b.shaping.curve) ? '' : ` · curve ${b.shaping.curve!.points.length}pt`}
                 {b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}
               </summary>
               <div className="shaping-grid">
@@ -314,6 +316,15 @@ export function BindingEditor({
                 <label>failsafe µs<input type="number" value={b.shaping.failsafeUs} onChange={(e) => patchShaping(b.id, { failsafeUs: Number(e.target.value) })} /></label>
                 <label className="rev">reverse<input type="checkbox" checked={b.shaping.reverse} onChange={(e) => patchShaping(b.id, { reverse: e.target.checked })} /></label>
               </div>
+              {/* Only stick axes get a curve — a switch has two positions, there is
+                  nothing in between to shape. */}
+              {b.mode === 'proportional' && (
+                <CurveEditor
+                  curve={b.shaping.curve}
+                  disabled={locked}
+                  onChange={(c) => patchShaping(b.id, { curve: c })}
+                />
+              )}
               {throttleSet.has(b.channel) && (
                 <>
                   <div className="eyebrow2" style={{ marginTop: 10 }}>Speed limit steps (%)</div>

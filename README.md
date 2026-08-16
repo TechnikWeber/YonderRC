@@ -28,6 +28,14 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
 - **Models** for car / boat / plane / drone with matching channel templates,
   selectable input method, and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
+- **Response curves** per stick channel (off by default): a 3/5/7/9-point curve with a
+  live plot, for the shapes expo can't express — a throttle that stays gentle to half
+  stick and then opens up, a steering that is soft at the extremes but direct in the
+  middle. Applied before expo, so both work together. The two end points are fixed at
+  ±100% so full travel stays reachable — limit travel with the endpoints instead, and
+  the disarmed value and pre-arm check keep working whatever shape you draw.
+- **Live trims** in a collapsible panel under the sticks: 5 µs a press, up to ±150 µs,
+  reset per channel. Same value as `trim µs` in Setup, saved with the model.
 - **Speed limiter with three steps** (Low / Mid / High, percentages per model): three
   buttons under the sticks switch while driving, or a bindable controller button cycles
   them. The command is scaled **around the throttle's rest position** — a car with
