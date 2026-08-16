@@ -208,8 +208,13 @@ export function ControlsPanel({
         A percentage doesn't answer "can I still get home?" — 30% is plenty at 50 m and
         not enough at 800 m. This measures what the vehicle actually consumes per km and
         turns it into the number that <i>is</i> a decision: how much further you may go.
-        The <b>reserve</b> is the margin it insists on having left for the trip back
-        (headwind, detours, a hill, and a pack that sags at the end); 50% is a sane start.
+        The <b>reserve</b> is a margin on the <b>trip home</b>, not a percentage of the
+        pack: at <b>50%</b> you turn around while the pack still holds <b>1.5×</b> what
+        getting home costs, so you arrive with half that cost to spare. It therefore
+        scales with how far out you are — small at 100 m, large at 2 km, which is where a
+        misjudged consumption rate gets expensive. It covers <b>estimation error</b>
+        (headwind on the way back, a detour, a hill, a pack that sags at the end); it is
+        not a deep-discharge limit — that's the low-battery warning below.
         Shown in the <b>full OSD</b> only, but the <b>turn-back warning</b> appears in the
         compact OSD too and is spoken if callouts are on. <b>Needs a battery capacity set
         on the vehicle, a current sensor and a GPS home point</b> — without any of them it

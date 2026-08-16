@@ -1,6 +1,6 @@
 {
   "name": "@yonderrc/ground",
-  "version": "1.38.1",
+  "version": "1.38.2",
   "private": true,
   "type": "module",
   "description": "YonderRC ground station \u2014 responsive web control that also becomes the desktop app shell later.",

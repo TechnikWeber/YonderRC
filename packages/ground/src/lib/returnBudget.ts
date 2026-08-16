@@ -15,9 +15,17 @@
 export interface ReturnBudgetCfg {
   enabled: boolean;
   /**
-   * Safety margin on the return leg, in percent. 50 means "I want to arrive with
-   * half again as much as the trip home should cost" — headwind, detours, a hill,
-   * and the fact that the last stretch of a pack sags.
+   * Safety margin on the return leg, in percent — **not** a percentage of the pack.
+   *
+   * 50 means: at the moment you have to turn around, the pack must still hold
+   * **1.5×** what the trip home costs, so you arrive with half that cost to spare.
+   * The margin is therefore proportional to the distance home — small when you are
+   * 100 m out, large when you are 2 km out, which is exactly where a misjudged
+   * consumption rate becomes expensive.
+   *
+   * It guards against ESTIMATION error (headwind on the way back, a detour, a hill,
+   * a pack that sags at the end). It is not a deep-discharge limit; that is the
+   * low-battery warning, which is a separate setting.
    */
   reservePct: number;
 }

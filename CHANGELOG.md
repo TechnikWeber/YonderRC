@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.38.2
+**English**
+- **The return-home reserve is explained properly.** It is a margin on the **trip home**,
+  not a percentage of the pack: at 50% you turn around while the pack still holds **1.5×**
+  what getting home costs, and arrive with half that cost to spare. So it scales with how
+  far out you are — small at 100 m, large at 2 km, which is where a misjudged consumption
+  rate gets expensive. Setup › Controls now says exactly that, and points out that it
+  guards against **estimation error**, not deep discharge (that's the low-battery warning).
+- The code comment said "arrive with half again as much as the trip home costs", which
+  was simply wrong — that is the state at the **turn-around** point, not on arrival.
+
+**Deutsch**
+- **Die Heimkehr-Reserve ist jetzt richtig erklärt.** Sie ist eine Marge auf den
+  **Rückweg**, kein Prozentsatz des Akkus: Bei 50 % kehrst du um, während im Pack noch
+  das **1,5-fache** dessen ist, was der Heimweg kostet, und kommst mit der Hälfte davon
+  an. Sie skaliert also mit der Entfernung — klein bei 100 m, groß bei 2 km, und genau
+  dort wird eine falsch geschätzte Verbrauchsrate teuer. Unter Setup › Controls steht das
+  jetzt so, samt dem Hinweis, dass sie gegen **Schätzfehler** schützt und nicht gegen
+  Tiefentladung (dafür ist die Akku-Warnung da).
+- Der Code-Kommentar behauptete „mit dem Anderthalbfachen ankommen" — das ist schlicht
+  falsch, das ist der Zustand am **Umkehrpunkt**, nicht bei der Ankunft.
+
 ## v1.38.1
 **English**
 - **Clearer wording in the return-home budget**: `home 64 of 2143 mAh` instead of
