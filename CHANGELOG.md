@@ -3,6 +3,49 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.38.3
+**English**
+- **Fixed: a one-second link blip was announced as an outage.** The WebSocket reconnects
+  a second after any close, so a WiFi roam or an LTE handover produced a truthful but
+  useless "link lost / link restored" pair. Both now wait ~2 s, and a recovery is only
+  spoken for an outage that was actually announced — so a blip is completely silent.
+  No safety cost: **failsafe is still announced immediately**, and the vehicle enters it
+  300 ms after the frames stop.
+- **Fixed: a reconnect announced "link recovered" in the middle of an outage.** The
+  link-quality callout was derived from a value that included "are we connected", so
+  losing the socket made the health score vanish — which read as a transition out of
+  "bad" and cheerfully reported a recovery while the link was down. Presence and quality
+  are now decided together: **while the link is down its quality is not bad, it is
+  unknown**, and the quality clock restarts on reconnect instead of claiming improvement.
+- **The two pairs no longer sound alike.** "Link recovered" next to "Link restored" was
+  two near-identical phrases for different events. It is now **lost / restored** for the
+  link existing and **weak / good** for how well it works.
+- Sustained weakness needs ~3 s before it is spoken — longer than the outage grace,
+  because a momentary spike in round-trip or loss is normal and the OSD badge already
+  shows it instantly.
+
+**Deutsch**
+- **Behoben: ein Ein-Sekunden-Aussetzer wurde als Verbindungsverlust angesagt.** Der
+  WebSocket verbindet sich eine Sekunde nach jedem Abriss neu, ein WLAN-Wechsel oder
+  LTE-Handover erzeugte also ein zwar wahres, aber nutzloses „link lost / link restored".
+  Beide warten jetzt ca. 2 s, und eine Rückkehr wird nur für einen Ausfall angesagt, der
+  auch gemeldet wurde — ein Aussetzer bleibt damit komplett stumm. Ohne Sicherheitsverlust:
+  **Failsafe wird weiterhin sofort angesagt**, und das Fahrzeug geht 300 ms nach dem
+  Ausbleiben der Frames hinein.
+- **Behoben: ein Reconnect meldete mitten im Ausfall „link recovered".** Die Ansage zur
+  Verbindungsqualität hing an einem Wert, in dem „sind wir verbunden" mit drinsteckte —
+  fiel die Verbindung weg, verschwand der Health-Score, was als Übergang aus „schlecht"
+  gelesen wurde und fröhlich eine Erholung meldete, während die Verbindung weg war.
+  Präsenz und Qualität werden jetzt gemeinsam entschieden: **solange die Verbindung weg
+  ist, ist ihre Qualität nicht schlecht, sondern unbekannt**, und die Qualitätsuhr startet
+  beim Reconnect neu, statt eine Verbesserung zu behaupten.
+- **Die beiden Paare klingen nicht mehr gleich.** „Link recovered" neben „Link restored"
+  waren zwei fast identische Formulierungen für verschiedene Ereignisse. Jetzt heißt es
+  **lost / restored** für die Existenz der Verbindung und **weak / good** für ihre Güte.
+- Anhaltende Schwäche braucht ca. 3 s bis zur Ansage — länger als die Ausfall-Karenz,
+  weil eine kurze Spitze bei Round-Trip oder Verlust normal ist und das OSD-Badge sie
+  ohnehin sofort zeigt.
+
 ## v1.38.2
 **English**
 - **The return-home reserve is explained properly.** It is a margin on the **trip home**,

@@ -54,22 +54,10 @@ function clamp(v: number, lo: number, hi: number): number {
 /** What the app knows at one instant; the callouts come from changes in it. */
 export interface SpeechState {
   connected: boolean;
-  /**
-   * Whether a link has been up at any point this session. Without it, the first
-   * successful connect announces "link restored", which is both wrong and noise —
-   * you just pressed Connect and are looking at the screen.
-   */
-  everConnected: boolean;
   armed: boolean;
   failsafe: boolean;
   batteryLow: boolean;
   batteryPercent: number | null;
-  /**
-   * Set only when the link health is actually known to be bad. It must stay false
-   * while there is no measurement yet, or every connect announces "weak link"
-   * followed a second later by "link recovered".
-   */
-  linkBad: boolean;
   /**
    * The return-home budget has run out. False whenever the feature is off or its
    * inputs are missing, so a vehicle without a current sensor never hears this.
@@ -94,13 +82,7 @@ export function announcementsFor(prev: SpeechState | null, next: SpeechState): A
   const out: Announcement[] = [];
   if (!prev) return out; // first observation is not a change
 
-  // Losing the link outranks everything else that could happen in the same tick.
-  if (prev.connected && !next.connected) out.push({ text: 'Link lost', urgent: true });
-  // Only a RECONNECT is worth saying; the first connect of a session isn't news.
-  if (!prev.connected && next.connected && prev.everConnected) {
-    out.push({ text: 'Link restored', urgent: false });
-  }
-
+  // The link is NOT handled here — it needs a clock, not a comparison. See linkVoice.
   if (!prev.failsafe && next.failsafe) out.push({ text: 'Failsafe', urgent: true });
   if (prev.failsafe && !next.failsafe) out.push({ text: 'Failsafe cleared', urgent: false });
 
@@ -116,10 +98,99 @@ export function announcementsFor(prev: SpeechState | null, next: SpeechState): A
   // what you are doing rather than telling you what already happened.
   if (!prev.returnNow && next.returnNow) out.push({ text: 'Turn back now', urgent: true });
 
-  if (!prev.linkBad && next.linkBad) out.push({ text: 'Weak link', urgent: false });
-  if (prev.linkBad && !next.linkBad) out.push({ text: 'Link recovered', urgent: false });
-
   return out;
+}
+
+/**
+ * How long the link has to stay down before it is worth saying out loud.
+ *
+ * The WebSocket reconnects a second after any close, so a WiFi roam or an LTE
+ * handover produces a real, truthful "link lost / link restored" pair for an
+ * outage nobody needed to know about — and a voice that cries wolf is a voice you
+ * stop listening to.
+ *
+ * This does not delay the safety signal: the vehicle drops into failsafe after
+ * 300 ms without frames, and **failsafe is announced immediately and urgently**.
+ * So a genuine outage still speaks up at once; only the informational
+ * "link lost" waits to see whether it mattered.
+ */
+export const LINK_LOST_GRACE_MS = 2000;
+
+/**
+ * How long the quality has to stay bad before it is said out loud. Longer than the
+ * outage grace: a momentary spike in round-trip or loss is normal, and the OSD
+ * badge already shows it instantly.
+ */
+export const LINK_WEAK_GRACE_MS = 3000;
+
+/** What `linkVoice` has to remember between ticks. */
+export interface LinkVoiceState {
+  /** When the link went down, or null while it is up. */
+  downSince: number | null;
+  /** Whether the outage was announced — restoration is only worth saying if so. */
+  lostAnnounced: boolean;
+  /** When the quality went bad, or null while it is fine. */
+  weakSince: number | null;
+  /** Whether the weakness was announced — same rule for its recovery. */
+  weakAnnounced: boolean;
+}
+
+export const LINK_VOICE_INITIAL: LinkVoiceState = {
+  downSince: null, lostAnnounced: false, weakSince: null, weakAnnounced: false,
+};
+
+/**
+ * All link callouts, on a clock rather than on state comparisons.
+ *
+ * Presence and quality are handled together because they are not independent:
+ * **while the link is down, its quality is not "bad", it is unknown.** Treating
+ * them separately produced the actual bug this replaces — a one-second reconnect
+ * made the health score vanish, which read as a transition out of "bad" and
+ * cheerfully announced "link recovered" in the middle of an outage.
+ *
+ * Both callouts only announce a recovery for a problem that was announced. That
+ * covers the first connect of a session for free (you pressed Connect and are
+ * looking at the screen) and stops a blip from producing a lone "restored".
+ *
+ * The wording keeps the two apart on purpose: **lost / restored** is the link
+ * existing, **weak / good** is how well it is working. "Link recovered" next to
+ * "Link restored" was two near-identical phrases for different events.
+ */
+export function linkVoice(
+  prev: LinkVoiceState,
+  input: { connected: boolean; qualityBad: boolean },
+  now: number,
+): { next: LinkVoiceState; say: Announcement | null } {
+  // ---- link is down: quality is frozen, not "recovered" ----
+  if (!input.connected) {
+    if (prev.downSince === null) return { next: { ...prev, downSince: now, lostAnnounced: false }, say: null };
+    if (!prev.lostAnnounced && now - prev.downSince >= LINK_LOST_GRACE_MS) {
+      return { next: { ...prev, lostAnnounced: true }, say: { text: 'Link lost', urgent: true } };
+    }
+    return { next: prev, say: null };
+  }
+
+  // ---- link is up again after being down ----
+  if (prev.downSince !== null) {
+    const say = prev.lostAnnounced ? { text: 'Link restored', urgent: false } : null;
+    // A reconnect starts the quality clock over: whatever the score did while the
+    // socket was down says nothing about the link we have now.
+    return { next: { downSince: null, lostAnnounced: false, weakSince: null, weakAnnounced: false }, say };
+  }
+
+  // ---- link is up: judge the quality ----
+  if (input.qualityBad) {
+    if (prev.weakSince === null) return { next: { ...prev, weakSince: now, weakAnnounced: false }, say: null };
+    if (!prev.weakAnnounced && now - prev.weakSince >= LINK_WEAK_GRACE_MS) {
+      return { next: { ...prev, weakAnnounced: true }, say: { text: 'Weak link', urgent: false } };
+    }
+    return { next: prev, say: null };
+  }
+  if (prev.weakSince !== null) {
+    const say = prev.weakAnnounced ? { text: 'Link good', urgent: false } : null;
+    return { next: { ...prev, weakSince: null, weakAnnounced: false }, say };
+  }
+  return { next: prev, say: null };
 }
 
 /** How often a still-low battery repeats itself, ms. Often enough to nag, not to annoy. */

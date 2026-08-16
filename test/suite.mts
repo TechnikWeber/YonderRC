@@ -1100,32 +1100,83 @@ async function main() {
   // ---- voice callouts ----
   const { announcementsFor, batteryRepeat, BATTERY_REPEAT_MS, SPEECH_DEFAULTS, loadSpeechCfg } =
     await import('../packages/ground/src/lib/speech');
-  const sBase = { connected: true, everConnected: true, armed: false, failsafe: false, batteryLow: false, batteryPercent: 80, linkBad: false };
+  const sBase = { connected: true, armed: false, failsafe: false, batteryLow: false, batteryPercent: 80 };
   ok('speech is on by default', SPEECH_DEFAULTS.enabled === true);
   ok('the first observation says nothing', announcementsFor(null, sBase).length === 0);
-  // The first connect of a session is not "restored" — you just pressed Connect.
-  const firstConnect = { ...sBase, connected: false, everConnected: false };
-  ok('the first connect says nothing', announcementsFor(firstConnect, { ...sBase, everConnected: true }).length === 0,
-    announcementsFor(firstConnect, { ...sBase, everConnected: true }).map((a) => a.text).join('|'));
-  ok('but a reconnect is announced',
-    announcementsFor({ ...sBase, connected: false }, sBase)[0].text === 'Link restored');
+  // The link is no longer a state comparison — it is on a clock (see linkVoice).
+  ok('connecting says nothing here', announcementsFor({ ...sBase, connected: false }, sBase).length === 0);
+  ok('disconnecting says nothing here', announcementsFor(sBase, { ...sBase, connected: false }).length === 0);
   ok('a steady state says nothing', announcementsFor(sBase, sBase).length === 0);
   ok('arming is announced', announcementsFor(sBase, { ...sBase, armed: true })[0].text === 'Armed');
   ok('disarming too', announcementsFor({ ...sBase, armed: true }, sBase)[0].text === 'Disarmed');
   const fs = announcementsFor(sBase, { ...sBase, failsafe: true })[0];
   ok('failsafe is announced', fs.text === 'Failsafe');
   ok('and is urgent', fs.urgent === true, 'failsafe must jump the queue');
-  ok('link loss is urgent', announcementsFor(sBase, { ...sBase, connected: false })[0].urgent === true);
   // A tick where several things change puts the most consequential first.
-  const many = announcementsFor({ ...sBase, armed: true }, { ...sBase, connected: false, armed: false, failsafe: true });
-  ok('link loss is spoken first', many[0].text === 'Link lost', many.map((a) => a.text).join(' | '));
-  ok('failsafe comes before armed state', many[1].text === 'Failsafe', many.map((a) => a.text).join(' | '));
+  const many = announcementsFor({ ...sBase, armed: true }, { ...sBase, armed: false, failsafe: true });
+  ok('failsafe comes before armed state', many[0].text === 'Failsafe', many.map((a) => a.text).join(' | '));
   const lowMsg = announcementsFor(sBase, { ...sBase, batteryLow: true, batteryPercent: 24.6 })[0];
   ok('low battery names the percentage', lowMsg.text === 'Battery low, 25 percent', lowMsg.text);
   ok('and is urgent', lowMsg.urgent === true);
   ok('an unknown percentage still warns', announcementsFor(sBase, { ...sBase, batteryLow: true, batteryPercent: null })[0].text === 'Battery low');
-  ok('a weak link is announced', announcementsFor(sBase, { ...sBase, linkBad: true })[0].text === 'Weak link');
-  ok('and its recovery', announcementsFor({ ...sBase, linkBad: true }, sBase)[0].text === 'Link recovered');
+
+  // The link runs on a clock: a blip that reconnects inside the grace period must
+  // stay silent, or a WiFi roam gets announced as an outage.
+  const { linkVoice, LINK_VOICE_INITIAL, LINK_LOST_GRACE_MS, LINK_WEAK_GRACE_MS } =
+    await import('../packages/ground/src/lib/speech');
+  const T = 1_000_000;
+  const lvUp = { connected: true, qualityBad: false };
+  const lvDown = { connected: false, qualityBad: false };
+  const lvWeak = { connected: true, qualityBad: true };
+  ok('a healthy link says nothing', linkVoice(LINK_VOICE_INITIAL, lvUp, T).say === null);
+  ok('the first connect stays silent', linkVoice(LINK_VOICE_INITIAL, lvUp, T).say === null);
+
+  // Blip: lvDown and lvBack inside the grace period — completely silent.
+  let lv = linkVoice(LINK_VOICE_INITIAL, lvDown, T).next;
+  ok('the drop itself is not announced', linkVoice(LINK_VOICE_INITIAL, lvDown, T).say === null);
+  let lvStep = linkVoice(lv, lvDown, T + 1000);
+  ok('still silent inside the grace period', lvStep.say === null);
+  lvStep = linkVoice(lvStep.next, lvUp, T + 1100);
+  ok('a blip produces no "restored" either', lvStep.say === null);
+  ok('and leaves no state behind', lvStep.next.downSince === null && lvStep.next.lostAnnounced === false);
+
+  // A real outage: announced once, and its recovery announced.
+  lv = linkVoice(LINK_VOICE_INITIAL, lvDown, T).next;
+  lvStep = linkVoice(lv, lvDown, T + LINK_LOST_GRACE_MS);
+  ok('a real outage is announced', lvStep.say?.text === 'Link lost');
+  ok('and is urgent', lvStep.say?.urgent === true);
+  ok('but only once', linkVoice(lvStep.next, lvDown, T + 9000).say === null);
+  lvStep = linkVoice(lvStep.next, lvUp, T + 10000);
+  ok('its recovery is announced', lvStep.say?.text === 'Link restored');
+  ok('recovery is not urgent', lvStep.say?.urgent === false);
+
+  // Quality: same treatment, longer grace, and a DIFFERENT pair of words so it
+  // cannot be confused with the link existing or not.
+  lv = linkVoice(LINK_VOICE_INITIAL, lvWeak, T).next;
+  ok('a quality lvDip is not announced at once', linkVoice(LINK_VOICE_INITIAL, lvWeak, T).say === null);
+  ok('nor inside its grace period', linkVoice(lv, lvWeak, T + LINK_WEAK_GRACE_MS - 1).say === null);
+  lvStep = linkVoice(lv, lvWeak, T + LINK_WEAK_GRACE_MS);
+  ok('sustained weakness is announced', lvStep.say?.text === 'Weak link');
+  ok('once', linkVoice(lvStep.next, lvWeak, T + 20000).say === null);
+  const lvGood = linkVoice(lvStep.next, lvUp, T + 20000);
+  ok('and recovery uses different words', lvGood.say?.text === 'Link good',
+    'must not be confused with "Link restored"');
+  // A brief lvDip that clears before the grace never says anything at all.
+  const lvDip = linkVoice(linkVoice(LINK_VOICE_INITIAL, lvWeak, T).next, lvUp, T + 500);
+  ok('a brief lvDip is silent', lvDip.say === null);
+
+  // THE lvBug this replaces: a reconnect made the health score vanish, which read as
+  // a transition out of "bad" and announced a recovery mid-outage.
+  let lvBug = linkVoice(LINK_VOICE_INITIAL, lvWeak, T).next;
+  lvBug = linkVoice(lvBug, lvWeak, T + LINK_WEAK_GRACE_MS).next; // "Weak link" said
+  const duringOutage = linkVoice(lvBug, lvDown, T + 4000);
+  ok('an outage never announces a quality recovery', duringOutage.say === null,
+    `said "${duringOutage.say?.text}" while the link was lvDown`);
+  ok('and the weakness is frozen, not cleared', duringOutage.next.weakAnnounced === true);
+  // Coming lvBack starts the quality clock over rather than claiming it got better.
+  const lvBack = linkVoice(duringOutage.next, lvUp, T + 4500);
+  ok('reconnecting does not claim the link got better', lvBack.say === null);
+  ok('and the quality clock restarts', lvBack.next.weakSince === null && lvBack.next.weakAnnounced === false);
 
   // The low-battery repeat runs on its own clock, not on state changes.
   const lowState = { ...sBase, batteryLow: true, batteryPercent: 20 };

@@ -36,8 +36,8 @@ import { logToCsv, logToGpx, downloadText, sensorSnapshot, gpsSnapshot, fixCount
 import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
 import { loadButtonHoldCfg, saveButtonHoldCfg, buttonHoldMsFor, type ButtonHoldCfg } from './lib/buttonHold';
 import {
-  loadSpeechCfg, saveSpeechCfg, announcementsFor, batteryRepeat, speak, primeSpeech,
-  type SpeechCfg, type SpeechState,
+  loadSpeechCfg, saveSpeechCfg, announcementsFor, batteryRepeat, linkVoice, speak, primeSpeech,
+  LINK_VOICE_INITIAL, type SpeechCfg, type SpeechState, type LinkVoiceState,
 } from './lib/speech';
 import { linkHealth, linkTrend } from './lib/linkHealth';
 import {
@@ -593,38 +593,48 @@ export function App() {
   speechCfgRef.current = speechCfg;
   const prevSpeech = useRef<SpeechState | null>(null);
   const batterySpokenAt = useRef<number | null>(null);
-  const everConnected = useRef(false);
-  if (connected) everConnected.current = true;
   const speechState: SpeechState = {
     connected,
-    everConnected: everConnected.current,
     armed,
     failsafe,
     batteryLow: battery.low,
     batteryPercent: telemetry?.batteryPercent ?? null,
     // `score !== null` matters: with no measurement yet the level is 'bad', and
     // announcing that at every connect would be pure noise.
-    linkBad: connected && health.score !== null && health.level === 'bad',
     returnNow: warnReturn,
   };
   const speechStateRef = useRef(speechState);
   speechStateRef.current = speechState;
+  const qualityBadRef = useRef(false);
+  qualityBadRef.current = health.score !== null && health.level === 'bad';
   useEffect(() => {
     for (const a of announcementsFor(prevSpeech.current, speechStateRef.current)) speak(a, speechCfgRef.current);
     prevSpeech.current = speechStateRef.current;
     // Depends on the fields, not the object — that one is rebuilt every render.
-  }, [connected, armed, failsafe, battery.low, health.level, warnReturn]);
-  // A battery that stays low says so again now and then, on its own clock.
+  }, [armed, failsafe, battery.low, warnReturn]);
+  // The time-driven callouts: the link needs a clock (a blip must not be announced
+  // as an outage) and a battery that stays low says so again now and then.
+  const linkVoiceRef = useRef<LinkVoiceState>(LINK_VOICE_INITIAL);
   useEffect(() => {
     const id = setInterval(() => {
-      const rep = batteryRepeat(speechStateRef.current, batterySpokenAt.current, Date.now());
+      const now = Date.now();
+      const link = linkVoice(
+        linkVoiceRef.current,
+        // Quality is only a claim while the link exists; linkVoice freezes it otherwise.
+        { connected: speechStateRef.current.connected, qualityBad: qualityBadRef.current },
+        now,
+      );
+      linkVoiceRef.current = link.next;
+      if (link.say) speak(link.say, speechCfgRef.current);
+
+      const rep = batteryRepeat(speechStateRef.current, batterySpokenAt.current, now);
       if (!rep) {
         if (!speechStateRef.current.batteryLow) batterySpokenAt.current = null;
         return;
       }
-      batterySpokenAt.current = Date.now();
+      batterySpokenAt.current = now;
       speak(rep, speechCfgRef.current);
-    }, 5000);
+    }, 500);
     return () => clearInterval(id);
   }, []);
   // iOS stays silent until speech has been started from a real gesture once.
@@ -640,7 +650,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.38.2</span>
+        <span className="ver">ground · v1.38.3</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>

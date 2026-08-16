@@ -257,8 +257,14 @@ export function ControlsPanel({
       <p className="note">
         {speechAvailable()
           ? <>On FPV you watch the picture, not the OSD — a beep says <i>that</i> something happened,
-            a voice says <i>what</i>. Spoken: <b>link lost / restored</b>, <b>failsafe</b>,
-            <b> armed / disarmed</b> and <b>low battery</b> (repeated every 30 s while it stays low).
+            a voice says <i>what</i>. Spoken: <b>failsafe</b>, <b>armed / disarmed</b>,
+            <b> low battery</b> (repeated every 30 s while it stays low), <b>turn back now</b> if the
+            return-home budget is on, plus two separate pairs for the link —
+            <b> lost / restored</b> (it exists) and <b>weak / good</b> (how well it works).
+            Both wait a couple of seconds first: the WebSocket reconnects a second after any drop, so
+            a WiFi roam would otherwise be announced as an outage, and a voice that cries wolf is one
+            you stop listening to. That costs nothing in safety — <b>failsafe is announced
+            immediately</b>, and the vehicle enters it 300 ms after the frames stop.
             Deliberately nothing else: a chatty voice gets muted, and then the ones that matter are
             gone too. Uses the browser's built-in voice — no network. On iOS it stays silent until
             you have tapped the page once.</>
