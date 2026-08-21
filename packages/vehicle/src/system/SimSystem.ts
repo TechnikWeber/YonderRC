@@ -336,7 +336,8 @@ export class SimSystem implements SystemManager {
           ].slice(0, this.simBehind)
         : [],
       impact,
-      tree: { clean: true, dirty: [] },
+      tree: { clean: true, dirty: [], generated: [] },
+      conflicts: [],
     };
     return { ...base, ...describeCheck(base) };
   }

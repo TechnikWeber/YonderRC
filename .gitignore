@@ -6,3 +6,6 @@ dist/
 .env.local
 packages/*/dist/
 bin/
+# Written by the running vehicle service, not source
+yonderrc-config.json
+packages/*/yonderrc-config.json

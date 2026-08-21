@@ -18,20 +18,42 @@
  * All of it is pure here; RealSystem runs the commands.
  */
 
+/**
+ * Files the vehicle writes into its own checkout, so they are modified on every
+ * running vehicle and must not be mistaken for someone's work in progress. They are
+ * regenerated at startup, so the update simply discards them.
+ *
+ * (`docker/go2rtc.yaml` is tracked *and* rewritten from the camera settings at every
+ * start — which is why a real vehicle could never fast-forward.)
+ */
+export const GENERATED_PATHS = ['docker/go2rtc.yaml'];
+
 export interface WorkingTree {
+  /** Nothing that blocks a fast-forward. */
   clean: boolean;
-  /** Locally modified files (up to a handful, for the message). */
+  /** Tracked modifications that DO block — someone's actual changes. */
   dirty: string[];
+  /** Tracked files the vehicle generates itself; discarded before pulling. */
+  generated: string[];
 }
 
-/** `git status --porcelain` — empty means clean. */
+/**
+ * `git status --porcelain`. Untracked files are ignored on purpose: they never stand
+ * in the way of a fast-forward, and a vehicle always has some (its own config, logs).
+ * Counting them was why an ordinary vehicle reported "local changes".
+ */
 export function parseWorkingTree(out: string): WorkingTree {
-  const dirty = (out ?? '')
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => l.replace(/^\S+\s+/, ''));
-  return { clean: dirty.length === 0, dirty: dirty.slice(0, 8) };
+  const dirty: string[] = [];
+  const generated: string[] = [];
+  for (const line of (out ?? '').split('\n')) {
+    if (!line.trim()) continue;
+    const code = line.slice(0, 2);
+    if (code === '??' || code === '!!') continue; // untracked / ignored — harmless
+    const path = line.slice(3).trim().split(' -> ').pop() ?? '';
+    if (!path) continue;
+    (GENERATED_PATHS.includes(path) ? generated : dirty).push(path);
+  }
+  return { clean: dirty.length === 0, dirty: dirty.slice(0, 8), generated };
 }
 
 export interface Commit {
@@ -148,10 +170,18 @@ export function isGitBranch(v: unknown): v is string {
  * platform binaries), build before the restart (so the service comes back with a
  * matching ground app rather than a half-updated one).
  */
-export function updateSteps(impact: UpdateImpact, src: UpdateSource = UPDATE_SOURCE_DEFAULT): UpdateStep[] {
-  const steps: UpdateStep[] = [
-    { label: 'Fetching and applying the update', cmd: 'git', args: ['pull', '--ff-only', src.source, src.branch] },
-  ];
+export function updateSteps(
+  impact: UpdateImpact,
+  src: UpdateSource = UPDATE_SOURCE_DEFAULT,
+  generated: string[] = [],
+): UpdateStep[] {
+  const steps: UpdateStep[] = [];
+  if (generated.length) {
+    // The vehicle wrote these itself and writes them again on the next start, so
+    // discarding them costs nothing — and without it the pull cannot fast-forward.
+    steps.push({ label: 'Discarding generated files', cmd: 'git', args: ['checkout', '--', ...generated] });
+  }
+  steps.push({ label: 'Fetching and applying the update', cmd: 'git', args: ['pull', '--ff-only', src.source, src.branch] });
   if (impact.deps) {
     steps.push({ label: 'Installing changed dependencies', cmd: 'npm', args: ['install', '--omit=optional', '--no-audit', '--no-fund'] });
     // Mirrors install.sh: --omit=optional also drops rollup's/esbuild's platform
@@ -232,6 +262,12 @@ export interface UpdateCheck {
   commits: Commit[];
   impact: UpdateImpact;
   tree: WorkingTree;
+  /**
+   * Locally modified files that the incoming update ALSO changes. Only these
+   * actually block a fast-forward — git does not care about the rest, and neither
+   * should we.
+   */
+  conflicts: string[];
   /** One sentence for the panel. */
   message: string;
   /** Extra warning worth reading before pressing Update. */
@@ -248,10 +284,10 @@ export function describeCheck(c: Omit<UpdateCheck, 'message' | 'note'>): { messa
     const f = explainGitFailure(c.detail ?? '');
     return { message: `Update check failed — ${f.cause}.`, note: f.fix };
   }
-  if (!c.tree.clean) {
+  if (c.conflicts.length) {
     return {
-      message: 'This vehicle has local changes, so it will not fast-forward.',
-      note: `Modified here: ${c.tree.dirty.join(', ')}. Sort that out over SSH — updating would either fail or throw those changes away.`,
+      message: 'This vehicle has local changes to files the update also changes, so it will not fast-forward.',
+      note: `Both sides changed: ${c.conflicts.join(', ')}. Sort that out over SSH — updating would either fail or throw those changes away.`,
     };
   }
   if (c.behind === 0) {
@@ -259,6 +295,10 @@ export function describeCheck(c: Omit<UpdateCheck, 'message' | 'note'>): { messa
   }
   const what = `${c.behind} commit${c.behind === 1 ? '' : 's'} behind${c.available ? ` — v${c.current ?? '?'} → v${c.available}` : ''}.`;
   const notes: string[] = [];
+  // Local changes that the update does not touch are worth mentioning, but they are
+  // not a reason to refuse — git would have fast-forwarded right past them.
+  if (c.tree.dirty.length) notes.push(`this vehicle has local changes to ${c.tree.dirty.join(', ')}, which this update does not touch — they stay as they are`);
+  if (c.tree.generated.length) notes.push(`${c.tree.generated.join(', ')} was regenerated by the vehicle and will be discarded (it is written again on the next start)`);
   if (c.impact.deps) notes.push('dependencies changed, so they are installed as part of the update (this needs data and a few minutes)');
   if (c.impact.ground) notes.push('the control app changed and is rebuilt (~1 minute on a Pi)');
   if (c.impact.provisioning)

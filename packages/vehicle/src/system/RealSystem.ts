@@ -841,7 +841,7 @@ export class RealSystem implements SystemManager {
       const tried = `\n\n(The vehicle ${g.note}, and git still refused. Please report this together with \`git --version\`.)`;
       const raw = errorExcerpt(fetched.out, 8) || 'git produced no output.';
       const detail = /dubious ownership/i.test(fetched.out) ? raw + tried : raw;
-      const base = { ok: false, current, available: null, behind: 0, commits: [], impact: classifyChanges([]), tree, detail };
+      const base = { ok: false, current, available: null, behind: 0, commits: [], impact: classifyChanges([]), tree, conflicts: [], detail };
       return { ...base, ...describeCheck(base) };
     }
 
@@ -858,6 +858,9 @@ export class RealSystem implements SystemManager {
       commits: commits.slice(0, 15),
       impact: classifyChanges(files),
       tree,
+      // Only an overlap between "changed here" and "changed there" stops a
+      // fast-forward. Refusing on any local change at all was stricter than git.
+      conflicts: tree.dirty.filter((f) => files.includes(f)),
     };
     return { ...base, ...describeCheck(base) };
   }
@@ -872,13 +875,13 @@ export class RealSystem implements SystemManager {
     if (!check.ok) {
       return { ok: false, message: check.message, output: [check.note, check.detail].filter(Boolean).join('\n\n'), steps: [] };
     }
-    if (!check.tree.clean) return { ok: false, message: check.message, output: check.note ?? '', steps: [] };
+    if (check.conflicts.length) return { ok: false, message: check.message, output: check.note ?? '', steps: [] };
     if (check.behind === 0) return { ok: true, message: check.message, output: '', steps: [] };
 
     const steps: { label: string; ok: boolean }[] = [];
     const logs: string[] = [];
     const { env } = gitEnv(REPO_ROOT);
-    for (const step of updateSteps(check.impact, src)) {
+    for (const step of updateSteps(check.impact, src, check.tree.generated)) {
       const args = step.cmd === 'git' ? gitArgs(REPO_ROOT, step.args) : step.args;
       const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000, env: step.cmd === 'git' ? env : undefined });
       steps.push({ label: step.label, ok: r.ok });

@@ -873,6 +873,18 @@ async function main() {
   ok('clean tree recognised', U.parseWorkingTree('').clean === true);
   const dirty = U.parseWorkingTree(' M packages/vehicle/src/index.ts\n?? scratch.txt');
   ok('local changes are listed', !dirty.clean && dirty.dirty.includes('packages/vehicle/src/index.ts'));
+  // Untracked files never block a fast-forward, and every running vehicle has some
+  // (its own config, logs) — counting them made an ordinary vehicle "dirty".
+  ok('untracked files do not block', dirty.dirty.every((f) => f !== 'scratch.txt'));
+  ok('a vehicle with only untracked files is clean', U.parseWorkingTree('?? yonderrc-config.json\n?? npm-debug.log').clean === true);
+  // docker/go2rtc.yaml is tracked AND rewritten by the vehicle at every start, so it
+  // is modified on every real vehicle — it must not be mistaken for someone's work.
+  const gen = U.parseWorkingTree(' M docker/go2rtc.yaml');
+  ok('a generated file does not block the update', gen.clean === true && gen.generated.includes('docker/go2rtc.yaml'));
+  ok('but it is still noticed', gen.dirty.length === 0 && U.GENERATED_PATHS.includes('docker/go2rtc.yaml'));
+  const genSteps = U.updateSteps({ deps: false, ground: false, provisioning: false, vehicle: true }, U.UPDATE_SOURCE_DEFAULT, ['docker/go2rtc.yaml']);
+  ok('generated files are discarded before pulling', genSteps[0].args.join(' ') === 'checkout -- docker/go2rtc.yaml' && genSteps[1].args[0] === 'pull');
+  ok('and nothing is discarded when nothing was generated', U.updateSteps({ deps: false, ground: false, provisioning: false, vehicle: true })[0].args[0] === 'pull');
   const commits = U.parseCommits('7aa5354 v1.42.0 — setup page fits a phone\n651e485 v1.41.2 — no more stale message');
   ok('commits parsed', commits.length === 2 && commits[0].hash === '7aa5354' && commits[0].subject.startsWith('v1.42.0'));
   ok('version read from a package.json blob', U.parseVersion('{"name":"x","version":"1.42.0"}') === '1.42.0');
@@ -917,16 +929,22 @@ async function main() {
   const stepsSmall = U.updateSteps({ deps: false, ground: false, provisioning: false, vehicle: true }).map((st) => st.cmd);
   ok('a vehicle-only update is just a pull', stepsSmall.length === 1 && stepsSmall[0] === 'git');
 
-  const clean = { clean: true, dirty: [] };
-  const upToDate = U.describeCheck({ ok: true, current: '1.42.0', available: '1.42.0', behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean });
+  const clean = { clean: true, dirty: [], generated: [] };
+  const noConflict: string[] = [];
+  const upToDate = U.describeCheck({ ok: true, current: '1.42.0', available: '1.42.0', behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean, conflicts: noConflict });
   ok('up to date says so', upToDate.message.startsWith('Up to date') && upToDate.note === null);
-  const behind = U.describeCheck({ ok: true, current: '1.41.0', available: '1.42.0', behind: 3, commits: [], impact: U.classifyChanges(['packages/ground/src/App.tsx']), tree: clean });
+  const behind = U.describeCheck({ ok: true, current: '1.41.0', available: '1.42.0', behind: 3, commits: [], impact: U.classifyChanges(['packages/ground/src/App.tsx']), tree: clean, conflicts: noConflict });
   ok('behind names the versions', behind.message.includes('3 commits behind') && behind.message.includes('v1.42.0'));
   ok('a ground change warns about the rebuild', (behind.note || '').includes('rebuilt'));
-  const prov = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges(['provisioning/install.sh']), tree: clean });
+  const prov = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges(['provisioning/install.sh']), tree: clean, conflicts: noConflict });
   ok('installer changes send you to the full installer', (prov.note || '').includes('install.sh'));
-  const dirtyCheck = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges([]), tree: { clean: false, dirty: ['a.ts'] } });
-  ok('local changes block the update, with the reason', dirtyCheck.message.includes('local changes') && (dirtyCheck.note || '').includes('a.ts'));
+  const dirtyCheck = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges([]), tree: { clean: false, dirty: ['a.ts'], generated: [] }, conflicts: ['a.ts'] });
+  ok('an overlapping local change blocks, with the reason', dirtyCheck.message.includes('local changes') && (dirtyCheck.note || '').includes('a.ts'));
+  // git fast-forwards past local changes it does not touch, so refusing there was
+  // stricter than git itself.
+  const untouched = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges(['README.md']), tree: { clean: false, dirty: ['notes.txt'], generated: [] }, conflicts: [] });
+  ok('a local change the update ignores does not block', !untouched.message.includes('will not fast-forward'));
+  ok('but it is mentioned', (untouched.note || '').includes('notes.txt'));
   // A failed check must repeat git's own reason. Reporting "needs internet" for a
   // permission problem sent a vehicle WITH internet on a wild goose chase.
   const dubious = U.explainGitFailure("fatal: detected dubious ownership in repository at '/opt/yonderrc'");
@@ -941,7 +959,7 @@ async function main() {
   ok('real "couldn\'t find remote ref" wording', U.explainGitFailure('fatal: couldn\'t find remote ref main').cause.includes('does not exist'));
   ok('credential prompts are explained', U.explainGitFailure('fatal: Authentication failed for ...').fix.includes('remote set-url'));
   const failed = U.describeCheck({
-    ok: false, current: '1', available: null, behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean,
+    ok: false, current: '1', available: null, behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean, conflicts: [],
     detail: "fatal: detected dubious ownership in repository at '/opt/yonderrc'",
   });
   ok('the check surfaces the real cause', failed.message.includes('different user'), failed.message);

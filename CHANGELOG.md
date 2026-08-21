@@ -3,6 +3,41 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.44.2
+**English**
+- **Fixed: every real vehicle reported "local changes".** Two reasons, both ours.
+  `docker/go2rtc.yaml` is **tracked in git and rewritten by the vehicle** from the camera
+  settings at every start — so the checkout is modified on any vehicle that has ever run.
+  And the check counted **untracked** files as changes, which they are not: a running
+  vehicle always has some (its own config, logs), and they never stand in the way of a
+  fast-forward.
+- Untracked files are ignored now, and files the vehicle generates itself are recognised
+  as such and **discarded before the pull** — they are written again on the next start,
+  so nothing is lost. `yonderrc-config.json` is git-ignored too, so a human `git status`
+  stays readable.
+- **The check is no longer stricter than git.** It used to refuse on any local change;
+  git only refuses when the incoming update touches the *same* file. Measured on a real
+  clone: a modified `docker/go2rtc.yaml` did not stop `git pull --ff-only` at all. So the
+  update now blocks on that overlap alone, and merely mentions local changes it does not
+  affect.
+
+**Deutsch**
+- **Behoben: jedes echte Fahrzeug meldete „local changes".** Zwei Gründe, beide bei uns.
+  `docker/go2rtc.yaml` liegt **in git und wird vom Fahrzeug** bei jedem Start aus den
+  Kameraeinstellungen neu geschrieben — der Checkout ist damit auf jedem Fahrzeug
+  verändert, das jemals gelaufen ist. Und die Prüfung zählte **unversionierte** Dateien
+  als Änderungen, was sie nicht sind: ein laufendes Fahrzeug hat immer welche (eigene
+  Konfiguration, Logs), und sie stehen einem Fast-Forward nie im Weg.
+- Unversionierte Dateien werden jetzt ignoriert, und selbst erzeugte Dateien werden als
+  solche erkannt und **vor dem Pull verworfen** — sie werden beim nächsten Start ohnehin
+  neu geschrieben, es geht also nichts verloren. `yonderrc-config.json` steht zusätzlich
+  in `.gitignore`, damit auch ein menschliches `git status` lesbar bleibt.
+- **Die Prüfung ist nicht mehr strenger als git.** Sie verweigerte bei jeder lokalen
+  Änderung; git verweigert nur, wenn das Update *dieselbe* Datei anfasst. An einem echten
+  Klon nachgemessen: ein geändertes `docker/go2rtc.yaml` hielt `git pull --ff-only`
+  überhaupt nicht auf. Blockiert wird jetzt genau bei dieser Überschneidung, alles andere
+  wird nur erwähnt.
+
 ## v1.44.1
 **English**
 - **Third attempt at git's ownership block, and this time with the actual path.** The
