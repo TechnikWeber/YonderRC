@@ -28,6 +28,7 @@ import { type HilinkStatus } from './hilink.js';
 export class SimSystem implements SystemManager {
   readonly kind = 'sim';
   private lte: LteStatus = {
+    kind: 'modemmanager',
     present: true,
     connected: false,
     operator: 'SimTel',
@@ -91,7 +92,7 @@ export class SimSystem implements SystemManager {
   setHilinkHost(_host: string): void {}
 
   /** A plausible stick, so the panel and the OSD label can be seen without hardware. */
-  async hilinkStatus(): Promise<HilinkStatus> {
+  async hilinkStatus(_opts: { force?: boolean } = {}): Promise<HilinkStatus> {
     return {
       present: true,
       iface: 'eth1',

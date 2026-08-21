@@ -435,12 +435,19 @@ shows the LTE percentage** just as it does for a ModemManager modem.
   by interface name. A vehicle with a FritzBox on `eth0` and the stick on `eth1` — or the
   other way round after a reboot or a different USB port — can therefore never confuse
   the two.
-- **APN, SIM PIN and network mode live in the stick**, not in YonderRC. Set a port under
-  *Expose its web UI on port* and the vehicle **passes the stick's own configuration page
-  through**: open `http://<vehicle>:<port>/` from the hotspot, the LAN or the VPN — no
-  keyboard on the Pi and no moving the stick to a laptop. With an API secret configured,
-  open it once as `…:<port>/?secret=YOUR_SECRET`; the vehicle remembers it in a cookie.
-  Empty (the default) means the stick's admin page is **not** exposed at all.
+- **APN, SIM PIN and network mode live in the stick**, not in YonderRC. The vehicle
+  therefore **passes the stick's own configuration page through on port 8081 by
+  default**: open `http://<vehicle>:8081/` (or the **Open the stick's UI ↗** button in
+  the panel) from the hotspot, the LAN or the VPN — no keyboard on the Pi and no moving
+  the stick to a laptop. With an API secret configured, open it once as
+  `…:8081/?secret=YOUR_SECRET`; the vehicle remembers it in a cookie. Clearing the port
+  field switches the proxy off entirely.
+  > Note what that means: on an **open** onboarding hotspot, anyone who joins can reach
+  > the stick's admin page. Set a hotspot password or an API secret before the vehicle
+  > leaves the bench — the same rule that already applies to the setup UI itself.
+- Opening a raw API path in a browser (e.g. `…:8081/api/monitoring/status`) returns
+  `125002`: the stick wants a session, which its own UI establishes. That is expected —
+  YonderRC's own reader fetches a session token first.
 - A **2G/3G-only stick** (E3131/E353, USB ID `12d1:14db`) is flagged in the panel:
   several countries — Germany among them — switched 3G off years ago, so such a stick
   gets no data connection there at all.

@@ -443,13 +443,20 @@ LTE-Prozentzahl** genau wie bei einem ModemManager-Modem.
   über den Interface-Namen. Ein Fahrzeug mit FritzBox an `eth0` und Stick an `eth1` — oder
   nach einem Reboot bzw. anderem USB-Port umgekehrt — kann die beiden damit nie
   verwechseln.
-- **APN, SIM-PIN und Netzmodus liegen im Stick**, nicht in YonderRC. Trägst du unter
-  *Expose its web UI on port* einen Port ein, **reicht das Fahrzeug die
-  Konfigurationsseite des Sticks durch**: `http://<Fahrzeug>:<Port>/` vom Hotspot, aus dem
-  LAN oder über das VPN öffnen — keine Tastatur am Pi, kein Umstecken an den Laptop. Mit
-  gesetztem API-Secret einmalig als `…:<Port>/?secret=DEIN_SECRET` öffnen, das Fahrzeug
-  merkt es sich dann in einem Cookie. Leer (Standard) heißt: die Admin-Seite des Sticks
-  ist **nicht** erreichbar.
+- **APN, SIM-PIN und Netzmodus liegen im Stick**, nicht in YonderRC. Das Fahrzeug
+  **reicht die Konfigurationsseite des Sticks deshalb standardmäßig auf Port 8081
+  durch**: `http://<Fahrzeug>:8081/` (oder der Knopf **Open the stick's UI ↗** im Panel)
+  vom Hotspot, aus dem LAN oder über das VPN — keine Tastatur am Pi, kein Umstecken an
+  den Laptop. Mit gesetztem API-Secret einmalig als `…:8081/?secret=DEIN_SECRET` öffnen,
+  das Fahrzeug merkt es sich dann in einem Cookie. Leerst du das Portfeld, ist der Proxy
+  ganz aus.
+  > Was das bedeutet: An einem **offenen** Onboarding-Hotspot erreicht jeder, der sich
+  > verbindet, auch die Admin-Seite des Sticks. Setz ein Hotspot-Passwort oder ein
+  > API-Secret, bevor das Fahrzeug die Werkbank verlässt — dieselbe Regel gilt ohnehin
+  > schon für die Setup-Oberfläche.
+- Rufst du einen API-Pfad direkt im Browser auf (z. B. `…:8081/api/monitoring/status`),
+  kommt `125002`: der Stick will eine Session, die seine eigene Oberfläche aufbaut. Das
+  ist erwartet — der Leser von YonderRC holt sich vorher ein Session-Token.
 - Ein **reiner 2G/3G-Stick** (E3131/E353, USB-ID `12d1:14db`) wird im Panel markiert:
   Mehrere Länder — Deutschland eingeschlossen — haben 3G vor Jahren abgeschaltet, ein
   solcher Stick bekommt dort gar keine Datenverbindung mehr.

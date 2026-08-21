@@ -73,7 +73,11 @@ export interface HilinkSettings {
   proxyPort: number | null;
 }
 
-export const HILINK_SETTINGS_DEFAULT: HilinkSettings = { host: HILINK_DEFAULT_HOST, proxyPort: null };
+// The proxy is ON by default: a HiLink stick that can't be configured is a stick you
+// have to unplug and carry to a laptop, and every other part of this vehicle is
+// browser-reachable. It answers 401 when an API secret is set — see hilinkProxy.ts.
+export const HILINK_PROXY_PORT = 8081;
+export const HILINK_SETTINGS_DEFAULT: HilinkSettings = { host: HILINK_DEFAULT_HOST, proxyPort: HILINK_PROXY_PORT };
 
 /** The subset the setup UI can edit and persist. */
 export interface PersistentConfig {

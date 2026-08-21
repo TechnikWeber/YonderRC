@@ -17,6 +17,8 @@
  *    flow can be exercised with recorded XML instead of hardware.
  */
 
+import type { LteStatus } from './SystemManager.js';
+
 export const HILINK_DEFAULT_HOST = '192.168.8.1';
 
 /** Only a literal IPv4 address is accepted — this value ends up as a proxy target. */
@@ -234,9 +236,37 @@ export async function readHilink(get: HilinkGet, iface: string | null): Promise<
   };
 }
 
-/** Label for the OSD link block, e.g. "LTE 72% · Telekom.de · 4G (LTE)". */
+/**
+ * Present a HiLink stick as the vehicle's LTE status. Without this the status panel
+ * says "no modem" while the vehicle is happily online over that very stick — the APN
+ * stays null on purpose, because it lives inside the stick and we cannot set it.
+ */
+export function hilinkAsLte(h: HilinkStatus): LteStatus {
+  return {
+    present: true,
+    connected: h.connected,
+    operator: h.operator,
+    signal: h.signalPercent,
+    apn: null,
+    iface: h.iface,
+    ip: h.wanIp,
+    state: h.state,
+    modemModel: h.model ? `${h.model} (HiLink)` : 'HiLink stick',
+    pinRequired: /PIN/i.test(h.state),
+    kind: 'hilink',
+  };
+}
+
+/**
+ * Label for the OSD link block. "LTE 72%" on 4G — repeating "4G (LTE)" after it adds
+ * nothing — but a **2G/3G fallback is spelled out**, because that is the moment video
+ * stops working and the pilot needs to know why.
+ */
 export function hilinkOsdLabel(h: HilinkStatus): string {
-  const bits = [h.signalPercent != null ? `LTE ${h.signalPercent}%` : 'LTE'];
-  if (h.networkType) bits.push(h.networkType);
-  return bits.join(' · ');
+  const pct = h.signalPercent != null ? ` ${h.signalPercent}%` : '';
+  if (!h.networkType) return `LTE${pct}`;
+  if (h.networkType.startsWith('4G') || h.networkType.startsWith('5G')) {
+    return `${h.networkType.startsWith('5G') ? '5G' : 'LTE'}${pct}`;
+  }
+  return `${h.networkType}${pct}`;
 }

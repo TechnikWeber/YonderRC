@@ -82,6 +82,11 @@ export interface LteStatus {
   modemModel?: string | null;
   /** SIM PIN needed before it can register. */
   pinRequired?: boolean;
+  /**
+   * Where this reading comes from. A HiLink stick is not controllable through the LTE
+   * panel (APN/PIN live inside the stick), so the UI has to be able to tell them apart.
+   */
+  kind?: 'modemmanager' | 'hilink';
 }
 
 /** LTE dial settings. apn is the minimum; the rest cover non-plug-and-play sticks. */
@@ -270,7 +275,7 @@ export interface SystemManager {
    * Huawei HiLink stick (its own router, invisible to ModemManager). The interface is
    * resolved through the routing table, so a LAN can never be mistaken for the stick.
    */
-  hilinkStatus(): Promise<HilinkStatus>;
+  hilinkStatus(opts?: { force?: boolean }): Promise<HilinkStatus>;
   /** Where the stick lives (IPv4); comes from the persisted config. */
   setHilinkHost(host: string): void;
   /** Radio state: blocked? which regulatory country? what would we suggest? */

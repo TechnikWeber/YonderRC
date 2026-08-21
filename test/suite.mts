@@ -915,7 +915,19 @@ async function main() {
   ok('stick read: 4G and signal', hi.networkType === '4G (LTE)' && hi.signalPercent === 72 && hi.rsrp === -93);
   ok('stick read: interface passed through', hi.iface === 'eth1');
   ok('session token is sent with the API calls', seen.slice(1).every((c) => c.headers.cookie === 'SessionID=abc123' && c.headers.__RequestVerificationToken === 'tok987'), JSON.stringify(seen[1]?.headers));
-  ok('osd label carries percent and type', H.hilinkOsdLabel(hi) === 'LTE 72% · 4G (LTE)');
+  // "LTE 72% · 4G (LTE)" says LTE twice; a 2G/3G fallback however must be visible,
+  // because that is the moment video stops working.
+  ok('osd label on 4G is just LTE + percent', H.hilinkOsdLabel(hi) === 'LTE 72%');
+  ok('osd label spells out a 3G fallback', H.hilinkOsdLabel({ ...hi, networkType: '3G (HSPA+)' }) === '3G (HSPA+) 72%');
+  ok('osd label survives a missing percent', H.hilinkOsdLabel({ ...hi, signalPercent: null }) === 'LTE');
+
+  // The status panel said "no modem" while the vehicle was online through the stick.
+  const asLte = H.hilinkAsLte(hi);
+  ok('stick fills the LTE status row', asLte.present && asLte.connected && asLte.kind === 'hilink');
+  ok('stick model is marked as HiLink', (asLte.modemModel || '').includes('HiLink'));
+  ok('stick carries operator, signal and WAN IP', asLte.operator === 'Telekom.de' && asLte.signal === 72 && asLte.ip === '10.64.12.34');
+  ok('APN stays null (it lives in the stick)', asLte.apn === null);
+  ok('a PIN-locked stick is flagged', H.hilinkAsLte({ ...hi, state: 'SIM PIN required', connected: false }).pinRequired === true);
 
   const dead = await H.readHilink(async () => ({ ok: false, status: 0, text: '', cookie: null }), 'eth1');
   ok('unreachable stick is not "present"', !dead.present && (dead.message || '').includes('did not answer'));

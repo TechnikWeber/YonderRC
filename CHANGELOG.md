@@ -3,6 +3,56 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.40.1
+**English**
+- **Fixed: System status still said "no modem" while the vehicle was online through a
+  HiLink stick.** The status row only ever asked ModemManager. It now falls back to the
+  stick, so model, state, operator, signal and WAN IP appear there — marked as
+  `(HiLink)`, and the LTE panel says outright that its fields do nothing for such a
+  stick, because APN and PIN live inside it.
+- **The stick's web UI is now proxied by default, on port 8081.** A stick you cannot
+  configure is a stick you have to unplug and carry to a laptop, and everything else on
+  this vehicle is reachable from a browser. The panel's **Open the stick's UI ↗** button
+  therefore always has somewhere to go. Clearing the port field still switches it off.
+  *The trade-off, stated plainly:* on an **open** onboarding hotspot anyone who joins can
+  reach that admin page — set a hotspot password or an API secret before the vehicle
+  leaves the bench, which is the same rule the setup UI itself already follows.
+- **The OSD label stopped saying LTE twice.** It was "LTE 72% · 4G (LTE)"; it is "LTE 72%"
+  now — but a **2G/3G fallback is spelled out** ("3G (HSPA+) 41%"), because that is the
+  moment video stops working and the pilot needs the reason, not a percentage.
+- The stick is read at most every 8 seconds and cached: the setup page polls status every
+  3 s and the OSD link every 5 s, and each read is five HTTP requests to the stick. The
+  panel's **Refresh** forces a fresh read.
+- Opening a raw API path in a browser (`…:8081/api/monitoring/status`) answers `125002` —
+  the stick wants a session, which its own UI establishes and which YonderRC's reader
+  fetches first. Expected, and now documented.
+
+**Deutsch**
+- **Behoben: System status meldete weiter „no modem", während das Fahrzeug über den
+  HiLink-Stick online war.** Die Statuszeile fragte ausschließlich ModemManager. Sie
+  greift jetzt auf den Stick zurück — Modell, Zustand, Betreiber, Signal und WAN-IP
+  stehen dort, gekennzeichnet mit `(HiLink)`, und das LTE-Panel sagt ausdrücklich, dass
+  seine Felder für so einen Stick wirkungslos sind, weil APN und PIN in ihm selbst
+  liegen.
+- **Die Weboberfläche des Sticks wird jetzt standardmäßig durchgereicht, auf Port 8081.**
+  Ein Stick, den man nicht konfigurieren kann, ist ein Stick, den man abziehen und zum
+  Laptop tragen muss — und alles andere an diesem Fahrzeug ist per Browser erreichbar.
+  Der Knopf **Open the stick's UI ↗** hat damit immer ein Ziel. Leeres Portfeld schaltet
+  es weiterhin ab. *Der Nachteil, klar gesagt:* An einem **offenen** Onboarding-Hotspot
+  erreicht jeder Verbundene diese Admin-Seite — also Hotspot-Passwort oder API-Secret
+  setzen, bevor das Fahrzeug die Werkbank verlässt; für die Setup-Oberfläche gilt
+  dasselbe ohnehin schon.
+- **Das OSD sagt nicht mehr zweimal LTE.** Aus „LTE 72% · 4G (LTE)" wurde „LTE 72%" — ein
+  **Rückfall auf 2G/3G wird aber ausgeschrieben** („3G (HSPA+) 41%"), denn genau dann
+  hört das Video auf zu funktionieren, und der Pilot braucht den Grund, nicht eine Zahl.
+- Der Stick wird höchstens alle 8 Sekunden gelesen und zwischengespeichert: die
+  Setup-Seite pollt den Status alle 3 s, das OSD den Link alle 5 s, und ein Lesevorgang
+  sind fünf HTTP-Anfragen an den Stick. **Refresh** im Panel erzwingt eine frische
+  Abfrage.
+- Ein API-Pfad direkt im Browser (`…:8081/api/monitoring/status`) antwortet mit `125002`:
+  der Stick will eine Session, die seine eigene Oberfläche aufbaut und die der Leser von
+  YonderRC vorher selbst holt. Erwartet — und jetzt dokumentiert.
+
 ## v1.40.0
 **English**
 - **HiLink LTE sticks are supported properly.** A Huawei E3372h-320 (and friends) is not a

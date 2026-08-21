@@ -48,6 +48,7 @@ import {
   readHilink,
   parseRouteDev,
   isIpv4,
+  hilinkAsLte,
   hilinkOsdLabel,
   HILINK_ABSENT,
   HILINK_DEFAULT_HOST,
@@ -128,12 +129,22 @@ export class RealSystem implements SystemManager {
   readonly kind = 'real';
 
   async status(): Promise<SystemStatus> {
-    const [ts, lte, wifi] = await Promise.all([
+    const [ts, mm, wifi] = await Promise.all([
       this.tailscaleStatus(),
       this.lteStatus(),
       this.wifiStatus(),
     ]);
+    // No ModemManager modem doesn't mean no LTE: a HiLink stick dials on its own and
+    // is invisible to mmcli. Reporting "no modem" next to a working uplink is just
+    // wrong, so the stick fills the LTE row when there is no real modem.
+    const lte = mm.present ? { ...mm, kind: 'modemmanager' as const } : await this.lteFromHilink(mm);
     return { kind: this.kind, hostname: hostname(), tailscale: ts, lte, wifi };
+  }
+
+  /** Map a HiLink reading onto the LTE row, or keep the empty ModemManager one. */
+  private async lteFromHilink(fallback: LteStatus): Promise<LteStatus> {
+    const hi = await this.hilinkStatus();
+    return hi.present ? hilinkAsLte(hi) : fallback;
   }
 
   private async tailscaleStatus(): Promise<TailscaleStatus> {
@@ -240,6 +251,7 @@ export class RealSystem implements SystemManager {
 
   setHilinkHost(host: string): void {
     if (isIpv4(host)) this.hilinkHost = host;
+    this.hilinkCache = null;
   }
 
   /**
@@ -248,7 +260,22 @@ export class RealSystem implements SystemManager {
    * stick on eth1 must not have the two mixed up, and the names swap around across
    * reboots and USB ports.
    */
-  async hilinkStatus(): Promise<HilinkStatus> {
+  private hilinkCache: { at: number; value: HilinkStatus } | null = null;
+
+  /**
+   * Cached for a few seconds: the setup page polls status every 3 s and the OSD link
+   * every 5 s, and each read is five HTTP requests to the stick. `force` is for the
+   * Refresh button, where the operator is waiting for a fresh answer.
+   */
+  async hilinkStatus(opts: { force?: boolean } = {}): Promise<HilinkStatus> {
+    const cached = this.hilinkCache;
+    if (!opts.force && cached && Date.now() - cached.at < 8000) return cached.value;
+    const value = await this.readHilinkNow();
+    this.hilinkCache = { at: Date.now(), value };
+    return value;
+  }
+
+  private async readHilinkNow(): Promise<HilinkStatus> {
     const host = this.hilinkHost;
     if (!isIpv4(host)) return { ...HILINK_ABSENT, message: `"${host}" is not an IPv4 address.` };
 

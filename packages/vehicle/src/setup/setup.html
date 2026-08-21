@@ -82,6 +82,7 @@
 
       <section class="panel">
         <div class="eyebrow">LTE</div>
+        <div class="msg" id="lte-hilink-note" style="display:none;color:var(--idle)"></div>
         <label>APN<input id="apn" placeholder="internet" /></label>
         <div class="grid2">
           <label>SIM PIN (optional)<input id="ltePin" type="password" autocomplete="off" placeholder="leave empty if none" /></label>
@@ -457,6 +458,14 @@
 
       function renderStatus(s) {
         renderGroundLink(!!s.groundApp);
+        // A HiLink stick fills the LTE row but cannot be steered from this panel.
+        const hl = $('lte-hilink-note');
+        if (s.lte && s.lte.kind === 'hilink') {
+          hl.style.display = 'block';
+          hl.innerHTML = 'This vehicle\'s uplink is a <b>HiLink stick</b> — it dials itself, so the fields here do nothing for it. APN, SIM PIN and network mode are set in the stick; see <b>LTE stick (HiLink)</b> below.';
+        } else {
+          hl.style.display = 'none';
+        }
         const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
         const ts = s.tailscale, lte = s.lte, wifi = s.wifi;
         $('status').innerHTML =

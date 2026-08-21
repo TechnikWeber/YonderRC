@@ -276,7 +276,8 @@ export async function handleSetup(
   // --- WiFi: join a network from the onboarding hotspot, and the hotspot itself ---
   // ---- HiLink LTE stick (Huawei E3372h-320 & friends) ----
   if (url === '/api/hilink' && method === 'GET') {
-    json(res, 200, { status: await ctx.system.hilinkStatus(), config: ctx.config.hilink });
+    // The panel's Refresh button means "ask the stick now", not "show me the cache".
+    json(res, 200, { status: await ctx.system.hilinkStatus({ force: true }), config: ctx.config.hilink });
     return true;
   }
 
