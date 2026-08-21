@@ -868,6 +868,28 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
+  // ---- Tailscale status: the pending login URL ----
+  // A real Pi sat at "down · NeedsLogin" with nothing to click, because the login URL
+  // was scraped from `tailscale up --timeout=1s` (too early) and the status parser
+  // hardcoded loginUrl to null. The daemon publishes it as AuthURL.
+  const { parseTailscaleStatus } = await import('../packages/vehicle/src/system/tailscale');
+  const needsLogin = parseTailscaleStatus(JSON.stringify({
+    BackendState: 'NeedsLogin',
+    AuthURL: 'https://login.tailscale.com/a/1234deadbeef',
+    Self: { TailscaleIPs: [] },
+  }));
+  ok('pending login url is surfaced', needsLogin.authUrl === 'https://login.tailscale.com/a/1234deadbeef');
+  ok('needs-login is not running', !needsLogin.running && needsLogin.backendState === 'NeedsLogin');
+  const tsUp = parseTailscaleStatus(JSON.stringify({
+    BackendState: 'Running',
+    Self: { TailscaleIPs: ['100.101.102.103', 'fd7a:115c:a1e0::1'] },
+  }));
+  ok('running state detected', tsUp.running && tsUp.backendState === 'Running');
+  ok('tailnet IPv4 picked from the status', tsUp.ip === '100.101.102.103');
+  ok('no pending login when authorised', tsUp.authUrl === null);
+  ok('empty AuthURL counts as none', parseTailscaleStatus(JSON.stringify({ BackendState: 'Stopped', AuthURL: '' })).authUrl === null);
+  ok('garbage status degrades quietly', parseTailscaleStatus('not json').backendState === 'Unknown');
+
   // ---- HiLink LTE stick (Huawei E3372h-320 & friends) ----
   const H = await import('../packages/vehicle/src/system/hilink');
   ok('ipv4 accepted', H.isIpv4('192.168.8.1'));

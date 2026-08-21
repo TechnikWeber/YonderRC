@@ -3,6 +3,46 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.41.1
+**English**
+- **Fixed: "Bring up" for Tailscale gave you no login link.** The vehicle sat at
+  `down · NeedsLogin` with nothing to click. Two causes, both ours: the link was scraped
+  from `tailscale up --timeout=1s`, which returns *before* tailscaled has reached the
+  control plane and therefore before the URL exists — and the status parser then
+  hardcoded `loginUrl: null`, so the pending login could never surface either.
+- **The login link now comes from the daemon itself** (`AuthURL` in
+  `tailscale status --json`). *Bring up* starts the login detached and waits up to 14 s
+  for the link; the status keeps showing it for as long as the login is pending, so
+  reloading the setup page no longer loses it. Pressing the button again while a login is
+  already waiting hands back the same link instead of starting a second `tailscale up`.
+- If no link appears within that window, the vehicle now says so and names the fallback
+  (`sudo tailscale up --hostname=yonderrc` over SSH) instead of claiming it is "starting".
+- The tailnet IPv4 is read from the same status document, so the common case needs one
+  shell call less.
+- Documented properly in HARDWARE §4.2, including the step everybody forgets: **disable
+  key expiry** for the vehicle, or it silently drops out of the tailnet after ~180 days.
+
+**Deutsch**
+- **Behoben: „Bring up" für Tailscale lieferte keinen Login-Link.** Das Fahrzeug stand auf
+  `down · NeedsLogin`, und es gab nichts zum Anklicken. Zwei Ursachen, beide bei uns: Der
+  Link wurde aus `tailscale up --timeout=1s` gefischt, das *vor* dem Kontakt zur
+  Control-Plane zurückkehrt — also bevor die URL überhaupt existiert — und der
+  Status-Parser setzte `loginUrl` anschließend hart auf `null`, sodass ein ausstehender
+  Login auch dort nie auftauchen konnte.
+- **Der Login-Link kommt jetzt vom Daemon selbst** (`AuthURL` aus
+  `tailscale status --json`). *Bring up* startet den Login losgelöst und wartet bis zu 14 s
+  auf den Link; der Status zeigt ihn weiter an, solange der Login aussteht — ein Neuladen
+  der Setup-Seite verliert ihn also nicht mehr. Ein erneuter Druck auf den Knopf gibt
+  denselben Link zurück, statt ein zweites `tailscale up` zu starten.
+- Kommt in diesem Zeitfenster kein Link, sagt das Fahrzeug das jetzt und nennt den
+  Ausweichweg (`sudo tailscale up --hostname=yonderrc` per SSH), statt „Tailscale is
+  starting" zu behaupten.
+- Die Tailnet-IPv4 wird aus demselben Statusdokument gelesen, der Normalfall braucht damit
+  einen Shell-Aufruf weniger.
+- In HARDWARE §4.2 sauber dokumentiert, inklusive des Schritts, den alle vergessen:
+  **Key-Ablauf abschalten**, sonst fällt das Fahrzeug nach ca. 180 Tagen stillschweigend
+  aus dem Tailnet.
+
 ## v1.41.0
 **English**
 - **The onboarding hotspot now defaults to `always`.** It comes up whenever the WiFi radio

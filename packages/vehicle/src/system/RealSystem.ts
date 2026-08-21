@@ -1,4 +1,4 @@
-import { exec, execFile } from 'node:child_process';
+import { exec, execFile, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
@@ -44,6 +44,7 @@ import {
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c } from './detect.js';
+import { parseTailscaleStatus } from './tailscale.js';
 import {
   readHilink,
   parseRouteDev,
@@ -152,25 +153,21 @@ export class RealSystem implements SystemManager {
     if (!ver.ok) {
       return { installed: false, running: false, ip: null, loginUrl: null, backendState: 'NotInstalled' };
     }
-    const json = await sh('tailscale status --json');
-    let backendState = 'Unknown';
-    let running = false;
-    if (json.ok) {
-      try {
-        const s = JSON.parse(json.out) as { BackendState?: string };
-        backendState = s.BackendState ?? 'Unknown';
-        running = backendState === 'Running';
-      } catch {
-        /* ignore */
-      }
+    const st = parseTailscaleStatus((await sh('tailscale status --json')).out);
+    // Fall back to the CLI only when the status had no address of its own.
+    let ip = st.ip;
+    if (!ip) {
+      const r = await sh('tailscale ip -4');
+      ip = r.ok ? r.out.split('\n')[0] || null : null;
     }
-    const ip = await sh('tailscale ip -4');
     return {
       installed: true,
-      running,
-      ip: ip.ok ? ip.out.split('\n')[0] || null : null,
-      loginUrl: null,
-      backendState,
+      running: st.running,
+      ip,
+      // A pending login used to be dropped here, so the setup page showed
+      // "NeedsLogin" with no way to act on it.
+      loginUrl: st.authUrl,
+      backendState: st.backendState,
     };
   }
 
@@ -520,13 +517,32 @@ export class RealSystem implements SystemManager {
         ? { ok: true, message: 'Tailscale up.' }
         : { ok: false, message: r.out };
     }
-    // Interactive: parse the login URL tailscale prints. Run detached so it
-    // doesn't block waiting for auth.
-    const r = await sh('tailscale up --hostname=yonderrc --timeout=1s 2>&1 || true');
-    const url = r.out.match(/https:\/\/login\.tailscale\.com\/\S+/)?.[0] ?? null;
-    return url
-      ? { ok: true, message: 'Open the login URL to finish.', loginUrl: url }
-      : { ok: true, message: 'Tailscale is starting; check status.' };
+    // Interactive login. `tailscale up` blocks until the device is authorised, and
+    // the URL appears only after tailscaled has reached the control plane — asking
+    // for it with --timeout=1s returned before that every single time. So: start it
+    // detached and read the URL from the daemon's own status instead.
+    const before = parseTailscaleStatus((await sh('tailscale status --json')).out);
+    if (before.authUrl) {
+      // A login is already pending — hand back that link rather than spawning a
+      // second `tailscale up` and leaving the first one behind.
+      return { ok: true, message: 'A login is already waiting — open this link:', loginUrl: before.authUrl };
+    }
+    if (before.running) return { ok: true, message: 'Tailscale is already up.' };
+
+    spawn('tailscale', ['up', '--hostname=yonderrc'], { detached: true, stdio: 'ignore' }).unref();
+
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 700));
+      const st = parseTailscaleStatus((await sh('tailscale status --json')).out);
+      if (st.authUrl) return { ok: true, message: 'Open this link to authorise the vehicle:', loginUrl: st.authUrl };
+      if (st.running) return { ok: true, message: 'Tailscale is up.' };
+    }
+    return {
+      ok: false,
+      message:
+        'Tailscale produced no login link within 14s. Check that the vehicle has internet, ' +
+        'then try again — or run `sudo tailscale up --hostname=yonderrc` over SSH, which prints the link directly.',
+    };
   }
 
   async tailscaleDown(): Promise<ActionResult> {

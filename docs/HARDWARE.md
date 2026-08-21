@@ -454,11 +454,21 @@ shows the LTE percentage** just as it does for a ModemManager modem.
 
 ### 4.2 Tailscale
 
-1. In the setup under **Tailscale**, click **Bring up** — without an auth key you get a
-   login URL; open it and approve the device in your tailnet. (Or create an auth key
-   ahead of time and paste it for non-interactive setup.)
-2. The vehicle's **Tailscale IP** then appears at the top of the setup status
+1. **Setup › Remote access** → Method **Tailscale** → **Bring up**, with the auth-key
+   field left empty. The vehicle starts a login and shows the link within a few seconds
+   (it waits up to 14 s for it); open the link, approve the device — it joins as
+   `yonderrc`. The link also stays in the status while the login is pending, so a page
+   reload does not lose it.
+2. Prefer no clicking? Create an **auth key** in the admin console (*Settings › Keys*),
+   paste it into the field and press **Bring up** — that path is non-interactive.
+3. The vehicle's **Tailscale IP** then appears at the top of the setup status
    (e.g. `100.x.y.z`).
+4. **Disable key expiry** for the vehicle in the admin console (*Machines › yonderrc ›
+   Disable key expiry*), or it drops out of the tailnet after ~180 days — reliably while
+   you are standing in a field with no keyboard.
+
+> If no link appears at all, the vehicle has no internet, or Tailscale is wedged. Over
+> SSH, `sudo tailscale up --hostname=yonderrc` prints the link directly.
 
 ### 4.3 Connect from the field
 
