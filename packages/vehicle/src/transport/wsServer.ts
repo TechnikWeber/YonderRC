@@ -12,6 +12,7 @@ import type { VehicleConfig } from '../config.js';
 import { handleClientMessage } from './handleMessage.js';
 import { WebRtcControl } from './WebRtcControl.js';
 import { handleSetup, type SetupContext } from './setupRouter.js';
+import { startHilinkProxy, type HilinkProxyHandle } from './hilinkProxy.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
@@ -32,6 +33,24 @@ export function startWsServer(
   telemetry: TelemetryService,
   gps: GpsService,
 ) {
+  // The HiLink stick's own web UI, proxied through the vehicle so it can be configured
+  // from the AP/LAN instead of a keyboard on the Pi. Off unless a port is configured.
+  let hilinkProxy: HilinkProxyHandle | null = null;
+  const applyHilink = () => {
+    hilinkProxy?.close();
+    hilinkProxy = null;
+    system.setHilinkHost(config.hilink.host);
+    if (config.hilink.proxyPort) {
+      hilinkProxy = startHilinkProxy({
+        port: config.hilink.proxyPort,
+        host: config.hilink.host,
+        secret: config.apiSecret,
+        log: (m) => console.log(m),
+      });
+    }
+  };
+  applyHilink();
+
   const setupCtx: SetupContext = {
     config,
     system,
@@ -39,6 +58,7 @@ export function startWsServer(
     gps,
     core,
     applyCameras: (cams) => applyCameras(cams, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder),
+    applyHilink,
     onConfigSaved: (patch) => console.log('[setup] config saved:', Object.keys(patch).join(', ')),
   };
   const http = createServer((req, res) => {

@@ -2,6 +2,7 @@ import type { LinkSignal } from '@yonderrc/protocol';
 import type { I2cSuggestion } from './detect.js';
 import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
+import type { HilinkStatus } from './hilink.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -265,6 +266,13 @@ export interface SystemManager {
   wifiConnect(ssid: string, password: string | null): Promise<ActionResult>;
   /** (Re)start the onboarding hotspot with the given settings. */
   hotspotStart(cfg: HotspotConfig): Promise<HotspotResult>;
+  /**
+   * Huawei HiLink stick (its own router, invisible to ModemManager). The interface is
+   * resolved through the routing table, so a LAN can never be mistaken for the stick.
+   */
+  hilinkStatus(): Promise<HilinkStatus>;
+  /** Where the stick lives (IPv4); comes from the persisted config. */
+  setHilinkHost(host: string): void;
   /** Radio state: blocked? which regulatory country? what would we suggest? */
   wifiRadio(): Promise<WifiRadioStatus>;
   /** Unblock the radio (and set the WiFi country if one is given/derivable). */

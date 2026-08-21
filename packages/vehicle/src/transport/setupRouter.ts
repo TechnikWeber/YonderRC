@@ -24,6 +24,7 @@ import {
 import { redactLteConfig, isValidPin } from '../system/lte.js';
 import { HW_DEPS, isHwDep } from '../system/hwDeps.js';
 import { isCountryCode } from '../system/wifi.js';
+import { isIpv4 } from '../system/hilink.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -34,6 +35,8 @@ export interface SetupContext {
   gps: GpsService;
   core: VehicleCore;
   applyCameras: (cams: CameraCfg[]) => Promise<void>;
+  /** Re-read config.hilink: point the reader at the stick and (re)start its proxy. */
+  applyHilink?: () => void;
   /** Called after config is persisted so the caller can note "restart needed". */
   onConfigSaved?: (patch: PersistentConfig) => void;
 }
@@ -271,6 +274,45 @@ export async function handleSetup(
   }
 
   // --- WiFi: join a network from the onboarding hotspot, and the hotspot itself ---
+  // ---- HiLink LTE stick (Huawei E3372h-320 & friends) ----
+  if (url === '/api/hilink' && method === 'GET') {
+    json(res, 200, { status: await ctx.system.hilinkStatus(), config: ctx.config.hilink });
+    return true;
+  }
+
+  if (url === '/api/hilink' && method === 'POST') {
+    const body = (await readBody(req)) as { host?: unknown; proxyPort?: unknown };
+    const host = body.host === undefined ? ctx.config.hilink.host : body.host;
+    if (!isIpv4(host)) {
+      json(res, 400, { ok: false, message: 'The stick is addressed by IPv4 (default 192.168.8.1).' });
+      return true;
+    }
+    let proxyPort = ctx.config.hilink.proxyPort;
+    if (body.proxyPort !== undefined) {
+      const p = body.proxyPort === null || body.proxyPort === '' ? null : Number(body.proxyPort);
+      // Privileged ports are out (we may not be root forever) and so is the control
+      // port itself — taking that one down would cut the vehicle off mid-flight.
+      if (p !== null && (!Number.isInteger(p) || p < 1024 || p > 65535 || p === ctx.config.port)) {
+        json(res, 400, { ok: false, message: `Pick a free port between 1024 and 65535 (not ${ctx.config.port}, that is the control port), or leave it empty to switch the proxy off.` });
+        return true;
+      }
+      proxyPort = p;
+    }
+    const hilink = { host, proxyPort };
+    savePersisted(ctx.config.configPath, { hilink });
+    ctx.config.hilink = hilink;
+    ctx.applyHilink?.();
+    ctx.onConfigSaved?.({ hilink });
+    json(res, 200, {
+      ok: true,
+      message: proxyPort
+        ? `Saved. The stick's web UI is reachable at http://<this vehicle>:${proxyPort}/`
+        : 'Saved. The stick\'s web UI is not exposed.',
+      config: hilink,
+    });
+    return true;
+  }
+
   if (url === '/api/wifi' && method === 'GET') {
     const st = await ctx.system.status();
     json(res, 200, {

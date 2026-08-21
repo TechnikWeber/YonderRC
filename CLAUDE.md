@@ -151,6 +151,17 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   hotspot never forces an SSH session. Successful installs are recorded in `hardwareDeps`
   and **restored by `install.sh`** after an update (`--omit=optional` prunes them). Only
   the sim path is proven; the real npm/node-gyp run is hardware-only-verified.
+- **HiLink LTE sticks — DONE (v1.40.0)**: Huawei E3372h-320 & co. are routers, not
+  ModemManager modems (`mmcli -L` stays empty). `vehicle/system/hilink.ts` reads their XML
+  API (`SesTokInfo` session first, then `monitoring/status`, `device/signal`,
+  `current-plmn`, `device/information`) with everything pure + injectable `get` so it is
+  tested against recorded XML. **The interface comes from `ip route get <host>`, never
+  from a name** — a LAN on the other `eth*` must never be taken for the stick.
+  `linkSignal()` falls back to it, so the OSD shows LTE % without ModemManager.
+  `transport/hilinkProxy.ts` passes the stick's own web UI through on its own port
+  (root-level, since the HiLink UI is full of absolute paths), gated by the API secret via
+  `?secret=` → cookie; `config.hilink.proxyPort` null = off (default). The XML shapes are
+  recorded-from-docs, so the real stick is still the only proof.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 - Screenshots: `Mobile_FPV.jpeg` is a real phone screenshot and still shows the

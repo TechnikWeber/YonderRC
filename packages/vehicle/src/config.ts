@@ -6,6 +6,7 @@ import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';
 import type { HwDepName } from './system/hwDeps.js';
+import { HILINK_DEFAULT_HOST } from './system/hilink.js';
 import { HOTSPOT_DEFAULTS } from './system/SystemManager.js';
 
 /**
@@ -36,6 +37,8 @@ export interface VehicleConfig {
   remoteAccess: RemoteAccessConfig;
   /** Onboarding hotspot settings (SSID, optional password). */
   hotspot: HotspotConfig;
+  /** Huawei HiLink LTE stick (its own router; not a ModemManager modem). */
+  hilink: HilinkSettings;
   /**
    * Auto-disarm whenever a new ground connects. Safe for cars (prevents runaway);
    * turn OFF for aircraft, where disarming in flight would cut the motors.
@@ -61,6 +64,17 @@ export interface VehicleConfig {
   configPath: string;
 }
 
+/**
+ * A HiLink stick is reached by IP, never by interface name — see system/hilink.ts.
+ * `proxyPort` null = the stick's own web UI is NOT exposed through the vehicle.
+ */
+export interface HilinkSettings {
+  host: string;
+  proxyPort: number | null;
+}
+
+export const HILINK_SETTINGS_DEFAULT: HilinkSettings = { host: HILINK_DEFAULT_HOST, proxyPort: null };
+
 /** The subset the setup UI can edit and persist. */
 export interface PersistentConfig {
   vehicleName?: string;
@@ -76,6 +90,7 @@ export interface PersistentConfig {
   remoteAccess?: RemoteAccessConfig;
   /** Onboarding hotspot (open by default — see HotspotConfig). */
   hotspot?: HotspotConfig;
+  hilink?: HilinkSettings;
   telemetry?: TelemetryConfig;
   gps?: GpsConfig;
   cameras?: CameraCfg[];
@@ -148,6 +163,7 @@ export function loadConfig(): VehicleConfig {
     apiSecret: (p.apiSecret ?? process.env.YRC_API_SECRET ?? null) || null,
     remoteAccess: p.remoteAccess ?? { kind: 'none' },
     hotspot: p.hotspot ?? { ...HOTSPOT_DEFAULTS },
+    hilink: { ...HILINK_SETTINGS_DEFAULT, ...(p.hilink ?? {}) },
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

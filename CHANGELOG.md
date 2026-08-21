@@ -3,6 +3,76 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.40.0
+**English**
+- **HiLink LTE sticks are supported properly.** A Huawei E3372h-320 (and friends) is not a
+  modem in the ModemManager sense — it is a small router that dials by itself, so
+  `mmcli -L` stays empty and the LTE panel had nothing to show. YonderRC now reads the
+  stick's **own API**: **Setup › LTE stick (HiLink)** shows model, interface, state,
+  operator, network type and signal, and the **OSD link block shows the LTE percentage**
+  just like it does for a real modem (RSRP-based, with the stick's bar icon as fallback).
+- **The stick is identified through the routing table, never by interface name.** With a
+  FritzBox on `eth0` and the stick on `eth1` — or the reverse after a reboot or another
+  USB port — a name-based guess would eventually report the LAN as the LTE link.
+  `ip route get 192.168.8.1` answers which interface *is* the stick, and that is what gets
+  reported and used.
+- **The stick's configuration page is reachable through the vehicle.** Its network
+  (192.168.8.0/24) is only routable from the Pi, so APN, SIM PIN and network mode used to
+  mean a keyboard on the vehicle or moving the stick to a laptop. Set a port under
+  *Expose its web UI on port* and the vehicle passes the page through at
+  `http://<vehicle>:<port>/` — usable from the hotspot, the LAN or the VPN. It is proxied
+  at the **root of its own port**, because the HiLink UI is full of absolute paths that no
+  prefix rewriting survives, and that also keeps its session cookie working.
+- **The proxy is off by default and honours the API secret.** With a secret set, the page
+  is opened once as `…?secret=…`, which is traded for an `HttpOnly` cookie so the UI's own
+  requests are covered; without it the port answers 401. Our cookie is stripped before
+  forwarding, and the target address is validated as a literal IPv4 — it is a proxy
+  target, so it must never become a hostname somebody else controls.
+- **A 2G/3G-only stick is called out.** E3131/E353 (`12d1:14db`) and similar are flagged in
+  the panel: Germany and others switched 3G off years ago, so such a stick gets no data
+  connection at all — better to learn that from the page than in a field.
+- 32 new tests: XML parsing, error codes, network-type and connection-state mapping,
+  RSRP → percent, route parsing, the full read against recorded XML (including session
+  headers), and the proxy's auth gate. The proxy itself was exercised end to end against a
+  stand-in stick. **The real stick's XML is the one thing only your hardware can confirm.**
+
+**Deutsch**
+- **HiLink-LTE-Sticks werden jetzt richtig unterstützt.** Ein Huawei E3372h-320 (und
+  Verwandte) ist kein Modem im Sinne von ModemManager, sondern ein kleiner Router, der
+  sich selbst einwählt — `mmcli -L` bleibt leer, das LTE-Panel hatte nichts zu zeigen.
+  YonderRC liest jetzt die **eigene API des Sticks**: **Setup › LTE stick (HiLink)** zeigt
+  Modell, Interface, Zustand, Betreiber, Netztyp und Signal, und im **OSD erscheint die
+  LTE-Prozentzahl** wie bei einem echten Modem (aus RSRP, ersatzweise aus der
+  Balkenanzeige des Sticks).
+- **Der Stick wird über die Routing-Tabelle erkannt, nie über den Interface-Namen.** Mit
+  FritzBox an `eth0` und Stick an `eth1` — oder nach Reboot bzw. anderem USB-Port
+  umgekehrt — würde eine Namensvermutung irgendwann das LAN als LTE-Strecke melden.
+  `ip route get 192.168.8.1` beantwortet, welches Interface der Stick **ist**, und genau
+  das wird angezeigt und benutzt.
+- **Die Konfigurationsseite des Sticks ist über das Fahrzeug erreichbar.** Sein Netz
+  (192.168.8.0/24) ist nur vom Pi aus routbar; APN, SIM-PIN und Netzmodus bedeuteten
+  bisher also Tastatur am Fahrzeug oder Umstecken an den Laptop. Trägst du unter *Expose
+  its web UI on port* einen Port ein, reicht das Fahrzeug die Seite unter
+  `http://<Fahrzeug>:<Port>/` durch — nutzbar vom Hotspot, aus dem LAN oder über das VPN.
+  Weitergereicht wird auf der **Wurzel eines eigenen Ports**, weil die HiLink-Oberfläche
+  voller absoluter Pfade steckt, die kein Präfix-Umschreiben überleben; nebenbei
+  funktioniert so auch ihr Session-Cookie unverändert.
+- **Der Proxy ist standardmäßig aus und respektiert das API-Secret.** Mit gesetztem Secret
+  öffnet man die Seite einmal als `…?secret=…`, was gegen ein `HttpOnly`-Cookie getauscht
+  wird, damit auch die eigenen Anfragen der Oberfläche durchkommen; ohne das antwortet der
+  Port mit 401. Unser Cookie wird vor dem Weiterleiten entfernt, und die Zieladresse muss
+  eine IPv4-Literal sein — sie ist ein Proxy-Ziel und darf nie zu einem fremden Hostnamen
+  werden.
+- **Ein reiner 2G/3G-Stick wird benannt.** E3131/E353 (`12d1:14db`) und Ähnliche werden im
+  Panel markiert: Deutschland und andere haben 3G vor Jahren abgeschaltet, ein solcher
+  Stick bekommt dort überhaupt keine Datenverbindung — das erfährt man besser auf der
+  Seite als im Feld.
+- 32 neue Tests: XML-Auswertung, Fehlercodes, Netztyp- und Zustandszuordnung, RSRP →
+  Prozent, Routen-Auswertung, der komplette Lesevorgang gegen aufgezeichnetes XML
+  (inklusive Session-Header) und das Auth-Gate des Proxys. Der Proxy selbst lief
+  Ende-zu-Ende gegen einen nachgebauten Stick. **Das XML des echten Sticks kann nur deine
+  Hardware bestätigen.**
+
 ## v1.39.2
 **English**
 - **Every button in Setup now shows that it is working.** nmcli, npm and modem calls take

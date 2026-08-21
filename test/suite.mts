@@ -868,6 +868,72 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
+  // ---- HiLink LTE stick (Huawei E3372h-320 & friends) ----
+  const H = await import('../packages/vehicle/src/system/hilink');
+  ok('ipv4 accepted', H.isIpv4('192.168.8.1'));
+  ok('non-ipv4 refused (it becomes a proxy target)', !H.isIpv4('192.168.8.1; reboot') && !H.isIpv4('999.1.1.1') && !H.isIpv4('stick.local'));
+  ok('xml flattened', H.parseHilinkXml('<response><A>1</A><B> x </B></response>').B === 'x');
+  ok('no error is null', H.hilinkError('<response><A>1</A></response>') === null);
+  ok('error 100003 is explained', (H.hilinkError('<error><code>100003</code></error>') || '').includes('session'));
+  ok('unknown error keeps its code', (H.hilinkError('<error><code>424242</code></error>') || '').includes('424242'));
+  ok('LTE recognised', H.networkTypeLabel('101') === '4G (LTE)' && H.networkTypeLabel('19') === '4G (LTE)');
+  ok('HSPA+ recognised as 3G', (H.networkTypeLabel('9') || '').startsWith('3G'));
+  ok('unknown network type admits it', (H.networkTypeLabel('777') || '').includes('777'));
+  ok('901 is connected', H.connectionStatusLabel('901').connected === true);
+  ok('908 names the SIM PIN', H.connectionStatusLabel('908').label.includes('PIN') && !H.connectionStatusLabel('908').connected);
+  ok('dbm value parsed', H.dbmValue('-93dBm') === -93 && H.dbmValue('') === null);
+  ok('rsrp → percent', H.signalPercent({ rsrp: -93 }) === 72);
+  ok('rsrp clamped', H.signalPercent({ rsrp: -160 }) === 0 && H.signalPercent({ rsrp: -40 }) === 100);
+  ok('bar icon is the fallback', H.signalPercent({ signalIcon: '3' }) === 60);
+  ok('no signal info stays null', H.signalPercent({}) === null);
+  // The interface comes from the routing table — never from a name like "eth1", or a
+  // FritzBox LAN on the other eth would eventually be reported as the LTE link.
+  ok('route dev parsed', H.parseRouteDev('192.168.8.1 dev eth1 src 192.168.8.100 uid 1000') === 'eth1');
+  ok('no route → null', H.parseRouteDev('RTNETLINK answers: Network is unreachable') === null);
+
+  const XML = {
+    ses: '<response><SesInfo>SessionID=abc123</SesInfo><TokInfo>tok987</TokInfo></response>',
+    status: '<response><ConnectionStatus>901</ConnectionStatus><SignalIcon>4</SignalIcon><CurrentNetworkType>19</CurrentNetworkType><CurrentNetworkTypeEx>101</CurrentNetworkTypeEx></response>',
+    signal: '<response><rsrp>-93dBm</rsrp><rsrq>-9dB</rsrq><sinr>12dB</sinr></response>',
+    plmn: '<response><State>0</State><FullName>Telekom.de</FullName><ShortName>TDG</ShortName></response>',
+    info: '<response><DeviceName>E3372h-320</DeviceName><WanIPAddress>10.64.12.34</WanIPAddress></response>',
+  };
+  const seen: { path: string; headers: Record<string, string> }[] = [];
+  const fakeGet = async (path: string, headers: Record<string, string>) => {
+    seen.push({ path, headers });
+    const body =
+      path.includes('SesTokInfo') ? XML.ses :
+      path.includes('monitoring/status') ? XML.status :
+      path.includes('device/signal') ? XML.signal :
+      path.includes('current-plmn') ? XML.plmn :
+      path.includes('device/information') ? XML.info : '';
+    return { ok: !!body, status: body ? 200 : 404, text: body, cookie: null };
+  };
+  const hi = await H.readHilink(fakeGet, 'eth1');
+  ok('stick read: connected', hi.present && hi.connected && hi.state === 'connected');
+  ok('stick read: model + operator', hi.model === 'E3372h-320' && hi.operator === 'Telekom.de');
+  ok('stick read: 4G and signal', hi.networkType === '4G (LTE)' && hi.signalPercent === 72 && hi.rsrp === -93);
+  ok('stick read: interface passed through', hi.iface === 'eth1');
+  ok('session token is sent with the API calls', seen.slice(1).every((c) => c.headers.cookie === 'SessionID=abc123' && c.headers.__RequestVerificationToken === 'tok987'), JSON.stringify(seen[1]?.headers));
+  ok('osd label carries percent and type', H.hilinkOsdLabel(hi) === 'LTE 72% · 4G (LTE)');
+
+  const dead = await H.readHilink(async () => ({ ok: false, status: 0, text: '', cookie: null }), 'eth1');
+  ok('unreachable stick is not "present"', !dead.present && (dead.message || '').includes('did not answer'));
+  const denied = await H.readHilink(
+    async (path) => ({ ok: true, status: 200, text: path.includes('SesTokInfo') ? XML.ses : '<error><code>100003</code></error>', cookie: null }),
+    'eth1',
+  );
+  ok('an API error is reported, not swallowed', denied.present && (denied.message || '').includes('session'));
+
+  // Proxy gate for the stick's admin UI.
+  const P = await import('../packages/vehicle/src/transport/hilinkProxy');
+  ok('cookie parsed', P.cookieValue('a=1; yrc_hilink=s3cret; b=2', 'yrc_hilink') === 's3cret');
+  ok('no secret configured → open', P.proxyAuth(null, null, undefined) === 'ok');
+  ok('matching query earns a cookie', P.proxyAuth('s3cret', 's3cret', undefined) === 'set-cookie');
+  ok('cookie is accepted afterwards', P.proxyAuth('s3cret', null, 'yrc_hilink=s3cret') === 'ok');
+  ok('wrong secret denied', P.proxyAuth('s3cret', 'nope', 'yrc_hilink=nope') === 'denied');
+  ok('no credentials denied', P.proxyAuth('s3cret', null, undefined) === 'denied');
+
   // ---- hotspot profile + WiFi radio ----
   const W = await import('../packages/vehicle/src/system/wifi');
   const openCmds = W.hotspotCommands({ ssid: 'YonderRC-setup', password: null });

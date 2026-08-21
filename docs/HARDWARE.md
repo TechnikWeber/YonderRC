@@ -420,6 +420,31 @@ ground device on the same private network — reachable anywhere.
    the OSD marks the link as weak below 25 %. If your Wi-Fi interface isn't `wlan0`,
    the Wi-Fi reading stays empty — LTE is unaffected.
 
+### 4.1.1 HiLink sticks (Huawei E3372h-320 and friends)
+
+Many Huawei sticks are **not modems** in the ModemManager sense: they run their own
+little router, appear as a USB Ethernet interface with DHCP and dial by themselves.
+`mmcli -L` stays empty for them forever, so §4.1 above simply does not apply — nothing
+is broken, and the LTE panel staying empty is expected.
+
+YonderRC reads them through their own API instead. **Setup › LTE stick (HiLink)** shows
+model, interface, state, operator, network type and signal, and the **OSD link block
+shows the LTE percentage** just as it does for a ModemManager modem.
+
+- The stick is located **through the routing table** (`ip route get 192.168.8.1`), never
+  by interface name. A vehicle with a FritzBox on `eth0` and the stick on `eth1` — or the
+  other way round after a reboot or a different USB port — can therefore never confuse
+  the two.
+- **APN, SIM PIN and network mode live in the stick**, not in YonderRC. Set a port under
+  *Expose its web UI on port* and the vehicle **passes the stick's own configuration page
+  through**: open `http://<vehicle>:<port>/` from the hotspot, the LAN or the VPN — no
+  keyboard on the Pi and no moving the stick to a laptop. With an API secret configured,
+  open it once as `…:<port>/?secret=YOUR_SECRET`; the vehicle remembers it in a cookie.
+  Empty (the default) means the stick's admin page is **not** exposed at all.
+- A **2G/3G-only stick** (E3131/E353, USB ID `12d1:14db`) is flagged in the panel:
+  several countries — Germany among them — switched 3G off years ago, so such a stick
+  gets no data connection there at all.
+
 ### 4.2 Tailscale
 
 1. In the setup under **Tailscale**, click **Bring up** — without an auth key you get a

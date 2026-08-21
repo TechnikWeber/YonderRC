@@ -18,6 +18,7 @@ import type {
 } from './SystemManager.js';
 import { HW_DEPS, explainNpmFailure, isHwDep, lastLines, type HwDepName } from './hwDeps.js';
 import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
+import { type HilinkStatus } from './hilink.js';
 
 /**
  * Mock system: pretends to have an LTE modem and Tailscale so the entire setup
@@ -85,6 +86,28 @@ export class SimSystem implements SystemManager {
     country: 'DE',
     suggestedCountry: 'DE',
   };
+
+  /** Kept only so the sim honours the same interface as the real system. */
+  setHilinkHost(_host: string): void {}
+
+  /** A plausible stick, so the panel and the OSD label can be seen without hardware. */
+  async hilinkStatus(): Promise<HilinkStatus> {
+    return {
+      present: true,
+      iface: 'eth1',
+      connected: true,
+      state: 'connected',
+      networkType: '4G (LTE)',
+      operator: 'SimTel',
+      signalPercent: 72,
+      rsrp: -93,
+      rsrq: -9,
+      sinr: 12,
+      model: 'E3372h-320 (simulated)',
+      wanIp: '10.64.12.34',
+      message: null,
+    };
+  }
 
   async wifiRadio(): Promise<WifiRadioStatus> {
     return { ...this.radio };

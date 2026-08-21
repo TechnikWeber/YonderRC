@@ -44,6 +44,16 @@ import {
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c } from './detect.js';
+import {
+  readHilink,
+  parseRouteDev,
+  isIpv4,
+  hilinkOsdLabel,
+  HILINK_ABSENT,
+  HILINK_DEFAULT_HOST,
+  type HilinkGet,
+  type HilinkStatus,
+} from './hilink.js';
 import { HW_DEPS, errorExcerpt, explainNpmFailure, hwDepInfo, isHwDep, lastLines, npmInstallArgs, type HwDepName } from './hwDeps.js';
 
 const run = promisify(exec);
@@ -224,6 +234,39 @@ export class RealSystem implements SystemManager {
     }
     await this.hotspotStart(this.lastHotspot ?? HOTSPOT_DEFAULTS);
     return { ok: false, message: `Could not join "${ssid}": ${r.out.split('\n').slice(-1)[0] || 'unknown error'}. Hotspot restarted.` };
+  }
+
+  private hilinkHost = HILINK_DEFAULT_HOST;
+
+  setHilinkHost(host: string): void {
+    if (isIpv4(host)) this.hilinkHost = host;
+  }
+
+  /**
+   * Read the HiLink stick. The interface is taken from the ROUTING TABLE (`ip route
+   * get <stick>`), never from an interface name: a vehicle with a LAN on eth0 and the
+   * stick on eth1 must not have the two mixed up, and the names swap around across
+   * reboots and USB ports.
+   */
+  async hilinkStatus(): Promise<HilinkStatus> {
+    const host = this.hilinkHost;
+    if (!isIpv4(host)) return { ...HILINK_ABSENT, message: `"${host}" is not an IPv4 address.` };
+
+    const route = await shArgs('ip', ['route', 'get', host]);
+    const iface = route.ok ? parseRouteDev(route.out) : null;
+    if (!iface) {
+      return { ...HILINK_ABSENT, message: `No route to ${host} — is the stick plugged in? (\`ip route get ${host}\`)` };
+    }
+
+    const get: HilinkGet = async (path, headers) => {
+      try {
+        const res = await fetch(`http://${host}${path}`, { headers, signal: AbortSignal.timeout(3000) });
+        return { ok: res.ok, status: res.status, text: await res.text(), cookie: res.headers.get('set-cookie') };
+      } catch {
+        return { ok: false, status: 0, text: '', cookie: null };
+      }
+    };
+    return readHilink(get, iface);
   }
 
   /** Radio state: rfkill, NetworkManager's view of wlan0, and the regulatory country. */
@@ -546,6 +589,12 @@ export class RealSystem implements SystemManager {
     const lte = await this.lteStatus();
     if (lte.connected && lte.signal != null) {
       return { kind: 'lte' as const, quality: lte.signal, label: `LTE ${lte.signal}%` };
+    }
+    // A HiLink stick never shows up in ModemManager, so ask it directly before
+    // falling back to WiFi — otherwise a vehicle on LTE shows no link signal at all.
+    const hi = await this.hilinkStatus();
+    if (hi.present && hi.connected && hi.signalPercent != null) {
+      return { kind: 'lte' as const, quality: hi.signalPercent, label: hilinkOsdLabel(hi) };
     }
     const iw = await sh('iw dev wlan0 link');
     const dbm = parseWifiSignalDbm(iw.out);

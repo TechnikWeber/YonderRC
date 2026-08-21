@@ -121,6 +121,23 @@
       </section>
 
       <section class="panel">
+        <div class="eyebrow">LTE stick (HiLink)</div>
+        <p class="msg">Huawei sticks like the <b>E3372h-320</b> are their own little router: they dial by themselves and never appear in ModemManager, so the LTE panel above stays empty for them. This reads the stick's own API instead. The interface is found through the <b>routing table</b>, so a LAN on another <span class="mono">eth</span> can't be mistaken for it.</p>
+        <div id="hilink-status"><div class="msg">Reading…</div></div>
+        <div class="grid2">
+          <label>Stick address<input id="hilinkHost" placeholder="192.168.8.1" /></label>
+          <label>Expose its web UI on port<input id="hilinkPort" type="number" placeholder="empty = off" /></label>
+        </div>
+        <div class="btns">
+          <button class="btn primary" onclick="run(this, () => saveHilink())">Save</button>
+          <button class="btn" onclick="run(this, () => loadHilink())">Refresh</button>
+          <a class="btn" id="hilink-open" href="#" target="_blank" rel="noopener" style="display:none">Open the stick's UI ↗</a>
+        </div>
+        <p class="msg">The stick's own network (192.168.8.0/24) is reachable only from the Pi. With a port set, the vehicle passes the stick's configuration page through, so you can open it from the hotspot, the LAN or the VPN instead of putting a keyboard on the vehicle — <b>APN, SIM PIN and network mode live in the stick</b>. If an API secret is set, open it once as <span class="mono">…:PORT/?secret=YOUR_SECRET</span>; the vehicle then remembers it in a cookie. Leave the port empty to keep the stick's admin page off the network.</p>
+        <div class="msg" id="hilink-msg"></div>
+      </section>
+
+      <section class="panel">
         <div class="eyebrow">WiFi</div>
         <div id="wifi-status" class="msg">…</div>
 
@@ -685,6 +702,59 @@
         $('ltePin').value = ''; $('ltePass').value = '';
         refresh();
       }
+      // ---- HiLink LTE stick ----
+      async function loadHilink() {
+        try {
+          const r = await getJSON('/api/hilink');
+          renderHilink(r.status, r.config);
+        } catch {
+          $('hilink-status').innerHTML = '<div class="msg">Could not read the stick.</div>';
+        }
+      }
+      function renderHilink(st, cfg) {
+        if (cfg) {
+          if (!$('hilinkHost').value) $('hilinkHost').value = cfg.host || '';
+          if (!$('hilinkPort').value && cfg.proxyPort) $('hilinkPort').value = cfg.proxyPort;
+          const open = $('hilink-open');
+          if (cfg.proxyPort) {
+            open.style.display = 'inline-block';
+            open.href = `http://${location.hostname}:${cfg.proxyPort}/`;
+          } else {
+            open.style.display = 'none';
+          }
+        }
+        const row = (k, v, cls) => `<div class="row"><span class="k">${esc(k)}</span><span class="v ${cls || ''}">${esc(v)}</span></div>`;
+        if (!st || !st.present) {
+          $('hilink-status').innerHTML =
+            row('stick', 'not found', 'warn') + (st && st.message ? `<div class="msg">${esc(st.message)}</div>` : '');
+          return;
+        }
+        const slow = st.networkType && /2G|3G/.test(st.networkType);
+        $('hilink-status').innerHTML =
+          row('model', st.model || 'HiLink stick') +
+          row('interface', st.iface || '—') +
+          row('state', st.state, st.connected ? 'go' : 'warn') +
+          (st.operator ? row('operator', st.operator) : '') +
+          (st.networkType ? row('network', st.networkType, slow ? 'warn' : 'go') : '') +
+          (st.signalPercent != null
+            ? row('signal', `${st.signalPercent}%${st.rsrp != null ? ` · RSRP ${st.rsrp} dBm` : ''}`, st.signalPercent >= 25 ? 'go' : 'bad')
+            : '') +
+          (st.wanIp ? row('WAN IP', st.wanIp) : '') +
+          (slow ? '<div class="msg" style="color:var(--idle)">⚠ This is a 2G/3G connection. Several countries (Germany among them) switched 3G off years ago — expect no data at all there, and no usable video anywhere.</div>' : '') +
+          (st.message ? `<div class="msg">${esc(st.message)}</div>` : '');
+      }
+      async function saveHilink() {
+        const port = $('hilinkPort').value.trim();
+        const r = await post('/api/hilink', {
+          host: $('hilinkHost').value.trim() || '192.168.8.1',
+          proxyPort: port === '' ? null : Number(port),
+        });
+        $('hilink-msg').innerHTML = r.ok
+          ? esc(r.message || 'Saved.')
+          : `<b style="color:var(--bad)">${esc(r.message || 'Failed.')}</b>`;
+        loadHilink();
+      }
+
       // ---- WiFi (join a network from the hotspot; hotspot settings) ----
       let pickedSsid = null;
       async function loadWifi() {
@@ -1085,6 +1155,7 @@
       loadConfig();
       loadHwDeps();
       loadLte();
+      loadHilink();
       loadCameras();
       loadTelemetry();
       loadRemote();

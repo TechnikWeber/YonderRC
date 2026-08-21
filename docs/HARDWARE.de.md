@@ -428,6 +428,32 @@ legt Pi und Boden-Gerät ins selbe private Netz — überall erreichbar.
    unter 25 % markiert das OSD den Link als schwach. Heißt dein WLAN-Interface nicht
    `wlan0`, bleibt der WLAN-Wert leer — LTE ist davon nicht betroffen.
 
+### 4.1.1 HiLink-Sticks (Huawei E3372h-320 und Verwandte)
+
+Viele Huawei-Sticks sind **keine Modems** im Sinne von ModemManager: Sie betreiben einen
+eigenen kleinen Router, melden sich als USB-Ethernet-Interface mit DHCP und wählen sich
+selbst ein. `mmcli -L` bleibt bei ihnen für immer leer, §4.1 gilt für sie also schlicht
+nicht — nichts ist kaputt, und dass das LTE-Panel leer bleibt, ist erwartet.
+
+YonderRC liest sie stattdessen über ihre eigene API. **Setup › LTE stick (HiLink)** zeigt
+Modell, Interface, Zustand, Betreiber, Netztyp und Signal, und im **OSD erscheint die
+LTE-Prozentzahl** genau wie bei einem ModemManager-Modem.
+
+- Der Stick wird **über die Routing-Tabelle** gefunden (`ip route get 192.168.8.1`), nie
+  über den Interface-Namen. Ein Fahrzeug mit FritzBox an `eth0` und Stick an `eth1` — oder
+  nach einem Reboot bzw. anderem USB-Port umgekehrt — kann die beiden damit nie
+  verwechseln.
+- **APN, SIM-PIN und Netzmodus liegen im Stick**, nicht in YonderRC. Trägst du unter
+  *Expose its web UI on port* einen Port ein, **reicht das Fahrzeug die
+  Konfigurationsseite des Sticks durch**: `http://<Fahrzeug>:<Port>/` vom Hotspot, aus dem
+  LAN oder über das VPN öffnen — keine Tastatur am Pi, kein Umstecken an den Laptop. Mit
+  gesetztem API-Secret einmalig als `…:<Port>/?secret=DEIN_SECRET` öffnen, das Fahrzeug
+  merkt es sich dann in einem Cookie. Leer (Standard) heißt: die Admin-Seite des Sticks
+  ist **nicht** erreichbar.
+- Ein **reiner 2G/3G-Stick** (E3131/E353, USB-ID `12d1:14db`) wird im Panel markiert:
+  Mehrere Länder — Deutschland eingeschlossen — haben 3G vor Jahren abgeschaltet, ein
+  solcher Stick bekommt dort gar keine Datenverbindung mehr.
+
 ### 4.2 Tailscale
 
 1. Im Setup unter **Tailscale** auf **Bring up** — ohne Auth-Key bekommst du eine
