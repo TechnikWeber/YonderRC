@@ -492,6 +492,33 @@ LTE-Prozentzahl** genau wie bei einem ModemManager-Modem.
 > Tailscale allein gibt dir aber bereits eine funktionierende, verschlüsselte
 > Verbindung und ist der einfachste Weg, der zuverlässig klappt.
 
+#### Was dabei tatsächlich gemessen wurde (erster Feldtest)
+
+Ein Nachmittag, ein Netz, ein Ort — ein Datenpunkt, kein Benchmark. Fahrzeug: Pi 4 mit
+**Huawei E3372h-320** an dessen **interner** Antenne, Netzwerkkabel gezogen. Boden: ein
+Fedora-Laptop, beide im selben Tailnet.
+
+| Messwert | Wert | Anmerkung |
+|---|---|---|
+| Tailscale-Pfad | **direkt, IPv6** | `pong … via [2a01:599:…]:41641 in 69ms` — kein DERP-Relay |
+| Steuer-Roundtrip | **110 ms** | ergibt 87/100 in der Link-Health des OSD |
+| Video-Latenz | **128 ms** | kaum über dem Steuerpfad, die WebRTC-Strecke ist also gesund |
+| Video-Bitrate | 444 kbps | die Auto-Qualität hatte wegen des schwachen Signals heruntergeregelt |
+| LTE-Signal | **52 %** (ca. −106 dBm RSRP) | der begrenzende Faktor — OSD zeigte `⇅ 52` und `⚠ SIGNAL` |
+
+Zwei Dinge sind daran wichtig. Erstens **nennt der Wert seinen eigenen Engpass**: die 52
+kamen vom Signal, nicht von der Latenz — die Abhilfe ist also eine Antenne und keine
+schnellere Leitung. Der E3372h-320 hat zwei TS-9-Buchsen, eine externe Antenne bringt
+typisch 10–20 dB. Zweitens hat der Wechsel der Bodenstation von WLAN auf LTE mitten in der
+Sitzung **Failsafe ausgelöst und wieder aufgehoben** — genau die Aufgabe des Watchdogs:
+die Steuerframes blieben länger als 300 ms aus, das Fahrzeug ging in den sicheren Zustand
+und kam zurück, als die Frames wieder liefen.
+
+> Ein direkter Pfad ist nicht garantiert: Er kam hier zustande, weil der Betreiber eine
+> routbare **IPv6**-Adresse vergeben hat. Hinter reinem CGNAT-IPv4 kann Tailscale auf ein
+> DERP-Relay zurückfallen, was Latenz kostet — prüf das mit `tailscale ping <Fahrzeug>`,
+> bevor du dich darauf verlässt.
+
 ### 4.4 Weitere Remote-Access-Methoden (Setup › Remote access)
 
 Unter **Setup › Remote access** wählst du **eine** Methode:

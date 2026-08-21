@@ -195,8 +195,31 @@ disarm — the throttle channel is visibly held safe while disarmed.*
 - **Robust LTE setup** (not just plug-and-play): APN, **SIM PIN**, **APN username/
   password**, **network mode** (4G-only), **roaming** toggle, live **diagnostics**
   (raw `mmcli`), and **SIM PIN change/remove**. `autoconnect` redials by itself.
+- **HiLink LTE sticks too** (Huawei E3372h-320 & friends). They are routers, not
+  ModemManager modems — `mmcli` never sees them — so YonderRC reads the stick's own API:
+  model, state, operator, network type and **signal in the OSD** like any modem. The
+  stick is found through the **routing table**, so a LAN on another `eth*` can't be
+  mistaken for it, and its **configuration page is proxied through the vehicle** (port
+  8081) so APN/PIN can be set from the hotspot, the LAN or the VPN.
+- **Native driver modules install from the browser** (Setup › Vehicle configuration):
+  `i2c-bus`, `pigpio`, `serialport` with a status and one button — no SSH on a vehicle
+  you may only reach over its own hotspot. A failed build is translated into a cause and
+  the command that fixes it, and the choice survives updates.
+- **The Wi-Fi radio fixes itself.** Raspberry Pi OS keeps it rfkill-blocked until a
+  **Wi-Fi country** is set, and NetworkManager then only says "device is not available".
+  Setup shows the state and unblocks it in one press, with the country pre-filled from
+  the Pi's locale — starting the hotspot repairs it on its own and says so.
 - **Guided hardware self-test**: channel sweep, read sensors, camera snapshot.
 - **Factory reset** for both the vehicle and the ground app.
+**Measured in the field** (2026-08-21, one afternoon, one carrier, one location — not a
+benchmark): a Pi 4 on a **Huawei E3372h-320** with its internal antenna, controlled from a
+Fedora laptop over **Tailscale**, Ethernet unplugged. Tailscale found a **direct IPv6
+path** over LTE (no DERP relay, `tailscale ping` 69 ms). The ground app showed **control
+round-trip 110 ms**, **video 128 ms** and 444 kbps at **52 % LTE signal** — the OSD's link
+health read 52 and named `SIGNAL` as the limiting part, which is exactly what an internal
+stick antenna at ≈ −106 dBm RSRP looks like. Failsafe fired and cleared as designed while
+the link moved from Wi-Fi to LTE.
+
 - **Self-sufficient in the field**: the Pi starts its own Wi-Fi hotspot whenever its radio is free and
   opens the control/setup page via a **captive portal** — the ground app is served by
   the Pi itself, so you can control and configure with nothing but a phone.

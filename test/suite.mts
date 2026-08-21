@@ -994,6 +994,12 @@ async function main() {
   ok('unavailable wlan0 detected', W.parseWifiDeviceState('eth0:ethernet:connected\nwlan0:wifi:unavailable') === 'unavailable');
   ok('ready wlan0 detected', W.parseWifiDeviceState('wlan0:wifi:disconnected') === 'ready');
   ok('a Pi without wlan0', W.parseWifiDeviceState('eth0:ethernet:connected') === 'missing');
+  // Serving the hotspot and being joined to a network both read as "connected" —
+  // the status row must not call the vehicle's own AP a client connection.
+  ok('own hotspot is reported as ap', W.parseWifiMode('wlan0:connected:Hotspot') === 'ap');
+  ok('a joined network is a client', W.parseWifiMode('wlan0:connected:Weber-Home') === 'client');
+  ok('disconnected wifi is unknown', W.parseWifiMode('wlan0:disconnected:') === 'unknown');
+  ok('other interfaces are ignored', W.parseWifiMode('eth0:connected:Wired connection 1') === 'unknown');
   ok('country guessed from the locale', W.guessWifiCountry({ locale: 'de_DE.UTF-8' }) === 'DE');
   ok('country guessed from the timezone', W.guessWifiCountry({ timezone: 'Europe/Vienna' }) === 'AT');
   ok('no guess stays null', W.guessWifiCountry({}) === null);

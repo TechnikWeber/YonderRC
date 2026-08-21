@@ -36,6 +36,7 @@ import {
   parseRfkill,
   parseWifiCountry,
   parseWifiDeviceState,
+  parseWifiMode,
   radioIsUsable,
   wifiCountryArgs,
   HOTSPOT_ADDRESS,
@@ -208,14 +209,18 @@ export class RealSystem implements SystemManager {
   private lastHotspot: HotspotConfig | null = null;
 
   private async wifiStatus(): Promise<WifiStatus> {
-    const mode = await sh("nmcli -t -f DEVICE,TYPE,STATE device | grep ':wifi:' | head -1");
+    // Serving our own hotspot and being joined to a network both read as
+    // "connected" — only the connection NAME tells them apart.
+    const dev = await sh('nmcli -t -f DEVICE,STATE,CONNECTION device');
+    const mode = parseWifiMode(dev.out, WIFI_IFACE);
     const ssid = await sh("nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2");
-    const ip = await sh("nmcli -t -f IP4.ADDRESS dev show wlan0 | head -1 | cut -d: -f2");
-    return {
-      mode: mode.out.includes('connected') ? 'client' : 'unknown',
-      ssid: ssid.ok ? ssid.out || null : null,
-      ip: ip.ok ? (ip.out.split('/')[0] || null) : null,
-    };
+    const ip = await sh(`nmcli -t -f IP4.ADDRESS dev show ${WIFI_IFACE} | head -1 | cut -d: -f2`);
+    let name = ssid.ok ? ssid.out || null : null;
+    if (!name && mode === 'ap') {
+      const ap = await shArgs('nmcli', ['-g', '802-11-wireless.ssid', 'connection', 'show', 'Hotspot']);
+      name = ap.ok ? ap.out.trim() || null : null;
+    }
+    return { mode, ssid: name, ip: ip.ok ? ip.out.split('/')[0] || null : null };
   }
 
   /** Nearby networks. `--rescan yes` costs a few seconds but avoids a stale list. */

@@ -207,8 +207,33 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
 - **Robustes LTE-Setup** (nicht nur Plug-and-Play): APN, **SIM-PIN**, **APN-Benutzer/
   Passwort**, **Netzmodus** (nur 4G), **Roaming**-Schalter, live **Diagnose** (rohe
   `mmcli`-Ausgabe) und **SIM-PIN ändern/entfernen**. `autoconnect` wählt selbst neu.
+- **HiLink-LTE-Sticks ebenso** (Huawei E3372h-320 und Verwandte). Sie sind Router, keine
+  ModemManager-Modems — `mmcli` sieht sie nie — deshalb liest YonderRC ihre eigene API:
+  Modell, Zustand, Betreiber, Netztyp und **Signal im OSD** wie bei jedem Modem. Der
+  Stick wird über die **Routing-Tabelle** gefunden, ein LAN an einem anderen `eth*` kann
+  also nicht verwechselt werden, und seine **Konfigurationsseite wird durch das Fahrzeug
+  durchgereicht** (Port 8081) — APN/PIN lassen sich damit vom Hotspot, aus dem LAN oder
+  über das VPN einstellen.
+- **Native Treibermodule installieren sich im Browser** (Setup › Vehicle configuration):
+  `i2c-bus`, `pigpio`, `serialport` mit Status und einem Knopf — kein SSH auf einem
+  Fahrzeug, das du womöglich nur über seinen eigenen Hotspot erreichst. Ein gescheiterter
+  Build wird in Ursache plus passenden Befehl übersetzt, und die Auswahl übersteht
+  Updates.
+- **Das WLAN-Modul repariert sich selbst.** Raspberry Pi OS hält es per rfkill gesperrt,
+  solange kein **WLAN-Land** gesetzt ist, und NetworkManager sagt dann nur „device is not
+  available". Das Setup zeigt den Zustand und entsperrt es per Knopfdruck, das Länderkürzel
+  ist aus der Locale des Pi vorbelegt — beim Hotspot-Start passiert das von selbst.
 - **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
 - **Werksreset** für Fahrzeug und Boden-App.
+**Im Feld gemessen** (21.08.2026, ein Nachmittag, ein Netz, ein Ort — kein Benchmark):
+Pi 4 mit **Huawei E3372h-320** und dessen interner Antenne, gesteuert von einem
+Fedora-Laptop über **Tailscale**, Netzwerkkabel gezogen. Tailscale fand einen **direkten
+IPv6-Pfad** über LTE (kein DERP-Relay, `tailscale ping` 69 ms). Die Boden-App zeigte
+**Steuer-Roundtrip 110 ms**, **Video 128 ms** und 444 kbps bei **52 % LTE-Signal** — die
+Link-Health im OSD stand auf 52 und nannte `SIGNAL` als begrenzenden Teil, genau das Bild
+einer internen Stick-Antenne bei etwa −106 dBm RSRP. Failsafe griff und löste sich wieder,
+wie vorgesehen, während die Verbindung von WLAN auf LTE wechselte.
+
 - **Autark im Feld**: der Pi startet seinen eigenen WLAN-Hotspot, sobald seine Funkeinheit frei ist, und öffnet per
   **Captive Portal** die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst
   ausgeliefert, Steuern und Konfigurieren gehen also mit dem bloßen Handy.

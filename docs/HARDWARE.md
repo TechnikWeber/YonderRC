@@ -481,6 +481,31 @@ shows the LTE percentage** just as it does for a ModemManager modem.
 > add your own **TURN server (coturn)** on a cheap VPS. Tailscale alone already gives
 > you a working, encrypted connection and is the simplest path that reliably works.
 
+#### What this actually measured (first field test)
+
+One afternoon, one carrier, one location — a data point, not a benchmark. Vehicle: Pi 4
+with a **Huawei E3372h-320** on its **internal** antenna, Ethernet unplugged. Ground: a
+Fedora laptop, both on the same tailnet.
+
+| Reading | Value | Note |
+|---|---|---|
+| Tailscale path | **direct, IPv6** | `pong … via [2a01:599:…]:41641 in 69ms` — no DERP relay |
+| Control round-trip | **110 ms** | scores 87/100 in the OSD's link health |
+| Video latency | **128 ms** | barely above the control path, i.e. the WebRTC leg is healthy |
+| Video bitrate | 444 kbps | auto-quality had stepped down for the weak signal |
+| LTE signal | **52 %** (≈ −106 dBm RSRP) | the limiting factor — OSD showed `⇅ 52` and `⚠ SIGNAL` |
+
+Two things worth taking from it. First, **the score names its own bottleneck**: 52 was the
+signal, not the latency, so the fix is an antenna, not a faster link — the E3372h-320 has
+two TS-9 sockets and an external antenna is worth 10–20 dB. Second, switching the ground
+station from Wi-Fi to LTE mid-session **fired failsafe and cleared it again**, which is the
+watchdog doing its job: control frames stopped for longer than 300 ms, the vehicle went
+safe, and it came back when the frames resumed.
+
+> A direct path is not guaranteed: it happened here because the carrier handed out a
+> routable **IPv6** address. Behind CGNAT-only IPv4 Tailscale may fall back to a DERP
+> relay, which adds latency — check with `tailscale ping <vehicle>` before you rely on it.
+
 ### 4.4 Other remote-access methods (Setup › Remote access)
 
 Under **Setup › Remote access** you pick **one** method:

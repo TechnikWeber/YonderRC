@@ -124,6 +124,21 @@ export function parseWifiDeviceState(out: string, iface = 'wlan0'): WifiDeviceSt
   return 'missing';
 }
 
+/**
+ * client / ap / unknown from `nmcli -t -f DEVICE,STATE,CONNECTION device`. The
+ * connection NAME is what separates the two: serving our own hotspot and being
+ * joined to someone's network both read as "connected".
+ */
+export function parseWifiMode(out: string, iface = 'wlan0'): 'client' | 'ap' | 'unknown' {
+  for (const line of (out ?? '').split('\n')) {
+    const [dev, state, conn] = line.split(':');
+    if (dev?.trim() !== iface) continue;
+    if ((state ?? '').trim().toLowerCase() !== 'connected') return 'unknown';
+    return (conn ?? '').trim() === HOTSPOT_CON_NAME ? 'ap' : 'client';
+  }
+  return 'unknown';
+}
+
 /** True when the radio can actually carry an AP right now. */
 export function radioIsUsable(r: WifiRadioStatus): boolean {
   return r.device === 'ready' && !r.softBlocked && !r.hardBlocked;

@@ -49,6 +49,24 @@
       .btn[data-busy] { cursor: progress; }
       .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
       .head a { text-decoration: none; }
+      /* Thin divider between groups of status rows (LTE / remote access / WiFi). */
+      .sep { border-top: 1px solid var(--line); margin: 8px 0 4px; }
+      /*
+       * Phone layout. The page scrolled sideways on an iPhone because flex items don't
+       * shrink below their content: one long unbreakable value (an IPv6 address, a
+       * Tailscale login URL, a device path) pushed a status row wider than the screen
+       * and took the whole page with it. min-width:0 lets them shrink, and the wrap
+       * rules break the string instead of the layout.
+       */
+      html, body { max-width: 100%; overflow-x: hidden; }
+      .row .k, .row .v { min-width: 0; overflow-wrap: anywhere; }
+      .msg, .log, .mono, .item { overflow-wrap: anywhere; }
+      @media (max-width: 520px) {
+        .grid3, .grid4 { grid-template-columns: 1fr 1fr; }
+      }
+      @media (max-width: 380px) {
+        .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+      }
       .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
       .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
       .mono { font-family: var(--mono); font-size: .92em; }
@@ -83,6 +101,10 @@
       <section class="panel">
         <div class="eyebrow">LTE</div>
         <div class="msg" id="lte-hilink-note" style="display:none;color:var(--idle)"></div>
+        <div class="btns" id="lte-toggle" style="display:none;margin-bottom:10px">
+          <button class="btn tiny" onclick="toggleLteFields()">Show modem settings anyway</button>
+        </div>
+        <div id="lte-fields">
         <label>APN<input id="apn" placeholder="internet" /></label>
         <div class="grid2">
           <label>SIM PIN (optional)<input id="ltePin" type="password" autocomplete="off" placeholder="leave empty if none" /></label>
@@ -119,6 +141,7 @@
 
         <div class="btns" style="margin-top:8px"><button class="btn" onclick="run(this, () => lteDiag())">Diagnostics (detect modem)</button></div>
         <pre id="lte-diag" style="white-space:pre-wrap;overflow-x:auto;font-size:12px;color:var(--muted)"></pre>
+        </div>
       </section>
 
       <section class="panel">
@@ -456,30 +479,49 @@
         return remoteStatusNow ? remoteStatusNow.address : null;
       }
 
+      // The modem fields stay collapsed for a HiLink stick (they do nothing for it),
+      // but the reason stays readable and one button brings them back.
+      let lteFieldsForced = false;
+      function toggleLteFields() {
+        lteFieldsForced = !lteFieldsForced;
+        $('lte-fields').style.display = lteFieldsForced ? 'block' : 'none';
+        $('lte-toggle').firstElementChild.textContent = lteFieldsForced ? 'Hide modem settings' : 'Show modem settings anyway';
+      }
+
       function renderStatus(s) {
         renderGroundLink(!!s.groundApp);
         // A HiLink stick fills the LTE row but cannot be steered from this panel.
         const hl = $('lte-hilink-note');
-        if (s.lte && s.lte.kind === 'hilink') {
+        const isHilink = !!(s.lte && s.lte.kind === 'hilink');
+        if (isHilink) {
           hl.style.display = 'block';
           hl.innerHTML = 'This vehicle\'s uplink is a <b>HiLink stick</b> — it dials itself, so the fields here do nothing for it. APN, SIM PIN and network mode are set in the stick; see <b>LTE stick (HiLink)</b> below.';
         } else {
           hl.style.display = 'none';
         }
+        $('lte-toggle').style.display = isHilink ? 'flex' : 'none';
+        $('lte-fields').style.display = !isHilink || lteFieldsForced ? 'block' : 'none';
         const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
         const ts = s.tailscale, lte = s.lte, wifi = s.wifi;
+        const sep = '<div class="sep"></div>';
         $('status').innerHTML =
           row('hostname', s.hostname) +
           row('mode', s.kind === 'real' ? 'real (Pi)' : 'sim', s.kind === 'real' ? 'go' : 'warn') +
+          sep +
           row('LTE', lte.present ? (lte.connected ? 'connected' : (lte.state || 'idle')) : 'no modem', lte.connected ? 'go' : (lte.pinRequired ? 'bad' : (lte.present ? 'warn' : 'bad'))) +
           (lte.pinRequired ? row('· ⚠', 'SIM PIN required — enter it below', 'bad') : '') +
           (lte.present && lte.modemModel ? row('· modem', lte.modemModel) : '') +
           (lte.present ? row('· operator', (lte.operator || '—') + (lte.signal != null ? ` · ${lte.signal}%` : '')) : '') +
           (lte.apn ? row('· APN', lte.apn) : '') +
           (lte.ip ? row('· IP', lte.ip) : '') +
+          sep +
           row('Remote access', remoteLabel(s), remoteOk(s) ? 'go' : 'warn') +
           (remoteAddress(s) ? row('· IP', remoteAddress(s)) : '') +
-          row('WiFi', `${wifi.mode}${wifi.ssid ? ' · ' + wifi.ssid : ''}`);
+          sep +
+          row('WiFi', `${wifi.mode}${wifi.ssid ? ' · ' + wifi.ssid : ''}`) +
+          // Every address in one place: LTE (WAN), the tailnet, and now the WiFi one —
+          // which is the one you actually type when the vehicle is on your LAN.
+          (wifi.ip ? row('· IP', wifi.ip) : '');
         // Keep this line honest: it used to hold whatever the last button press wrote,
         // so a stale "Starting…" could sit under a status row that already said Running.
         if (ts.loginUrl) {

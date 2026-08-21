@@ -3,6 +3,52 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.42.0
+**English**
+- **Fixed: the setup page scrolled sideways on a phone.** Flex items don't shrink below
+  their content, so one long unbreakable value — an IPv6 address, a Tailscale login URL,
+  a device path — pushed a status row wider than the screen and dragged the whole page
+  with it. Status rows may shrink and wrap now, and the four- and three-column grids fold
+  to two (and to one on very narrow screens), so the page is a one-pager like the control
+  app.
+- **System status shows the Wi-Fi address too**, so LTE (WAN), the tailnet address and the
+  Wi-Fi/LAN address are in one place — and the row no longer calls the vehicle's own
+  hotspot a "client" connection: serving an AP and being joined to a network both read as
+  *connected* to NetworkManager, only the connection name tells them apart.
+- **The status block is grouped** with thin dividers between hostname/mode, LTE, remote
+  access and Wi-Fi, instead of one undifferentiated list.
+- **The LTE modem fields collapse when a HiLink stick is the uplink.** They do nothing for
+  such a stick, so they get out of the way — while the sentence explaining *why* stays
+  visible, and one button brings them back for the case where a real modem is plugged in
+  later.
+- **README and HARDWARE now carry the first field test**: a Pi 4 on a Huawei E3372h-320
+  (internal antenna) controlled over Tailscale with the cable unplugged — direct IPv6 path
+  (no relay, 69 ms), control round-trip 110 ms, video 128 ms at 444 kbps, LTE signal 52 %,
+  and failsafe firing and clearing while the ground station moved from Wi-Fi to LTE.
+  Written down as a data point with its conditions, not as a benchmark.
+
+**Deutsch**
+- **Behoben: die Setup-Seite ließ sich am Handy seitlich schieben.** Flex-Elemente
+  schrumpfen nicht unter ihren Inhalt — ein einziger langer, unumbrechbarer Wert (eine
+  IPv6-Adresse, eine Tailscale-Login-URL, ein Gerätepfad) machte eine Statuszeile breiter
+  als den Bildschirm und zog die ganze Seite mit. Statuszeilen dürfen jetzt schrumpfen und
+  umbrechen, und die drei- und vierspaltigen Raster klappen auf zwei Spalten (auf sehr
+  schmalen Geräten auf eine). Damit ist die Seite ein One-Pager wie die Steuerseite.
+- **Der System status zeigt auch die WLAN-Adresse**, damit LTE (WAN), Tailnet-Adresse und
+  WLAN/LAN-Adresse an einer Stelle stehen — und die Zeile nennt den eigenen Hotspot des
+  Fahrzeugs nicht mehr „client": einen AP zu betreiben und in einem Netz zu hängen liest
+  NetworkManager beides als *connected*, nur der Verbindungsname unterscheidet sie.
+- **Der Statusblock ist gruppiert**, mit dünnen Trennlinien zwischen Hostname/Modus, LTE,
+  Remote access und WLAN, statt einer undifferenzierten Liste.
+- **Die LTE-Modemfelder klappen ein, wenn ein HiLink-Stick der Uplink ist.** Sie bewirken
+  für so einen Stick nichts, also gehen sie aus dem Weg — der Satz, der das *begründet*,
+  bleibt sichtbar, und ein Knopf holt sie zurück, falls später ein echtes Modem steckt.
+- **README und HARDWARE enthalten jetzt den ersten Feldtest**: Pi 4 mit Huawei E3372h-320
+  (interne Antenne), gesteuert über Tailscale bei gezogenem Kabel — direkter IPv6-Pfad
+  (kein Relay, 69 ms), Steuer-Roundtrip 110 ms, Video 128 ms bei 444 kbps, LTE-Signal
+  52 %, und Failsafe, das beim Wechsel der Bodenstation von WLAN auf LTE griff und sich
+  wieder löste. Festgehalten als Datenpunkt mit seinen Bedingungen, nicht als Benchmark.
+
 ## v1.41.2
 **English**
 - **Fixed: a stale message under the Remote access panel.** The line held whatever the
