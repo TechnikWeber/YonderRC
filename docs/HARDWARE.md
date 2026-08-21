@@ -344,7 +344,36 @@ npm install serialport -w @yonderrc/vehicle    # (only for SBUS/drone, and seria
 sudo systemctl restart yonderrc-vehicle
 ```
 
-### 3.4 Configure over Wi-Fi (graphical)
+### 3.4 Updating the vehicle
+
+**From the setup page** — *Software update*, which is what you want in a field:
+
+1. **Check for updates** fetches and reports: installed version, available version, how
+   many commits behind, and the subject line of each one. It changes nothing.
+2. **Update & restart** appears only when there is something to install. It does what an
+   SSH session would — `git pull --ff-only`, install changed dependencies, rebuild the
+   control app if it changed — and restarts the vehicle service last, so the service
+   never comes back into a half-updated checkout. The page reloads itself afterwards.
+
+It refuses (and says why) when the vehicle has **local changes**, because a fast-forward
+would either fail or throw them away, and when there is **no internet**. If a step fails,
+it stops there and the vehicle keeps running the version it had.
+
+> **What it does not do:** apt packages, systemd units and `install.sh` itself. When the
+> check says the installer changed, run the full `sudo bash provisioning/install.sh` once
+> you are back at a keyboard.
+
+The equivalent over SSH:
+
+```bash
+cd /opt/yonderrc
+sudo git pull --ff-only
+sudo systemctl restart yonderrc-vehicle
+# …and when the ground app or dependencies changed, the full run instead:
+sudo bash provisioning/install.sh
+```
+
+### 3.5 Configure over Wi-Fi (graphical)
 
 From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`**
 (or `http://<pi-ip>:8080/setup`).
@@ -373,7 +402,7 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    don't fully trust — see 6.1. Leave it empty for the first bench tests; it's off by
    default.
 
-### 3.5 First function test (WHEELS UP / PROPS OFF!)
+### 3.6 First function test (WHEELS UP / PROPS OFF!)
 
 1. Open the ground app on the laptop, enter the **Pi address** at the top:
    `ws://yonderrc.local:8080`, **Connect**.

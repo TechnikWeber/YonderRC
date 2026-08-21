@@ -348,7 +348,40 @@ npm install serialport -w @yonderrc/vehicle    # (nur bei SBUS/Drohne und seriel
 sudo systemctl restart yonderrc-vehicle
 ```
 
-### 3.4 Über WLAN einrichten (grafisch)
+### 3.4 Das Fahrzeug aktualisieren
+
+**Über die Setup-Seite** — Abschnitt *Software update*, genau das, was man im Feld
+braucht:
+
+1. **Check for updates** holt den Stand und berichtet: installierte Version, verfügbare
+   Version, wie viele Commits zurück, und die Betreffzeile jedes einzelnen. Es ändert
+   nichts.
+2. **Update & restart** erscheint nur, wenn es etwas zu installieren gibt. Es tut, was
+   eine SSH-Sitzung täte — `git pull --ff-only`, geänderte Abhängigkeiten installieren,
+   die Steuer-App neu bauen, falls sie sich geändert hat — und startet den Fahrzeugdienst
+   **zuletzt** neu, damit er nie in einem halb aktualisierten Stand hochkommt. Die Seite
+   lädt sich danach selbst neu.
+
+Es verweigert (und sagt warum), wenn das Fahrzeug **lokale Änderungen** hat — ein
+Fast-Forward würde entweder scheitern oder sie wegwerfen — und wenn **kein Internet**
+da ist. Scheitert ein Schritt, bleibt es dort stehen, und das Fahrzeug läuft mit der
+bisherigen Version weiter.
+
+> **Was es nicht tut:** apt-Pakete, systemd-Units und `install.sh` selbst. Meldet der
+> Check, dass sich der Installer geändert hat, lass einmal
+> `sudo bash provisioning/install.sh` laufen, sobald du wieder an einer Tastatur bist.
+
+Dasselbe über SSH:
+
+```bash
+cd /opt/yonderrc
+sudo git pull --ff-only
+sudo systemctl restart yonderrc-vehicle
+# …und wenn sich Boden-App oder Abhängigkeiten geändert haben, stattdessen der volle Lauf:
+sudo bash provisioning/install.sh
+```
+
+### 3.5 Über WLAN einrichten (grafisch)
 
 Öffne vom Laptop/Handy im selben WLAN: **`http://yonderrc.local:8080/setup`**
 (oder `http://<pi-ip>:8080/setup`).
@@ -379,7 +412,7 @@ sudo systemctl restart yonderrc-vehicle
    hängt, dem du nicht voll vertraust — siehe 6.1. Für die ersten Tests auf der
    Werkbank leer lassen; standardmäßig ist es aus.
 
-### 3.5 Erster Funktionstest (RÄDER HOCH / PROPS AB!)
+### 3.6 Erster Funktionstest (RÄDER HOCH / PROPS AB!)
 
 1. Boden-App am Laptop öffnen, oben die **Pi-Adresse** eintragen:
    `ws://yonderrc.local:8080`, **Connect**.

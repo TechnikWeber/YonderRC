@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import type {
   ActionResult,
   HotspotResult,
+  UpdateResult,
   HwDepInstallResult,
   HwDepStatus,
   LteConfig,
@@ -46,6 +47,15 @@ import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.j
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c } from './detect.js';
 import { parseTailscaleStatus } from './tailscale.js';
+import {
+  classifyChanges,
+  describeCheck,
+  parseCommits,
+  parseVersion,
+  parseWorkingTree,
+  updateSteps,
+  type UpdateCheck,
+} from './update.js';
 import {
   readHilink,
   parseRouteDev,
@@ -86,6 +96,15 @@ async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out:
     return { ok: true, out: stdout.trim() };
   } catch (err) {
     return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
+  }
+}
+
+/** Read a file, or '' when it isn't there — used for version lookups. */
+function readFileSafe(path: string): string {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return '';
   }
 }
 
@@ -762,6 +781,78 @@ export class RealSystem implements SystemManager {
       void sh('sudo systemctl restart yonderrc-vehicle.service');
     }, 700).unref();
     return { ok: true, message: 'Restarting the vehicle service — this page comes back on its own in a few seconds.' };
+  }
+
+  /**
+   * What an update would change. Fetches from the remote and compares — it never
+   * modifies the checkout, so pressing this in the field is free.
+   */
+  async updateCheck(): Promise<UpdateCheck> {
+    const git = (args: string[], timeoutMs = 60_000) => shSlow('git', ['-C', REPO_ROOT, ...args], { cwd: REPO_ROOT, timeoutMs });
+
+    const current = parseVersion(readFileSafe(join(REPO_ROOT, 'package.json')));
+    const fetched = await git(['fetch', '--quiet', 'origin', 'main']);
+    const tree = parseWorkingTree((await git(['status', '--porcelain'])).out);
+
+    if (!fetched.ok) {
+      const base = { ok: false, current, available: null, behind: 0, commits: [], impact: classifyChanges([]), tree };
+      return { ...base, ...describeCheck(base) };
+    }
+
+    const log = await git(['log', '--oneline', '--no-decorate', 'HEAD..origin/main']);
+    const commits = parseCommits(log.out);
+    const files = (await git(['diff', '--name-only', 'HEAD..origin/main'])).out.split('\n').map((l) => l.trim());
+    const available = parseVersion((await git(['show', 'origin/main:package.json'])).out);
+
+    const base = {
+      ok: true,
+      current,
+      available,
+      behind: commits.length,
+      commits: commits.slice(0, 15),
+      impact: classifyChanges(files),
+      tree,
+    };
+    return { ...base, ...describeCheck(base) };
+  }
+
+  /**
+   * Apply it. Dependencies and the ground build run BEFORE the restart, so the
+   * service never comes back into a half-updated checkout — the setup page you are
+   * holding is served by that same service.
+   */
+  async updateApply(): Promise<UpdateResult> {
+    const check = await this.updateCheck();
+    if (!check.ok) return { ok: false, message: check.message, output: check.note ?? '', steps: [] };
+    if (!check.tree.clean) return { ok: false, message: check.message, output: check.note ?? '', steps: [] };
+    if (check.behind === 0) return { ok: true, message: check.message, output: '', steps: [] };
+
+    const steps: { label: string; ok: boolean }[] = [];
+    const logs: string[] = [];
+    for (const step of updateSteps(check.impact)) {
+      const args = step.cmd === 'git' ? ['-C', REPO_ROOT, ...step.args] : step.args;
+      const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000 });
+      steps.push({ label: step.label, ok: r.ok });
+      logs.push(`$ ${step.cmd} ${step.args.join(' ')}\n${errorExcerpt(r.out, 12) || '(no output)'}`);
+      if (!r.ok) {
+        return {
+          ok: false,
+          message: `Update stopped at: ${step.label.toLowerCase()}. The vehicle was NOT restarted and keeps running the previous version.`,
+          output: logs.join('\n\n'),
+          steps,
+        };
+      }
+    }
+
+    // Restart last, and deferred, so this response still reaches the browser.
+    void this.restartService();
+    return {
+      ok: true,
+      message: `Updated to v${check.available ?? '?'} — restarting now. This page comes back in a few seconds.`,
+      output: logs.join('\n\n'),
+      steps,
+      restarting: true,
+    };
   }
 
   async reboot(): Promise<ActionResult> {

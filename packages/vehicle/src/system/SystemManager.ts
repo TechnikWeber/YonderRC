@@ -3,6 +3,7 @@ import type { I2cSuggestion } from './detect.js';
 import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
 import type { HilinkStatus } from './hilink.js';
+import type { UpdateCheck } from './update.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -26,6 +27,14 @@ export interface HotspotResult extends ActionResult {
   /** The WPA key in force, or null for an open network. */
   psk?: string | null;
   radio?: WifiRadioStatus;
+}
+
+/** Result of applying an update; `output` is the log tail, success or failure. */
+export interface UpdateResult extends ActionResult {
+  output: string;
+  /** Steps that ran, so the panel can show what actually happened. */
+  steps: { label: string; ok: boolean }[];
+  restarting?: boolean;
 }
 
 export interface HwDepStatus {
@@ -302,6 +311,10 @@ export interface SystemManager {
   hwDepInstall(name: HwDepName): Promise<HwDepInstallResult>;
   /** Restart the vehicle service itself, so a freshly installed driver is picked up. */
   restartService(): Promise<ActionResult>;
+  /** What an update would change — fetches, changes nothing. */
+  updateCheck(): Promise<UpdateCheck>;
+  /** Apply the update (pull, install/rebuild if needed) and restart. */
+  updateApply(): Promise<UpdateResult>;
   reboot(): Promise<ActionResult>;
 }
 

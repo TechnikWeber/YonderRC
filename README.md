@@ -209,6 +209,10 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   **Wi-Fi country** is set, and NetworkManager then only says "device is not available".
   Setup shows the state and unblocks it in one press, with the country pre-filled from
   the Pi's locale — starting the hotspot repairs it on its own and says so.
+- **Update from the setup page**: *Check for updates* shows the incoming commits and
+  version without changing anything; *Update & restart* then pulls, installs changed
+  dependencies, rebuilds the control app if needed and restarts the service — so a
+  vehicle can be updated from a field with nothing but a phone.
 - **Guided hardware self-test**: channel sweep, read sensors, camera snapshot.
 - **Factory reset** for both the vehicle and the ground app.
 **Measured in the field** (2026-08-21, one afternoon, one carrier, one location — not a

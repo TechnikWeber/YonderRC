@@ -404,6 +404,18 @@
       </section>
 
       <section class="panel">
+        <div class="eyebrow">Software update</div>
+        <div id="upd-status"><div class="msg">Press <b>Check for updates</b> — that only looks, it changes nothing.</div></div>
+        <div class="btns">
+          <button class="btn" onclick="run(this, () => checkUpdate())">Check for updates</button>
+          <button class="btn primary" id="upd-apply" style="display:none" onclick="run(this, () => applyUpdate())">Update &amp; restart</button>
+        </div>
+        <p class="msg">Does what an SSH session would: <span class="mono">git pull --ff-only</span>, installs changed dependencies, rebuilds the control app when it changed, then restarts the vehicle service — so you can update from a field with nothing but this page. The vehicle needs <b>internet</b> for it. If a step fails, it stops there and keeps running the version you have.</p>
+        <div class="msg" id="upd-msg"></div>
+        <div class="log" id="upd-log" style="display:none"></div>
+      </section>
+
+      <section class="panel">
         <div class="eyebrow">System</div>
         <div class="btns">
           <button class="btn bad" onclick="run(this, () => reboot())">Reboot vehicle</button>
@@ -1184,6 +1196,69 @@
       async function resetCapacity() {
         const r = await post('/api/telemetry/reset');
         $('tel-msg').textContent = r.message || 'Reset.';
+      }
+
+      // ---- Software update ----
+      // Check first, apply second: in the field you want to see what you are about to
+      // change before you change it.
+      async function checkUpdate() {
+        $('upd-log').style.display = 'none';
+        $('upd-msg').textContent = 'Asking the update source…';
+        try {
+          renderUpdate(await getJSON('/api/update'));
+          $('upd-msg').textContent = '';
+        } catch {
+          $('upd-msg').textContent = 'Could not run the check.';
+        }
+      }
+
+      function renderUpdate(c) {
+        const row = (k, v, cls) => `<div class="row"><span class="k">${esc(k)}</span><span class="v ${cls || ''}">${esc(v)}</span></div>`;
+        const canUpdate = c.ok && c.tree && c.tree.clean && c.behind > 0;
+        const commits = (c.commits || [])
+          .map((x) => `<div class="row"><span class="k mono">${esc(x.hash)}</span><span class="v" style="text-align:left;font-family:var(--sans)">${esc(x.subject)}</span></div>`)
+          .join('');
+        $('upd-status').innerHTML =
+          row('installed', c.current ? `v${c.current}` : '—') +
+          (c.available ? row('available', `v${c.available}`, c.behind > 0 ? 'warn' : 'go') : '') +
+          row('status', c.message, c.ok ? (c.behind > 0 ? 'warn' : 'go') : 'bad') +
+          (c.note ? `<div class="msg" style="color:var(--idle)">${esc(c.note)}</div>` : '') +
+          (commits ? `<div class="eyebrow2" style="margin-top:10px">What would come in</div>${commits}` : '');
+        $('upd-apply').style.display = canUpdate ? 'inline-block' : 'none';
+      }
+
+      async function applyUpdate() {
+        $('upd-msg').innerHTML = 'Updating… this can take a few minutes if dependencies or the control app changed. <b>Keep this page open.</b>';
+        let r;
+        try {
+          r = await post('/api/update', {});
+        } catch {
+          // The service restarts at the end, so losing the connection here is normal.
+          r = { ok: true, message: 'The vehicle stopped answering — that is expected while it restarts.', restarting: true, steps: [] };
+        }
+        const steps = (r.steps || []).map((st) => `${st.ok ? '✓' : '✗'} ${esc(st.label)}`).join('<br>');
+        $('upd-msg').innerHTML =
+          `<b style="color:var(${r.ok ? '--go' : '--bad'})">${esc(r.message || '')}</b>` + (steps ? `<br>${steps}` : '');
+        if (r.output) {
+          $('upd-log').textContent = r.output;
+          $('upd-log').style.display = 'block';
+        }
+        if (r.restarting) {
+          // Reload once it is back, so this page is the updated one too.
+          let left = 10;
+          const tick = setInterval(() => {
+            left -= 1;
+            $('upd-msg').innerHTML += left === 9 ? `<br>Reloading in <span id="upd-count">${left}</span>s…` : '';
+            const c = $('upd-count');
+            if (c) c.textContent = String(left);
+            if (left <= 0) {
+              clearInterval(tick);
+              location.reload();
+            }
+          }, 1000);
+        } else {
+          checkUpdate();
+        }
       }
 
       // ---- Hardware test ----

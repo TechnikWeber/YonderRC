@@ -3,6 +3,52 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.43.0
+**English**
+- **The vehicle updates itself from the setup page.** New *Software update* panel:
+  **Check for updates** fetches and reports the installed version, the available one, how
+  many commits behind you are and the subject line of each — and changes nothing, so you
+  can look before you decide. **Update & restart** then does what an SSH session would
+  (`git pull --ff-only`, install changed dependencies, rebuild the control app when it
+  changed) and restarts the service last. The point is a vehicle standing in a field with
+  no keyboard anywhere near it.
+- **The steps come from the diff, not from optimism.** A pull that adds a dependency or
+  changes the ground app, followed by a bare restart, gives you a service that fails to
+  start — and the setup page *is* that service, so you would lose the page you are holding.
+  So dependencies are installed and the control app is rebuilt **before** the restart, and
+  a vehicle-only change stays a single `git pull`.
+- **It refuses when it should, and says why.** Local changes in the checkout (a
+  fast-forward would fail or discard them, and the modified files are listed), or no
+  internet. If a step fails it stops there and reports which one — the vehicle keeps
+  running the version it had.
+- **apt, systemd units and `install.sh` itself are deliberately out of scope.** When the
+  check sees those changed, it says so and points at the full installer for when you are
+  back at a keyboard.
+- Documented as HARDWARE §3.4 in both languages, including the SSH equivalent.
+
+**Deutsch**
+- **Das Fahrzeug aktualisiert sich über die Setup-Seite.** Neues Panel *Software update*:
+  **Check for updates** holt den Stand und meldet installierte Version, verfügbare
+  Version, wie viele Commits zurück und die Betreffzeile jedes einzelnen — und ändert
+  dabei nichts, du kannst also erst schauen und dann entscheiden. **Update & restart** tut
+  danach, was eine SSH-Sitzung täte (`git pull --ff-only`, geänderte Abhängigkeiten
+  installieren, Steuer-App neu bauen, falls nötig) und startet den Dienst zuletzt neu.
+  Gedacht für das Fahrzeug, das im Feld steht und weit und breit keine Tastatur hat.
+- **Die Schritte kommen aus dem Diff, nicht aus Zuversicht.** Ein Pull, der eine
+  Abhängigkeit ergänzt oder die Boden-App ändert, gefolgt von einem bloßen Neustart, ergibt
+  einen Dienst, der nicht mehr hochkommt — und die Setup-Seite *ist* dieser Dienst, du
+  würdest also genau die Seite verlieren, die du gerade in der Hand hältst. Deshalb werden
+  Abhängigkeiten installiert und die Steuer-App gebaut, **bevor** neu gestartet wird; eine
+  reine Fahrzeugänderung bleibt ein einzelnes `git pull`.
+- **Es verweigert, wo es soll, und sagt warum.** Lokale Änderungen im Checkout (ein
+  Fast-Forward würde scheitern oder sie wegwerfen — die betroffenen Dateien werden
+  genannt) oder fehlendes Internet. Scheitert ein Schritt, bleibt es dort stehen und meldet
+  welcher; das Fahrzeug läuft mit der bisherigen Version weiter.
+- **apt, systemd-Units und `install.sh` selbst sind bewusst außen vor.** Sieht der Check,
+  dass sich diese geändert haben, sagt er es und verweist auf den vollen Installer für den
+  Moment, in dem du wieder an einer Tastatur sitzt.
+- In HARDWARE §3.4 in beiden Sprachen dokumentiert, samt SSH-Entsprechung.
+
 ## v1.42.0
 **English**
 - **Fixed: the setup page scrolled sideways on a phone.** Flex items don't shrink below

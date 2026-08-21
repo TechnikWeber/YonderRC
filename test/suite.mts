@@ -868,6 +868,42 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
+  // ---- self-update: what the vehicle would do, and in which order ----
+  const U = await import('../packages/vehicle/src/system/update');
+  ok('clean tree recognised', U.parseWorkingTree('').clean === true);
+  const dirty = U.parseWorkingTree(' M packages/vehicle/src/index.ts\n?? scratch.txt');
+  ok('local changes are listed', !dirty.clean && dirty.dirty.includes('packages/vehicle/src/index.ts'));
+  const commits = U.parseCommits('7aa5354 v1.42.0 — setup page fits a phone\n651e485 v1.41.2 — no more stale message');
+  ok('commits parsed', commits.length === 2 && commits[0].hash === '7aa5354' && commits[0].subject.startsWith('v1.42.0'));
+  ok('version read from a package.json blob', U.parseVersion('{"name":"x","version":"1.42.0"}') === '1.42.0');
+  ok('broken package.json is null, not a crash', U.parseVersion('{oops') === null);
+
+  const impact = U.classifyChanges(['packages/ground/src/App.tsx', 'package.json', 'provisioning/install.sh']);
+  ok('changed files classified', impact.ground && impact.deps && impact.provisioning);
+  ok('vehicle-only change stays small', U.classifyChanges(['packages/vehicle/src/index.ts']).ground === false);
+
+  // Order matters: dependencies before the build (vite needs its platform binaries),
+  // and the restart happens after both — the setup page IS the service being restarted.
+  const stepsAll = U.updateSteps({ deps: true, ground: true, provisioning: false, vehicle: true }).map((st) => `${st.cmd} ${st.args.join(' ')}`);
+  ok('pull comes first', stepsAll[0] === 'git pull --ff-only origin main');
+  ok('deps installed before the build', stepsAll.findIndex((x) => x.includes('--omit=optional')) < stepsAll.findIndex((x) => x.includes('run build')));
+  ok('build tooling restored after --omit=optional', stepsAll.some((x) => x.includes('--include-workspace-root -w @yonderrc/ground')));
+  const stepsSmall = U.updateSteps({ deps: false, ground: false, provisioning: false, vehicle: true }).map((st) => st.cmd);
+  ok('a vehicle-only update is just a pull', stepsSmall.length === 1 && stepsSmall[0] === 'git');
+
+  const clean = { clean: true, dirty: [] };
+  const upToDate = U.describeCheck({ ok: true, current: '1.42.0', available: '1.42.0', behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean });
+  ok('up to date says so', upToDate.message.startsWith('Up to date') && upToDate.note === null);
+  const behind = U.describeCheck({ ok: true, current: '1.41.0', available: '1.42.0', behind: 3, commits: [], impact: U.classifyChanges(['packages/ground/src/App.tsx']), tree: clean });
+  ok('behind names the versions', behind.message.includes('3 commits behind') && behind.message.includes('v1.42.0'));
+  ok('a ground change warns about the rebuild', (behind.note || '').includes('rebuilt'));
+  const prov = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges(['provisioning/install.sh']), tree: clean });
+  ok('installer changes send you to the full installer', (prov.note || '').includes('install.sh'));
+  const dirtyCheck = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges([]), tree: { clean: false, dirty: ['a.ts'] } });
+  ok('local changes block the update, with the reason', dirtyCheck.message.includes('local changes') && (dirtyCheck.note || '').includes('a.ts'));
+  const offline = U.describeCheck({ ok: false, current: '1', available: null, behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean });
+  ok('no network is named as such', offline.message.includes('Could not reach') && (offline.note || '').includes('internet'));
+
   // ---- Tailscale status: the pending login URL ----
   // A real Pi sat at "down · NeedsLogin" with nothing to click, because the login URL
   // was scraped from `tailscale up --timeout=1s` (too early) and the status parser

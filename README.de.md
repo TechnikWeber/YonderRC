@@ -223,6 +223,10 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   solange kein **WLAN-Land** gesetzt ist, und NetworkManager sagt dann nur „device is not
   available". Das Setup zeigt den Zustand und entsperrt es per Knopfdruck, das Länderkürzel
   ist aus der Locale des Pi vorbelegt — beim Hotspot-Start passiert das von selbst.
+- **Update direkt über die Setup-Seite**: *Check for updates* zeigt die anstehenden
+  Commits und die Version, ohne etwas zu ändern; *Update & restart* holt sie dann,
+  installiert geänderte Abhängigkeiten, baut bei Bedarf die Steuer-App neu und startet
+  den Dienst — ein Fahrzeug lässt sich damit im Feld allein mit dem Handy aktualisieren.
 - **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
 - **Werksreset** für Fahrzeug und Boden-App.
 **Im Feld gemessen** (21.08.2026, ein Nachmittag, ein Netz, ein Ort — kein Benchmark):

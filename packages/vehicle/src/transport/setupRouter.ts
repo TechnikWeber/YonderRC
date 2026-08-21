@@ -145,6 +145,18 @@ export async function handleSetup(
     return true;
   }
 
+  // ---- self-update (git pull + rebuild + restart, from the field) ----
+  if (url === '/api/update' && method === 'GET') {
+    json(res, 200, await ctx.system.updateCheck());
+    return true;
+  }
+
+  if (url === '/api/update' && method === 'POST') {
+    const r = await ctx.system.updateApply();
+    json(res, r.ok ? 200 : 500, r);
+    return true;
+  }
+
   if (url === '/api/restart' && method === 'POST') {
     json(res, 200, await ctx.system.restartService());
     return true;

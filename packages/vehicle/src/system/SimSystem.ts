@@ -2,6 +2,7 @@ import { hostname } from 'node:os';
 import type {
   ActionResult,
   HotspotResult,
+  UpdateResult,
   HwDepInstallResult,
   HwDepStatus,
   LteConfig,
@@ -19,6 +20,7 @@ import type {
 import { HW_DEPS, explainNpmFailure, isHwDep, lastLines, type HwDepName } from './hwDeps.js';
 import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
 import { type HilinkStatus } from './hilink.js';
+import { classifyChanges, describeCheck, type UpdateCheck } from './update.js';
 
 /**
  * Mock system: pretends to have an LTE modem and Tailscale so the entire setup
@@ -315,6 +317,43 @@ export class SimSystem implements SystemManager {
 
   async restartService(): Promise<ActionResult> {
     return { ok: true, message: 'Vehicle service restart requested (simulated — no-op).' };
+  }
+
+  /** A pretend update, so the panel and both outcomes can be tried without a Pi. */
+  private simBehind = 2;
+
+  async updateCheck(): Promise<UpdateCheck> {
+    const impact = classifyChanges(this.simBehind ? ['packages/vehicle/src/index.ts', 'packages/ground/src/App.tsx'] : []);
+    const base = {
+      ok: true,
+      current: '1.0.0-sim',
+      available: this.simBehind ? '1.0.1-sim' : '1.0.0-sim',
+      behind: this.simBehind,
+      commits: this.simBehind
+        ? [
+            { hash: 'a1b2c3d', subject: 'v1.0.1-sim — simulated change' },
+            { hash: 'e4f5a6b', subject: 'docs: simulated note' },
+          ].slice(0, this.simBehind)
+        : [],
+      impact,
+      tree: { clean: true, dirty: [] },
+    };
+    return { ...base, ...describeCheck(base) };
+  }
+
+  async updateApply(): Promise<UpdateResult> {
+    if (!this.simBehind) return { ok: true, message: 'Up to date (simulated).', output: '', steps: [] };
+    this.simBehind = 0;
+    return {
+      ok: true,
+      message: 'Updated to v1.0.1-sim — restarting now (simulated).',
+      output: '$ git pull --ff-only origin main\nFast-forward (simulated)',
+      steps: [
+        { label: 'Fetching and applying the update', ok: true },
+        { label: 'Rebuilding the control app', ok: true },
+      ],
+      restarting: true,
+    };
   }
 
   async reboot(): Promise<ActionResult> {
