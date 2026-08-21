@@ -2,7 +2,7 @@ import { exec, execFile, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import type {
@@ -119,13 +119,13 @@ async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out:
  * on the Pi). Handing git a global config file of our own is honoured, needs no
  * `$HOME`, and leaves nothing behind but a file in /tmp.
  */
-function gitEnv(repoRoot: string): NodeJS.ProcessEnv {
+function gitEnv(repoRoot: string): { env: NodeJS.ProcessEnv; note: string } {
   const file = join(tmpdir(), 'yonderrc-gitconfig');
   try {
     writeFileSync(file, safeDirectoryConfig(repoRoot));
-    return { ...C_LOCALE, GIT_CONFIG_GLOBAL: file };
-  } catch {
-    return { ...C_LOCALE };
+    return { env: { ...C_LOCALE, GIT_CONFIG_GLOBAL: file }, note: `declared "${repoRoot}" safe via ${file}` };
+  } catch (err) {
+    return { env: { ...C_LOCALE }, note: `could not write ${file} (${(err as Error).message})` };
   }
 }
 
@@ -139,7 +139,9 @@ function readFileSafe(path: string): string {
 }
 
 /** The repo checkout (…/packages/vehicle/src/system → repo root), where npm must run. */
-const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+// resolve() strips the trailing slash the URL form leaves behind — git compares
+// safe.directory literally, so "/opt/yonderrc/" is not "/opt/yonderrc".
+const REPO_ROOT = resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 /** Resolves from the vehicle package, i.e. through the workspace's node_modules. */
 const requireFrom = createRequire(import.meta.url);
 
@@ -819,9 +821,9 @@ export class RealSystem implements SystemManager {
    * modifies the checkout, so pressing this in the field is free.
    */
   async updateCheck(src: UpdateSource = UPDATE_SOURCE_DEFAULT): Promise<UpdateCheck> {
-    const env = gitEnv(REPO_ROOT);
+    const g = gitEnv(REPO_ROOT);
     const git = (args: string[], timeoutMs = 60_000) =>
-      shSlow('git', gitArgs(REPO_ROOT, args), { cwd: REPO_ROOT, timeoutMs, env });
+      shSlow('git', gitArgs(REPO_ROOT, args), { cwd: REPO_ROOT, timeoutMs, env: g.env });
 
     const current = parseVersion(readFileSafe(join(REPO_ROOT, 'package.json')));
 
@@ -834,7 +836,11 @@ export class RealSystem implements SystemManager {
     const tree = parseWorkingTree((await git(['status', '--porcelain'])).out);
 
     if (!fetched.ok) {
-      const detail = errorExcerpt(fetched.out, 8) || 'git produced no output.';
+      // Say what the vehicle already tried, so a persistent failure is diagnosable
+      // instead of costing another round trip.
+      const tried = `\n\n(The vehicle ${g.note}, and git still refused. Please report this together with \`git --version\`.)`;
+      const raw = errorExcerpt(fetched.out, 8) || 'git produced no output.';
+      const detail = /dubious ownership/i.test(fetched.out) ? raw + tried : raw;
       const base = { ok: false, current, available: null, behind: 0, commits: [], impact: classifyChanges([]), tree, detail };
       return { ...base, ...describeCheck(base) };
     }
@@ -871,7 +877,7 @@ export class RealSystem implements SystemManager {
 
     const steps: { label: string; ok: boolean }[] = [];
     const logs: string[] = [];
-    const env = gitEnv(REPO_ROOT);
+    const { env } = gitEnv(REPO_ROOT);
     for (const step of updateSteps(check.impact, src)) {
       const args = step.cmd === 'git' ? gitArgs(REPO_ROOT, step.args) : step.args;
       const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000, env: step.cmd === 'git' ? env : undefined });

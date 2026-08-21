@@ -888,7 +888,13 @@ async function main() {
   // safe.directory from protected (system/global) config, which is why the `-c`
   // version silently changed nothing on the Pi.
   ok('no -c safe.directory on the command line', !ga.includes('-c'));
-  ok('the exception is a global-config file instead', U.safeDirectoryConfig('/opt/yonderrc').includes('[safe]') && U.safeDirectoryConfig('/opt/yonderrc').includes('directory = /opt/yonderrc'));
+  const sdc = U.safeDirectoryConfig('/opt/yonderrc/');
+  ok('the exception is a global-config file instead', sdc.includes('[safe]'));
+  // The repo root comes from a URL and carries a trailing slash; git compares the
+  // value literally, so both spellings go in — and `*`, which is harmless because
+  // this file reaches git only through the vehicle's own GIT_CONFIG_GLOBAL.
+  ok('trailing slash and bare path both listed', sdc.includes('directory = /opt/yonderrc\n') && sdc.includes('directory = /opt/yonderrc/\n'));
+  ok('wildcard as the last resort', sdc.includes('directory = *'));
 
   // The update source is a field, so a fork or a branch needs no code change.
   ok('a remote name is a source', U.isGitSource('origin') && U.isGitSource('upstream'));

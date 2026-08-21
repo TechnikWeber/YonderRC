@@ -3,6 +3,41 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.44.1
+**English**
+- **Third attempt at git's ownership block, and this time with the actual path.** The
+  repo root is derived from a URL and therefore ends in a slash — `/opt/yonderrc/`. git
+  compares `safe.directory` literally, so the exception the vehicle wrote never matched
+  the directory git was complaining about. It went unnoticed because the git here accepts
+  both spellings while the Pi's does not. The path is normalised now, and the throwaway
+  config lists **both spellings plus `*`**.
+- The wildcard is safe in this specific place: that config file reaches git only through
+  `GIT_CONFIG_GLOBAL` on the vehicle's **own** invocations. It never touches the
+  operator's git configuration and never applies to any other command.
+- **If it still fails, the message now says what was tried** — which file was written and
+  which path was declared safe — so the next report carries the information instead of
+  costing another round.
+- Verified end to end with the ownership block forced on and `$HOME` removed: the check
+  completes, where the same repository refuses every plain git command with exit 128.
+
+**Deutsch**
+- **Dritter Anlauf auf gits Besitzrechte-Sperre, diesmal mit dem richtigen Pfad.** Das
+  Repo-Wurzelverzeichnis wird aus einer URL abgeleitet und endet deshalb auf einen
+  Schrägstrich — `/opt/yonderrc/`. git vergleicht `safe.directory` wörtlich, die
+  Ausnahme passte also nie auf das Verzeichnis, über das git sich beschwerte. Unentdeckt
+  blieb das, weil das git hier beide Schreibweisen akzeptiert und das des Pi nicht. Der
+  Pfad wird jetzt normalisiert, und die Wegwerf-Config listet **beide Schreibweisen plus
+  `*`**.
+- Der Platzhalter ist genau hier unbedenklich: Diese Datei erreicht git ausschließlich
+  über `GIT_CONFIG_GLOBAL` bei den **eigenen** Aufrufen des Fahrzeugs. Sie fasst die
+  git-Konfiguration des Betreibers nicht an und gilt für keinen anderen Befehl.
+- **Scheitert es weiterhin, nennt die Meldung jetzt den Versuch** — welche Datei
+  geschrieben und welcher Pfad freigegeben wurde — damit die nächste Rückmeldung die
+  Information schon enthält, statt eine weitere Runde zu kosten.
+- Ende-zu-Ende verifiziert mit erzwungener Besitzrechte-Sperre und entferntem `$HOME`:
+  der Check läuft durch, wo dasselbe Repository jeden blanken git-Befehl mit Exit 128
+  abweist.
+
 ## v1.44.0
 **English**
 - **Fixed (for real this time): the update check still refused the checkout.** git only

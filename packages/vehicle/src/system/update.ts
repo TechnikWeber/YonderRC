@@ -98,9 +98,19 @@ export function gitArgs(repoRoot: string, args: string[]): string[] {
   return ['-C', repoRoot, ...args];
 }
 
-/** Contents of the throwaway global git config that lifts the ownership block. */
+/**
+ * Contents of the throwaway global git config that lifts the ownership block.
+ *
+ * Three entries, because two attempts already failed on a real Pi for reasons that
+ * were invisible from here: the path with and without a trailing slash (the repo
+ * root is derived from a URL and carries one, and older git compares literally),
+ * plus `*`. The wildcard is safe *here* precisely because this file is handed to
+ * git only through `GIT_CONFIG_GLOBAL` on the vehicle's own invocations — it never
+ * touches the operator's git config, and it never applies to any other command.
+ */
 export function safeDirectoryConfig(repoRoot: string): string {
-  return `[safe]\n\tdirectory = ${repoRoot}\n`;
+  const trimmed = repoRoot.replace(/\/+$/, '');
+  return `[safe]\n\tdirectory = ${trimmed}\n\tdirectory = ${trimmed}/\n\tdirectory = *\n`;
 }
 
 /**
