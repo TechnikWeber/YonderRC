@@ -3,6 +3,42 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.38.4
+**English**
+- **Fixed: provisioning a fresh Raspberry Pi aborted at the ground build.** `install.sh`
+  ran `npm install --omit=optional` to keep the native hardware drivers (i2c-bus, pigpio,
+  serialport) out of a plain sim install — but npm applies `--omit` to the *whole* tree,
+  and rollup and esbuild ship their platform binaries as their own optional dependencies.
+  So `vite build` died with `Cannot find module @rollup/rollup-linux-arm64-gnu`, and
+  because the script aborts on error the Pi was left **without a built ground app and
+  without its systemd services**.
+- The installer now runs a second, narrow `npm install --include-workspace-root
+  -w @yonderrc/ground` with optional deps allowed: that adds only the rollup/esbuild
+  binaries for this architecture (including vite's nested esbuild) — the vehicle's
+  hardware drivers stay out, because that workspace is not selected. If the build still
+  fails, it retries once with a full install instead of leaving a half-provisioned Pi.
+- **Recovering a Pi that already hit this**: `cd /opt/yonderrc && sudo git pull --ff-only
+  && sudo bash provisioning/install.sh` — the installer is idempotent.
+
+**Deutsch**
+- **Behoben: die Einrichtung eines frischen Raspberry Pi brach beim Ground-Build ab.**
+  `install.sh` lief mit `npm install --omit=optional`, um die nativen Hardware-Treiber
+  (i2c-bus, pigpio, serialport) aus einer reinen Sim-Installation herauszuhalten — npm
+  wendet `--omit` aber auf den *gesamten* Abhängigkeitsbaum an, und rollup und esbuild
+  liefern ihre Plattform-Binaries selbst als optionale Abhängigkeiten. `vite build` starb
+  deshalb mit `Cannot find module @rollup/rollup-linux-arm64-gnu`, und da das Skript bei
+  einem Fehler abbricht, blieb der Pi **ohne gebaute Ground-App und ohne seine
+  systemd-Dienste** zurück.
+- Der Installer führt jetzt ein zweites, eng gefasstes `npm install
+  --include-workspace-root -w @yonderrc/ground` mit optionalen Abhängigkeiten aus: das
+  ergänzt nur die rollup/esbuild-Binaries für diese Architektur (inklusive des
+  verschachtelten esbuild von vite) — die Hardware-Treiber des Fahrzeugs bleiben draußen,
+  weil dieses Workspace nicht ausgewählt ist. Scheitert der Build trotzdem, wird einmal
+  mit einer vollständigen Installation wiederholt, statt einen halb eingerichteten Pi
+  zu hinterlassen.
+- **Einen bereits betroffenen Pi retten**: `cd /opt/yonderrc && sudo git pull --ff-only
+  && sudo bash provisioning/install.sh` — der Installer ist idempotent.
+
 ## v1.38.3
 **English**
 - **Fixed: a one-second link blip was announced as an outage.** The WebSocket reconnects

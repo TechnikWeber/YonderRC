@@ -47,10 +47,22 @@ fi
 
 echo "-- npm install (sim by default; hardware driver deps are optional)"
 cd "$REPO"
+# --omit=optional keeps the native hardware drivers (i2c-bus/pigpio/serialport) out of a
+# plain sim install — see HARDWARE.md 3.3. But the flag is *global*: it also drops the
+# platform binaries that rollup and esbuild ship as their own optionalDependencies, and
+# the ground build then dies with "Cannot find module @rollup/rollup-linux-arm64-gnu".
 npm install --omit=optional
+# ...so install the ground workspace once more with optional deps allowed. That adds only
+# @rollup/rollup-<arch> and @esbuild/<arch> (incl. vite's nested esbuild) — the vehicle's
+# hardware drivers stay out because that workspace is not selected here.
+npm install --include-workspace-root -w @yonderrc/ground
 
 echo "-- build the ground control app (so a phone can fly/configure via the Pi)"
-npm run build -w @yonderrc/ground
+if ! npm run build -w @yonderrc/ground; then
+  echo "   build failed — retrying once with a full install (incl. all optional deps)"
+  npm install
+  npm run build -w @yonderrc/ground
+fi
 
 echo "-- hardware access groups (I2C / GPIO / serial)"
 usermod -aG i2c,gpio,dialout "${SUDO_USER:-pi}" || true

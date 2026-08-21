@@ -309,7 +309,10 @@ go2rtc, richtet die drei systemd-Dienste ein (`yonderrc-vehicle`, `go2rtc`,
 
 Die nativen Bibliotheken sind **optionale Abhängigkeiten**, und der Installer führt
 bewusst `npm install --omit=optional` aus — so installiert auch ein Pi ohne diese
-Hardware sauber durch. Installiere die, die du brauchst:
+Hardware sauber durch. (Danach installiert er das *ground*-Workspace noch einmal mit
+optionalen Abhängigkeiten: der Schalter gilt global, und rollup/esbuild liefern ihre
+Plattform-Binaries als optionale Abhängigkeiten, die `vite build` braucht.) Installiere
+den Treiber, den du brauchst:
 
 ```bash
 cd /opt/yonderrc

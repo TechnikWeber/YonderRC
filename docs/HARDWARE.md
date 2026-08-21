@@ -305,7 +305,9 @@ three systemd services (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`) and en
 
 The native libraries are **optional dependencies** and the installer deliberately runs
 `npm install --omit=optional`, so a Pi without any of that hardware still installs
-cleanly. Add the one you need:
+cleanly. (It then re-installs the *ground* workspace with optional deps allowed — that
+flag is global, and rollup/esbuild ship their platform binaries as optional deps, which
+`vite build` needs.) Add the driver you need:
 
 ```bash
 cd /opt/yonderrc
