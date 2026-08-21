@@ -141,9 +141,11 @@ export interface HotspotConfig {
   password: string | null;
   /**
    * When the onboarding hotspot starts at boot:
-   *  - auto   : only when the Pi has no uplink at all (the historic behaviour)
-   *  - always : also next to a working LTE link, so the vehicle stays reachable
-   *             on the field for diagnostics even when the modem or the VPN is fine
+   *  - always : whenever the WiFi radio is free — **the default since v1.41.0**. A
+   *             vehicle you can always walk up to beats one that is only reachable
+   *             while its uplink works; set a hotspot password once and the permanent
+   *             AP costs nothing.
+   *  - auto   : only when the Pi has no uplink at all (the pre-v1.41.0 behaviour)
    *  - off    : never (you always reach the vehicle some other way)
    * "always" cannot override physics: with one radio the Pi is either an access
    * point or a WiFi client, so an active WiFi client connection always wins.
@@ -153,7 +155,7 @@ export interface HotspotConfig {
 
 export type HotspotMode = 'auto' | 'always' | 'off';
 
-export const HOTSPOT_DEFAULTS: HotspotConfig = { ssid: 'YonderRC-setup', password: null, mode: 'auto' };
+export const HOTSPOT_DEFAULTS: HotspotConfig = { ssid: 'YonderRC-setup', password: null, mode: 'always' };
 
 /**
  * Should the boot-time onboarding start the hotspot? Pure so the decision is
@@ -167,9 +169,12 @@ export function shouldStartHotspot(
   hasUplink: boolean,
   wifiIsClient: boolean,
 ): { start: boolean; reason: string } {
-  if (mode === 'off') return { start: false, reason: 'hotspot disabled in the config' };
+  // An unset mode means "never configured", and that now follows the shipped default
+  // (always) — including vehicles whose config predates the setting.
+  const m = mode ?? HOTSPOT_DEFAULTS.mode ?? 'always';
+  if (m === 'off') return { start: false, reason: 'hotspot disabled in the config' };
   if (wifiIsClient) return { start: false, reason: 'wlan0 is joined to a WiFi network (one radio)' };
-  if (mode === 'always') return { start: true, reason: 'hotspot mode "always"' };
+  if (m === 'always') return { start: true, reason: 'hotspot mode "always"' };
   return hasUplink
     ? { start: false, reason: 'uplink present — no hotspot needed' }
     : { start: true, reason: 'no uplink' };

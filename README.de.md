@@ -209,7 +209,7 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   `mmcli`-Ausgabe) und **SIM-PIN ändern/entfernen**. `autoconnect` wählt selbst neu.
 - **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
 - **Werksreset** für Fahrzeug und Boden-App.
-- **Autark im Feld**: ohne Netz startet der Pi einen WLAN-Hotspot und öffnet per
+- **Autark im Feld**: der Pi startet seinen eigenen WLAN-Hotspot, sobald seine Funkeinheit frei ist, und öffnet per
   **Captive Portal** die Steuer-/Setup-Seite — die Boden-App wird vom Pi selbst
   ausgeliefert, Steuern und Konfigurieren gehen also mit dem bloßen Handy.
 - Hardware-Treiber **PCA9685 / GPIO-PWM / SBUS** (native Libs sind optional),

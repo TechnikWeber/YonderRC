@@ -3,6 +3,40 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.41.0
+**English**
+- **The onboarding hotspot now defaults to `always`.** It comes up whenever the WiFi radio
+  is free — next to Ethernet or LTE too — so you can always walk up to the vehicle and
+  reach the setup page. Before, any default route (a network cable on the bench counted)
+  suppressed it, which is exactly how a vehicle ends up unreachable the moment its uplink
+  misbehaves. The old behaviour is still one dropdown away as `auto`.
+- **This changes existing vehicles that never picked a mode.** An unset `hotspot.mode`
+  follows the shipped default, so after this update such a Pi starts broadcasting
+  `YonderRC-setup`. A vehicle whose WiFi is *joined* to a network is unaffected — one
+  radio can serve an AP or be a client, never both, and the client connection still wins.
+- The hotspot stays **open** by default (that is what lets the captive portal put the page
+  in front of you with nothing to type), so **set a password once the vehicle leaves the
+  bench** — Setup › WiFi › Setup hotspot, min. 8 characters. Leaving it open is a valid
+  choice; it just means anyone in range reaches the setup page and, if you enabled it, the
+  LTE stick's admin page.
+
+**Deutsch**
+- **Der Onboarding-Hotspot steht jetzt standardmäßig auf `always`.** Er kommt hoch, sobald
+  die WLAN-Einheit frei ist — auch neben Ethernet oder LTE — damit du jederzeit ans
+  Fahrzeug herankommst. Vorher unterdrückte ihn jede Default-Route (ein Netzwerkkabel auf
+  der Werkbank zählte schon), und genau so wird ein Fahrzeug unerreichbar, sobald sein
+  Uplink zickt. Das alte Verhalten ist als `auto` weiterhin einen Klick entfernt.
+- **Das ändert bestehende Fahrzeuge, die nie einen Modus gewählt haben.** Ein nicht
+  gesetzter `hotspot.mode` folgt dem ausgelieferten Standard — so ein Pi funkt nach dem
+  Update also `YonderRC-setup`. Fahrzeuge, deren WLAN *in einem Netz eingebucht* ist,
+  bleiben unberührt: eine Funkeinheit kann AP sein oder Client, nie beides, und die
+  Client-Verbindung gewinnt weiterhin.
+- Der Hotspot bleibt standardmäßig **offen** (nur so stellt das Captive Portal die Seite
+  ohne Tipparbeit vor dich), also **vergib ein Passwort, sobald das Fahrzeug die Werkbank
+  verlässt** — Setup › WiFi › Setup hotspot, mind. 8 Zeichen. Ihn offen zu lassen ist eine
+  legitime Entscheidung; sie heißt nur, dass jeder in Reichweite die Setup-Seite erreicht
+  und, falls aktiviert, die Admin-Seite des LTE-Sticks.
+
 ## v1.40.2
 **English**
 - **Installing one native driver module builds all three — now it says so.** `npm install

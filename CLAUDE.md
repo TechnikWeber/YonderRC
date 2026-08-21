@@ -132,8 +132,8 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   pure `parseWifiScan`), joins a network and manages the hotspot (`hotspotArgs`, open by
   default — `config.hotspot`). A failed join restarts the hotspot so the Pi can't lock
   itself out. `hotspot.mode` (auto/always/off, pure `shouldStartHotspot`, mirrored in
-  `onboard.sh`) decides when boot starts it; a WiFi client connection always wins (one
-  radio). nmcli paths are hardware-only-verified; the sim has a mock neighbourhood.
+  `onboard.sh`) decides when boot starts it; **the default is `always` since v1.41.0** (an
+  unset mode follows it too), and a WiFi client connection always wins (one radio). nmcli paths are hardware-only-verified; the sim has a mock neighbourhood.
   **Corrected in v1.39.1 on real hardware**: `nmcli device wifi hotspot` *always* secures
   the AP ("If not provided, nmcli will generate a password"), so the documented open
   hotspot never was open — `wifi.ts` `hotspotCommands` builds the profile explicitly

@@ -506,8 +506,9 @@ Unter **Setup › Remote access** wählst du **eine** Methode:
 
 ## 5. Lokal ohne Netz betreiben (AP-Modus + Handy)
 
-Wenn der Pi **weder ein bekanntes WLAN noch LTE** findet, startet er nach dem
-Booten automatisch einen eigenen **WLAN-Hotspot „YonderRC-setup"** — **offen, ohne
+Solange sein WLAN nicht in einem Netz eingebucht ist, startet der Pi kurz nach dem Booten
+einen eigenen **WLAN-Hotspot „YonderRC-setup"** (Modus `always`, Standard seit v1.41.0 —
+die übrigen Modi stehen in 5.2) — **offen, ohne
 Passwort**, damit das Captive Portal die Seite ohne Tipparbeit vor dich stellt. So
 steuerst und konfigurierst du komplett **ohne Laptop, nur mit dem Handy**:
 
@@ -555,9 +556,15 @@ Unter **Setup › WiFi › Setup hotspot** lassen sich Name und Passwort des Hot
 
 | Modus | Verhalten |
 |---|---|
-| **auto** (Standard) | Nur, wenn der Pi beim Booten **gar keinen Uplink** hat. |
-| **always** | Auch **neben einer laufenden LTE-Verbindung** — du kommst also immer ans Fahrzeug heran, selbst wenn Modem und VPN sauber laufen. |
+| **always** (Standard) | Immer, wenn die WLAN-Einheit frei ist — **auch neben Ethernet oder LTE**, du kommst also jederzeit ans Fahrzeug und auf die Setup-Seite. |
+| **auto** | Nur, wenn der Pi beim Booten **gar keinen Uplink** hat (Verhalten vor v1.41.0). |
 | **off** | Startet nie von selbst. |
+
+> Da der Standard den Hotspot dauerhaft laufen lässt: **gib ihm ein Passwort**, sobald das
+> Fahrzeug die Werkbank verlässt (gleiches Panel, mind. 8 Zeichen). Ihn offen zu lassen ist
+> eine bewusste Entscheidung — nur so funktioniert das Captive Portal ohne Tipparbeit —
+> aber ein offener AP heißt eben auch, dass jeder in Reichweite die Setup-Seite erreicht
+> und, falls aktiviert, die Admin-Seite des LTE-Sticks.
 
 *Save* wirkt beim nächsten Hotspot-Start, *Save & start now* startet ihn sofort neu
 (was dich rauswirft, wenn du darüber verbunden bist), *Stop hotspot* fährt ihn herunter.

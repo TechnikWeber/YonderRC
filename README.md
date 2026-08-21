@@ -197,7 +197,7 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   (raw `mmcli`), and **SIM PIN change/remove**. `autoconnect` redials by itself.
 - **Guided hardware self-test**: channel sweep, read sensors, camera snapshot.
 - **Factory reset** for both the vehicle and the ground app.
-- **Self-sufficient in the field**: with no network the Pi starts a Wi-Fi hotspot and
+- **Self-sufficient in the field**: the Pi starts its own Wi-Fi hotspot whenever its radio is free and
   opens the control/setup page via a **captive portal** — the ground app is served by
   the Pi itself, so you can control and configure with nothing but a phone.
 - Hardware drivers **PCA9685 / GPIO-PWM / SBUS** (native libs are optional),

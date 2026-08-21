@@ -1002,7 +1002,11 @@ async function main() {
   const { shouldStartHotspot } = await import('../packages/vehicle/src/system/SystemManager');
   ok('auto: no uplink → start', shouldStartHotspot('auto', false, false).start === true);
   ok('auto: uplink → skip', shouldStartHotspot('auto', true, false).start === false);
-  ok('default (undefined) behaves like auto', shouldStartHotspot(undefined, true, false).start === false);
+  // The shipped default is "always" since v1.41.0 — a vehicle you can always walk up
+  // to beats one that is only reachable while its uplink works.
+  ok('default is always', HOTSPOT_DEFAULTS.mode === 'always');
+  ok('unset mode follows the shipped default', shouldStartHotspot(undefined, true, false).start === true);
+  ok('unset mode still yields to a WiFi client', shouldStartHotspot(undefined, true, true).start === false);
   ok('always: starts next to LTE', shouldStartHotspot('always', true, false).start === true);
   ok('off: never starts', shouldStartHotspot('off', false, false).start === false);
   // One radio: an active WiFi client connection beats every mode.

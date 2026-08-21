@@ -15,7 +15,7 @@ CONFIG="${YRC_CONFIG:-/opt/yonderrc/yonderrc-config.json}"
 IFACE="${YRC_WIFI_IFACE:-wlan0}"
 SSID="YonderRC-setup"
 PASS=""
-MODE="auto"   # auto | always | off — see HotspotConfig.mode
+MODE="always" # always | auto | off — see HotspotConfig.mode (default: always)
 
 # Read SSID/password from the persisted config, if the setup UI wrote any. Two
 # separate lines, so an SSID with spaces survives; an empty line means "not set".
