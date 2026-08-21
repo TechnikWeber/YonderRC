@@ -901,8 +901,25 @@ async function main() {
   ok('installer changes send you to the full installer', (prov.note || '').includes('install.sh'));
   const dirtyCheck = U.describeCheck({ ok: true, current: '1', available: '2', behind: 1, commits: [], impact: U.classifyChanges([]), tree: { clean: false, dirty: ['a.ts'] } });
   ok('local changes block the update, with the reason', dirtyCheck.message.includes('local changes') && (dirtyCheck.note || '').includes('a.ts'));
-  const offline = U.describeCheck({ ok: false, current: '1', available: null, behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean });
-  ok('no network is named as such', offline.message.includes('Could not reach') && (offline.note || '').includes('internet'));
+  // A failed check must repeat git's own reason. Reporting "needs internet" for a
+  // permission problem sent a vehicle WITH internet on a wild goose chase.
+  const dubious = U.explainGitFailure("fatal: detected dubious ownership in repository at '/opt/yonderrc'");
+  ok('dubious ownership is recognised, not called a network fault', dubious.cause.includes('belongs to a different user') && dubious.selfFixable === true);
+  ok('no DNS is its own case', U.explainGitFailure('fatal: unable to access ...: Could not resolve host: github.com').cause.includes('resolve'));
+  ok('unreachable remote is its own case', U.explainGitFailure('fatal: unable to access ...: Failed to connect to github.com port 443').cause.includes('reach'));
+  ok('a VPN is not proof of internet', U.explainGitFailure('Failed to connect').fix.includes('Tailscale'));
+  // Verbatim strings from a real git (with LC_ALL=C, which the vehicle forces —
+  // a localised git says "Schwerwiegend: Kein Git-Repository" and matches nothing).
+  ok('a zip install is told it cannot update', U.explainGitFailure('fatal: not a git repository (or any parent up to mount point /)').cause.includes('not installed from git'));
+  ok('real "could not resolve host" wording', U.explainGitFailure("fatal: unable to access 'https://github.com/x.git/': Could not resolve host: github.com").cause.includes('resolve'));
+  ok('real "couldn\'t find remote ref" wording', U.explainGitFailure('fatal: couldn\'t find remote ref main').cause.includes('does not exist'));
+  ok('credential prompts are explained', U.explainGitFailure('fatal: Authentication failed for ...').fix.includes('remote set-url'));
+  const failed = U.describeCheck({
+    ok: false, current: '1', available: null, behind: 0, commits: [], impact: U.classifyChanges([]), tree: clean,
+    detail: "fatal: detected dubious ownership in repository at '/opt/yonderrc'",
+  });
+  ok('the check surfaces the real cause', failed.message.includes('different user'), failed.message);
+  ok('and offers the self-repair', (failed.note || '').includes('fix this itself'));
 
   // ---- Tailscale status: the pending login URL ----
   // A real Pi sat at "down · NeedsLogin" with nothing to click, because the login URL

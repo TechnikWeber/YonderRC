@@ -3,6 +3,49 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.43.1
+**English**
+- **Fixed: the update check blamed the network for everything.** "Could not reach the
+  update source. The vehicle needs internet" appeared on a vehicle that demonstrably had
+  internet, because the check swallowed git's actual message and guessed. It now reports
+  **git's own words** and translates the common causes: a checkout owned by another user
+  (`dubious ownership` — the usual one, since the installer clones as `pi` while the
+  service runs as root), no DNS, an unreachable github.com, missing credentials, a
+  missing branch, or a vehicle installed from a zip and therefore unable to update at all.
+- **The ownership case repairs itself.** That error asks for exactly one setting, so the
+  vehicle applies it to its own directory (`git config --global --add safe.directory
+  /opt/yonderrc`) and retries the fetch once, instead of sending you looking for an SSH
+  session.
+- **Every parsed command now runs in the C locale.** git, nmcli and the rest translate
+  their messages: on a German Pi git answers `Schwerwiegend: Kein Git-Repository`, which
+  none of our patterns match — and the same applies to every other output this code reads.
+  Found by running the real commands rather than trusting the English wording, and fixed
+  once for all of them.
+- Reaching a vehicle over Tailscale says nothing about whether the *vehicle* has internet.
+  The message says so now, because that is the exact confusion this bug produced.
+
+**Deutsch**
+- **Behoben: der Update-Check schob alles aufs Netzwerk.** „Could not reach the update
+  source. The vehicle needs internet" erschien auf einem Fahrzeug, das nachweislich
+  Internet hatte — weil der Check die eigentliche git-Meldung verschluckte und riet. Er
+  gibt jetzt **git im Wortlaut** wieder und übersetzt die üblichen Ursachen: ein Checkout,
+  der einem anderen Benutzer gehört (`dubious ownership` — der Normalfall, denn der
+  Installer klont als `pi`, während der Dienst als root läuft), fehlendes DNS, nicht
+  erreichbares github.com, fehlende Zugangsdaten, ein fehlender Branch, oder ein Fahrzeug
+  aus einem Zip, das sich grundsätzlich nicht aktualisieren kann.
+- **Der Besitzrechte-Fall repariert sich selbst.** Diese Meldung verlangt genau eine
+  Einstellung, also setzt das Fahrzeug sie für sein eigenes Verzeichnis
+  (`git config --global --add safe.directory /opt/yonderrc`) und wiederholt den Abruf
+  einmal, statt dich eine SSH-Sitzung suchen zu schicken.
+- **Alle ausgewerteten Befehle laufen jetzt in der C-Locale.** git, nmcli und die anderen
+  übersetzen ihre Meldungen: auf einem deutschen Pi antwortet git `Schwerwiegend: Kein
+  Git-Repository`, worauf kein einziges unserer Muster passt — und das gilt für jede
+  andere Ausgabe, die dieser Code liest. Gefunden, indem die echten Befehle ausgeführt
+  wurden statt dem englischen Wortlaut zu vertrauen, und einmal für alle behoben.
+- Dass man ein Fahrzeug über Tailscale erreicht, sagt nichts darüber, ob *das Fahrzeug*
+  Internet hat. Genau diese Verwechslung hat der Fehler ausgelöst, also steht sie jetzt in
+  der Meldung.
+
 ## v1.43.0
 **English**
 - **The vehicle updates itself from the setup page.** New *Software update* panel:

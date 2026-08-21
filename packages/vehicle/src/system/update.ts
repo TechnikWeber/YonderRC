@@ -104,6 +104,63 @@ export function updateSteps(impact: UpdateImpact): UpdateStep[] {
   return steps;
 }
 
+/**
+ * Why `git fetch` failed, in words an operator can act on. The generic "needs
+ * internet" was wrong often enough to be harmful: the most common cause on a Pi is
+ * git refusing to work in a checkout owned by another user, which has nothing to do
+ * with the network at all.
+ */
+export function explainGitFailure(out: string): { cause: string; fix: string; selfFixable: boolean } {
+  const log = out ?? '';
+  if (/dubious ownership|safe\.directory/i.test(log)) {
+    return {
+      cause: 'git refused to use the checkout because it belongs to a different user than the service',
+      fix: 'The vehicle can fix this itself — press Check again. (Manually: `sudo git config --global --add safe.directory /opt/yonderrc`.)',
+      selfFixable: true,
+    };
+  }
+  if (/not a git repository/i.test(log)) {
+    return {
+      cause: 'this vehicle was not installed from git, so there is nothing to pull',
+      fix: 'Re-install it with the bootstrap one-liner (it clones into /opt/yonderrc); a copied or unzipped folder cannot update itself.',
+      selfFixable: false,
+    };
+  }
+  if (/could not resolve (host|proxy)|name or service not known|temporary failure in name resolution/i.test(log)) {
+    return {
+      cause: 'the vehicle could not resolve github.com (no DNS)',
+      fix: 'The uplink is up but name resolution is not — check Setup › WiFi / the LTE stick, then try again.',
+      selfFixable: false,
+    };
+  }
+  if (/failed to connect|connection timed out|network is unreachable|could not read from remote/i.test(log)) {
+    return {
+      cause: 'the vehicle could not reach github.com',
+      fix: 'Check the uplink. Reaching the vehicle over Tailscale does not mean the vehicle itself has internet.',
+      selfFixable: false,
+    };
+  }
+  if (/authentication failed|permission denied \(publickey\)|terminal prompts disabled/i.test(log)) {
+    return {
+      cause: 'the remote asked for credentials',
+      fix: 'Point the checkout at the public HTTPS URL: `sudo git -C /opt/yonderrc remote set-url origin https://github.com/TechnikWeber/YonderRC.git`.',
+      selfFixable: false,
+    };
+  }
+  if (/couldn't find remote ref|unknown revision|ambiguous argument/i.test(log)) {
+    return {
+      cause: "the branch `main` does not exist on the remote (or this checkout is on another branch)",
+      fix: 'Check `git -C /opt/yonderrc status` over SSH.',
+      selfFixable: false,
+    };
+  }
+  return {
+    cause: 'git could not fetch',
+    fix: 'The message below is git\'s own. The vehicle needs internet for this — reaching it over a VPN does not prove that it has any.',
+    selfFixable: false,
+  };
+}
+
 export interface UpdateCheck {
   /** Did the check itself work (network, git)? */
   ok: boolean;
@@ -119,15 +176,17 @@ export interface UpdateCheck {
   message: string;
   /** Extra warning worth reading before pressing Update. */
   note: string | null;
+  /** git's own words, when something went wrong. */
+  detail?: string | null;
 }
 
 /** Human summary of a check, so the wording lives next to the rules that produce it. */
 export function describeCheck(c: Omit<UpdateCheck, 'message' | 'note'>): { message: string; note: string | null } {
   if (!c.ok) {
-    return {
-      message: 'Could not reach the update source.',
-      note: 'The vehicle needs internet for this — check the uplink and try again.',
-    };
+    // The caller passes git's output through `detail`; explain it rather than
+    // guessing "no internet", which was wrong more often than it was right.
+    const f = explainGitFailure(c.detail ?? '');
+    return { message: `Update check failed — ${f.cause}.`, note: f.fix };
   }
   if (!c.tree.clean) {
     return {

@@ -50,6 +50,7 @@ import { parseTailscaleStatus } from './tailscale.js';
 import {
   classifyChanges,
   describeCheck,
+  explainGitFailure,
   parseCommits,
   parseVersion,
   parseWorkingTree,
@@ -76,9 +77,17 @@ const runFile = promisify(execFile);
 /** The Pi's built-in WiFi. Same assumption as the signal readout. */
 const WIFI_IFACE = 'wlan0';
 
+/**
+ * Every command we parse runs in the C locale. git, nmcli and friends translate
+ * their messages, and a Pi with a German locale would answer "Schwerwiegend: Kein
+ * Git-Repository" — which no pattern here matches. Forcing it keeps the output the
+ * one this code was written against, on any vehicle.
+ */
+const C_LOCALE = { ...process.env, LC_ALL: 'C', LANG: 'C' };
+
 async function sh(cmd: string): Promise<{ ok: boolean; out: string }> {
   try {
-    const { stdout } = await run(cmd, { timeout: 15000 });
+    const { stdout } = await run(cmd, { timeout: 15000, env: C_LOCALE });
     return { ok: true, out: stdout.trim() };
   } catch (err) {
     return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
@@ -92,7 +101,7 @@ async function sh(cmd: string): Promise<{ ok: boolean; out: string }> {
  */
 async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out: string }> {
   try {
-    const { stdout } = await runFile(file, args, { timeout: 15000 });
+    const { stdout } = await runFile(file, args, { timeout: 15000, env: C_LOCALE });
     return { ok: true, out: stdout.trim() };
   } catch (err) {
     return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
@@ -129,6 +138,7 @@ async function shSlow(
       cwd: opts.cwd,
       timeout: opts.timeoutMs,
       maxBuffer: 8 * 1024 * 1024,
+      env: C_LOCALE,
     });
     return { ok: true, out: [stdout, stderr].filter(Boolean).join('\n').trim(), timedOut: false };
   } catch (err) {
@@ -791,11 +801,21 @@ export class RealSystem implements SystemManager {
     const git = (args: string[], timeoutMs = 60_000) => shSlow('git', ['-C', REPO_ROOT, ...args], { cwd: REPO_ROOT, timeoutMs });
 
     const current = parseVersion(readFileSafe(join(REPO_ROOT, 'package.json')));
-    const fetched = await git(['fetch', '--quiet', 'origin', 'main']);
+
+    let fetched = await git(['fetch', '--quiet', 'origin', 'main']);
+    if (!fetched.ok && explainGitFailure(fetched.out).selfFixable) {
+      // git refuses to operate in a checkout owned by another user (the installer
+      // clones as `pi`, the service runs as root). Marking our own directory as safe
+      // is exactly what the error asks for — do it and retry once, rather than making
+      // the operator find an SSH session for a one-line config setting.
+      await shSlow('git', ['config', '--global', '--add', 'safe.directory', REPO_ROOT], { cwd: REPO_ROOT, timeoutMs: 15_000 });
+      fetched = await git(['fetch', '--quiet', 'origin', 'main']);
+    }
     const tree = parseWorkingTree((await git(['status', '--porcelain'])).out);
 
     if (!fetched.ok) {
-      const base = { ok: false, current, available: null, behind: 0, commits: [], impact: classifyChanges([]), tree };
+      const detail = errorExcerpt(fetched.out, 8) || 'git produced no output.';
+      const base = { ok: false, current, available: null, behind: 0, commits: [], impact: classifyChanges([]), tree, detail };
       return { ...base, ...describeCheck(base) };
     }
 
@@ -823,7 +843,9 @@ export class RealSystem implements SystemManager {
    */
   async updateApply(): Promise<UpdateResult> {
     const check = await this.updateCheck();
-    if (!check.ok) return { ok: false, message: check.message, output: check.note ?? '', steps: [] };
+    if (!check.ok) {
+      return { ok: false, message: check.message, output: [check.note, check.detail].filter(Boolean).join('\n\n'), steps: [] };
+    }
     if (!check.tree.clean) return { ok: false, message: check.message, output: check.note ?? '', steps: [] };
     if (check.behind === 0) return { ok: true, message: check.message, output: '', steps: [] };
 

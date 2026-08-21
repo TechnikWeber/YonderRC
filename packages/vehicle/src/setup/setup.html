@@ -1222,7 +1222,10 @@
           row('installed', c.current ? `v${c.current}` : '—') +
           (c.available ? row('available', `v${c.available}`, c.behind > 0 ? 'warn' : 'go') : '') +
           row('status', c.message, c.ok ? (c.behind > 0 ? 'warn' : 'go') : 'bad') +
-          (c.note ? `<div class="msg" style="color:var(--idle)">${esc(c.note)}</div>` : '') +
+          (c.note ? `<div class="msg" style="color:var(--idle)">${fmtFix(c.note)}</div>` : '') +
+          // git's own message, when it failed — the generic sentence above is never
+          // the whole story.
+          (c.detail ? `<div class="log">${esc(c.detail)}</div>` : '') +
           (commits ? `<div class="eyebrow2" style="margin-top:10px">What would come in</div>${commits}` : '');
         $('upd-apply').style.display = canUpdate ? 'inline-block' : 'none';
       }
