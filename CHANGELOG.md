@@ -3,6 +3,46 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.44.0
+**English**
+- **Fixed (for real this time): the update check still refused the checkout.** git only
+  honours `safe.directory` from **protected** configuration — system or global — and
+  never from `-c` on the command line, which is what v1.43.2 used. On a newer git that
+  flag happened to work, which is exactly why it shipped; on the Pi's git it changed
+  nothing. The vehicle now hands git a **global config file of its own**
+  (`GIT_CONFIG_GLOBAL`), which is honoured, needs no `$HOME`, and leaves nothing behind
+  but a file in `/tmp`.
+- Verified end to end by forcing the exact condition
+  (`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`): plain git fails with `dubious ownership`, exit
+  128, while the vehicle's own update check completes and reports versions on the same
+  repository, with `$HOME` removed for good measure.
+- **The update source is a field now.** Two inputs under *Update source* take a git
+  remote name or a full URL plus a branch, defaulting to this vehicle's `origin` / `main`
+  — so a fork or a test branch (`https://github.com/you/YonderRC.git` / `experiment`)
+  needs no code change. The check reports FETCH_HEAD, so a custom source behaves exactly
+  like the default, and a non-default source is shown in the panel so nobody wonders
+  where an update came from.
+
+**Deutsch**
+- **Behoben (diesmal wirklich): der Update-Check verweigerte den Checkout weiterhin.** git
+  beachtet `safe.directory` nur aus **geschützter** Konfiguration — System oder Global —
+  und nie von `-c` auf der Kommandozeile, was v1.43.2 benutzt hat. Auf einem neueren git
+  funktionierte dieser Schalter zufällig, genau deshalb ging er raus; auf dem git des Pi
+  änderte er nichts. Das Fahrzeug übergibt git jetzt eine **eigene globale
+  Konfigurationsdatei** (`GIT_CONFIG_GLOBAL`) — die wird beachtet, braucht kein `$HOME`
+  und hinterlässt nichts außer einer Datei in `/tmp`.
+- Ende-zu-Ende verifiziert, indem genau dieser Zustand erzwungen wurde
+  (`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`): blankes git scheitert mit `dubious ownership`,
+  Exit 128, während der Update-Check des Fahrzeugs auf demselben Repository durchläuft und
+  Versionen meldet — zur Sicherheit auch mit entferntem `$HOME`.
+- **Die Update-Quelle ist jetzt ein Feld.** Zwei Eingaben unter *Update source* nehmen
+  einen git-Remote-Namen oder eine vollständige URL plus Branch, vorbelegt mit dem
+  `origin` / `main` dieses Fahrzeugs — ein Fork oder Testbranch
+  (`https://github.com/du/YonderRC.git` / `experiment`) braucht damit keine
+  Code-Änderung. Der Check vergleicht gegen FETCH_HEAD, eine eigene Quelle verhält sich
+  also exakt wie der Standard, und eine abweichende Quelle wird im Panel angezeigt, damit
+  niemand rätselt, woher ein Update kam.
+
 ## v1.43.2
 **English**
 - **Fixed: the update check's self-repair repaired nothing.** v1.43.1 answered git's

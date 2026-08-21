@@ -410,6 +410,13 @@
           <button class="btn" onclick="run(this, () => checkUpdate())">Check for updates</button>
           <button class="btn primary" id="upd-apply" style="display:none" onclick="run(this, () => applyUpdate())">Update &amp; restart</button>
         </div>
+        <div class="eyebrow2" style="margin-top:12px">Update source</div>
+        <div class="grid2">
+          <label>Remote or URL<input id="updSource" placeholder="origin" /></label>
+          <label>Branch<input id="updBranch" placeholder="main" /></label>
+        </div>
+        <div class="btns"><button class="btn" onclick="run(this, () => saveUpdateSource())">Save source</button></div>
+        <p class="msg">Defaults to this vehicle's own <span class="mono">origin</span> / <span class="mono">main</span>. Point it at a fork or a branch by entering a git remote name or a full URL (e.g. <span class="mono">https://github.com/you/YonderRC.git</span>) — useful for testing your own build on the vehicle.</p>
         <p class="msg">Does what an SSH session would: <span class="mono">git pull --ff-only</span>, installs changed dependencies, rebuilds the control app when it changed, then restarts the vehicle service — so you can update from a field with nothing but this page. The vehicle needs <b>internet</b> for it. If a step fails, it stops there and keeps running the version you have.</p>
         <div class="msg" id="upd-msg"></div>
         <div class="log" id="upd-log" style="display:none"></div>
@@ -1212,7 +1219,20 @@
         }
       }
 
+      async function saveUpdateSource() {
+        const r = await post('/api/update/source', {
+          source: $('updSource').value.trim(),
+          branch: $('updBranch').value.trim(),
+        });
+        $('upd-msg').innerHTML = r.ok ? esc(r.message) : `<b style="color:var(--bad)">${esc(r.message || 'Failed.')}</b>`;
+        if (r.source) { $('updSource').value = r.source.source; $('updBranch').value = r.source.branch; }
+      }
+
       function renderUpdate(c) {
+        if (c.source) {
+          if (!$('updSource').value) $('updSource').value = c.source.source;
+          if (!$('updBranch').value) $('updBranch').value = c.source.branch;
+        }
         const row = (k, v, cls) => `<div class="row"><span class="k">${esc(k)}</span><span class="v ${cls || ''}">${esc(v)}</span></div>`;
         const canUpdate = c.ok && c.tree && c.tree.clean && c.behind > 0;
         const commits = (c.commits || [])
@@ -1220,6 +1240,7 @@
           .join('');
         $('upd-status').innerHTML =
           row('installed', c.current ? `v${c.current}` : '—') +
+          (c.source && (c.source.source !== 'origin' || c.source.branch !== 'main') ? row('source', `${c.source.source} · ${c.source.branch}`, 'warn') : '') +
           (c.available ? row('available', `v${c.available}`, c.behind > 0 ? 'warn' : 'go') : '') +
           row('status', c.message, c.ok ? (c.behind > 0 ? 'warn' : 'go') : 'bad') +
           (c.note ? `<div class="msg" style="color:var(--idle)">${fmtFix(c.note)}</div>` : '') +

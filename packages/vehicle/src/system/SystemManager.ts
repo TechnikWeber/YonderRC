@@ -3,7 +3,7 @@ import type { I2cSuggestion } from './detect.js';
 import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
 import type { HilinkStatus } from './hilink.js';
-import type { UpdateCheck } from './update.js';
+import type { UpdateCheck, UpdateSource } from './update.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -312,9 +312,9 @@ export interface SystemManager {
   /** Restart the vehicle service itself, so a freshly installed driver is picked up. */
   restartService(): Promise<ActionResult>;
   /** What an update would change — fetches, changes nothing. */
-  updateCheck(): Promise<UpdateCheck>;
+  updateCheck(src?: UpdateSource): Promise<UpdateCheck>;
   /** Apply the update (pull, install/rebuild if needed) and restart. */
-  updateApply(): Promise<UpdateResult>;
+  updateApply(src?: UpdateSource): Promise<UpdateResult>;
   reboot(): Promise<ActionResult>;
 }
 

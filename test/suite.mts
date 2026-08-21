@@ -882,9 +882,21 @@ async function main() {
   // "dubious ownership" unless every call carries this. A global config write was the
   // first attempt and did nothing — a systemd service has no guaranteed $HOME.
   const ga = U.gitArgs('/opt/yonderrc', ['fetch', '--quiet', 'origin', 'main']);
-  ok('every git call declares the checkout safe', ga.slice(0, 2).join(' ') === '-c safe.directory=/opt/yonderrc');
-  ok('and runs inside the checkout', ga.includes('-C') && ga[ga.indexOf('-C') + 1] === '/opt/yonderrc');
-  ok('the subcommand comes last, unchanged', ga.slice(-4).join(' ') === 'fetch --quiet origin main');
+  ok('git runs inside the checkout', ga.slice(0, 2).join(' ') === '-C /opt/yonderrc');
+  ok('the subcommand follows unchanged', ga.slice(-4).join(' ') === 'fetch --quiet origin main');
+  // …and the ownership exception is NOT a command-line flag: git only honours
+  // safe.directory from protected (system/global) config, which is why the `-c`
+  // version silently changed nothing on the Pi.
+  ok('no -c safe.directory on the command line', !ga.includes('-c'));
+  ok('the exception is a global-config file instead', U.safeDirectoryConfig('/opt/yonderrc').includes('[safe]') && U.safeDirectoryConfig('/opt/yonderrc').includes('directory = /opt/yonderrc'));
+
+  // The update source is a field, so a fork or a branch needs no code change.
+  ok('a remote name is a source', U.isGitSource('origin') && U.isGitSource('upstream'));
+  ok('an https URL is a source', U.isGitSource('https://github.com/you/YonderRC.git'));
+  ok('nonsense is rejected', !U.isGitSource('') && !U.isGitSource('two words') && !U.isGitSource(42));
+  ok('branch names validated', U.isGitBranch('main') && U.isGitBranch('feature/x') && !U.isGitBranch('') && !U.isGitBranch('a b'));
+  const forkSteps = U.updateSteps({ deps: false, ground: false, provisioning: false, vehicle: true }, { source: 'https://example.com/x.git', branch: 'dev' });
+  ok('the pull uses the configured source', forkSteps[0].args.join(' ') === 'pull --ff-only https://example.com/x.git dev');
 
   const impact = U.classifyChanges(['packages/ground/src/App.tsx', 'package.json', 'provisioning/install.sh']);
   ok('changed files classified', impact.ground && impact.deps && impact.provisioning);
@@ -893,7 +905,7 @@ async function main() {
   // Order matters: dependencies before the build (vite needs its platform binaries),
   // and the restart happens after both — the setup page IS the service being restarted.
   const stepsAll = U.updateSteps({ deps: true, ground: true, provisioning: false, vehicle: true }).map((st) => `${st.cmd} ${st.args.join(' ')}`);
-  ok('pull comes first', stepsAll[0] === 'git pull --ff-only origin main');
+  ok('pull comes first, from origin/main by default', stepsAll[0] === 'git pull --ff-only origin main');
   ok('deps installed before the build', stepsAll.findIndex((x) => x.includes('--omit=optional')) < stepsAll.findIndex((x) => x.includes('run build')));
   ok('build tooling restored after --omit=optional', stepsAll.some((x) => x.includes('--include-workspace-root -w @yonderrc/ground')));
   const stepsSmall = U.updateSteps({ deps: false, ground: false, provisioning: false, vehicle: true }).map((st) => st.cmd);

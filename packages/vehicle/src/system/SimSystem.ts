@@ -322,7 +322,7 @@ export class SimSystem implements SystemManager {
   /** A pretend update, so the panel and both outcomes can be tried without a Pi. */
   private simBehind = 2;
 
-  async updateCheck(): Promise<UpdateCheck> {
+  async updateCheck(_src?: unknown): Promise<UpdateCheck> {
     const impact = classifyChanges(this.simBehind ? ['packages/vehicle/src/index.ts', 'packages/ground/src/App.tsx'] : []);
     const base = {
       ok: true,
@@ -341,7 +341,7 @@ export class SimSystem implements SystemManager {
     return { ...base, ...describeCheck(base) };
   }
 
-  async updateApply(): Promise<UpdateResult> {
+  async updateApply(_src?: unknown): Promise<UpdateResult> {
     if (!this.simBehind) return { ok: true, message: 'Up to date (simulated).', output: '', steps: [] };
     this.simBehind = 0;
     return {

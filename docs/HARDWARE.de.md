@@ -367,6 +367,12 @@ Fast-Forward würde entweder scheitern oder sie wegwerfen — und wenn **kein In
 da ist. Scheitert ein Schritt, bleibt es dort stehen, und das Fahrzeug läuft mit der
 bisherigen Version weiter.
 
+**Update-Quelle.** Standardmäßig holt das Fahrzeug von seinem eigenen `origin` / `main`.
+Die beiden Felder unter *Update source* nehmen einen git-Remote-Namen oder eine
+vollständige URL plus Branch — damit lässt sich ein Fahrzeug ohne Code-Änderung auf einen
+eigenen Fork oder einen Testbranch zeigen: `https://github.com/du/YonderRC.git` /
+`experiment` funktioniert genau wie der Standard.
+
 > **Was es nicht tut:** apt-Pakete, systemd-Units und `install.sh` selbst. Meldet der
 > Check, dass sich der Installer geändert hat, lass einmal
 > `sudo bash provisioning/install.sh` laufen, sobald du wieder an einer Tastatur bist.

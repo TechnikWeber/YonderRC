@@ -25,6 +25,7 @@ import { redactLteConfig, isValidPin } from '../system/lte.js';
 import { HW_DEPS, isHwDep } from '../system/hwDeps.js';
 import { isCountryCode } from '../system/wifi.js';
 import { isIpv4 } from '../system/hilink.js';
+import { isGitBranch, isGitSource, UPDATE_SOURCE_DEFAULT } from '../system/update.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -147,13 +148,35 @@ export async function handleSetup(
 
   // ---- self-update (git pull + rebuild + restart, from the field) ----
   if (url === '/api/update' && method === 'GET') {
-    json(res, 200, await ctx.system.updateCheck());
+    json(res, 200, { ...(await ctx.system.updateCheck(ctx.config.update)), source: ctx.config.update });
     return true;
   }
 
   if (url === '/api/update' && method === 'POST') {
-    const r = await ctx.system.updateApply();
+    const r = await ctx.system.updateApply(ctx.config.update);
     json(res, r.ok ? 200 : 500, r);
+    return true;
+  }
+
+  // Where updates come from. Default is the checkout's own origin/main; a fork or a
+  // branch is a field, not a code change.
+  if (url === '/api/update/source' && method === 'POST') {
+    const body = (await readBody(req)) as { source?: unknown; branch?: unknown };
+    const source = body.source === undefined || body.source === '' ? UPDATE_SOURCE_DEFAULT.source : body.source;
+    const branch = body.branch === undefined || body.branch === '' ? UPDATE_SOURCE_DEFAULT.branch : body.branch;
+    if (!isGitSource(source)) {
+      json(res, 400, { ok: false, message: 'The source is a git remote name (e.g. origin) or a URL — no spaces.' });
+      return true;
+    }
+    if (!isGitBranch(branch)) {
+      json(res, 400, { ok: false, message: 'The branch is a git branch name (e.g. main).' });
+      return true;
+    }
+    const update = { source: source.trim(), branch: branch.trim() };
+    savePersisted(ctx.config.configPath, { update });
+    ctx.config.update = update;
+    ctx.onConfigSaved?.({ update });
+    json(res, 200, { ok: true, message: `Updates now come from ${update.source} · ${update.branch}.`, source: update });
     return true;
   }
 

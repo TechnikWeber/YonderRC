@@ -7,6 +7,7 @@ import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';
 import type { HwDepName } from './system/hwDeps.js';
 import { HILINK_DEFAULT_HOST } from './system/hilink.js';
+import { UPDATE_SOURCE_DEFAULT, type UpdateSource } from './system/update.js';
 import { HOTSPOT_DEFAULTS } from './system/SystemManager.js';
 
 /**
@@ -39,6 +40,8 @@ export interface VehicleConfig {
   hotspot: HotspotConfig;
   /** Huawei HiLink LTE stick (its own router; not a ModemManager modem). */
   hilink: HilinkSettings;
+  /** Where "Software update" pulls from (remote name or URL + branch). */
+  update: UpdateSource;
   /**
    * Auto-disarm whenever a new ground connects. Safe for cars (prevents runaway);
    * turn OFF for aircraft, where disarming in flight would cut the motors.
@@ -95,6 +98,7 @@ export interface PersistentConfig {
   /** Onboarding hotspot (open by default — see HotspotConfig). */
   hotspot?: HotspotConfig;
   hilink?: HilinkSettings;
+  update?: UpdateSource;
   telemetry?: TelemetryConfig;
   gps?: GpsConfig;
   cameras?: CameraCfg[];
@@ -168,6 +172,7 @@ export function loadConfig(): VehicleConfig {
     remoteAccess: p.remoteAccess ?? { kind: 'none' },
     hotspot: p.hotspot ?? { ...HOTSPOT_DEFAULTS },
     hilink: { ...HILINK_SETTINGS_DEFAULT, ...(p.hilink ?? {}) },
+    update: { ...UPDATE_SOURCE_DEFAULT, ...(p.update ?? {}) },
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

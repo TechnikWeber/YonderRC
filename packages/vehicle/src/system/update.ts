@@ -86,17 +86,51 @@ export function classifyChanges(files: string[]): UpdateImpact {
 export type UpdateStep = { label: string; args: string[]; cmd: 'git' | 'npm' };
 
 /**
- * Arguments for every git call the vehicle makes.
+ * Arguments for every git call the vehicle makes: just run inside the checkout.
  *
- * `-c safe.directory=…` is not optional: the installer clones as `pi` while the
- * service runs as root, and git then refuses with "detected dubious ownership".
- * Passing it per invocation beats writing a global config — that would depend on
- * `$HOME`, which a systemd service is not guaranteed to have, and it would leave
- * state behind on the machine. `-C` then runs it in the checkout no matter where
- * the process happens to be.
+ * The ownership exception does NOT belong here. The installer clones as `pi` while
+ * the service runs as root, so git refuses with "detected dubious ownership" — and
+ * `-c safe.directory=…` does not lift it: git only honours that setting from
+ * *protected* configuration (system or global), never from the command line. It
+ * silently changed nothing on a real Pi. The fix is an env var, see gitEnv().
  */
 export function gitArgs(repoRoot: string, args: string[]): string[] {
-  return ['-c', `safe.directory=${repoRoot}`, '-C', repoRoot, ...args];
+  return ['-C', repoRoot, ...args];
+}
+
+/** Contents of the throwaway global git config that lifts the ownership block. */
+export function safeDirectoryConfig(repoRoot: string): string {
+  return `[safe]\n\tdirectory = ${repoRoot}\n`;
+}
+
+/**
+ * Where the update comes from. Defaults to the checkout's own `origin`/`main`, and
+ * can be pointed at a fork or a branch — a remote NAME or a URL, both of which git
+ * accepts in the same position.
+ */
+export interface UpdateSource {
+  source: string;
+  branch: string;
+}
+
+export const UPDATE_SOURCE_DEFAULT: UpdateSource = { source: 'origin', branch: 'main' };
+
+/**
+ * Accept a remote name or an http(s)/ssh URL, and nothing that could confuse a
+ * later reader. Commands are executed without a shell, so this is about catching
+ * typos early rather than about injection.
+ */
+export function isGitSource(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  const s = v.trim();
+  if (!s || /\s/.test(s)) return false;
+  if (/^https?:\/\/[^\s]+$/.test(s)) return true;
+  if (/^(ssh:\/\/|git@)[^\s]+$/.test(s)) return true;
+  return /^[A-Za-z0-9._-]+$/.test(s);
+}
+
+export function isGitBranch(v: unknown): v is string {
+  return typeof v === 'string' && /^[A-Za-z0-9._\/-]+$/.test(v.trim()) && v.trim().length > 0;
 }
 
 /**
@@ -104,8 +138,10 @@ export function gitArgs(repoRoot: string, args: string[]): string[] {
  * platform binaries), build before the restart (so the service comes back with a
  * matching ground app rather than a half-updated one).
  */
-export function updateSteps(impact: UpdateImpact): UpdateStep[] {
-  const steps: UpdateStep[] = [{ label: 'Fetching and applying the update', cmd: 'git', args: ['pull', '--ff-only', 'origin', 'main'] }];
+export function updateSteps(impact: UpdateImpact, src: UpdateSource = UPDATE_SOURCE_DEFAULT): UpdateStep[] {
+  const steps: UpdateStep[] = [
+    { label: 'Fetching and applying the update', cmd: 'git', args: ['pull', '--ff-only', src.source, src.branch] },
+  ];
   if (impact.deps) {
     steps.push({ label: 'Installing changed dependencies', cmd: 'npm', args: ['install', '--omit=optional', '--no-audit', '--no-fund'] });
     // Mirrors install.sh: --omit=optional also drops rollup's/esbuild's platform

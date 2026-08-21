@@ -51,6 +51,9 @@ import {
   classifyChanges,
   describeCheck,
   gitArgs,
+  safeDirectoryConfig,
+  UPDATE_SOURCE_DEFAULT,
+  type UpdateSource,
   parseCommits,
   parseVersion,
   parseWorkingTree,
@@ -108,6 +111,24 @@ async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out:
   }
 }
 
+/**
+ * Environment for git. The installer clones as `pi`, the service runs as root, and
+ * git then refuses the checkout as "dubious ownership". The exception is only
+ * honoured from PROTECTED config — system or global — so `-c safe.directory=…` on
+ * the command line does nothing (it looked fine on a newer git and changed nothing
+ * on the Pi). Handing git a global config file of our own is honoured, needs no
+ * `$HOME`, and leaves nothing behind but a file in /tmp.
+ */
+function gitEnv(repoRoot: string): NodeJS.ProcessEnv {
+  const file = join(tmpdir(), 'yonderrc-gitconfig');
+  try {
+    writeFileSync(file, safeDirectoryConfig(repoRoot));
+    return { ...C_LOCALE, GIT_CONFIG_GLOBAL: file };
+  } catch {
+    return { ...C_LOCALE };
+  }
+}
+
 /** Read a file, or '' when it isn't there — used for version lookups. */
 function readFileSafe(path: string): string {
   try {
@@ -131,14 +152,14 @@ const requireFrom = createRequire(import.meta.url);
 async function shSlow(
   file: string,
   args: string[],
-  opts: { cwd: string; timeoutMs: number },
+  opts: { cwd: string; timeoutMs: number; env?: NodeJS.ProcessEnv },
 ): Promise<{ ok: boolean; out: string; timedOut: boolean }> {
   try {
     const { stdout, stderr } = await runFile(file, args, {
       cwd: opts.cwd,
       timeout: opts.timeoutMs,
       maxBuffer: 8 * 1024 * 1024,
-      env: C_LOCALE,
+      env: opts.env ?? C_LOCALE,
     });
     return { ok: true, out: [stdout, stderr].filter(Boolean).join('\n').trim(), timedOut: false };
   } catch (err) {
@@ -797,15 +818,19 @@ export class RealSystem implements SystemManager {
    * What an update would change. Fetches from the remote and compares — it never
    * modifies the checkout, so pressing this in the field is free.
    */
-  async updateCheck(): Promise<UpdateCheck> {
-    const git = (args: string[], timeoutMs = 60_000) => shSlow('git', gitArgs(REPO_ROOT, args), { cwd: REPO_ROOT, timeoutMs });
+  async updateCheck(src: UpdateSource = UPDATE_SOURCE_DEFAULT): Promise<UpdateCheck> {
+    const env = gitEnv(REPO_ROOT);
+    const git = (args: string[], timeoutMs = 60_000) =>
+      shSlow('git', gitArgs(REPO_ROOT, args), { cwd: REPO_ROOT, timeoutMs, env });
 
     const current = parseVersion(readFileSafe(join(REPO_ROOT, 'package.json')));
 
     // Ownership is handled by gitArgs() on every call — see there. It used to be a
     // `git config --global` write plus a retry, which quietly did nothing when the
     // service had no $HOME to write it to.
-    const fetched = await git(['fetch', '--quiet', 'origin', 'main']);
+    // Fetch by source+branch (a remote name or a URL) and compare against
+    // FETCH_HEAD, so a custom source works exactly like the default origin/main.
+    const fetched = await git(['fetch', '--quiet', src.source, src.branch]);
     const tree = parseWorkingTree((await git(['status', '--porcelain'])).out);
 
     if (!fetched.ok) {
@@ -814,10 +839,10 @@ export class RealSystem implements SystemManager {
       return { ...base, ...describeCheck(base) };
     }
 
-    const log = await git(['log', '--oneline', '--no-decorate', 'HEAD..origin/main']);
+    const log = await git(['log', '--oneline', '--no-decorate', 'HEAD..FETCH_HEAD']);
     const commits = parseCommits(log.out);
-    const files = (await git(['diff', '--name-only', 'HEAD..origin/main'])).out.split('\n').map((l) => l.trim());
-    const available = parseVersion((await git(['show', 'origin/main:package.json'])).out);
+    const files = (await git(['diff', '--name-only', 'HEAD..FETCH_HEAD'])).out.split('\n').map((l) => l.trim());
+    const available = parseVersion((await git(['show', 'FETCH_HEAD:package.json'])).out);
 
     const base = {
       ok: true,
@@ -836,8 +861,8 @@ export class RealSystem implements SystemManager {
    * service never comes back into a half-updated checkout — the setup page you are
    * holding is served by that same service.
    */
-  async updateApply(): Promise<UpdateResult> {
-    const check = await this.updateCheck();
+  async updateApply(src: UpdateSource = UPDATE_SOURCE_DEFAULT): Promise<UpdateResult> {
+    const check = await this.updateCheck(src);
     if (!check.ok) {
       return { ok: false, message: check.message, output: [check.note, check.detail].filter(Boolean).join('\n\n'), steps: [] };
     }
@@ -846,9 +871,10 @@ export class RealSystem implements SystemManager {
 
     const steps: { label: string; ok: boolean }[] = [];
     const logs: string[] = [];
-    for (const step of updateSteps(check.impact)) {
+    const env = gitEnv(REPO_ROOT);
+    for (const step of updateSteps(check.impact, src)) {
       const args = step.cmd === 'git' ? gitArgs(REPO_ROOT, step.args) : step.args;
-      const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000 });
+      const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000, env: step.cmd === 'git' ? env : undefined });
       steps.push({ label: step.label, ok: r.ok });
       logs.push(`$ ${step.cmd} ${step.args.join(' ')}\n${errorExcerpt(r.out, 12) || '(no output)'}`);
       if (!r.ok) {

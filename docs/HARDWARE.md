@@ -359,6 +359,11 @@ It refuses (and says why) when the vehicle has **local changes**, because a fast
 would either fail or throw them away, and when there is **no internet**. If a step fails,
 it stops there and the vehicle keeps running the version it had.
 
+**Update source.** By default the vehicle pulls from its own `origin` / `main`. The two
+fields under *Update source* take a git remote name or a full URL plus a branch, so you
+can point a vehicle at your own fork or a test branch without touching any code —
+`https://github.com/you/YonderRC.git` / `experiment` works exactly like the default.
+
 > **What it does not do:** apt packages, systemd units and `install.sh` itself. When the
 > check says the installer changed, run the full `sudo bash provisioning/install.sh` once
 > you are back at a keyboard.
