@@ -3,6 +3,21 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.41.2
+**English**
+- **Fixed: a stale message under the Remote access panel.** The line held whatever the
+  last button press wrote, so `Starting…` could sit there while the status row above it
+  already said `Tailscale · Running · 100.x.y.z`. The status poll now owns that line: a
+  pending login shows the link, a running tailnet shows the vehicle's name, IP and the
+  address to reach it at.
+
+**Deutsch**
+- **Behoben: eine veraltete Meldung unter dem Remote-access-Panel.** Dort stand, was der
+  letzte Knopfdruck hinterlassen hatte — `Starting…` konnte also stehen bleiben, während
+  die Statuszeile darüber längst `Tailscale · Running · 100.x.y.z` meldete. Die Zeile
+  gehört jetzt der Statusabfrage: bei ausstehendem Login der Link, bei laufendem Tailnet
+  Name, IP und die Adresse, unter der das Fahrzeug erreichbar ist.
+
 ## v1.41.1
 **English**
 - **Fixed: "Bring up" for Tailscale gave you no login link.** The vehicle sat at

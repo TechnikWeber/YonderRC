@@ -480,7 +480,13 @@
           row('Remote access', remoteLabel(s), remoteOk(s) ? 'go' : 'warn') +
           (remoteAddress(s) ? row('· IP', remoteAddress(s)) : '') +
           row('WiFi', `${wifi.mode}${wifi.ssid ? ' · ' + wifi.ssid : ''}`);
-        if (ts.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${ts.loginUrl}" target="_blank" rel="noreferrer">${ts.loginUrl}</a>`;
+        // Keep this line honest: it used to hold whatever the last button press wrote,
+        // so a stale "Starting…" could sit under a status row that already said Running.
+        if (ts.loginUrl) {
+          $('ts-msg').innerHTML = `Login: <a href="${ts.loginUrl}" target="_blank" rel="noreferrer">${ts.loginUrl}</a>`;
+        } else if (remoteKindNow === 'tailscale' && ts.running) {
+          $('ts-msg').innerHTML = `Up as <b class="mono">yonderrc</b>${ts.ip ? ` · <span class="mono">${esc(ts.ip)}</span>` : ''} — reach the vehicle at <span class="mono">http://yonderrc:${location.port || 8080}/</span>`;
+        }
       }
 
       async function refresh() { try { renderStatus(await getJSON('/api/system')); } catch {} }
