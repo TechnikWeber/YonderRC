@@ -844,7 +844,7 @@ async function main() {
   ok('sim: failure carries cause, fix and log', !simBad.ok && !!simBad.fix && simBad.output.includes('pigpio.h'));
 
   // ---- WiFi scan parsing + hotspot arguments ----
-  const { parseWifiScan, hotspotArgs, HOTSPOT_DEFAULTS } = await import('../packages/vehicle/src/system/SystemManager');
+  const { parseWifiScan, HOTSPOT_DEFAULTS } = await import('../packages/vehicle/src/system/SystemManager');
   const scan = parseWifiScan(
     [
       '*:88:WPA2:Weber-Home',
@@ -867,11 +867,52 @@ async function main() {
   ok('scan of nothing is empty', parseWifiScan('').length === 0);
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
-  const openArgs = hotspotArgs(HOTSPOT_DEFAULTS);
-  ok('open hotspot has no password arg', !openArgs.includes('password') && openArgs.includes('YonderRC-setup'));
-  ok('secured hotspot passes the key', hotspotArgs({ ssid: 'X', password: 'longenough' }).slice(-2).join(' ') === 'password longenough');
-  ok('too short key falls back to open', !hotspotArgs({ ssid: 'X', password: 'short' }).includes('password'));
-  ok('hotspot honours the interface', hotspotArgs(HOTSPOT_DEFAULTS, 'wlan1').includes('wlan1'));
+
+  // ---- hotspot profile + WiFi radio ----
+  const W = await import('../packages/vehicle/src/system/wifi');
+  const openCmds = W.hotspotCommands({ ssid: 'YonderRC-setup', password: null });
+  const openFlat = openCmds.map((c) => c.args.join(' ')).join(' | ');
+  // `nmcli device wifi hotspot` ALWAYS secures the AP ("If not provided, nmcli will
+  // generate a password"), so the documented OPEN hotspot has to be an explicit
+  // profile. This is the assertion that keeps it open.
+  ok('open hotspot carries no security at all', !/wifi-sec|psk|password/.test(openFlat), openFlat);
+  ok('open hotspot is an AP profile', openFlat.includes('802-11-wireless.mode ap'));
+  ok('hotspot pins the documented address', openFlat.includes('ipv4.addresses 192.168.4.1/24') && openFlat.includes('ipv4.method shared'));
+  ok('a stale profile is deleted first, and may fail', openCmds[0].args.join(' ') === 'connection delete Hotspot' && openCmds[0].optional === true);
+  ok('the profile is brought up last', openCmds[openCmds.length - 1].args.join(' ') === 'connection up Hotspot');
+  const secFlat = W.hotspotCommands({ ssid: 'X', password: 'longenough' }).map((c) => c.args.join(' ')).join(' | ');
+  ok('secured hotspot sets WPA2 and the key', secFlat.includes('wifi-sec.key-mgmt wpa-psk') && secFlat.includes('wifi-sec.psk longenough'));
+  ok('a too short key stays open', !W.hotspotCommands({ ssid: 'X', password: 'short' }).some((c) => c.args.includes('wifi-sec.psk')));
+  ok('hotspot honours the interface', W.hotspotCommands({ ssid: 'X', password: null }, 'wlan1').some((c) => c.args.includes('wlan1')));
+  ok('an SSID with spaces/semicolons stays one argument', W.hotspotCommands({ ssid: 'My Car; reboot', password: null })[1].args.includes('My Car; reboot'));
+
+  ok('rfkill soft block detected', W.parseRfkill('1: phy0: Wireless LAN\n\tSoft blocked: yes\n\tHard blocked: no').softBlocked === true);
+  ok('rfkill hard block detected', W.parseRfkill('\tSoft blocked: no\n\tHard blocked: yes').hardBlocked === true);
+  ok('no rfkill output blocks nothing', W.parseRfkill('').softBlocked === false);
+  ok('regulatory country parsed', W.parseWifiCountry('global\ncountry DE: DFS-ETSI') === 'DE');
+  ok('world domain counts as unset', W.parseWifiCountry('country 00: DFS-UNSET') === null);
+  ok('unavailable wlan0 detected', W.parseWifiDeviceState('eth0:ethernet:connected\nwlan0:wifi:unavailable') === 'unavailable');
+  ok('ready wlan0 detected', W.parseWifiDeviceState('wlan0:wifi:disconnected') === 'ready');
+  ok('a Pi without wlan0', W.parseWifiDeviceState('eth0:ethernet:connected') === 'missing');
+  ok('country guessed from the locale', W.guessWifiCountry({ locale: 'de_DE.UTF-8' }) === 'DE');
+  ok('country guessed from the timezone', W.guessWifiCountry({ timezone: 'Europe/Vienna' }) === 'AT');
+  ok('no guess stays null', W.guessWifiCountry({}) === null);
+  ok('locale file parsed', W.parseLocaleFile('LC_ALL=\nLANG="de_DE.UTF-8"\n') === 'de_DE.UTF-8');
+  ok('country code validated', W.isCountryCode('DE') && !W.isCountryCode('D') && !W.isCountryCode('DE; reboot'));
+  ok('country args are fixed and upper-cased', W.wifiCountryArgs('de').join(' ') === 'nonint do_wifi_country DE');
+
+  const blockedRadio = { device: 'unavailable' as const, softBlocked: true, hardBlocked: false, country: null, suggestedCountry: 'DE' };
+  ok('a blocked radio is not usable', !W.radioIsUsable(blockedRadio));
+  // The exact message a real Pi produced when the radio was blocked.
+  const wf = W.explainWifiFailure(
+    "Error: Failed to setup a Wi-Fi hotspot: Connection 'Hotspot' is not available on device wlan0 because device is not available",
+    blockedRadio,
+  );
+  ok('the nmcli message becomes a real explanation', wf.cause.includes('country') && wf.fixableHere === true, wf.cause);
+  ok('and it points at the button and the country', wf.fix.includes('Enable WiFi radio') && wf.fix.includes('DE'));
+  ok('a hardware switch is not offered a software fix', W.explainWifiFailure('', { ...blockedRadio, hardBlocked: true }).fixableHere === false);
+  ok('a missing device is not offered a fix', W.explainWifiFailure('', { device: 'missing', softBlocked: false, hardBlocked: false, country: 'DE', suggestedCountry: 'DE' }).fixableHere === false);
+  ok('a wrong key is explained as a key problem', W.explainWifiFailure('Error: Secrets were required, but not provided', { ...blockedRadio, device: 'ready', softBlocked: false }).cause.includes('password'));
 
   // When the boot-time onboarding starts the hotspot (mirrored in onboard.sh).
   const { shouldStartHotspot } = await import('../packages/vehicle/src/system/SystemManager');

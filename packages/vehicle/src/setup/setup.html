@@ -114,6 +114,21 @@
       <section class="panel">
         <div class="eyebrow">WiFi</div>
         <div id="wifi-status" class="msg">…</div>
+
+        <div class="eyebrow2">WiFi radio</div>
+        <div class="row"><span class="k">Status</span><span class="v" id="radio-state">…</span></div>
+        <div class="row"><span class="k">WiFi country</span><span class="v" id="radio-country">…</span></div>
+        <div id="radio-fix" style="display:none">
+          <p class="msg" id="radio-hint"></p>
+          <div class="grid2">
+            <label>Country (two letters)<input id="radioCountry" maxlength="2" placeholder="DE" style="text-transform:uppercase" /></label>
+            <div style="display:flex;align-items:flex-end;margin-bottom:10px">
+              <button class="btn primary" onclick="enableRadio()">Enable WiFi radio</button>
+            </div>
+          </div>
+        </div>
+        <div class="msg" id="radio-msg"></div>
+
         <div class="btns">
           <button class="btn" onclick="scanWifi()">Scan for networks</button>
         </div>
@@ -651,7 +666,44 @@
           $('apSsid').value = (w.hotspot && w.hotspot.ssid) || '';
           $('apMode').value = (w.hotspot && w.hotspot.mode) || 'auto';
           $('apPass').placeholder = w.hotspot && w.hotspot.hasPassword ? 'stored — leave empty to keep' : 'empty = open network';
+          renderRadio(w.radio);
         } catch {}
+      }
+
+      // ---- WiFi radio (rfkill + regulatory country) ----
+      // Pi OS keeps the radio blocked until a country is set, and NetworkManager
+      // then just says "device is not available" — which is why this is spelled out
+      // here instead of leaving the operator with an nmcli message.
+      function renderRadio(r) {
+        if (!r) return;
+        const usable = r.device === 'ready' && !r.softBlocked && !r.hardBlocked;
+        const state = r.device === 'missing'
+          ? 'no WiFi device'
+          : r.hardBlocked ? 'blocked by a hardware switch'
+          : r.softBlocked ? 'blocked (rfkill)'
+          : r.device === 'unavailable' ? 'unavailable'
+          : 'ready';
+        $('radio-state').className = 'v ' + (usable ? 'go' : 'bad');
+        $('radio-state').textContent = state;
+        $('radio-country').className = 'v ' + (r.country ? 'go' : 'warn');
+        $('radio-country').textContent = r.country || 'not set';
+        const needsFix = !usable || !r.country;
+        $('radio-fix').style.display = needsFix ? 'block' : 'none';
+        if (needsFix) {
+          if (!$('radioCountry').value) $('radioCountry').value = r.suggestedCountry || '';
+          $('radio-hint').innerHTML = !r.country
+            ? 'Raspberry Pi OS keeps WiFi switched off until a <b>WiFi country</b> is set — that is why no hotspot appears. ' +
+              (r.suggestedCountry ? `Suggested from this Pi's locale: <b>${esc(r.suggestedCountry)}</b>.` : 'Enter your country code (e.g. DE).')
+            : 'The radio is blocked. One press unblocks it — no terminal needed.';
+        }
+      }
+      async function enableRadio() {
+        const cc = ($('radioCountry').value || '').trim().toUpperCase();
+        $('radio-msg').textContent = 'Enabling the WiFi radio…';
+        const r = await post('/api/wifi/radio', cc ? { country: cc } : {});
+        $('radio-msg').innerHTML = (r.ok ? '<b style="color:var(--go)">✓ </b>' : '<b style="color:var(--bad)">✗ </b>') + esc(r.message || '');
+        if (r.radio) renderRadio(r.radio);
+        loadWifi();
       }
       async function scanWifi() {
         $('wifi-msg').textContent = 'Scanning…';
@@ -693,7 +745,12 @@
         const pw = $('apPass').value;
         if (pw !== '') body.password = pw; // empty = keep what's stored
         const r = await post('/api/wifi/hotspot', body);
-        $('ap-msg').textContent = r.message || 'Saved.';
+        // A failure here is almost always the radio, so show the cause and the fix
+        // rather than nmcli's own wording.
+        $('ap-msg').innerHTML = r.ok === false
+          ? `<b style="color:var(--bad)">${esc(r.message || 'Failed.')}</b>${r.fix ? '<br>' + fmtFix(r.fix) : ''}`
+          : esc(r.message || 'Saved.');
+        if (r.radio) renderRadio(r.radio);
         $('apPass').value = '';
         loadWifi();
       }

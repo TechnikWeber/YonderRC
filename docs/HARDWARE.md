@@ -474,6 +474,15 @@ configure entirely **without a laptop, using only a phone**:
 3. There you have **both**: the **control** (the ground app, served directly by the Pi)
    and under **Setup** the full configuration.
 
+> **The Wi-Fi radio has to be switched on first.** Raspberry Pi OS keeps it
+> rfkill-blocked until a **Wi-Fi country** is set (radio regulations), and
+> NetworkManager then simply calls the device "unavailable" — no hotspot can start,
+> and nothing says why. YonderRC handles this: **Setup › WiFi › WiFi radio** shows the
+> state and the country, and one button unblocks the radio and sets the country
+> (pre-filled from the Pi's own locale/timezone). Starting the hotspot repairs it
+> automatically and says so. The boot-time `onboard.sh` does the same. Over SSH the
+> equivalent is `sudo raspi-config nonint do_wifi_country DE && sudo rfkill unblock wifi`.
+
 ### 5.1 Put the Pi on your Wi-Fi from the phone
 
 **Setup › WiFi** does the whole onboarding without a keyboard on the Pi:

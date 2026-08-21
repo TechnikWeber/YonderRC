@@ -1,6 +1,7 @@
 import type { LinkSignal } from '@yonderrc/protocol';
 import type { I2cSuggestion } from './detect.js';
 import type { HwDepName } from './hwDeps.js';
+import type { WifiRadioStatus } from './wifi.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -13,6 +14,19 @@ export interface DetectResult {
 }
 
 /** One native driver module and whether this vehicle actually has it. */
+/**
+ * Result of starting the onboarding hotspot. Carries the radio state so the setup
+ * UI can offer the one-click repair, and the key the AP actually ended up with —
+ * NetworkManager invents one if asked for a hotspot without a password, and an AP
+ * whose key nobody knows is worse than no AP at all.
+ */
+export interface HotspotResult extends ActionResult {
+  fix?: string;
+  /** The WPA key in force, or null for an open network. */
+  psk?: string | null;
+  radio?: WifiRadioStatus;
+}
+
 export interface HwDepStatus {
   name: HwDepName;
   installed: boolean;
@@ -184,17 +198,6 @@ export function parseWifiScan(out: string): WifiNetwork[] {
   return [...best.values()].sort((a, b) => b.signal - a.signal);
 }
 
-/**
- * nmcli arguments that create the onboarding hotspot. Without a password the
- * hotspot is open; nmcli rejects a WPA key shorter than 8 characters, so a too
- * short one is treated as "no password" rather than failing the whole bring-up.
- */
-export function hotspotArgs(cfg: HotspotConfig, iface = 'wlan0'): string[] {
-  const args = ['device', 'wifi', 'hotspot', 'ifname', iface, 'ssid', cfg.ssid || HOTSPOT_DEFAULTS.ssid];
-  if (cfg.password && cfg.password.length >= 8) args.push('password', cfg.password);
-  return args;
-}
-
 export interface SystemStatus {
   kind: string; // "sim" | "real"
   hostname: string;
@@ -261,7 +264,11 @@ export interface SystemManager {
    */
   wifiConnect(ssid: string, password: string | null): Promise<ActionResult>;
   /** (Re)start the onboarding hotspot with the given settings. */
-  hotspotStart(cfg: HotspotConfig): Promise<ActionResult>;
+  hotspotStart(cfg: HotspotConfig): Promise<HotspotResult>;
+  /** Radio state: blocked? which regulatory country? what would we suggest? */
+  wifiRadio(): Promise<WifiRadioStatus>;
+  /** Unblock the radio (and set the WiFi country if one is given/derivable). */
+  wifiRadioEnable(country?: string | null): Promise<ActionResult & { radio: WifiRadioStatus }>;
   /** Take the onboarding hotspot down (leaves any other connection alone). */
   hotspotStop(): Promise<ActionResult>;
   /** Bring Tailscale up. With an auth key it's non-interactive; without, returns a login URL. */

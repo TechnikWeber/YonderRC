@@ -66,23 +66,50 @@ elif have_route; then
   exit 0
 fi
 
-if [ -n "$PASS" ] && [ "${#PASS}" -ge 8 ]; then
-  echo "[onboard] starting WPA2 hotspot $SSID on $IFACE"
-  nmcli device wifi hotspot ifname "$IFACE" ssid "$SSID" password "$PASS" || {
-    echo "[onboard] hotspot failed (is $IFACE available?)"
-    exit 0
-  }
-else
-  echo "[onboard] starting OPEN hotspot $SSID on $IFACE"
-  nmcli device wifi hotspot ifname "$IFACE" ssid "$SSID" || {
-    echo "[onboard] hotspot failed (is $IFACE available?)"
-    exit 0
-  }
+# The radio first. Raspberry Pi OS keeps WiFi rfkill-blocked until a regulatory
+# country is set, and NetworkManager then reports wlan0 as "unavailable" — with
+# that, no hotspot can ever start. Mirrors RealSystem.wifiRadioEnable().
+if rfkill list wifi 2>/dev/null | grep -qi 'soft blocked: *yes'; then
+  echo "[onboard] WiFi radio is soft-blocked — unblocking"
+  rfkill unblock wifi || true
+fi
+if ! iw reg get 2>/dev/null | grep -qE 'country [A-Z]{2}:'; then
+  # Only the locale is used here (the service also knows the timezone); a wrong
+  # guess is corrected in Setup > WiFi, no guess means no radio at all.
+  CC=$(sed -n 's/^LANG="\?[a-z]\{2,3\}_\([A-Z]\{2\}\).*/\1/p' /etc/default/locale 2>/dev/null | head -1)
+  if [ -n "${CC:-}" ] && command -v raspi-config >/dev/null 2>&1; then
+    echo "[onboard] no WiFi country set — setting $CC from this Pi's locale"
+    raspi-config nonint do_wifi_country "$CC" || true
+    rfkill unblock wifi || true
+  else
+    echo "[onboard] no WiFi country set and none derivable — set it in Setup > WiFi"
+  fi
 fi
 
-# NetworkManager assigns 10.42.0.1 by default for shared mode; pin a friendly one.
-nmcli connection modify Hotspot ipv4.addresses 192.168.4.1/24 ipv4.method shared || true
-nmcli connection up Hotspot || true
+# Build the profile explicitly. `nmcli device wifi hotspot` ALWAYS secures the AP:
+# "If not provided, nmcli will generate a password" — so the OPEN onboarding hotspot
+# this script promises was never open, and nobody could join it. Mirrors
+# hotspotCommands() in vehicle/system/wifi.ts.
+nmcli connection delete Hotspot >/dev/null 2>&1 || true
+if ! nmcli connection add type wifi ifname "$IFACE" con-name Hotspot autoconnect no ssid "$SSID" \
+    802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared ipv4.addresses 192.168.4.1/24; then
+  echo "[onboard] could not create the hotspot profile (is $IFACE available?)"
+  exit 0
+fi
+
+if [ -n "$PASS" ] && [ "${#PASS}" -ge 8 ]; then
+  echo "[onboard] starting WPA2 hotspot $SSID on $IFACE"
+  nmcli connection modify Hotspot \
+    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASS" \
+    wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp || true
+else
+  echo "[onboard] starting OPEN hotspot $SSID on $IFACE"
+fi
+
+nmcli connection up Hotspot || {
+  echo "[onboard] hotspot failed to start (is $IFACE available? 'rfkill list wifi')"
+  exit 0
+}
 
 # Captive portal: make NetworkManager's dnsmasq resolve EVERY name to the Pi, so
 # phones detect a captive portal and open the control/setup page automatically.

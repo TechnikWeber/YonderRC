@@ -134,6 +134,14 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   itself out. `hotspot.mode` (auto/always/off, pure `shouldStartHotspot`, mirrored in
   `onboard.sh`) decides when boot starts it; a WiFi client connection always wins (one
   radio). nmcli paths are hardware-only-verified; the sim has a mock neighbourhood.
+  **Corrected in v1.39.1 on real hardware**: `nmcli device wifi hotspot` *always* secures
+  the AP ("If not provided, nmcli will generate a password"), so the documented open
+  hotspot never was open — `wifi.ts` `hotspotCommands` builds the profile explicitly
+  (`connection add … 802-11-wireless.mode ap … ipv4.addresses 192.168.4.1/24`, security
+  added only for a real password) and `hotspotStart` reads the key back instead of
+  assuming. Pi OS also keeps the radio rfkill-blocked until a **WiFi country** is set —
+  `wifiRadio`/`wifiRadioEnable` (+ `explainWifiFailure`, `guessWifiCountry`) diagnose and
+  repair that from Setup › WiFi, and `onboard.sh` mirrors both.
 - **Native driver modules from the UI — DONE (v1.39.0)**: `vehicle/system/hwDeps.ts` holds
   the allowlist (`i2c-bus`/`pigpio`/`serialport`), the npm args and `explainNpmFailure`
   (pure, unit-tested: no internet / no compiler / missing C library / timeout / full disk /

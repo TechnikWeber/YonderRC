@@ -22,6 +22,7 @@ import {
 } from '../system/SystemManager.js';
 import { redactLteConfig, isValidPin } from '../system/lte.js';
 import { HW_DEPS, isHwDep } from '../system/hwDeps.js';
+import { isCountryCode } from '../system/wifi.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -271,6 +272,9 @@ export async function handleSetup(
     const st = await ctx.system.status();
     json(res, 200, {
       wifi: st.wifi,
+      // The radio state is what decides whether a hotspot can start at all — Pi OS
+      // keeps it blocked until a WiFi country is set.
+      radio: await ctx.system.wifiRadio(),
       hotspot: {
         ssid: ctx.config.hotspot.ssid,
         hasPassword: !!ctx.config.hotspot.password,
@@ -296,6 +300,18 @@ export async function handleSetup(
     json(res, r.ok ? 200 : 500, r);
     return true;
   }
+  if (url === '/api/wifi/radio' && method === 'POST') {
+    const body = (await readBody(req)) as { country?: unknown };
+    const country = typeof body.country === 'string' ? body.country : null;
+    if (country && !isCountryCode(country)) {
+      json(res, 400, { ok: false, message: 'Pick a two-letter country code (e.g. DE).' });
+      return true;
+    }
+    const r = await ctx.system.wifiRadioEnable(country);
+    json(res, r.ok ? 200 : 500, r);
+    return true;
+  }
+
   if (url === '/api/wifi/hotspot' && method === 'POST') {
     const body = (await readBody(req)) as {
       ssid?: string;

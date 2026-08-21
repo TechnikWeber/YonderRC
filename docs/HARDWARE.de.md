@@ -484,6 +484,15 @@ steuerst und konfigurierst du komplett **ohne Laptop, nur mit dem Handy**:
 3. Dort hast du **beides**: die **Steuerung** (Boden-App, direkt vom Pi ausgeliefert)
    und unter **Setup** die komplette Konfiguration.
 
+> **Das WLAN-Modul muss erst eingeschaltet sein.** Raspberry Pi OS hält es per rfkill
+> gesperrt, solange kein **WLAN-Land** gesetzt ist (Funkregulierung); NetworkManager
+> meldet das Gerät dann schlicht als „unavailable" — es kann kein Hotspot starten, und
+> nichts sagt warum. YonderRC fängt das ab: **Setup › WiFi › WiFi radio** zeigt Zustand
+> und Land, ein Knopf entsperrt das Modul und setzt das Land (vorbelegt aus Locale bzw.
+> Zeitzone des Pi). Beim Hotspot-Start wird das automatisch repariert und auch gesagt.
+> `onboard.sh` macht beim Booten dasselbe. Über SSH entspricht das
+> `sudo raspi-config nonint do_wifi_country DE && sudo rfkill unblock wifi`.
+
 ### 5.1 Den Pi vom Handy aus ins WLAN bringen
 
 **Setup › WiFi** erledigt das ganze Onboarding ohne Tastatur am Pi:

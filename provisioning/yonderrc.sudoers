@@ -11,6 +11,9 @@
 #   install      — place the uploaded WireGuard .conf into /etc/wireguard
 #   zerotier-cli — join/leave a ZeroTier network         (Setup › Remote access)
 #   reboot       — the "Reboot vehicle" button           (Setup › System)
+#   rfkill       — unblock the WiFi radio                (Setup › WiFi)
+#   raspi-config — set the WiFi country, which is what unblocks it in the first
+#                  place on Raspberry Pi OS       (Setup › WiFi › Enable radio)
 #   systemctl    — "Restart service now" after installing a native driver
 #                  module (Setup › Vehicle configuration). The npm install
 #                  itself is NOT sudo: the service user must own /opt/yonderrc.
@@ -38,6 +41,8 @@ Cmnd_Alias YONDERRC = \
     /usr/bin/install, \
     /usr/sbin/zerotier-cli, /usr/bin/zerotier-cli, \
     /usr/sbin/reboot, /sbin/reboot, \
+    /usr/sbin/rfkill, /usr/bin/rfkill, \
+    /usr/bin/raspi-config, \
     /usr/bin/systemctl restart yonderrc-vehicle.service
 
 yonderrc ALL=(root) NOPASSWD: YONDERRC

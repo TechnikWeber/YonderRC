@@ -3,6 +3,60 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.39.1
+**English**
+- **Fixed: the "open" onboarding hotspot was never open.** `nmcli device wifi hotspot`
+  always secures the AP — its man page says "password to use for the created hotspot. If
+  not provided, nmcli will generate a password". So the vehicle broadcast **YonderRC-setup
+  with a random WPA key nobody could know**, which quietly made the entire documented
+  headless onboarding ("join it, the captive portal opens, type nothing") impossible. The
+  profile is now built explicitly (`connection add … 802-11-wireless.mode ap …
+  ipv4.addresses 192.168.4.1/24`), security is added **only** when you set a password, and
+  the key is **read back** afterwards instead of assumed — if the AP ends up secured, the
+  page tells you the key rather than leaving you locked out of your own vehicle.
+- **Fixed: no hotspot at all, and nothing said why.** Raspberry Pi OS keeps the WiFi radio
+  rfkill-blocked until a **WiFi country** is set, and NetworkManager then reports only
+  `device is not available`. Setup › WiFi now has a **WiFi radio** block: state, country,
+  and one button that unblocks the radio and sets the country — **pre-filled from the Pi's
+  own locale/timezone**, so in the normal case you press one button and nothing else.
+  Starting the hotspot repairs this on its own and says what it did.
+- **Every nmcli failure is translated**, like the npm ones in v1.39.0: blocked radio, no
+  country, no WiFi device, a hardware switch, a rejected key, a timeout, an adapter that
+  can't do AP mode — each with the step that fixes it, and nmcli's own words underneath.
+- `onboard.sh` mirrors all of it, so the **boot-time** hotspot is open too and repairs a
+  blocked radio itself (country derived from the locale).
+- 25 new tests, including the exact error string this Pi produced. The nmcli calls
+  themselves stay hardware-only-verifiable — the flaw they fix was found on real hardware,
+  not in the simulator, which is precisely why the sim can't prove them.
+
+**Deutsch**
+- **Behoben: der „offene" Onboarding-Hotspot war nie offen.** `nmcli device wifi hotspot`
+  verschlüsselt den AP immer — die Manpage sagt es wörtlich: „password to use for the
+  created hotspot. If not provided, nmcli will generate a password." Das Fahrzeug funkte
+  also **YonderRC-setup mit einem zufälligen WPA-Schlüssel, den niemand kennen konnte**,
+  womit das gesamte dokumentierte Onboarding ohne Laptop („verbinden, Captive Portal geht
+  auf, nichts tippen") stillschweigend unmöglich war. Das Profil wird jetzt explizit
+  gebaut (`connection add … 802-11-wireless.mode ap … ipv4.addresses 192.168.4.1/24`),
+  Verschlüsselung kommt **nur** bei einem gesetzten Passwort dazu, und der Schlüssel wird
+  danach **zurückgelesen** statt angenommen — landet der AP doch verschlüsselt, nennt die
+  Seite den Schlüssel, statt dich aus deinem eigenen Fahrzeug auszusperren.
+- **Behoben: gar kein Hotspot, ohne Begründung.** Raspberry Pi OS hält das WLAN-Modul per
+  rfkill gesperrt, solange kein **WLAN-Land** gesetzt ist; NetworkManager meldet dann nur
+  `device is not available`. Setup › WiFi hat jetzt einen Block **WiFi radio**: Zustand,
+  Land und ein Knopf, der das Modul entsperrt und das Land setzt — **vorbelegt aus Locale
+  bzw. Zeitzone des Pi**, im Normalfall also ein Klick und sonst nichts. Der Hotspot-Start
+  repariert das von selbst und sagt, was er getan hat.
+- **Jeder nmcli-Fehler wird übersetzt**, wie in v1.39.0 die von npm: gesperrtes Modul,
+  fehlendes Land, kein WLAN-Gerät, Hardware-Schalter, abgelehnter Schlüssel, Timeout, ein
+  Adapter ohne AP-Fähigkeit — jeweils mit dem Schritt, der hilft, und darunter nmclis
+  eigener Wortlaut.
+- `onboard.sh` spiegelt alles, der Hotspot **beim Booten** ist damit ebenfalls offen und
+  repariert ein gesperrtes Funkmodul selbst (Land aus der Locale abgeleitet).
+- 25 neue Tests, darunter exakt die Fehlermeldung, die dieser Pi ausgegeben hat. Die
+  nmcli-Aufrufe selbst bleiben nur auf Hardware verifizierbar — der Fehler, den sie
+  beheben, wurde auf echter Hardware gefunden und nicht im Simulator, genau deshalb kann
+  der Simulator sie nicht beweisen.
+
 ## v1.39.0
 **English**
 - **Native driver modules install from the browser.** Setup › Vehicle configuration now has

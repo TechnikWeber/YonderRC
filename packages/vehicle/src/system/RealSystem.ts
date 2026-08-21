@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import type {
   ActionResult,
+  HotspotResult,
   HwDepInstallResult,
   HwDepStatus,
   LteConfig,
@@ -21,7 +22,22 @@ import type {
   WifiNetwork,
   HotspotConfig,
 } from './SystemManager.js';
-import { normaliseWireguardConf, parseWifiScan, hotspotArgs, HOTSPOT_DEFAULTS } from './SystemManager.js';
+import { normaliseWireguardConf, parseWifiScan, HOTSPOT_DEFAULTS } from './SystemManager.js';
+import {
+  explainWifiFailure,
+  guessWifiCountry,
+  hotspotCommands,
+  hotspotPskArgs,
+  isCountryCode,
+  parseLocaleFile,
+  parseRfkill,
+  parseWifiCountry,
+  parseWifiDeviceState,
+  radioIsUsable,
+  wifiCountryArgs,
+  HOTSPOT_ADDRESS,
+  type WifiRadioStatus,
+} from './wifi.js';
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c } from './detect.js';
@@ -207,16 +223,107 @@ export class RealSystem implements SystemManager {
     return { ok: false, message: `Could not join "${ssid}": ${r.out.split('\n').slice(-1)[0] || 'unknown error'}. Hotspot restarted.` };
   }
 
-  async hotspotStart(cfg: HotspotConfig): Promise<ActionResult> {
+  /** Radio state: rfkill, NetworkManager's view of wlan0, and the regulatory country. */
+  async wifiRadio(): Promise<WifiRadioStatus> {
+    const [rf, dev, reg, tz, loc] = await Promise.all([
+      sh('rfkill list wifi'),
+      sh('nmcli -t -f DEVICE,TYPE,STATE device'),
+      sh('iw reg get'),
+      sh('timedatectl show -p Timezone --value'),
+      sh('cat /etc/default/locale'),
+    ]);
+    const blocked = parseRfkill(rf.out);
+    return {
+      device: parseWifiDeviceState(dev.out, WIFI_IFACE),
+      softBlocked: blocked.softBlocked,
+      hardBlocked: blocked.hardBlocked,
+      country: parseWifiCountry(reg.out),
+      suggestedCountry: guessWifiCountry({
+        locale: parseLocaleFile(loc.ok ? loc.out : '') ?? process.env.LANG ?? null,
+        timezone: tz.ok ? tz.out : null,
+      }),
+    };
+  }
+
+  /**
+   * Unblock the radio and, if asked, set the regulatory country. Pi OS keeps WiFi
+   * rfkill-blocked until a country is configured, which is the single most common
+   * reason the onboarding hotspot never appears — and it used to require SSH.
+   */
+  async wifiRadioEnable(country?: string | null): Promise<ActionResult & { radio: WifiRadioStatus }> {
+    const notes: string[] = [];
+    if (country != null && country !== '') {
+      if (!isCountryCode(country)) {
+        return { ok: false, message: `"${country}" is not a two-letter country code.`, radio: await this.wifiRadio() };
+      }
+      const cc = country.toUpperCase();
+      const r = await shArgs('sudo', ['raspi-config', ...wifiCountryArgs(cc)]);
+      notes.push(
+        r.ok
+          ? `WiFi country set to ${cc}.`
+          : `Could not set the WiFi country (${r.out.split('\n').slice(-1)[0] || 'raspi-config not available'}).`,
+      );
+    }
+    await shArgs('sudo', ['rfkill', 'unblock', 'wifi']);
+    await shArgs('nmcli', ['radio', 'wifi', 'on']);
+    // NetworkManager needs a moment to notice the interface came back.
+    await new Promise((r) => setTimeout(r, 2000));
+    const radio = await this.wifiRadio();
+    const usable = radioIsUsable(radio);
+    notes.push(usable ? 'WiFi radio is enabled.' : 'The radio is still not usable.');
+    if (!usable && !radio.country) notes.push('No WiFi country is set yet — pick one and try again.');
+    return { ok: usable, message: notes.join(' '), radio };
+  }
+
+  /**
+   * Build and start the onboarding hotspot. Two departures from the obvious
+   * `nmcli device wifi hotspot`: that command cannot create an OPEN network (it
+   * generates a WPA key when none is given, which silently broke the documented
+   * captive-portal onboarding), and it picks its own subnet. So the profile is
+   * built explicitly — and a blocked radio is repaired first instead of being
+   * reported as nmcli's unhelpful "device is not available".
+   */
+  async hotspotStart(cfg: HotspotConfig): Promise<HotspotResult> {
     this.lastHotspot = cfg;
-    const r = await shArgs('nmcli', hotspotArgs(cfg, WIFI_IFACE));
-    if (!r.ok) return { ok: false, message: `Hotspot failed: ${r.out}` };
-    // NetworkManager defaults to 10.42.0.1; the docs and captive portal use .4.1.
-    await shArgs('nmcli', ['connection', 'modify', 'Hotspot', 'ipv4.addresses', '192.168.4.1/24', 'ipv4.method', 'shared']);
-    await shArgs('nmcli', ['connection', 'up', 'Hotspot']);
+    const notes: string[] = [];
+
+    let radio = await this.wifiRadio();
+    if (!radioIsUsable(radio)) {
+      // Unblocking your own radio is safe and reversible; the country only gets set
+      // when it is missing AND we could derive one, and we always say that we did.
+      const repair = await this.wifiRadioEnable(radio.country ? null : radio.suggestedCountry);
+      radio = repair.radio;
+      notes.push(repair.message);
+      if (!radioIsUsable(radio)) {
+        const f = explainWifiFailure('', radio);
+        return { ok: false, message: `Hotspot not started — ${f.cause}.`, fix: f.fix, radio };
+      }
+    }
+
+    for (const cmd of hotspotCommands({ ssid: cfg.ssid, password: cfg.password }, WIFI_IFACE)) {
+      const r = await shArgs('nmcli', cmd.args);
+      if (!r.ok && !cmd.optional) {
+        const f = explainWifiFailure(r.out, radio);
+        return {
+          ok: false,
+          message: `Hotspot failed — ${f.cause}.`,
+          fix: `${f.fix}\n\nnmcli said: ${r.out.split('\n').slice(-2).join(' ')}`,
+          radio,
+        };
+      }
+    }
+
+    // Read the key back rather than assuming: this is the check that would have
+    // caught NetworkManager quietly securing a hotspot we asked to be open.
+    const psk = (await shArgs('nmcli', hotspotPskArgs())).out.trim() || null;
+    const secured = !!psk;
     return {
       ok: true,
-      message: `Hotspot "${cfg.ssid}" up (${cfg.password ? 'WPA2' : 'open'}) at http://192.168.4.1:8080/setup`,
+      message:
+        `${notes.join(' ')} Hotspot "${cfg.ssid}" is up (${secured ? `WPA2, key ${psk}` : 'open'}) — ` +
+        `join it and open http://${HOTSPOT_ADDRESS}:8080/`.trim(),
+      psk,
+      radio,
     };
   }
 

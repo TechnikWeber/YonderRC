@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import type {
   ActionResult,
+  HotspotResult,
   HwDepInstallResult,
   HwDepStatus,
   LteConfig,
@@ -16,6 +17,7 @@ import type {
   HotspotConfig,
 } from './SystemManager.js';
 import { HW_DEPS, explainNpmFailure, isHwDep, lastLines, type HwDepName } from './hwDeps.js';
+import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
 
 /**
  * Mock system: pretends to have an LTE modem and Tailscale so the entire setup
@@ -75,9 +77,40 @@ export class SimSystem implements SystemManager {
     return { ok: true, message: `Connected to "${ssid}" — 192.168.178.42 (simulated). The hotspot is closing.` };
   }
 
-  async hotspotStart(cfg: HotspotConfig): Promise<ActionResult> {
-    this.wifi = { mode: 'ap', ssid: cfg.ssid, ip: '192.168.4.1' };
-    return { ok: true, message: `Hotspot "${cfg.ssid}" up (${cfg.password ? 'WPA2' : 'open'}) (simulated).` };
+  /** Mock radio: healthy, but "enable" still works so the UI flow is exercisable. */
+  private radio: WifiRadioStatus = {
+    device: 'ready',
+    softBlocked: false,
+    hardBlocked: false,
+    country: 'DE',
+    suggestedCountry: 'DE',
+  };
+
+  async wifiRadio(): Promise<WifiRadioStatus> {
+    return { ...this.radio };
+  }
+
+  async wifiRadioEnable(country?: string | null): Promise<ActionResult & { radio: WifiRadioStatus }> {
+    if (country != null && country !== '' && !isCountryCode(country)) {
+      return { ok: false, message: `"${country}" is not a two-letter country code.`, radio: { ...this.radio } };
+    }
+    if (country) this.radio.country = country.toUpperCase();
+    this.radio = { ...this.radio, device: 'ready', softBlocked: false, hardBlocked: false };
+    return { ok: true, message: `WiFi radio enabled${country ? `, country ${this.radio.country}` : ''} (simulated).`, radio: { ...this.radio } };
+  }
+
+  async hotspotStart(cfg: HotspotConfig): Promise<HotspotResult> {
+    if (!radioIsUsable(this.radio)) {
+      return { ok: false, message: 'Hotspot not started — the WiFi radio is blocked (simulated).', fix: 'Press “Enable WiFi radio”.', radio: { ...this.radio } };
+    }
+    this.wifi = { mode: 'ap', ssid: cfg.ssid, ip: HOTSPOT_ADDRESS };
+    const psk = cfg.password && cfg.password.length >= 8 ? cfg.password : null;
+    return {
+      ok: true,
+      message: `Hotspot "${cfg.ssid}" is up (${psk ? `WPA2, key ${psk}` : 'open'}) — join it and open http://${HOTSPOT_ADDRESS}:8080/ (simulated).`,
+      psk,
+      radio: { ...this.radio },
+    };
   }
 
   async hotspotStop(): Promise<ActionResult> {
