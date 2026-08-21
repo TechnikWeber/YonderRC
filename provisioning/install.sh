@@ -75,7 +75,11 @@ fi
 echo "-- systemd services"
 cp "$REPO/provisioning/systemd/"*.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now go2rtc.service yonderrc-vehicle.service yonderrc-onboard.service
+systemctl enable --now go2rtc.service yonderrc-vehicle.service
+# The onboarding hotspot is a oneshot fallback (it exits right away when the Pi already
+# has a network). Never let it abort provisioning — the vehicle service is what matters.
+systemctl enable --now yonderrc-onboard.service ||
+  echo "   (onboard hotspot service did not start — check: journalctl -u yonderrc-onboard)"
 
 echo
 echo "== Done =="

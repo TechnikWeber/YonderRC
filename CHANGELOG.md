@@ -3,6 +3,30 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.38.5
+**English**
+- **Fixed: `yonderrc-onboard.service` failed to start on a fresh Pi.** `onboard.sh` was
+  committed **without the executable bit**, and the unit ran it directly as `ExecStart=`
+  — systemd could only answer with `203/EXEC`. The hotspot fallback therefore never came
+  up, so a Pi that later lost its network had no way back in. The file is executable now,
+  and the unit calls it through `/bin/bash` as well, which also survives an install from
+  a source zip (zips do not carry file modes).
+- **A failing onboarding service no longer aborts provisioning.** It is enabled on its own
+  line now: the hotspot is a fallback, while `go2rtc` and the vehicle service are what
+  actually fly the model — the installer prints a hint and runs to the end.
+
+**Deutsch**
+- **Behoben: `yonderrc-onboard.service` startete auf einem frischen Pi nicht.** `onboard.sh`
+  war **ohne Ausführungsrecht** eingecheckt, und die Unit rief es direkt als `ExecStart=`
+  auf — systemd konnte darauf nur mit `203/EXEC` antworten. Der Hotspot-Rückfall kam damit
+  nie hoch, ein Pi ohne Netzwerk wäre also nicht mehr erreichbar gewesen. Die Datei ist
+  jetzt ausführbar, und die Unit ruft sie zusätzlich über `/bin/bash` auf — das übersteht
+  auch eine Installation aus einem Quell-Zip (Zips transportieren keine Dateirechte).
+- **Ein fehlschlagender Onboarding-Dienst bricht die Einrichtung nicht mehr ab.** Er wird
+  jetzt in einer eigenen Zeile aktiviert: der Hotspot ist ein Rückfall, während `go2rtc`
+  und der Fahrzeugdienst das Modell tatsächlich fahren — der Installer gibt einen Hinweis
+  aus und läuft bis zum Ende durch.
+
 ## v1.38.4
 **English**
 - **Fixed: provisioning a fresh Raspberry Pi aborted at the ground build.** `install.sh`

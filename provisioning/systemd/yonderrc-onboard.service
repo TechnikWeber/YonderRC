@@ -5,7 +5,9 @@ Wants=NetworkManager.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/yonderrc/provisioning/onboard.sh
+# Run through bash explicitly: a source zip (or a checkout with an odd umask) can lose
+# the exec bit, and systemd would then fail the unit with status=203/EXEC.
+ExecStart=/bin/bash /opt/yonderrc/provisioning/onboard.sh
 RemainAfterExit=no
 
 [Install]
