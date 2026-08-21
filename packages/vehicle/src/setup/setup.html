@@ -170,12 +170,23 @@
         <div class="eyebrow2">WiFi radio</div>
         <div class="row"><span class="k">Status</span><span class="v" id="radio-state">…</span></div>
         <div class="row"><span class="k">WiFi country</span><span class="v" id="radio-country">…</span></div>
-        <div id="radio-fix" style="display:none">
+        <div id="radio-fix">
           <p class="msg" id="radio-hint"></p>
           <div class="grid2">
-            <label>Country (two letters)<input id="radioCountry" maxlength="2" placeholder="DE" style="text-transform:uppercase" /></label>
+            <label>Country (two letters)
+              <input id="radioCountry" maxlength="2" placeholder="DE" list="cc-list" style="text-transform:uppercase" />
+              <datalist id="cc-list">
+                <option value="DE"></option><option value="AT"></option><option value="CH"></option>
+                <option value="NL"></option><option value="BE"></option><option value="FR"></option>
+                <option value="IT"></option><option value="ES"></option><option value="PT"></option>
+                <option value="DK"></option><option value="SE"></option><option value="NO"></option>
+                <option value="FI"></option><option value="PL"></option><option value="CZ"></option>
+                <option value="GB"></option><option value="IE"></option><option value="US"></option>
+                <option value="CA"></option><option value="AU"></option>
+              </datalist>
+            </label>
             <div style="display:flex;align-items:flex-end;margin-bottom:10px">
-              <button class="btn primary" onclick="run(this, () => enableRadio())">Enable WiFi radio</button>
+              <button class="btn primary" id="radio-btn" onclick="run(this, () => enableRadio())">Apply country</button>
             </div>
           </div>
         </div>
@@ -870,15 +881,17 @@
         $('radio-state').textContent = state;
         $('radio-country').className = 'v ' + (r.country ? 'go' : 'warn');
         $('radio-country').textContent = r.country || 'not set';
-        const needsFix = !usable || !r.country;
-        $('radio-fix').style.display = needsFix ? 'block' : 'none';
-        if (needsFix) {
-          if (!$('radioCountry').value) $('radioCountry').value = r.suggestedCountry || '';
-          $('radio-hint').innerHTML = !r.country
-            ? 'Raspberry Pi OS keeps WiFi switched off until a <b>WiFi country</b> is set — that is why no hotspot appears. ' +
-              (r.suggestedCountry ? `Suggested from this Pi's locale: <b>${esc(r.suggestedCountry)}</b>.` : 'Enter your country code (e.g. DE).')
-            : 'The radio is blocked. One press unblocks it — no terminal needed.';
-        }
+        // The country stays editable even when everything works: it is a regulatory
+        // setting that changes when the box moves across a border, and hiding it
+        // once it was set meant the only way to correct it was an SSH session.
+        if (!$('radioCountry').value) $('radioCountry').value = r.country || r.suggestedCountry || '';
+        $('radio-btn').textContent = usable ? 'Apply country' : 'Enable WiFi radio';
+        $('radio-hint').innerHTML = !r.country
+          ? 'Raspberry Pi OS keeps WiFi switched off until a <b>WiFi country</b> is set — that is why no hotspot appears. ' +
+            (r.suggestedCountry ? `Suggested from this Pi's locale: <b>${esc(r.suggestedCountry)}</b>.` : 'Enter your country code (e.g. DE).')
+          : !usable
+            ? 'The radio is blocked. One press unblocks it — no terminal needed.'
+            : `Regulatory country in force: <b>${esc(r.country)}</b>. Change it here if this box moves to another country — it decides which channels and transmit power the WiFi may use.`;
       }
       async function enableRadio() {
         const cc = ($('radioCountry').value || '').trim().toUpperCase();

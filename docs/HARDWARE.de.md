@@ -618,6 +618,9 @@ steuerst und konfigurierst du komplett **ohne Laptop, nur mit dem Handy**:
 > nichts sagt warum. YonderRC fängt das ab: **Setup › WiFi › WiFi radio** zeigt Zustand
 > und Land, ein Knopf entsperrt das Modul und setzt das Land (vorbelegt aus Locale bzw.
 > Zeitzone des Pi). Beim Hotspot-Start wird das automatisch repariert und auch gesagt.
+> Das Länderfeld bleibt **danach änderbar** — es ist eine Funkregulierung, die Kanäle
+> und Sendeleistung bestimmt, und muss korrigierbar sein, wenn die Kiste über eine
+> Grenze umzieht.
 > `onboard.sh` macht beim Booten dasselbe. Über SSH entspricht das
 > `sudo raspi-config nonint do_wifi_country DE && sudo rfkill unblock wifi`.
 

@@ -598,7 +598,9 @@ configure entirely **without a laptop, using only a phone**:
 > and nothing says why. YonderRC handles this: **Setup › WiFi › WiFi radio** shows the
 > state and the country, and one button unblocks the radio and sets the country
 > (pre-filled from the Pi's own locale/timezone). Starting the hotspot repairs it
-> automatically and says so. The boot-time `onboard.sh` does the same. Over SSH the
+> automatically and says so. The country field **stays editable afterwards** — it is a
+> regulatory setting that decides channels and transmit power, so it has to be
+> correctable when the box moves across a border. The boot-time `onboard.sh` does the same. Over SSH the
 > equivalent is `sudo raspi-config nonint do_wifi_country DE && sudo rfkill unblock wifi`.
 
 ### 5.1 Put the Pi on your Wi-Fi from the phone

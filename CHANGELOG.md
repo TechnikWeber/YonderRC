@@ -3,6 +3,33 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.45.3
+**English**
+- **The WiFi country can be changed after it has been set.** The field only appeared
+  while something was broken — once a country was in force, the block disappeared and
+  the only way to correct it was an SSH session. It is a regulatory setting that decides
+  which channels and what transmit power the radio may use, so it has to stay editable:
+  a vehicle that crosses a border needs it changed, not re-provisioned.
+- The row now always shows the country in force, the field is pre-filled with it (not
+  just with the suggestion), a short list of common codes is offered, and the button
+  says what it will do — *Apply country* when the radio is healthy, *Enable WiFi radio*
+  when it is blocked. There is **no built-in default**: the suggestion comes from the
+  Pi's own locale or timezone, and nothing is set until you press the button or the
+  hotspot repairs a missing country by itself.
+
+**Deutsch**
+- **Das WLAN-Land lässt sich ändern, nachdem es gesetzt wurde.** Das Feld erschien nur,
+  solange etwas kaputt war — sobald ein Land in Kraft war, verschwand der Block, und
+  korrigieren ließ es sich nur noch per SSH. Es ist eine Funkregulierung, die über
+  Kanäle und Sendeleistung entscheidet, also muss es änderbar bleiben: ein Fahrzeug, das
+  über eine Grenze fährt, braucht eine Änderung und keine Neuinstallation.
+- Die Zeile zeigt jetzt immer das geltende Land, das Feld ist damit vorbelegt (nicht nur
+  mit dem Vorschlag), eine kurze Liste gängiger Kürzel steht zur Auswahl, und der Knopf
+  sagt, was er tut — *Apply country* bei gesundem Funkmodul, *Enable WiFi radio* bei
+  gesperrtem. Einen **eingebauten Standard gibt es nicht**: der Vorschlag stammt aus
+  Locale oder Zeitzone des Pi, gesetzt wird erst auf Knopfdruck oder wenn der
+  Hotspot-Start ein fehlendes Land selbst repariert.
+
 ## v1.45.2
 **English**
 - **Fixed: "Link lost" was announced for a link that never existed.** Open the ground app,
