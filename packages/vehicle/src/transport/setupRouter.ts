@@ -10,7 +10,7 @@ import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
-import { secretOk, readSecretFromReq, originAllowed, originOf } from './auth.js';
+import { secretOk, readSecretFromReq, originAllowed, originOf, secFetchSiteOf } from './auth.js';
 import { groundAppAvailable } from './staticServer.js';
 import {
   HOTSPOT_DEFAULTS,
@@ -103,7 +103,7 @@ export async function handleSetup(
   // configured. GET status stays open (read-only) and the /setup page above is open
   // so the operator can always reach the UI to enter the secret. When no secret is
   // set this is a no-op — first-time connect/setup needs nothing.
-  if (method === 'POST' && url.startsWith('/api/') && !originAllowed(origin, secretProven, req.headers.host)) {
+  if (method === 'POST' && url.startsWith('/api/') && !originAllowed(origin, secretProven, req.headers.host, secFetchSiteOf(req))) {
     console.warn(`[setup] refused ${url} from foreign origin ${origin}`);
     json(res, 403, {
       ok: false,

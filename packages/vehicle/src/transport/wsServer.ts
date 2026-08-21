@@ -18,7 +18,7 @@ import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { serveGroundApp } from './staticServer.js';
-import { secretOk, readSecretFromUrl, originAllowed, originOf } from './auth.js';
+import { secretOk, readSecretFromUrl, originAllowed, originOf, secFetchSiteOf } from './auth.js';
 
 /**
  * v0.1 control link over WebSocket, now doubling as the WebRTC signaling channel
@@ -104,7 +104,7 @@ export function startWsServer(
     // control link to a vehicle on the operator's own network and arm it.
     const origin = originOf(req);
     const secretProven = !!config.apiSecret && secretOk(config.apiSecret, readSecretFromUrl(req.url));
-    if (!originAllowed(origin, secretProven, req.headers.host)) {
+    if (!originAllowed(origin, secretProven, req.headers.host, secFetchSiteOf(req))) {
       console.warn(`[link] rejected ${who}: foreign origin ${origin}`);
       ws.close(4003, 'foreign origin');
       return;

@@ -106,11 +106,25 @@ export function originAllowed(
   origin: string | undefined | null,
   secretMatched: boolean,
   host?: string | undefined | null,
+  secFetchSite?: string | undefined | null,
 ): boolean {
   if (secretMatched) return true;
+  // Decisive when present: browsers send `Sec-Fetch-Site` on *every* request, which
+  // covers the ones that carry no Origin at all — an `<img src>`, a `<script>`, a
+  // plain form. Those cannot read an answer, but they can still make the vehicle do
+  // something, and Origin alone would wave them through.
+  const site = (secFetchSite ?? '').toLowerCase();
+  if (site === 'cross-site') return false;
+  if (site === 'same-origin' || site === 'same-site' || site === 'none') return true;
   if (origin === undefined || origin === null || origin === '') return true;
   if (isSameOrigin(origin, host)) return true;
   return isLocalOrigin(origin);
+}
+
+/** First value of a possibly-repeated header. */
+export function secFetchSiteOf(req: IncomingMessage): string | undefined {
+  const v = req.headers['sec-fetch-site'];
+  return Array.isArray(v) ? v[0] : v;
 }
 
 /** First value of a possibly-repeated header. */

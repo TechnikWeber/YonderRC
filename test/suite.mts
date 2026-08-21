@@ -283,6 +283,11 @@ async function main() {
   ok('a foreign origin is refused', originAllowed('https://evil.example', false) === false);
   ok('unless it proves intent with the secret', originAllowed('https://evil.example', true) === true);
   ok('a local origin needs no secret', originAllowed('http://192.168.4.1:8080', false) === true);
+  // An <img> or a <script> carries no Origin at all, so Origin alone would wave it
+  // through; Sec-Fetch-Site is sent on every request and does not.
+  ok('a cross-site fetch with no Origin is refused', originAllowed(undefined, false, undefined, 'cross-site') === false);
+  ok('same-origin is fine', originAllowed(undefined, false, undefined, 'same-origin') === true);
+  ok('and so is typing the address in', originAllowed(undefined, false, undefined, 'none') === true);
   // A vehicle reached over a public hostname serves its own setup page from that
   // hostname — refusing it would break the very page the operator is looking at.
   ok('the page the vehicle served itself is allowed', originAllowed('https://my-boat.example', false, 'my-boat.example') === true);

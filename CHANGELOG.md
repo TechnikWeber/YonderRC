@@ -3,6 +3,24 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.46.1
+**English**
+- The origin gate from v1.46.0 now also reads **`Sec-Fetch-Site`**, which browsers send
+  on every request — including the ones that carry no `Origin` at all, like an `<img>`,
+  a `<script>` or a plain form. Those cannot read an answer, but they can still make the
+  vehicle do something, and the Origin rule alone would have waved them through. Anything
+  a page elsewhere caused is refused; curl and scripts are unaffected. Brought back from
+  YonderGate, where the same request can switch a relay.
+
+**Deutsch**
+- Die Origin-Prüfung aus v1.46.0 liest jetzt zusätzlich **`Sec-Fetch-Site`**, das Browser
+  bei jeder Anfrage mitschicken — auch bei denen ganz ohne `Origin`, etwa `<img>`,
+  `<script>` oder ein einfaches Formular. Die können zwar keine Antwort lesen, aber das
+  Fahrzeug trotzdem etwas tun lassen, und die reine Origin-Regel hätte sie durchgewunken.
+  Alles, was von einer fremden Seite ausgelöst wurde, wird abgewiesen; curl und Skripte
+  bleiben unberührt. Aus YonderGate zurückportiert, wo dieselbe Anfrage ein Relais
+  schaltet.
+
 ## v1.46.0
 A review pass over the whole repository — protocol, vehicle, ground, desktop — in the
 same spirit as the one on YonderGate. Five findings, all fixed here. Nothing needed
