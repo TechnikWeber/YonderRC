@@ -689,6 +689,7 @@ export class RealSystem implements SystemManager {
     // actually runs a command, so it refuses anything off the list itself.
     if (!isHwDep(name)) return { ok: false, message: `Refused: "${String(name)}" is not a known driver module.`, output: '' };
 
+    const before = new Set((await this.hwDeps()).filter((d) => d.installed).map((d) => d.name));
     const started = Date.now();
     const r = await shSlow('npm', npmInstallArgs(name), { cwd: REPO_ROOT, timeoutMs: 10 * 60_000 });
     const secs = Math.max(1, Math.round((Date.now() - started) / 1000));
@@ -698,11 +699,21 @@ export class RealSystem implements SystemManager {
     // package again, prints "up to date" and exits 0 — reporting that as success is
     // exactly the silent fallback-to-sim this feature exists to prevent. What counts
     // is whether the module can be resolved afterwards.
-    const after = (await this.hwDeps()).find((d) => d.name === name);
+    const deps = await this.hwDeps();
+    const after = deps.find((d) => d.name === name);
     if (r.ok && after?.installed) {
+      // npm reifies the WHOLE vehicle package, and its siblings are optional
+      // dependencies of it — so asking for one builds the others too. That can't be
+      // avoided (`--omit=optional` skips the requested one as well), so say it plainly
+      // instead of leaving the operator wondering why the log shows another module.
+      const extra = deps.filter((d) => d.installed && d.name !== name && !before.has(d.name)).map((d) => d.name);
       return {
         ok: true,
-        message: `${name}${after.version ? ` ${after.version}` : ''} installed in ${secs}s — restart the vehicle service to use it.`,
+        message:
+          `${name}${after.version ? ` ${after.version}` : ''} installed in ${secs}s — restart the vehicle service to use it.` +
+          (extra.length
+            ? ` npm also built ${extra.join(' and ')}: they are optional dependencies of the same package, so npm always reifies them together. Harmless — nothing uses them unless you select that driver.`
+            : ''),
         output: lastLines(r.out),
         restartRequired: true,
       };

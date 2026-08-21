@@ -3,6 +3,34 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.40.2
+**English**
+- **Installing one native driver module builds all three — now it says so.** `npm install
+  i2c-bus -w @yonderrc/vehicle` reifies the *whole* vehicle package, and `pigpio` and
+  `serialport` are optional dependencies of that same package, so npm always builds them
+  along with it. This cannot be avoided: `npm install <pkg> --omit=optional` skips the
+  requested module as well (npm answers "up to date" and installs nothing), which is
+  worse. So the panel now says it upfront and the success message names what else got
+  built. It is harmless — no module is used unless you select that driver.
+- **Fixed: the record used for updates only listed the module you clicked.** `install.sh`
+  restores what is listed in `hardwareDeps` after its `--omit=optional` pass, so the two
+  modules that came along would have been pruned on the next update while the third
+  survived. What is actually installed is recorded now.
+
+**Deutsch**
+- **Ein Treibermodul zu installieren baut alle drei — das steht jetzt auch da.** `npm
+  install i2c-bus -w @yonderrc/vehicle` reifiziert das *gesamte* Vehicle-Paket, und
+  `pigpio` und `serialport` sind optionale Abhängigkeiten genau dieses Pakets, werden also
+  immer mitgebaut. Vermeiden lässt sich das nicht: `npm install <pkg> --omit=optional`
+  überspringt auch das angeforderte Modul (npm meldet „up to date" und installiert
+  nichts), was schlechter wäre. Das Panel sagt es deshalb vorher, und die Erfolgsmeldung
+  benennt, was sonst noch gebaut wurde. Harmlos — kein Modul wird benutzt, solange du den
+  zugehörigen Treiber nicht auswählst.
+- **Behoben: gemerkt wurde nur das angeklickte Modul.** `install.sh` stellt nach seinem
+  `--omit=optional`-Lauf wieder her, was in `hardwareDeps` steht — die beiden
+  mitgebauten Module wären beim nächsten Update also entfernt worden, während das dritte
+  überlebt. Jetzt wird festgehalten, was tatsächlich installiert ist.
+
 ## v1.40.1
 **English**
 - **Fixed: System status still said "no modem" while the vehicle was online through a

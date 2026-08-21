@@ -236,7 +236,7 @@
         </div>
         <div class="eyebrow2" style="margin-top:12px">Native driver modules</div>
         <div id="hwdeps"><div class="msg">Reading module status…</div></div>
-        <p class="msg">Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>.</p>
+        <p class="msg">Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>. Note that installing one <b>builds all three</b>: they are optional dependencies of the same package and npm always reifies them together — harmless, nothing uses a module unless you select that driver.</p>
         <div class="msg" id="hw-msg"></div>
         <div class="log" id="hw-out" style="display:none"></div>
 

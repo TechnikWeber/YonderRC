@@ -131,9 +131,13 @@ export async function handleSetup(
     }
     const r = await ctx.system.hwDepInstall(body.pkg);
     if (r.ok) {
-      // Remember it so `install.sh` can restore it after the next update.
+      // Remember what is ACTUALLY installed, not just what was asked for: npm reifies
+      // the whole vehicle package, so its sibling optional modules come along. Recording
+      // only the requested one would have `install.sh` prune the others on the next
+      // update — a driver that silently disappears is exactly what we set out to avoid.
       const known = new Set(loadPersisted(ctx.config.configPath).hardwareDeps ?? []);
       known.add(body.pkg);
+      for (const d of await ctx.system.hwDeps()) if (d.installed) known.add(d.name);
       savePersisted(ctx.config.configPath, { hardwareDeps: [...known] });
       ctx.onConfigSaved?.({ hardwareDeps: [...known] });
     }
