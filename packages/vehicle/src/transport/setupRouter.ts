@@ -10,7 +10,7 @@ import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
-import { secretOk, readSecretFromReq } from './auth.js';
+import { secretOk, readSecretFromReq, originAllowed, originOf } from './auth.js';
 import { groundAppAvailable } from './staticServer.js';
 import {
   HOTSPOT_DEFAULTS,
@@ -70,7 +70,14 @@ export async function handleSetup(
   const url = (req.url ?? '').split('?')[0];
   const method = req.method ?? 'GET';
 
+  // A secret that was actually configured AND presented — not `secretOk`, which is
+  // deliberately true when the feature is off and would wave every origin through.
+  const secretProven = !!ctx.config.apiSecret && secretOk(ctx.config.apiSecret, readSecretFromReq(req));
+  const origin = originOf(req);
+
   if (method === 'OPTIONS') {
+    // Preflights are answered permissively for reads; a mutating call from a foreign
+    // page is refused below, where it can say why.
     res.writeHead(204, {
       'access-control-allow-origin': '*',
       'access-control-allow-methods': 'GET,POST,OPTIONS',
@@ -96,6 +103,17 @@ export async function handleSetup(
   // configured. GET status stays open (read-only) and the /setup page above is open
   // so the operator can always reach the UI to enter the secret. When no secret is
   // set this is a no-op — first-time connect/setup needs nothing.
+  if (method === 'POST' && url.startsWith('/api/') && !originAllowed(origin, secretProven, req.headers.host)) {
+    console.warn(`[setup] refused ${url} from foreign origin ${origin}`);
+    json(res, 403, {
+      ok: false,
+      message:
+        `Refused: this request came from ${origin}, a page outside this network. ` +
+        'If that was you — a ground app hosted on the internet — set an API secret and send it with the request.',
+    });
+    return true;
+  }
+
   if (method === 'POST' && url.startsWith('/api/') && !secretOk(ctx.config.apiSecret, readSecretFromReq(req))) {
     json(res, 401, { ok: false, message: 'Unauthorized — provide the API secret.' });
     return true;

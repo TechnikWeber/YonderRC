@@ -263,6 +263,38 @@ async function main() {
   ok('secret set + missing → deny', secretOk('s3cr3t', undefined) === false);
   ok('readSecretFromUrl parses query', readSecretFromUrl('/?secret=abc') === 'abc');
   ok('readSecretFromUrl none → null', readSecretFromUrl('/') === null);
+  // ---- where a request came FROM (the gap the secret does not close) ----
+  // The secret is off by default and WebSockets ignore CORS, so without this any
+  // page the operator opens could arm a vehicle on their own network.
+  const { isLocalOrigin, originAllowed } = await import('../packages/vehicle/src/transport/auth');
+  ok('the vehicle\'s own page is local', isLocalOrigin('http://192.168.4.1:8080') === true);
+  ok('a laptop on the LAN is local', isLocalOrigin('http://192.168.1.50:5173') === true);
+  ok('so is 10/8 and 172.16/12', isLocalOrigin('http://10.0.0.9') === true && isLocalOrigin('http://172.20.1.1') === true);
+  ok('but 172.32 is not private', isLocalOrigin('http://172.32.0.1') === false);
+  ok('localhost and ::1 are local', isLocalOrigin('http://localhost:5173') === true && isLocalOrigin('http://[::1]:5173') === true);
+  ok('a tailnet address is local', isLocalOrigin('http://100.101.102.103:8080') === true);
+  ok('the packaged desktop app is local', isLocalOrigin('file://') === true);
+  ok('a .local name is local', isLocalOrigin('http://yonderrc.local:8080') === true);
+  ok('a page from the internet is not', isLocalOrigin('https://evil.example') === false);
+  // DNS rebinding keeps the attacker's origin even once the name points at the Pi.
+  ok('nor is it after it resolves to the Pi', isLocalOrigin('https://rebind.evil.example') === false);
+  ok('a sandboxed frame ("null") is not local', isLocalOrigin('null') === false);
+  ok('no Origin at all → not a browser → allowed', originAllowed(undefined, false) === true);
+  ok('a foreign origin is refused', originAllowed('https://evil.example', false) === false);
+  ok('unless it proves intent with the secret', originAllowed('https://evil.example', true) === true);
+  ok('a local origin needs no secret', originAllowed('http://192.168.4.1:8080', false) === true);
+  // A vehicle reached over a public hostname serves its own setup page from that
+  // hostname — refusing it would break the very page the operator is looking at.
+  ok('the page the vehicle served itself is allowed', originAllowed('https://my-boat.example', false, 'my-boat.example') === true);
+  ok('a different public page still is not', originAllowed('https://evil.example', false, 'my-boat.example') === false);
+  ok('and the dev ground on another port counts as same host', originAllowed('http://192.168.1.50:5173', false, '192.168.1.50:8080') === true);
+
+  // A deliberate close must not be retried: two grounds trading the vehicle every
+  // second is worse than one of them plainly stopping.
+  const { closeReason } = await import('../packages/ground/src/lib/transport');
+  ok('takeover explains itself', closeReason(4002).includes('took over'));
+  ok('a refused origin says what to do', closeReason(4003).includes('API secret'));
+
   const { withSecret, setupUrlFromWs } = await import('../packages/ground/src/lib/transport');
   ok('withSecret off → unchanged', withSecret('ws://h:8080', '') === 'ws://h:8080');
   ok('withSecret appends encoded', withSecret('ws://h:8080', 'a b') === 'ws://h:8080?secret=a%20b');

@@ -180,6 +180,10 @@ export function App() {
         setAuthMsg('Vehicle rejected the secret — check the API secret and Connect again.');
         window.setTimeout(() => setAuthMsg(null), 6000);
       },
+      // The vehicle dropped us on purpose (another ground took over, or this page
+      // is not trusted). No auto-retry, and the message stays until it is read —
+      // "why did my sticks stop working" deserves an answer that does not vanish.
+      onRejected: (reason) => setAuthMsg(reason),
     });
   }
 
@@ -650,7 +654,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.45.3</span>
+        <span className="ver">ground · v1.46.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -664,7 +668,11 @@ export function App() {
         setSecret={setSecret}
         setupUrl={setupUrlFromWs(url)}
         linkState={linkState}
-        onConnect={() => linkRef.current?.connect(url, secret)}
+        onConnect={() => {
+          // Connecting again is the operator answering the message; clear it.
+          setAuthMsg(null);
+          linkRef.current?.connect(url, secret);
+        }}
         onDisconnect={() => linkRef.current?.disconnect()}
       />
 

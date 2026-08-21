@@ -719,6 +719,20 @@ boundary:
   It can also come from the `YRC_API_SECRET` environment variable. The secret is stored
   in plain text in the vehicle's config file, so treat it as a lock on the door, not as
   encryption; the traffic itself is not encrypted (use a VPN for that).
+- **A page from the internet cannot drive your vehicle**, even with no secret set. The
+  browser is the one attacker who is already inside the network: any site the operator
+  happens to open while their phone is on the vehicle's hotspot could otherwise POST to
+  the setup API — or open a control WebSocket, which ignores CORS entirely — and arm the
+  vehicle. So the vehicle looks at where the page itself came from. Requests without an
+  `Origin` (curl, scripts), from `file://` (the desktop app), from a private, loopback,
+  `.local` or Tailscale address, or from the vehicle's own address are accepted; a page
+  served from the public internet is refused (HTTP 403, WS close code **4003**) unless it
+  presents the API secret. This also defeats DNS rebinding, since the attacking page
+  keeps its own origin.
+- **Only one ground station is in control at a time.** When a second one connects the
+  older link is closed with code **4002** and told why, instead of both sessions pushing
+  stick frames at the vehicle fifty times a second. Reconnecting after a link loss is
+  unaffected — the newcomer always wins, which is what makes taking over possible.
 - A **factory reset** (*Setup › System*) clears the secret along with everything else.
 - To narrow it down further you can bind the service to a single address instead of
   every interface — e.g. `YRC_HOST=100.x.y.z` (its Tailscale IP) in the systemd unit's
@@ -738,5 +752,7 @@ boundary:
 | LTE won't connect | `mmcli -L`, APN correct? Signal? |
 | No connection from the field | Are both devices on the same tailnet? Using the Tailscale IP? |
 | Link drops immediately / setup asks for a password | An **API secret** is set — enter it next to the address in the ground app (WS close code 4001 = wrong secret, HTTP 401 on the setup API). |
+| "Another ground station took over" | A second ground connected; only one is in control (close code 4002). Reconnect to take it back. |
+| "The vehicle refused this page" | The ground app was served from a public address (close code 4003 / HTTP 403). Serve it from the vehicle or your own network, or set an API secret. |
 | No GPS fix | Right source and device in *Setup › GPS*? Serial needs the optional `serialport` package; USB dongles need the **gpsd** source. Outdoors, first fix can take minutes. |
 | No signal value in the OSD | LTE must be connected (`mmcli`), or the Wi-Fi interface must be `wlan0` — other interface names aren't read. |

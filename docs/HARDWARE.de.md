@@ -748,6 +748,22 @@ aber: das Netz *ist* die Sicherheitsgrenze.
   `YRC_API_SECRET`. Das Secret liegt im Klartext in der Config-Datei des Fahrzeugs —
   betrachte es als Türschloss, nicht als Verschlüsselung; der Datenverkehr selbst ist
   nicht verschlüsselt (dafür ein VPN nutzen).
+- **Eine Seite aus dem Internet kann dein Fahrzeug nicht steuern**, auch ohne gesetztes
+  Secret. Der Browser ist der eine Angreifer, der ohnehin schon im Netz ist: Jede
+  beliebige Website, die der Bediener öffnet, während sein Handy am Fahrzeug-Hotspot
+  hängt, könnte sonst POSTs an die Setup-API schicken — oder einen Kontroll-WebSocket
+  öffnen, der CORS komplett ignoriert — und das Fahrzeug scharf schalten. Das Fahrzeug
+  schaut deshalb, **woher die Seite selbst stammt**. Anfragen ohne `Origin` (curl,
+  Skripte), von `file://` (die Desktop-App), von einer privaten, Loopback-, `.local`-
+  oder Tailscale-Adresse oder von der eigenen Adresse des Fahrzeugs werden angenommen;
+  eine Seite aus dem öffentlichen Internet wird abgewiesen (HTTP 403, WS-Close-Code
+  **4003**) — es sei denn, sie weist das API-Secret vor. Das entschärft auch
+  DNS-Rebinding, weil die angreifende Seite ihren eigenen Origin behält.
+- **Nur eine Bodenstation hat gleichzeitig die Kontrolle.** Verbindet sich eine zweite,
+  wird die ältere mit Code **4002** geschlossen und bekommt gesagt, warum — statt dass
+  beide Sitzungen dem Fahrzeug fünfzigmal pro Sekunde Steuerframes schicken. Das normale
+  Wiederverbinden nach einem Abriss bleibt davon unberührt: Der Neue gewinnt immer, und
+  genau das macht das Übernehmen möglich.
 - Ein **Werksreset** (*Setup › System*) löscht das Secret zusammen mit allem anderen.
 - Noch enger geht es, indem du den Dienst auf eine einzige Adresse bindest statt auf
   alle Interfaces — z. B. `YRC_HOST=100.x.y.z` (die Tailscale-IP) als `Environment=` in

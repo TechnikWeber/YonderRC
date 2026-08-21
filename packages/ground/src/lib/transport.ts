@@ -21,6 +21,11 @@ export interface LinkCallbacks {
   onControlPath?: (path: ControlPath) => void;
   /** The vehicle rejected the shared secret (WS close 4001). */
   onAuthFail?: () => void;
+  /**
+   * The vehicle closed this link deliberately and reconnecting would fight it:
+   * 4002 = another ground took over, 4003 = this page's origin is not trusted.
+   */
+  onRejected?: (reason: string) => void;
 }
 
 /** Append an optional shared secret as a `?secret=` query to the WS URL. */
@@ -45,6 +50,15 @@ export function setupUrlFromWs(wsUrl: string): string | null {
 }
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+/** What a deliberate close from the vehicle means, in the operator's words. */
+export function closeReason(code: number): string {
+  if (code === 4002) return 'Another ground station took over this vehicle. This session is no longer in control.';
+  if (code === 4003) {
+    return 'The vehicle refused this page: it was not served from your own network. Serve the ground app locally, or set an API secret.';
+  }
+  return `The vehicle closed the link (${code}).`;
+}
 
 /**
  * Which transport a client message must use. Only continuous control frames
@@ -151,6 +165,14 @@ export class LinkClient {
       if (ev.code === 4001) {
         this.wantConnected = false;
         this.cbs.onAuthFail?.();
+        return;
+      }
+      // The vehicle dropped us on purpose. Reconnecting would take control back
+      // from whoever has it now and hand it straight back a second later — the two
+      // sessions would trade the vehicle every second. Stay down and say so.
+      if (ev.code === 4002 || ev.code === 4003) {
+        this.wantConnected = false;
+        this.cbs.onRejected?.(closeReason(ev.code));
         return;
       }
       this.scheduleReconnect();

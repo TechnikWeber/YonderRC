@@ -3,6 +3,85 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.46.0
+A review pass over the whole repository — protocol, vehicle, ground, desktop — in the
+same spirit as the one on YonderGate. Five findings, all fixed here. Nothing needed
+hardware to find, and nothing found needed hardware to fix.
+
+**English**
+- **Fixed: a web page could arm your vehicle.** The API secret is off by default and
+  WebSockets ignore CORS entirely, so any site the operator happened to open — while
+  their phone was on the vehicle's own hotspot — could open a control link to
+  `192.168.4.1:8080` and arm it, or POST to the setup API (factory reset, a servo sweep,
+  a camera or WiFi change, a restart). The vehicle now looks at **where the page itself
+  came from**: no `Origin` at all (curl, scripts, the tests), `file://` (the desktop
+  app), a private, loopback, `.local` or Tailscale address, or the vehicle's own address
+  are accepted; a page from the public internet is refused with HTTP 403 or WS close code
+  **4003**, unless it presents the API secret. Reads are untouched, so the setup page
+  always opens. This also defeats DNS rebinding, because the attacking page keeps its own
+  origin even once its name points at the Pi.
+- **Fixed: two ground stations could drive at once.** Nothing enforced a single control
+  link, and the vehicle resets its sequence tracking for each new connection — so a
+  forgotten tab on a phone in someone's pocket and the operator's real session would both
+  be sending stick frames, at 50 Hz, last one wins. Reconnecting has to keep working
+  (that is the normal case after a link loss), so the **new session takes over** and the
+  old one is closed with code **4002** and told exactly what happened, instead of the two
+  of them trading the vehicle every second.
+- **Fixed: a stalling driver could interleave two frames on the same bus.** `setInterval`
+  does not wait for an async callback, so an I2C bus holding the line or a full serial
+  buffer got a second `writeChannels` on top of the first. Two interleaved frames is not
+  a slow servo, it is a corrupted one. A tick that arrives while a write is still running
+  is now skipped — the next one is 20 ms away and carries fresher values than a queue
+  would — and a stalling bus says so in the log once a second.
+- **Fixed: a busy port killed the vehicle service** with an unhandled error event and a
+  stack trace. Under systemd that is a restart loop with no explanation in it. It now
+  says which port is taken and how to move, then exits cleanly.
+- **Fixed: the driver fallback quietly changed a safety setting.** When a real driver
+  fails at boot the service falls back to sim so the setup UI stays reachable — but it
+  rebuilt the core without `disarmOnReconnect`, so a vehicle type configured not to
+  auto-disarm on reconnect got the default back until the ground pushed its config again.
+- Both language versions of the hardware guide document the new trust rules, and the
+  troubleshooting table explains close codes 4002 and 4003.
+
+**Deutsch**
+- **Behoben: eine Webseite konnte dein Fahrzeug scharf schalten.** Das API-Secret ist
+  standardmäßig aus, und WebSockets ignorieren CORS vollständig — jede Seite, die der
+  Bediener zufällig öffnet, während sein Handy am Fahrzeug-Hotspot hängt, konnte einen
+  Kontroll-Link zu `192.168.4.1:8080` aufmachen und scharf schalten oder an die Setup-API
+  POSTen (Werksreset, Servo-Sweep, Kamera- oder WLAN-Änderung, Neustart). Das Fahrzeug
+  schaut jetzt, **woher die Seite selbst stammt**: kein `Origin` (curl, Skripte, die
+  Tests), `file://` (Desktop-App), eine private, Loopback-, `.local`- oder
+  Tailscale-Adresse oder die eigene Adresse des Fahrzeugs werden angenommen; eine Seite
+  aus dem öffentlichen Internet wird mit HTTP 403 bzw. WS-Close-Code **4003** abgewiesen,
+  sofern sie nicht das API-Secret vorweist. Lesende Zugriffe bleiben offen, die
+  Setup-Seite geht also immer auf. Das entschärft auch DNS-Rebinding, weil die
+  angreifende Seite ihren eigenen Origin behält.
+- **Behoben: zwei Bodenstationen konnten gleichzeitig steuern.** Nichts erzwang einen
+  einzigen Kontroll-Link, und das Fahrzeug setzt seine Sequenzzählung bei jeder neuen
+  Verbindung zurück — ein vergessener Tab auf einem Handy in der Hosentasche und die
+  echte Sitzung des Bedieners hätten beide Steuerframes geschickt, 50-mal pro Sekunde,
+  der letzte gewinnt. Wiederverbinden muss funktionieren (das ist der Normalfall nach
+  einem Abriss), also **übernimmt die neue Sitzung**, und die alte wird mit Code **4002**
+  geschlossen und bekommt gesagt, was passiert ist — statt dass sich beide das Fahrzeug
+  sekündlich hin- und herreichen.
+- **Behoben: ein hängender Treiber konnte zwei Frames auf demselben Bus verschränken.**
+  `setInterval` wartet nicht auf einen async-Callback; ein I²C-Bus, der die Leitung hält,
+  oder ein voller Serial-Puffer bekam ein zweites `writeChannels` obendrauf. Zwei
+  verschränkte Frames sind kein langsames Servo, sondern ein korruptes. Ein Tick, der
+  während eines laufenden Schreibvorgangs kommt, wird jetzt übersprungen — der nächste
+  ist 20 ms entfernt und trägt frischere Werte als eine Warteschlange — und ein hängender
+  Bus meldet sich einmal pro Sekunde im Log.
+- **Behoben: ein belegter Port hat den Fahrzeugdienst getötet**, mit unbehandeltem
+  Error-Event und Stacktrace. Unter systemd ist das eine Neustartschleife ohne Erklärung.
+  Jetzt steht da, welcher Port belegt ist und wie man ausweicht.
+- **Behoben: der Treiber-Fallback hat still eine Sicherheitseinstellung verändert.** Wenn
+  ein echter Treiber beim Booten scheitert, fällt der Dienst auf sim zurück, damit die
+  Setup-UI erreichbar bleibt — er baute den Core aber ohne `disarmOnReconnect` neu, ein
+  Fahrzeugtyp mit abgeschaltetem Auto-Disarm bekam also den Standard zurück, bis die
+  Bodenstation ihre Konfiguration erneut schickte.
+- Beide Sprachfassungen des Hardware-Guides dokumentieren die neuen Vertrauensregeln, die
+  Troubleshooting-Tabelle erklärt die Close-Codes 4002 und 4003.
+
 ## v1.45.3
 **English**
 - **The WiFi country can be changed after it has been set.** The field only appeared

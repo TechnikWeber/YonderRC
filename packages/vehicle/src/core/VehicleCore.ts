@@ -1,5 +1,6 @@
 import {
   CHANNEL_COUNT,
+  CONTROL_RATE_HZ,
   CHANNEL_NEUTRAL_US,
   CONTROL_PERIOD_MS,
   WATCHDOG_TIMEOUT_MS,
@@ -231,12 +232,42 @@ export class VehicleCore {
     return out;
   }
 
+  /**
+   * One write per tick, and never two at once.
+   *
+   * `setInterval` does not wait for an async callback, so a driver that stalls —
+   * an I2C bus holding the line, a serial port with a full buffer — gets a second
+   * `writeChannels` on top of the first. Two interleaved frames on the same bus is
+   * not a slow servo, it is a corrupted one. Skipping is the right answer rather
+   * than queueing: the next tick is 20 ms away and carries fresher values than
+   * anything a queue would hold.
+   */
+  private writing = false;
+  private skippedWrites = 0;
+
   private async tick(): Promise<void> {
+    if (this.writing) {
+      this.skippedWrites += 1;
+      // Loud, but only once per second of stalling, so a bad bus is visible in the
+      // log without drowning it.
+      if (this.skippedWrites % CONTROL_RATE_HZ === 0) {
+        console.warn(`[core] driver write still busy — ${this.skippedWrites} ticks skipped`);
+      }
+      return;
+    }
+    this.writing = true;
     try {
       await this.driver.writeChannels(this.resolveOutput());
     } catch (err) {
       console.error('[core] driver write failed:', err);
+    } finally {
+      this.writing = false;
     }
+  }
+
+  /** Ticks dropped because the driver was still writing. Zero on healthy hardware. */
+  get droppedWrites(): number {
+    return this.skippedWrites;
   }
 
   status(): StatusMessage {

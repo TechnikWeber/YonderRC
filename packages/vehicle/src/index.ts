@@ -45,6 +45,10 @@ async function main() {
       driver: await createDriver('sim', driverOpts),
       watchdogTimeoutMs: config.watchdogTimeoutMs,
       throttleChannels: config.throttleChannels,
+      // Same options as above, deliberately: the fallback used to drop this one and
+      // silently re-enable auto-disarm on reconnect for a vehicle type configured
+      // not to want it.
+      disarmOnReconnect: config.disarmOnReconnect,
     });
     await core.start();
   }

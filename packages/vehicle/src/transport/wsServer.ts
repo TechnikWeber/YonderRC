@@ -18,7 +18,7 @@ import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { serveGroundApp } from './staticServer.js';
-import { secretOk, readSecretFromUrl } from './auth.js';
+import { secretOk, readSecretFromUrl, originAllowed, originOf } from './auth.js';
 
 /**
  * v0.1 control link over WebSocket, now doubling as the WebRTC signaling channel
@@ -78,6 +78,18 @@ export function startWsServer(
   refreshLink();
   setInterval(refreshLink, 5000);
 
+  /**
+   * The one live control link.
+   *
+   * Nothing used to stop a second ground from connecting, and `resetControlLink()`
+   * makes the vehicle accept the newcomer's sequence numbers immediately — so a
+   * forgotten tab on a phone in someone's pocket and the operator's real session
+   * would both be driving, at 50 Hz, whichever frame arrived last. Reconnecting has
+   * to work (that is the normal case after a link loss), so the new session wins and
+   * the old one is told exactly why it was dropped instead of racing it.
+   */
+  let control: WebSocket | null = null;
+
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const who = req.socket.remoteAddress ?? 'unknown';
     // Optional shared secret: when configured, the control link must present it as
@@ -88,6 +100,20 @@ export function startWsServer(
       ws.close(4001, 'auth required');
       return;
     }
+    // WebSockets ignore CORS, so without this a page from the internet could open a
+    // control link to a vehicle on the operator's own network and arm it.
+    const origin = originOf(req);
+    const secretProven = !!config.apiSecret && secretOk(config.apiSecret, readSecretFromUrl(req.url));
+    if (!originAllowed(origin, secretProven, req.headers.host)) {
+      console.warn(`[link] rejected ${who}: foreign origin ${origin}`);
+      ws.close(4003, 'foreign origin');
+      return;
+    }
+    if (control && control !== ws && control.readyState === control.OPEN) {
+      console.warn('[link] a new ground connected — closing the previous control link');
+      control.close(4002, 'superseded by a new ground');
+    }
+    control = ws;
     console.log(`[link] ground connected from ${who}`);
     // Fresh ground session: its seq restarts at 0, so forget the old high-water
     // mark or every new frame would be dropped as "stale".
@@ -152,6 +178,7 @@ export function startWsServer(
     });
 
     ws.on('close', () => {
+      if (control === ws) control = null;
       clearInterval(statusTimer);
       clearInterval(telemetryTimer);
       clearInterval(gpsTimer);
@@ -162,6 +189,20 @@ export function startWsServer(
     ws.on('error', (err) => console.warn('[link] socket error:', err.message));
   });
 
+  // Without a handler this raises an unhandled 'error' event and the service dies
+  // with a stack trace — under systemd, a restart loop with no explanation in it.
+  http.on('error', (err) => {
+    const e = err as NodeJS.ErrnoException;
+    if (e.code === 'EADDRINUSE') {
+      console.error(`[link] port ${config.port} is already in use — another vehicle service is probably still running.`);
+      console.error('[link] stop it (systemctl stop yonderrc-vehicle) or start this one with YRC_PORT=<other port>.');
+    } else if (e.code === 'EACCES') {
+      console.error(`[link] not allowed to bind port ${config.port} — ports below 1024 need root.`);
+    } else {
+      console.error(`[link] could not listen on ${config.host}:${config.port}: ${e.message}`);
+    }
+    process.exit(1);
+  });
   http.listen(config.port, config.host, () => {
     console.log(`[link] listening on ws://${config.host}:${config.port}`);
   });
