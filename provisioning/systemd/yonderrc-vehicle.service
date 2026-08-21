@@ -11,6 +11,8 @@ Environment=YRC_SYSTEM=real
 Environment=YRC_DRIVER=sim
 Environment=YRC_PORT=8080
 Environment=YRC_CONFIG=/opt/yonderrc/yonderrc-config.json
+# Generated video config — same path as go2rtc.service reads.
+Environment=YRC_GO2RTC_CONFIG=/var/lib/yonderrc/go2rtc.yaml
 ExecStart=/usr/bin/npm run start -w @yonderrc/vehicle
 Restart=always
 RestartSec=2

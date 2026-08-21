@@ -868,6 +868,20 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
+  // ---- generated video config lives outside the checkout ----
+  // It used to be written into docker/go2rtc.yaml inside the repo, which left every
+  // running vehicle with a modified checkout and blocked `git pull --ff-only`. The two
+  // units must agree on the runtime path, or the vehicle writes a config go2rtc never
+  // reads — a failure that is invisible until the cameras stay dark.
+  const { readFileSync: readUnit } = await import('node:fs');
+  const go2rtcUnit = readUnit('provisioning/systemd/go2rtc.service', 'utf8');
+  const vehicleUnit = readUnit('provisioning/systemd/yonderrc-vehicle.service', 'utf8');
+  const unitPath = go2rtcUnit.match(/-config\s+(\S+)/)?.[1] ?? '';
+  const envPath = vehicleUnit.match(/YRC_GO2RTC_CONFIG=(\S+)/)?.[1] ?? '';
+  ok('go2rtc reads a runtime path, not the checkout', unitPath === '/var/lib/yonderrc/go2rtc.yaml', unitPath);
+  ok('the vehicle writes exactly that path', envPath === unitPath, `${envPath} vs ${unitPath}`);
+  ok('the installer creates the directory', readUnit('provisioning/install.sh', 'utf8').includes('install -d -m 0755 /var/lib/yonderrc'));
+
   // ---- self-update: what the vehicle would do, and in which order ----
   const U = await import('../packages/vehicle/src/system/update');
   ok('clean tree recognised', U.parseWorkingTree('').clean === true);

@@ -90,8 +90,12 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   (`yonderrc.osdHidden.v1`, keyed by `readingKey`).
 - **Telemetry config hot-applies** (`vehicle` POST `/api/telemetry` →
   `TelemetryService.reconfigure`). Battery % needs a capacity set there.
-- go2rtc config path is **absolute** (resolved to repo root) — never a bare relative
-  path (that caused an ENOENT crash historically).
+- go2rtc config path is **absolute**, never a bare relative path (that caused an ENOENT
+  crash historically). On a Pi it is **`/var/lib/yonderrc/go2rtc.yaml`** since v1.45.0
+  (`YRC_GO2RTC_CONFIG` in `yonderrc-vehicle.service`, same path in `go2rtc.service`);
+  the dev/docker default still resolves to `docker/go2rtc.yaml` in the repo. It is
+  **generated**, so writing it inside the checkout dirtied every running vehicle and
+  blocked `git pull --ff-only` — keep generated state out of the working tree.
 
 ## Release / packaging flow
 Bump all five `package.json` to the same version, update the masthead string in

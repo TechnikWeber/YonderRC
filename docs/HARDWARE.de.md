@@ -373,6 +373,14 @@ vollständige URL plus Branch — damit lässt sich ein Fahrzeug ohne Code-Ände
 eigenen Fork oder einen Testbranch zeigen: `https://github.com/du/YonderRC.git` /
 `experiment` funktioniert genau wie der Standard.
 
+> **Wo die generierte Video-Konfiguration liegt:** Das Fahrzeug schreibt die
+> go2rtc-Konfiguration aus deinen Kameraeinstellungen nach
+> **`/var/lib/yonderrc/go2rtc.yaml`**, und `go2rtc.service` liest sie von dort
+> (`YRC_GO2RTC_CONFIG` überschreibt den Pfad). Früher landete sie in
+> `docker/go2rtc.yaml` **im Checkout** — womit jedes laufende Fahrzeug lokale Änderungen
+> hatte, und genau darüber stolpert ein Fast-Forward-Update. `install.sh` verschiebt eine
+> vorhandene Datei einmalig und stellt den Checkout wieder her.
+
 > **Was es nicht tut:** apt-Pakete, systemd-Units und `install.sh` selbst. Meldet der
 > Check, dass sich der Installer geändert hat, lass einmal
 > `sudo bash provisioning/install.sh` laufen, sobald du wieder an einer Tastatur bist.

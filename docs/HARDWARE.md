@@ -364,6 +364,14 @@ fields under *Update source* take a git remote name or a full URL plus a branch,
 can point a vehicle at your own fork or a test branch without touching any code —
 `https://github.com/you/YonderRC.git` / `experiment` works exactly like the default.
 
+> **Where the generated video config lives:** the vehicle writes go2rtc's config from
+> your camera settings to **`/var/lib/yonderrc/go2rtc.yaml`**, and `go2rtc.service` reads
+> it from there (`YRC_GO2RTC_CONFIG` overrides the path). It used to be written into
+> `docker/go2rtc.yaml` inside the checkout, which left every running vehicle with local
+> modifications — and a checkout with local modifications is exactly what a fast-forward
+> update trips over. `install.sh` moves an existing file across once and restores the
+> checkout.
+
 > **What it does not do:** apt packages, systemd units and `install.sh` itself. When the
 > check says the installer changed, run the full `sudo bash provisioning/install.sh` once
 > you are back at a keyboard.

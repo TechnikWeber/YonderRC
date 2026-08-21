@@ -3,6 +3,44 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.45.0
+**English**
+- **The generated video config moved out of the git checkout.** go2rtc's config is
+  written by the vehicle from your camera settings, and it lived at
+  `docker/go2rtc.yaml` — *inside the repository*. Every vehicle that had ever started
+  therefore had a modified checkout, which is what the update button kept tripping over.
+  It now lives at **`/var/lib/yonderrc/go2rtc.yaml`**: `yonderrc-vehicle.service` points
+  `YRC_GO2RTC_CONFIG` there and `go2rtc.service` reads the same path.
+- **`install.sh` migrates it**: it creates the directory, copies an existing
+  `docker/go2rtc.yaml` across so go2rtc keeps its streams, and restores the checkout.
+  Because this changes systemd units, it takes **one full installer run** — the update
+  panel already flags that when `provisioning/` changed.
+- A regression test now reads both unit files and asserts they name the **same** path.
+  Getting that wrong would have the vehicle write a config go2rtc never reads, which
+  stays invisible until the cameras are dark.
+- Vehicles that have not run the installer yet keep working exactly as before, and the
+  updater still treats the old in-repo path as a generated file it may discard.
+
+**Deutsch**
+- **Die generierte Video-Konfiguration ist aus dem git-Checkout ausgezogen.** Die
+  go2rtc-Konfiguration schreibt das Fahrzeug aus deinen Kameraeinstellungen, und sie lag
+  unter `docker/go2rtc.yaml` — *im Repository*. Jedes jemals gestartete Fahrzeug hatte
+  damit einen veränderten Checkout, und genau darüber ist der Update-Knopf wiederholt
+  gestolpert. Sie liegt jetzt unter **`/var/lib/yonderrc/go2rtc.yaml`**:
+  `yonderrc-vehicle.service` setzt `YRC_GO2RTC_CONFIG` dorthin, `go2rtc.service` liest
+  denselben Pfad.
+- **`install.sh` migriert das**: legt das Verzeichnis an, kopiert eine vorhandene
+  `docker/go2rtc.yaml` hinüber, damit go2rtc seine Streams behält, und stellt den
+  Checkout wieder her. Weil systemd-Units betroffen sind, braucht es **einen vollen
+  Installer-Lauf** — worauf das Update-Panel bereits hinweist, wenn sich `provisioning/`
+  geändert hat.
+- Ein Regressionstest liest jetzt beide Unit-Dateien und prüft, dass sie **denselben**
+  Pfad nennen. Ein Fehler dort ließe das Fahrzeug eine Konfiguration schreiben, die
+  go2rtc nie liest — unsichtbar, bis die Kameras dunkel bleiben.
+- Fahrzeuge, die den Installer noch nicht gelaufen haben, funktionieren unverändert
+  weiter, und der Updater behandelt den alten Pfad im Repo weiterhin als generierte
+  Datei, die er verwerfen darf.
+
 ## v1.44.2
 **English**
 - **Fixed: every real vehicle reported "local changes".** Two reasons, both ours.
