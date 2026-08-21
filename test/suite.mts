@@ -1465,9 +1465,29 @@ async function main() {
   ok('a healthy link says nothing', linkVoice(LINK_VOICE_INITIAL, lvUp, T).say === null);
   ok('the first connect stays silent', linkVoice(LINK_VOICE_INITIAL, lvUp, T).say === null);
 
+  // A link that never existed cannot be lost. Opening the app and not pressing
+  // Connect used to announce "Link lost" two seconds later — and since browsers hold
+  // speech until the page has had a user gesture, it surfaced at the next tap, which
+  // made switching to Drive look like the cause.
+  let never = LINK_VOICE_INITIAL;
+  for (const t of [0, 500, 2000, 5000, 60000]) {
+    const r = linkVoice(never, lvDown, T + t);
+    never = r.next;
+    ok(`never connected stays silent (+${t}ms)`, r.say === null);
+  }
+  ok('and it keeps no phantom outage', never.downSince === null && never.lostAnnounced === false);
+  // After a real connection, the same disconnect IS announced.
+  const afterConnect = linkVoice(never, lvUp, T + 61000).next;
+  ok('a connection is remembered', afterConnect.everConnected === true);
+  const lostNow = linkVoice(linkVoice(afterConnect, lvDown, T + 62000).next, lvDown, T + 62000 + LINK_LOST_GRACE_MS);
+  ok('losing a link that existed is announced', lostNow.say?.text === 'Link lost');
+
+  // Everything below is about a link that HAS been up (the state carries that).
+  const lvSeen = linkVoice(LINK_VOICE_INITIAL, lvUp, T).next;
+
   // Blip: lvDown and lvBack inside the grace period — completely silent.
-  let lv = linkVoice(LINK_VOICE_INITIAL, lvDown, T).next;
-  ok('the drop itself is not announced', linkVoice(LINK_VOICE_INITIAL, lvDown, T).say === null);
+  let lv = linkVoice(lvSeen, lvDown, T).next;
+  ok('the drop itself is not announced', linkVoice(lvSeen, lvDown, T).say === null);
   let lvStep = linkVoice(lv, lvDown, T + 1000);
   ok('still silent inside the grace period', lvStep.say === null);
   lvStep = linkVoice(lvStep.next, lvUp, T + 1100);
@@ -1475,7 +1495,7 @@ async function main() {
   ok('and leaves no state behind', lvStep.next.downSince === null && lvStep.next.lostAnnounced === false);
 
   // A real outage: announced once, and its recovery announced.
-  lv = linkVoice(LINK_VOICE_INITIAL, lvDown, T).next;
+  lv = linkVoice(lvSeen, lvDown, T).next;
   lvStep = linkVoice(lv, lvDown, T + LINK_LOST_GRACE_MS);
   ok('a real outage is announced', lvStep.say?.text === 'Link lost');
   ok('and is urgent', lvStep.say?.urgent === true);
@@ -1486,8 +1506,8 @@ async function main() {
 
   // Quality: same treatment, longer grace, and a DIFFERENT pair of words so it
   // cannot be confused with the link existing or not.
-  lv = linkVoice(LINK_VOICE_INITIAL, lvWeak, T).next;
-  ok('a quality lvDip is not announced at once', linkVoice(LINK_VOICE_INITIAL, lvWeak, T).say === null);
+  lv = linkVoice(lvSeen, lvWeak, T).next;
+  ok('a quality lvDip is not announced at once', linkVoice(lvSeen, lvWeak, T).say === null);
   ok('nor inside its grace period', linkVoice(lv, lvWeak, T + LINK_WEAK_GRACE_MS - 1).say === null);
   lvStep = linkVoice(lv, lvWeak, T + LINK_WEAK_GRACE_MS);
   ok('sustained weakness is announced', lvStep.say?.text === 'Weak link');
@@ -1496,7 +1516,7 @@ async function main() {
   ok('and recovery uses different words', lvGood.say?.text === 'Link good',
     'must not be confused with "Link restored"');
   // A brief lvDip that clears before the grace never says anything at all.
-  const lvDip = linkVoice(linkVoice(LINK_VOICE_INITIAL, lvWeak, T).next, lvUp, T + 500);
+  const lvDip = linkVoice(linkVoice(lvSeen, lvWeak, T).next, lvUp, T + 500);
   ok('a brief lvDip is silent', lvDip.say === null);
 
   // THE lvBug this replaces: a reconnect made the health score vanish, which read as

@@ -3,6 +3,36 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.45.2
+**English**
+- **Fixed: "Link lost" was announced for a link that never existed.** Open the ground app,
+  don't press Connect, and two seconds later the voice reported an outage — of a
+  connection you never had. Reported as "it says Link lost every time I switch from Setup
+  to Drive", which is the same bug seen through the browser: speech is held until the page
+  has had a user gesture, so the callout queued at startup only became audible at the next
+  tap — and the tap looked like the cause.
+- The link voice now remembers whether a link ever existed in this session and stays
+  silent about losing one that did not. Everything else is unchanged: a real outage is
+  still announced after the 2 s grace, its recovery still only if the loss was announced,
+  and **failsafe is still immediate**.
+- Eight new assertions, including a full minute of ticks with no connection ever made,
+  proving silence — and the same disconnect announced once a connection has existed.
+
+**Deutsch**
+- **Behoben: „Link lost" wurde für eine Verbindung angesagt, die es nie gab.** Boden-App
+  öffnen, Connect nicht drücken — zwei Sekunden später meldete die Stimme einen Ausfall,
+  und zwar einer Verbindung, die nie bestand. Gemeldet als „beim Wechsel von Setup auf
+  Drive kommt jedes Mal Link lost", was derselbe Fehler durch die Brille des Browsers ist:
+  Sprachausgabe wird zurückgehalten, bis die Seite eine Nutzergeste hatte — die beim Start
+  eingereihte Ansage wurde also erst beim nächsten Tippen hörbar, und das Tippen sah aus
+  wie die Ursache.
+- Die Link-Stimme merkt sich jetzt, ob in dieser Sitzung überhaupt je eine Verbindung
+  bestand, und schweigt über den Verlust einer nie dagewesenen. Alles andere bleibt: ein
+  echter Ausfall wird weiterhin nach 2 s Karenz angesagt, seine Rückkehr weiterhin nur,
+  wenn der Ausfall angesagt wurde, und **Failsafe weiterhin sofort**.
+- Acht neue Prüfungen, darunter eine volle Minute Ticks ohne je bestandene Verbindung als
+  Beleg für das Schweigen — und derselbe Abriss, sobald eine Verbindung existiert hat.
+
 ## v1.45.1
 **English**
 - **The setup page shows its version, the same way the control app does.** The header now

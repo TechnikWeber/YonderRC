@@ -125,6 +125,14 @@ export const LINK_WEAK_GRACE_MS = 3000;
 
 /** What `linkVoice` has to remember between ticks. */
 export interface LinkVoiceState {
+  /**
+   * Whether this session ever had a link at all. A link that never existed cannot
+   * be lost: opening the app and not pressing Connect used to produce "Link lost"
+   * two seconds later — and because browsers hold speech until the page has seen a
+   * user gesture, it typically arrived at the next tap, which made it look like the
+   * tap had caused it.
+   */
+  everConnected: boolean;
   /** When the link went down, or null while it is up. */
   downSince: number | null;
   /** Whether the outage was announced — restoration is only worth saying if so. */
@@ -136,7 +144,7 @@ export interface LinkVoiceState {
 }
 
 export const LINK_VOICE_INITIAL: LinkVoiceState = {
-  downSince: null, lostAnnounced: false, weakSince: null, weakAnnounced: false,
+  everConnected: false, downSince: null, lostAnnounced: false, weakSince: null, weakAnnounced: false,
 };
 
 /**
@@ -163,6 +171,10 @@ export function linkVoice(
 ): { next: LinkVoiceState; say: Announcement | null } {
   // ---- link is down: quality is frozen, not "recovered" ----
   if (!input.connected) {
+    // Before the first connection there is nothing to lose. Silence here is not
+    // politeness: announcing a loss you never had teaches the operator to distrust
+    // the voice, and this one arrived while they were still setting the model up.
+    if (!prev.everConnected) return { next: prev, say: null };
     if (prev.downSince === null) return { next: { ...prev, downSince: now, lostAnnounced: false }, say: null };
     if (!prev.lostAnnounced && now - prev.downSince >= LINK_LOST_GRACE_MS) {
       return { next: { ...prev, lostAnnounced: true }, say: { text: 'Link lost', urgent: true } };
@@ -175,22 +187,24 @@ export function linkVoice(
     const say = prev.lostAnnounced ? { text: 'Link restored', urgent: false } : null;
     // A reconnect starts the quality clock over: whatever the score did while the
     // socket was down says nothing about the link we have now.
-    return { next: { downSince: null, lostAnnounced: false, weakSince: null, weakAnnounced: false }, say };
+    return { next: { everConnected: true, downSince: null, lostAnnounced: false, weakSince: null, weakAnnounced: false }, say };
   }
+  // The link exists, so from here on losing it is worth saying out loud.
+  const up: LinkVoiceState = prev.everConnected ? prev : { ...prev, everConnected: true };
 
   // ---- link is up: judge the quality ----
   if (input.qualityBad) {
-    if (prev.weakSince === null) return { next: { ...prev, weakSince: now, weakAnnounced: false }, say: null };
-    if (!prev.weakAnnounced && now - prev.weakSince >= LINK_WEAK_GRACE_MS) {
-      return { next: { ...prev, weakAnnounced: true }, say: { text: 'Weak link', urgent: false } };
+    if (up.weakSince === null) return { next: { ...up, weakSince: now, weakAnnounced: false }, say: null };
+    if (!up.weakAnnounced && now - up.weakSince >= LINK_WEAK_GRACE_MS) {
+      return { next: { ...up, weakAnnounced: true }, say: { text: 'Weak link', urgent: false } };
     }
-    return { next: prev, say: null };
+    return { next: up, say: null };
   }
-  if (prev.weakSince !== null) {
-    const say = prev.weakAnnounced ? { text: 'Link good', urgent: false } : null;
-    return { next: { ...prev, weakSince: null, weakAnnounced: false }, say };
+  if (up.weakSince !== null) {
+    const say = up.weakAnnounced ? { text: 'Link good', urgent: false } : null;
+    return { next: { ...up, weakSince: null, weakAnnounced: false }, say };
   }
-  return { next: prev, say: null };
+  return { next: up, say: null };
 }
 
 /** How often a still-low battery repeats itself, ms. Often enough to nag, not to annoy. */
