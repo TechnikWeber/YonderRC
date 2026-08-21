@@ -3,6 +3,37 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.43.2
+**English**
+- **Fixed: the update check's self-repair repaired nothing.** v1.43.1 answered git's
+  "dubious ownership" by writing `git config --global --add safe.directory …` and
+  retrying — but `--global` resolves through `$HOME`, and that is not something a
+  systemd service can count on. The write failed with `fatal: $HOME not set` while the
+  result was ignored, so the vehicle helpfully reported the same error again.
+- **Every git call now carries `-c safe.directory=<checkout>` instead.** No config
+  write, no `$HOME`, no state left on the machine — and it works on the first press.
+  Verified by forcing the exact condition (`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`), with
+  and without `$HOME`: the flag succeeds where the old path failed.
+- Why this happens at all: `bootstrap.sh` clones as `pi` while the vehicle service runs
+  as root, and git refuses to touch a repository owned by someone else. It is the normal
+  state of a YonderRC vehicle, not a broken install.
+
+**Deutsch**
+- **Behoben: die Selbstreparatur des Update-Checks reparierte nichts.** v1.43.1
+  beantwortete gits „dubious ownership" mit `git config --global --add safe.directory …`
+  und einem zweiten Versuch — aber `--global` löst über `$HOME` auf, und darauf kann sich
+  ein systemd-Dienst nicht verlassen. Der Schreibvorgang scheiterte mit
+  `fatal: $HOME not set`, das Ergebnis wurde ignoriert, und das Fahrzeug meldete
+  hilfsbereit denselben Fehler erneut.
+- **Jeder git-Aufruf trägt jetzt `-c safe.directory=<Checkout>`.** Kein Config-Schreiben,
+  kein `$HOME`, keine Rückstände auf der Maschine — und es wirkt beim ersten Klick.
+  Verifiziert, indem genau dieser Zustand erzwungen wurde
+  (`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`), mit und ohne `$HOME`: der Schalter greift dort,
+  wo der alte Weg scheiterte.
+- Warum das überhaupt auftritt: `bootstrap.sh` klont als `pi`, während der Fahrzeugdienst
+  als root läuft, und git rührt ein Repository nicht an, das jemand anderem gehört. Das
+  ist der Normalzustand eines YonderRC-Fahrzeugs, keine kaputte Installation.
+
 ## v1.43.1
 **English**
 - **Fixed: the update check blamed the network for everything.** "Could not reach the

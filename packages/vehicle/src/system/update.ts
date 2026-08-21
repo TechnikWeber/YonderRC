@@ -86,6 +86,20 @@ export function classifyChanges(files: string[]): UpdateImpact {
 export type UpdateStep = { label: string; args: string[]; cmd: 'git' | 'npm' };
 
 /**
+ * Arguments for every git call the vehicle makes.
+ *
+ * `-c safe.directory=…` is not optional: the installer clones as `pi` while the
+ * service runs as root, and git then refuses with "detected dubious ownership".
+ * Passing it per invocation beats writing a global config — that would depend on
+ * `$HOME`, which a systemd service is not guaranteed to have, and it would leave
+ * state behind on the machine. `-C` then runs it in the checkout no matter where
+ * the process happens to be.
+ */
+export function gitArgs(repoRoot: string, args: string[]): string[] {
+  return ['-c', `safe.directory=${repoRoot}`, '-C', repoRoot, ...args];
+}
+
+/**
  * The commands to run, in order. Dependencies before the build (vite needs its
  * platform binaries), build before the restart (so the service comes back with a
  * matching ground app rather than a half-updated one).

@@ -50,7 +50,7 @@ import { parseTailscaleStatus } from './tailscale.js';
 import {
   classifyChanges,
   describeCheck,
-  explainGitFailure,
+  gitArgs,
   parseCommits,
   parseVersion,
   parseWorkingTree,
@@ -798,19 +798,14 @@ export class RealSystem implements SystemManager {
    * modifies the checkout, so pressing this in the field is free.
    */
   async updateCheck(): Promise<UpdateCheck> {
-    const git = (args: string[], timeoutMs = 60_000) => shSlow('git', ['-C', REPO_ROOT, ...args], { cwd: REPO_ROOT, timeoutMs });
+    const git = (args: string[], timeoutMs = 60_000) => shSlow('git', gitArgs(REPO_ROOT, args), { cwd: REPO_ROOT, timeoutMs });
 
     const current = parseVersion(readFileSafe(join(REPO_ROOT, 'package.json')));
 
-    let fetched = await git(['fetch', '--quiet', 'origin', 'main']);
-    if (!fetched.ok && explainGitFailure(fetched.out).selfFixable) {
-      // git refuses to operate in a checkout owned by another user (the installer
-      // clones as `pi`, the service runs as root). Marking our own directory as safe
-      // is exactly what the error asks for — do it and retry once, rather than making
-      // the operator find an SSH session for a one-line config setting.
-      await shSlow('git', ['config', '--global', '--add', 'safe.directory', REPO_ROOT], { cwd: REPO_ROOT, timeoutMs: 15_000 });
-      fetched = await git(['fetch', '--quiet', 'origin', 'main']);
-    }
+    // Ownership is handled by gitArgs() on every call — see there. It used to be a
+    // `git config --global` write plus a retry, which quietly did nothing when the
+    // service had no $HOME to write it to.
+    const fetched = await git(['fetch', '--quiet', 'origin', 'main']);
     const tree = parseWorkingTree((await git(['status', '--porcelain'])).out);
 
     if (!fetched.ok) {
@@ -852,7 +847,7 @@ export class RealSystem implements SystemManager {
     const steps: { label: string; ok: boolean }[] = [];
     const logs: string[] = [];
     for (const step of updateSteps(check.impact)) {
-      const args = step.cmd === 'git' ? ['-C', REPO_ROOT, ...step.args] : step.args;
+      const args = step.cmd === 'git' ? gitArgs(REPO_ROOT, step.args) : step.args;
       const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000 });
       steps.push({ label: step.label, ok: r.ok });
       logs.push(`$ ${step.cmd} ${step.args.join(' ')}\n${errorExcerpt(r.out, 12) || '(no output)'}`);

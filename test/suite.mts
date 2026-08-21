@@ -878,6 +878,14 @@ async function main() {
   ok('version read from a package.json blob', U.parseVersion('{"name":"x","version":"1.42.0"}') === '1.42.0');
   ok('broken package.json is null, not a crash', U.parseVersion('{oops') === null);
 
+  // The installer clones as `pi` and the service runs as root, so git refuses with
+  // "dubious ownership" unless every call carries this. A global config write was the
+  // first attempt and did nothing — a systemd service has no guaranteed $HOME.
+  const ga = U.gitArgs('/opt/yonderrc', ['fetch', '--quiet', 'origin', 'main']);
+  ok('every git call declares the checkout safe', ga.slice(0, 2).join(' ') === '-c safe.directory=/opt/yonderrc');
+  ok('and runs inside the checkout', ga.includes('-C') && ga[ga.indexOf('-C') + 1] === '/opt/yonderrc');
+  ok('the subcommand comes last, unchanged', ga.slice(-4).join(' ') === 'fetch --quiet origin main');
+
   const impact = U.classifyChanges(['packages/ground/src/App.tsx', 'package.json', 'provisioning/install.sh']);
   ok('changed files classified', impact.ground && impact.deps && impact.provisioning);
   ok('vehicle-only change stays small', U.classifyChanges(['packages/vehicle/src/index.ts']).ground === false);
