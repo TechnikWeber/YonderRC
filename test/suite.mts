@@ -901,6 +901,12 @@ async function main() {
   ok('country code validated', W.isCountryCode('DE') && !W.isCountryCode('D') && !W.isCountryCode('DE; reboot'));
   ok('country args are fixed and upper-cased', W.wifiCountryArgs('de').join(' ') === 'nonint do_wifi_country DE');
 
+  // Captive portal: only when the vehicle has nothing to share.
+  ok('no uplink → hijack DNS', W.shouldHijackDns(false) === true);
+  ok('uplink present → leave DNS alone', W.shouldHijackDns(true) === false);
+  ok('captive conf points every name at the vehicle', W.captivePortalConf() === 'address=/#/192.168.4.1\n');
+  ok('captive conf lives where NM reads it for shared connections', W.CAPTIVE_CONF_PATH.includes('/NetworkManager/dnsmasq-shared.d/'));
+
   const blockedRadio = { device: 'unavailable' as const, softBlocked: true, hardBlocked: false, country: null, suggestedCountry: 'DE' };
   ok('a blocked radio is not usable', !W.radioIsUsable(blockedRadio));
   // The exact message a real Pi produced when the radio was blocked.

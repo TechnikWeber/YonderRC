@@ -1,8 +1,8 @@
 import { exec, execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import type {
@@ -26,8 +26,11 @@ import { normaliseWireguardConf, parseWifiScan, HOTSPOT_DEFAULTS } from './Syste
 import {
   explainWifiFailure,
   guessWifiCountry,
+  captivePortalConf,
   hotspotCommands,
   hotspotPskArgs,
+  shouldHijackDns,
+  CAPTIVE_CONF_PATH,
   isCountryCode,
   parseLocaleFile,
   parseRfkill,
@@ -300,34 +303,79 @@ export class RealSystem implements SystemManager {
       }
     }
 
-    for (const cmd of hotspotCommands({ ssid: cfg.ssid, password: cfg.password }, WIFI_IFACE)) {
+    const failed = (out: string): HotspotResult => {
+      const f = explainWifiFailure(out, radio);
+      return {
+        ok: false,
+        message: `Hotspot failed — ${f.cause}.`,
+        fix: `${f.fix}\n\nnmcli said: ${out.split('\n').slice(-2).join(' ')}`,
+        radio,
+      };
+    };
+
+    const cmds = hotspotCommands({ ssid: cfg.ssid, password: cfg.password }, WIFI_IFACE);
+    const up = cmds.pop()!; // run last, after the captive-portal decision
+    for (const cmd of cmds) {
       const r = await shArgs('nmcli', cmd.args);
-      if (!r.ok && !cmd.optional) {
-        const f = explainWifiFailure(r.out, radio);
-        return {
-          ok: false,
-          message: `Hotspot failed — ${f.cause}.`,
-          fix: `${f.fix}\n\nnmcli said: ${r.out.split('\n').slice(-2).join(' ')}`,
-          radio,
-        };
-      }
+      if (!r.ok && !cmd.optional) return failed(r.out);
     }
+
+    // Decide about the captive portal BEFORE the profile comes up, so dnsmasq starts
+    // with the right config and nobody has to be kicked off to apply it.
+    const uplink = await this.hasUplink();
+    const captive = this.applyCaptiveConf(shouldHijackDns(uplink));
+
+    const upRes = await shArgs('nmcli', up.args);
+    if (!upRes.ok) return failed(upRes.out);
 
     // Read the key back rather than assuming: this is the check that would have
     // caught NetworkManager quietly securing a hotspot we asked to be open.
     const psk = (await shArgs('nmcli', hotspotPskArgs())).out.trim() || null;
     const secured = !!psk;
+    notes.push(
+      captive
+        ? 'The captive portal is active: joining opens the page by itself.'
+        : 'This Pi is sharing its own uplink, so DNS is left alone — no captive portal, open the address yourself.',
+    );
     return {
       ok: true,
       message:
         `${notes.join(' ')} Hotspot "${cfg.ssid}" is up (${secured ? `WPA2, key ${psk}` : 'open'}) — ` +
-        `join it and open http://${HOTSPOT_ADDRESS}:8080/`.trim(),
+        `join it and open http://${HOTSPOT_ADDRESS}:8080/`,
       psk,
       radio,
     };
   }
 
+  /** Is there any default route (i.e. internet this hotspot could share)? */
+  private async hasUplink(): Promise<boolean> {
+    const r = await sh('ip route');
+    return r.ok && /^default\b/m.test(r.out);
+  }
+
+  /**
+   * Install or remove the dnsmasq drop-in that makes every name resolve to the
+   * vehicle. Failure is not fatal: the hotspot still works, the page just doesn't
+   * open on its own. Returns whether the portal is now active.
+   */
+  private applyCaptiveConf(enabled: boolean): boolean {
+    try {
+      if (enabled) {
+        mkdirSync(dirname(CAPTIVE_CONF_PATH), { recursive: true });
+        writeFileSync(CAPTIVE_CONF_PATH, captivePortalConf());
+        return true;
+      }
+      if (existsSync(CAPTIVE_CONF_PATH)) rmSync(CAPTIVE_CONF_PATH);
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   async hotspotStop(): Promise<ActionResult> {
+    // Leave DNS alone once the AP is gone, or a later shared connection would
+    // inherit the hijack.
+    this.applyCaptiveConf(false);
     const r = await shArgs('nmcli', ['connection', 'down', 'Hotspot']);
     return r.ok
       ? { ok: true, message: 'Hotspot stopped.' }

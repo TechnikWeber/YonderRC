@@ -106,17 +106,29 @@ else
   echo "[onboard] starting OPEN hotspot $SSID on $IFACE"
 fi
 
+# Captive portal: make NetworkManager's dnsmasq resolve EVERY name to the Pi, so
+# phones detect a captive portal and open the control/setup page by themselves.
+# ONLY without an uplink: with one (Ethernet on the bench, LTE in the field) the
+# hotspot shares real internet, and hijacking DNS would break it for every client
+# while the portal would be pointless. Written BEFORE the profile comes up, so
+# dnsmasq starts with it. Mirrors shouldHijackDns() in vehicle/system/wifi.ts.
+NMDIR=/etc/NetworkManager/dnsmasq-shared.d
+CAPTIVE="$NMDIR/yonderrc-captive.conf"
+if have_route; then
+  rm -f "$CAPTIVE"
+  echo "[onboard] uplink present — sharing it, DNS left alone (no captive portal)"
+else
+  mkdir -p "$NMDIR"
+  echo 'address=/#/192.168.4.1' > "$CAPTIVE"
+fi
+
 nmcli connection up Hotspot || {
   echo "[onboard] hotspot failed to start (is $IFACE available? 'rfkill list wifi')"
   exit 0
 }
 
-# Captive portal: make NetworkManager's dnsmasq resolve EVERY name to the Pi, so
-# phones detect a captive portal and open the control/setup page automatically.
-NMDIR=/etc/NetworkManager/dnsmasq-shared.d
-sudo mkdir -p "$NMDIR"
-echo 'address=/#/192.168.4.1' | sudo tee "$NMDIR/yonderrc-captive.conf" >/dev/null
-nmcli connection down Hotspot 2>/dev/null || true
-nmcli connection up Hotspot || true
-
-echo "[onboard] hotspot up — connect and the control page opens at http://192.168.4.1:8080/"
+if [ -f "$CAPTIVE" ]; then
+  echo "[onboard] hotspot up — connect and the control page opens by itself (http://192.168.4.1:8080/)"
+else
+  echo "[onboard] hotspot up — connect and open http://192.168.4.1:8080/ (uplink shared, no auto-open)"
+fi

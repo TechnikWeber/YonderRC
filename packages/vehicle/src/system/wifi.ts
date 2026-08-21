@@ -192,6 +192,26 @@ export function wifiCountryArgs(cc: string): string[] {
   return ['nonint', 'do_wifi_country', cc.toUpperCase()];
 }
 
+/** NetworkManager's dnsmasq drop-in directory, read for *shared* connections only. */
+export const CAPTIVE_CONF_PATH = '/etc/NetworkManager/dnsmasq-shared.d/yonderrc-captive.conf';
+
+/** Resolve every name to the vehicle — this is what makes a phone show the portal. */
+export function captivePortalConf(address = HOTSPOT_ADDRESS): string {
+  return `address=/#/${address}\n`;
+}
+
+/**
+ * Hijack DNS only when the vehicle has no uplink of its own.
+ *
+ * With an uplink the hotspot shares real internet (Ethernet on the bench, LTE in the
+ * field), and pointing every name at the Pi would break the internet for everyone
+ * connected — while the portal it triggers is pointless, because those clients are
+ * online. Without an uplink it is the whole trick that opens the page unprompted.
+ */
+export function shouldHijackDns(hasUplink: boolean): boolean {
+  return !hasUplink;
+}
+
 export interface WifiFailure {
   cause: string;
   fix: string;

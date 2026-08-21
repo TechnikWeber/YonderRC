@@ -3,6 +3,55 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.39.2
+**English**
+- **Every button in Setup now shows that it is working.** nmcli, npm and modem calls take
+  seconds; the page looked frozen, so you clicked again — and a second "start hotspot" on
+  top of a running one is how NetworkManager ends up half-built. One `run()` wrapper
+  disables the button and labels it for the duration of the call, and restores it even if
+  the handler throws. Applied to **all 38** async buttons at once, not just the hotspot.
+- **Setup links back to the control app.** A **Control ↗** link sits in the setup header —
+  shown only when the ground app is actually built on this vehicle (`groundApp` in
+  `/api/system`). The ground app already had the mirror-image Setup link, so you can now
+  go both ways instead of typing URLs.
+- **Fixed: the captive portal was only ever set up at boot.** Starting the hotspot from
+  the setup page never wrote the dnsmasq drop-in, so the page could not open by itself —
+  which is what you see when you join from a laptop after pressing "Save & start now".
+  `hotspotStart` now handles it, before the profile comes up, so nobody has to be
+  disconnected for it to apply.
+- **…and it is deliberately skipped when the vehicle has an uplink.** The portal works by
+  resolving every name to the Pi. With Ethernet or LTE the hotspot **shares that
+  internet**, and hijacking DNS would break it for every client — so DNS is left alone and
+  the message tells you which of the two happened. Stopping the hotspot removes the
+  drop-in again.
+- A laptop behaves differently from a phone here: phones pop the page up, GNOME/Windows
+  usually just offer a "sign in to network" notification. Documented in HARDWARE §5.
+
+**Deutsch**
+- **Jeder Knopf im Setup zeigt jetzt, dass er arbeitet.** nmcli-, npm- und Modem-Aufrufe
+  dauern Sekunden; die Seite wirkte eingefroren, also klickt man nochmal — und ein zweites
+  „Hotspot starten" auf einem laufenden ist genau der Weg, wie NetworkManager halbfertig
+  liegen bleibt. Ein `run()`-Wrapper sperrt den Knopf und beschriftet ihn für die Dauer des
+  Aufrufs und stellt ihn selbst dann wieder her, wenn der Handler eine Ausnahme wirft.
+  Gilt für **alle 38** asynchronen Knöpfe, nicht nur den Hotspot.
+- **Vom Setup geht es zurück zur Steuerung.** Ein **Control ↗**-Link sitzt in der
+  Setup-Kopfzeile — nur sichtbar, wenn die Boden-App auf diesem Fahrzeug wirklich gebaut
+  ist (`groundApp` in `/api/system`). Die Boden-App hatte den Setup-Link schon; damit
+  kommt man jetzt in beide Richtungen, ohne URLs zu tippen.
+- **Behoben: das Captive Portal wurde nur beim Booten eingerichtet.** Beim Start über die
+  Setup-Seite wurde die dnsmasq-Datei nie geschrieben — die Seite konnte sich also gar
+  nicht von selbst öffnen. Genau das sieht man, wenn man sich nach „Save & start now" mit
+  dem Laptop verbindet. `hotspotStart` erledigt das jetzt, und zwar **bevor** das Profil
+  hochkommt, damit dafür niemand getrennt werden muss.
+- **…und es wird bewusst weggelassen, wenn das Fahrzeug einen Uplink hat.** Das Portal
+  funktioniert, indem jeder Name auf den Pi zeigt. Mit Ethernet oder LTE **teilt der
+  Hotspot dieses Internet**, und DNS umzubiegen würde es für jeden Client zerstören —
+  also bleibt DNS in Ruhe, und die Meldung sagt dir, welcher Fall eingetreten ist. Beim
+  Stoppen des Hotspots wird die Datei wieder entfernt.
+- Ein Laptop verhält sich hier anders als ein Handy: Handys öffnen die Seite von selbst,
+  GNOME/Windows bieten meist nur eine „Beim Netzwerk anmelden"-Benachrichtigung. In
+  HARDWARE §5 dokumentiert.
+
 ## v1.39.1
 **English**
 - **Fixed: the "open" onboarding hotspot was never open.** `nmcli device wifi hotspot`

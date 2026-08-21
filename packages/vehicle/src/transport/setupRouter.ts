@@ -11,6 +11,7 @@ import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/pr
 import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { secretOk, readSecretFromReq } from './auth.js';
+import { groundAppAvailable } from './staticServer.js';
 import {
   HOTSPOT_DEFAULTS,
   redactRemoteConfig,
@@ -97,7 +98,9 @@ export async function handleSetup(
   }
 
   if (url === '/api/system' && method === 'GET') {
-    json(res, 200, await ctx.system.status());
+    // groundApp tells the setup page whether linking to "/" leads anywhere: the
+    // control app is only there if it was built on this vehicle.
+    json(res, 200, { ...(await ctx.system.status()), groundApp: groundAppAvailable() });
     return true;
   }
 

@@ -484,6 +484,15 @@ steuerst und konfigurierst du komplett **ohne Laptop, nur mit dem Handy**:
 3. Dort hast du **beides**: die **Steuerung** (Boden-App, direkt vom Pi ausgeliefert)
    und unter **Setup** die komplette Konfiguration.
 
+> **Wenn sich die Seite *nicht* von selbst öffnet — so gewollt.** Das Captive Portal
+> funktioniert, indem jeder Name auf den Pi aufgelöst wird. Hat das Fahrzeug einen
+> eigenen Uplink (Ethernet auf der Werkbank, LTE im Feld), **teilt der Hotspot dieses
+> Internet** — DNS umzubiegen würde es für alle Verbundenen kaputtmachen. YonderRC lässt
+> DNS dann in Ruhe, und du öffnest `http://192.168.4.1:8080/` selbst. Die Hotspot-Meldung
+> im Setup sagt dir, welcher der beiden Fälle eingetreten ist. Außerdem: **Handys** öffnen
+> die Seite zuverlässig von allein, ein **Laptop** (GNOME/Fedora, Windows) zeigt meist nur
+> eine Benachrichtigung „Beim Netzwerk anmelden".
+
 > **Das WLAN-Modul muss erst eingeschaltet sein.** Raspberry Pi OS hält es per rfkill
 > gesperrt, solange kein **WLAN-Land** gesetzt ist (Funkregulierung); NetworkManager
 > meldet das Gerät dann schlicht als „unavailable" — es kann kein Hotspot starten, und

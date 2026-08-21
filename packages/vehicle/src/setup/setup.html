@@ -45,6 +45,10 @@
       .item { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 8px; background: var(--panel-2); }
       .eyebrow2 { font-size: 11px; color: var(--muted); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: 0.08em; }
       .btn.tiny { padding: 4px 10px; font-size: 12px; }
+      .btn:disabled { opacity: .55; cursor: not-allowed; }
+      .btn[data-busy] { cursor: progress; }
+      .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .head a { text-decoration: none; }
       .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
       .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
       .mono { font-family: var(--mono); font-size: .92em; }
@@ -64,7 +68,12 @@
   </head>
   <body>
     <div class="wrap">
-      <h1>YonderRC · Setup</h1>
+      <div class="head">
+        <h1>YonderRC · Setup</h1>
+        <!-- Shown only when the ground app is actually built on this vehicle. The
+             ground app has the mirror image of this link, so you can get back. -->
+        <a class="btn tiny" id="ground-link" href="/" style="display:none">Control ↗</a>
+      </div>
 
       <section class="panel">
         <div class="eyebrow">System status</div>
@@ -90,8 +99,8 @@
           <label class="chk" style="align-self:end"><input type="checkbox" id="lteRoam" checked /> Allow data roaming</label>
         </div>
         <div class="btns">
-          <button class="btn primary" onclick="lteConnect()">Connect</button>
-          <button class="btn" onclick="post('/api/lte/disconnect')">Disconnect</button>
+          <button class="btn primary" onclick="run(this, () => lteConnect())">Connect</button>
+          <button class="btn" onclick="run(this, () => post('/api/lte/disconnect'))">Disconnect</button>
         </div>
         <p class="msg">Most data SIMs need only the APN. Add a PIN if your SIM is locked, and username/password only if your carrier requires APN auth. PIN/password are stored on the vehicle and never shown again.</p>
         <div class="msg" id="lte-msg"></div>
@@ -102,12 +111,12 @@
           <label>New PIN<input id="pinNew" type="password" autocomplete="off" placeholder="empty = remove PIN lock" /></label>
         </div>
         <div class="btns">
-          <button class="btn" onclick="changePin()">Change / remove PIN</button>
+          <button class="btn" onclick="run(this, () => changePin())">Change / remove PIN</button>
         </div>
         <p class="msg">Changes the PIN on the SIM itself. Leave "New PIN" empty to <b>remove</b> the PIN lock (no PIN). This is separate from the stored PIN above (used only to auto-unlock at connect).</p>
         <div class="msg" id="pin-msg"></div>
 
-        <div class="btns" style="margin-top:8px"><button class="btn" onclick="lteDiag()">Diagnostics (detect modem)</button></div>
+        <div class="btns" style="margin-top:8px"><button class="btn" onclick="run(this, () => lteDiag())">Diagnostics (detect modem)</button></div>
         <pre id="lte-diag" style="white-space:pre-wrap;overflow-x:auto;font-size:12px;color:var(--muted)"></pre>
       </section>
 
@@ -123,19 +132,19 @@
           <div class="grid2">
             <label>Country (two letters)<input id="radioCountry" maxlength="2" placeholder="DE" style="text-transform:uppercase" /></label>
             <div style="display:flex;align-items:flex-end;margin-bottom:10px">
-              <button class="btn primary" onclick="enableRadio()">Enable WiFi radio</button>
+              <button class="btn primary" onclick="run(this, () => enableRadio())">Enable WiFi radio</button>
             </div>
           </div>
         </div>
         <div class="msg" id="radio-msg"></div>
 
         <div class="btns">
-          <button class="btn" onclick="scanWifi()">Scan for networks</button>
+          <button class="btn" onclick="run(this, () => scanWifi())">Scan for networks</button>
         </div>
         <div id="wifi-list"></div>
         <label>Password<input id="wifiPass" type="password" autocomplete="off" placeholder="empty for an open network" /></label>
         <div class="btns">
-          <button class="btn primary" onclick="connectWifi()">Connect</button>
+          <button class="btn primary" onclick="run(this, () => connectWifi())">Connect</button>
         </div>
         <p class="msg">The Pi has one radio: joining a network <b>closes the setup hotspot</b>, so this page will stop responding. Rejoin your own WiFi and open <span class="mono">http://yonderrc.local:8080/setup</span>. If the password is wrong, the vehicle brings the hotspot back up.</p>
         <div class="msg" id="wifi-msg"></div>
@@ -153,9 +162,9 @@
           </select>
         </label>
         <div class="btns">
-          <button class="btn primary" onclick="saveHotspot()">Save</button>
-          <button class="btn" onclick="saveHotspot({ start: true })">Save &amp; start now</button>
-          <button class="btn" onclick="saveHotspot({ stop: true })">Stop hotspot</button>
+          <button class="btn primary" onclick="run(this, () => saveHotspot())">Save</button>
+          <button class="btn" onclick="run(this, () => saveHotspot({ start: true }))">Save &amp; start now</button>
+          <button class="btn" onclick="run(this, () => saveHotspot({ stop: true }))">Stop hotspot</button>
         </div>
         <p class="msg">The hotspot is <b>open by default</b> so the captive portal can put this page in front of you with nothing to type — set a password (min. 8 characters) once the vehicle leaves the bench, and an <b>API secret</b> above if the network isn't yours. <b>always</b> keeps it up next to a working LTE link (handy for diagnostics in the field); it can never run while the Pi is joined to a WiFi network, because one radio can't do both.</p>
         <div class="msg" id="ap-msg"></div>
@@ -187,8 +196,8 @@
           <p class="msg" id="wg-file-msg">Upload the .conf file; it's stored on the vehicle and applied with wg-quick.</p>
         </div>
         <div class="btns">
-          <button class="btn primary" onclick="remoteUp()">Bring up</button>
-          <button class="btn" onclick="remoteDown()">Stop</button>
+          <button class="btn primary" onclick="run(this, () => remoteUp())">Bring up</button>
+          <button class="btn" onclick="run(this, () => remoteDown())">Stop</button>
         </div>
         <div class="msg" id="ts-msg"></div>
       </section>
@@ -219,8 +228,8 @@
         </div>
         <label class="chk"><input type="checkbox" id="disarmOnReconnect" /> Auto-disarm on reconnect <span style="color:var(--muted)">— fallback only; the ground app sets this automatically from the vehicle type (car/boat = on, plane/drone = off). Used until a ground connects.</span></label>
         <div class="btns">
-          <button class="btn primary" onclick="saveConfig()">Save</button>
-          <button class="btn" onclick="detectHw()">Detect hardware</button>
+          <button class="btn primary" onclick="run(this, () => saveConfig())">Save</button>
+          <button class="btn" onclick="run(this, () => detectHw())">Detect hardware</button>
         </div>
         <div class="msg" id="cfg-msg"></div>
         <div id="detect-out"></div>
@@ -231,9 +240,9 @@
         <p class="msg">Optional shared secret. When set, saving settings here and the control link both require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted. <b>Off by default</b>, so first-time connect and setup need nothing.</p>
         <label>API secret<input id="apiSecret" type="password" placeholder="leave empty = off" autocomplete="new-password" /></label>
         <div class="btns">
-          <button class="btn" onclick="generateSecret()">Generate</button>
-          <button class="btn primary" onclick="applySecret()">Apply secret</button>
-          <button class="btn" onclick="clearSecret()">Disable</button>
+          <button class="btn" onclick="run(this, () => generateSecret())">Generate</button>
+          <button class="btn primary" onclick="run(this, () => applySecret())">Apply secret</button>
+          <button class="btn" onclick="run(this, () => clearSecret())">Disable</button>
         </div>
         <p class="msg" id="sec-gen"></p>
         <div class="msg" id="sec-msg"></div>
@@ -243,8 +252,8 @@
         <div class="eyebrow">Cameras</div>
         <div id="cam-list"></div>
         <div class="btns">
-          <button class="btn" onclick="addCamera()">+ Add camera</button>
-          <button class="btn primary" onclick="saveCameras()">Save &amp; apply</button>
+          <button class="btn" onclick="run(this, () => addCamera())">+ Add camera</button>
+          <button class="btn primary" onclick="run(this, () => saveCameras())">Save &amp; apply</button>
         </div>
         <div class="msg" id="cam-msg"></div>
       </section>
@@ -263,14 +272,14 @@
         </div>
         <div class="eyebrow2">Voltage channels</div>
         <div id="volt-list"></div>
-        <div class="btns"><button class="btn" onclick="addVolt()">+ Voltage</button></div>
+        <div class="btns"><button class="btn" onclick="run(this, () => addVolt())">+ Voltage</button></div>
         <div class="eyebrow2">Current channels</div>
         <div id="curr-list"></div>
-        <div class="btns"><button class="btn" onclick="addCurr()">+ Current</button></div>
+        <div class="btns"><button class="btn" onclick="run(this, () => addCurr())">+ Current</button></div>
         <p class="msg">The channel marked <b>primary</b> drives the battery %, the mAh/Wh counting, the low-battery warning and the blackbox columns. With one channel of a kind there is nothing to choose; with several, mark the one that measures the pack.</p>
         <div class="eyebrow2">Temperature channels</div>
         <div id="temp-list"></div>
-        <div class="btns"><button class="btn" onclick="addTemp()">+ Temperature</button></div>
+        <div class="btns"><button class="btn" onclick="run(this, () => addTemp())">+ Temperature</button></div>
         <p class="msg">Optional. Shown in the OSD below voltage/current; each value can be hidden per ground device under FPV › ⚙ › <i>Sensor values</i>. Give short labels (<code>T1</code>, <code>Motor</code>, <code>ESC</code>) — they are only shown once a kind has more than one channel.</p>
         <div class="grid2">
           <label>Battery capacity (mAh)<input id="capacity" type="number" placeholder="e.g. 2200" /></label>
@@ -303,8 +312,8 @@
         </label>
         <p class="msg">"voltage"/"clamp" need the full &amp; empty voltage above. mAh (consumed/remaining) is unaffected — this only changes what the % gauge uses.</p>
         <div class="btns">
-          <button class="btn primary" onclick="saveTelemetry()">Save</button>
-          <button class="btn" onclick="resetCapacity()">Reset mAh</button>
+          <button class="btn primary" onclick="run(this, () => saveTelemetry())">Save</button>
+          <button class="btn" onclick="run(this, () => resetCapacity())">Reset mAh</button>
         </div>
         <div class="msg" id="tel-msg"></div>
       </section>
@@ -329,9 +338,9 @@
         </div>
         <label class="chk"><input type="checkbox" id="gpsAutoHome" checked /> Auto-set home on first good fix (session)</label>
         <div class="btns">
-          <button class="btn primary" onclick="saveGps()">Save</button>
-          <button class="btn" onclick="gpsHome('set')">Set home now</button>
-          <button class="btn" onclick="gpsHome('clear')">Clear home</button>
+          <button class="btn primary" onclick="run(this, () => saveGps())">Save</button>
+          <button class="btn" onclick="run(this, () => gpsHome('set'))">Set home now</button>
+          <button class="btn" onclick="run(this, () => gpsHome('clear'))">Clear home</button>
         </div>
         <p class="msg">Common receivers: Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880 — most speak NMEA at 9600 baud over UART (use /dev/ttyAMA0 or /dev/serial0). USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
         <div id="gps-status"></div>
@@ -342,11 +351,11 @@
         <div class="eyebrow">Hardware test — WHEELS UP / PROPS OFF</div>
         <div class="grid2">
           <label>Channel to sweep<input id="testCh" type="number" placeholder="1" /></label>
-          <div style="display:flex;align-items:flex-end"><button class="btn" onclick="sweepChannel()">Sweep (min→max→center)</button></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn" onclick="run(this, () => sweepChannel())">Sweep (min→max→center)</button></div>
         </div>
         <div class="btns">
-          <button class="btn" onclick="readSensors()">Read sensors now</button>
-          <button class="btn" onclick="snapCameras()">Snapshot cameras</button>
+          <button class="btn" onclick="run(this, () => readSensors())">Read sensors now</button>
+          <button class="btn" onclick="run(this, () => snapCameras())">Snapshot cameras</button>
         </div>
         <div class="msg" id="test-msg"></div>
         <div id="test-sensors"></div>
@@ -356,8 +365,8 @@
       <section class="panel">
         <div class="eyebrow">System</div>
         <div class="btns">
-          <button class="btn bad" onclick="reboot()">Reboot vehicle</button>
-          <button class="btn bad" onclick="factoryReset()">Factory reset</button>
+          <button class="btn bad" onclick="run(this, () => reboot())">Reboot vehicle</button>
+          <button class="btn bad" onclick="run(this, () => factoryReset())">Factory reset</button>
         </div>
         <p class="msg">Factory reset clears all saved vehicle settings (incl. the API secret) — restart to apply defaults.</p>
         <div class="msg" id="sys-msg"></div>
@@ -370,6 +379,28 @@
       const $ = (id) => document.getElementById(id);
       // Optional shared secret for mutating calls; kept in sessionStorage for this tab.
       let apiSecret = sessionStorage.getItem('yrc_secret') || '';
+      /**
+       * Run a button's handler while showing that it IS running. nmcli, npm and
+       * modem calls take seconds; without this the page looks dead, gets clicked
+       * again, and a second "start hotspot" lands on top of the first — which is how
+       * NetworkManager ends up in a half-built state. The button is disabled and
+       * labelled for the whole call, and restored even if the handler throws.
+       */
+      async function run(btn, fn) {
+        if (!btn || btn.disabled) return;
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.dataset.busy = '1';
+        btn.textContent = '… ' + label;
+        try {
+          return await fn();
+        } finally {
+          btn.disabled = false;
+          delete btn.dataset.busy;
+          btn.textContent = label;
+        }
+      }
+
       async function getJSON(u) { const r = await fetch(u); return r.json(); }
       async function post(u, body) {
         const send = () => fetch(u, {
@@ -408,6 +439,7 @@
       }
 
       function renderStatus(s) {
+        renderGroundLink(!!s.groundApp);
         const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
         const ts = s.tailscale, lte = s.lte, wifi = s.wifi;
         $('status').innerHTML =
@@ -426,6 +458,9 @@
       }
 
       async function refresh() { try { renderStatus(await getJSON('/api/system')); } catch {} }
+      function renderGroundLink(available) {
+        $('ground-link').style.display = available ? 'inline-block' : 'none';
+      }
 
       async function loadConfig() {
         const c = await getJSON('/api/config');
@@ -505,14 +540,12 @@
             <span><b class="mono">${esc(d.name)}</b><br><span style="color:var(--muted)">${esc(d.needFor)}</span></span>
             <span class="hw-right">
               <span class="v ${d.installed ? 'go' : 'warn'}">${d.installed ? 'installed' + (d.version ? ' · ' + esc(d.version) : '') : 'not installed'}</span>
-              ${d.installed ? '' : `<button class="btn tiny" id="hw-btn-${esc(d.name)}" onclick="installHwDep('${esc(d.name)}')">Install</button>`}
+              ${d.installed ? '' : `<button class="btn tiny" id="hw-btn-${esc(d.name)}" onclick="run(this, () => installHwDep('${esc(d.name)}'))">Install</button>`}
             </span>
           </div>`).join('') || '<div class="msg">No modules listed.</div>';
       }
 
       async function installHwDep(name) {
-        const btn = $('hw-btn-' + name);
-        if (btn) { btn.disabled = true; btn.textContent = 'Installing…'; }
         $('hw-out').style.display = 'none';
         $('hw-msg').innerHTML = `Installing <b class="mono">${esc(name)}</b>… it is compiled on the Pi, so give it a minute or two. Keep this page open.`;
         let r;
@@ -524,12 +557,11 @@
           r = { ok: false, message: 'Lost contact with the vehicle during the install.', fix: 'Reload this page — the status below shows whether it made it through.', output: String(e) };
         }
         if (r.ok) {
-          $('hw-msg').innerHTML = `<b style="color:var(--go)">✓ ${esc(r.message)}</b> <button class="btn tiny" onclick="restartService()">Restart service now</button>`;
+          $('hw-msg').innerHTML = `<b style="color:var(--go)">✓ ${esc(r.message)}</b> <button class="btn tiny" onclick="run(this, () => restartService())">Restart service now</button>`;
         } else {
           $('hw-msg').innerHTML = `<b style="color:var(--bad)">${esc(r.message || 'Install failed.')}</b>${r.fix ? '<br>' + fmtFix(r.fix) : ''}`;
         }
         if (r.output) { $('hw-out').textContent = r.output; $('hw-out').style.display = 'block'; }
-        if (btn) { btn.disabled = false; btn.textContent = 'Install'; }
         loadHwDeps();
       }
 
@@ -841,7 +873,7 @@
               <label>FPS<input type="number" value="${c.fps || 25}" oninput="camSet(${i},'fps',+this.value)" /></label>
               <label>kbps<input type="number" value="${c.bitrateKbps || ''}" placeholder="auto" oninput="camSet(${i},'bitrateKbps',+this.value)" /></label>
             </div>
-            <div class="btns"><button class="btn tiny" onclick="camDel(${i})">Remove</button></div>
+            <div class="btns"><button class="btn tiny" onclick="run(this, () => camDel(${i}))">Remove</button></div>
           </div>`).join('');
       }
       function camSet(i, k, v) { cams[i][k] = v; }
@@ -898,7 +930,7 @@
               ${V_KINDS.map((k) => `<option value="${k}" ${v.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
             </select></label>
             <label>Channel<input type="number" value="${v.channel ?? 0}" oninput="vSet(${i},'channel',+this.value)" /></label>
-          </div>${primaryRow(volts, i, 'vPrimary')}<div class="btns"><button class="btn tiny" onclick="vDel(${i})">Remove</button></div></div>`).join('');
+          </div>${primaryRow(volts, i, 'vPrimary')}<div class="btns"><button class="btn tiny" onclick="run(this, () => vDel(${i}))">Remove</button></div></div>`).join('');
       }
       function renderCurrs() {
         $('curr-list').innerHTML = currs.map((c, i) => `
@@ -914,7 +946,7 @@
               <option value="high" ${c.lowShuntRange ? '' : 'selected'}>±163.84 mV (default)</option>
               <option value="low" ${c.lowShuntRange ? 'selected' : ''}>±40.96 mV (4× resolution)</option>
             </select></label>
-          </div><p class="msg"${cOverrange(c) ? ' style="color:var(--bad)"' : ''}>Max current sets CURRENT_LSB/SHUNT_CAL. The low range needs max current × shunt ≤ 40.96 mV${c.maxCurrentA && c.shuntOhms ? ` (yours: ${(c.maxCurrentA * c.shuntOhms * 1000).toFixed(1)} mV${cOverrange(c) ? ' — over range, the reading will clip; use ±163.84 mV or a smaller shunt' : ''})` : ''}.${c.kind === 'ina228' ? ' The INA228 also counts charge/energy itself.' : ' INA237/238 have no charge counter — the Pi integrates.'}</p>` : ''}${primaryRow(currs, i, 'cPrimary')}<div class="btns"><button class="btn tiny" onclick="cDel(${i})">Remove</button></div></div>`).join('');
+          </div><p class="msg"${cOverrange(c) ? ' style="color:var(--bad)"' : ''}>Max current sets CURRENT_LSB/SHUNT_CAL. The low range needs max current × shunt ≤ 40.96 mV${c.maxCurrentA && c.shuntOhms ? ` (yours: ${(c.maxCurrentA * c.shuntOhms * 1000).toFixed(1)} mV${cOverrange(c) ? ' — over range, the reading will clip; use ±163.84 mV or a smaller shunt' : ''})` : ''}.${c.kind === 'ina228' ? ' The INA228 also counts charge/energy itself.' : ' INA237/238 have no charge counter — the Pi integrates.'}</p>` : ''}${primaryRow(currs, i, 'cPrimary')}<div class="btns"><button class="btn tiny" onclick="run(this, () => cDel(${i}))">Remove</button></div></div>`).join('');
       }
       function renderTemps() {
         $('temp-list').innerHTML = temps.map((t, i) => {
@@ -960,7 +992,7 @@
             <label>Excitation V<input type="number" step="0.1" value="${t.exciteVolts ?? ''}" placeholder="3.3" oninput="tSet(${i},'exciteVolts',+this.value)" /></label>
             ${probe === 'ntc' ? `<label>NTC R25 Ω / beta<input value="${(t.ntcR25 ?? '') + (t.ntcBeta ? '/' + t.ntcBeta : '')}" placeholder="10000/3950" oninput="tSetNtc(${i}, this.value)" /></label>` : '<span></span>'}
           </div>` : ''}
-          <div class="btns"><button class="btn tiny" onclick="tDel(${i})">Remove</button></div></div>`;
+          <div class="btns"><button class="btn tiny" onclick="run(this, () => tDel(${i}))">Remove</button></div></div>`;
         }).join('');
       }
       function vSet(i, k, val) { volts[i][k] = val; }

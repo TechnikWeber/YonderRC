@@ -471,6 +471,14 @@ configure entirely **without a laptop, using only a phone**:
 1. On the phone, connect to the Wi-Fi **"YonderRC-setup"**.
 2. Thanks to the **captive portal** the YonderRC page opens automatically (if not, open
    `http://192.168.4.1:8080/` in the browser).
+
+> **When the page does *not* open by itself — by design.** The captive portal works by
+> resolving every name to the Pi. If the vehicle has an uplink of its own (Ethernet on
+> the bench, LTE in the field) the hotspot **shares that internet**, and hijacking DNS
+> would break it for everyone connected — so YonderRC leaves DNS alone in that case and
+> you open `http://192.168.4.1:8080/` yourself. The hotspot message in Setup says which
+> of the two happened. Also: **phones** pop the page up reliably; a **laptop**
+> (GNOME/Fedora, Windows) usually only shows a "sign in to network" notification.
 3. There you have **both**: the **control** (the ground app, served directly by the Pi)
    and under **Setup** the full configuration.
 
