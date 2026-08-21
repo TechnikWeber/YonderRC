@@ -11,6 +11,9 @@
 #   install      — place the uploaded WireGuard .conf into /etc/wireguard
 #   zerotier-cli — join/leave a ZeroTier network         (Setup › Remote access)
 #   reboot       — the "Reboot vehicle" button           (Setup › System)
+#   systemctl    — "Restart service now" after installing a native driver
+#                  module (Setup › Vehicle configuration). The npm install
+#                  itself is NOT sudo: the service user must own /opt/yonderrc.
 #   (NetworkManager/`nmcli` is NOT listed — grant it to the user via polkit or
 #    the `netdev` group instead of sudo. It is what Setup › WiFi uses to scan,
 #    join a network and (re)start the onboarding hotspot, and what LTE dials with.)
@@ -34,6 +37,7 @@ Cmnd_Alias YONDERRC = \
     /usr/bin/wg-quick, \
     /usr/bin/install, \
     /usr/sbin/zerotier-cli, /usr/bin/zerotier-cli, \
-    /usr/sbin/reboot, /sbin/reboot
+    /usr/sbin/reboot, /sbin/reboot, \
+    /usr/bin/systemctl restart yonderrc-vehicle.service
 
 yonderrc ALL=(root) NOPASSWD: YONDERRC

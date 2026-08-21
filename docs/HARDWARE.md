@@ -303,11 +303,38 @@ three systemd services (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`) and en
 
 ### 3.3 Hardware driver dependencies (only what you use)
 
-The native libraries are **optional dependencies** and the installer deliberately runs
-`npm install --omit=optional`, so a Pi without any of that hardware still installs
-cleanly. (It then re-installs the *ground* workspace with optional deps allowed — that
-flag is global, and rollup/esbuild ship their platform binaries as optional deps, which
-`vite build` needs.) Add the driver you need:
+The native libraries are **optional dependencies**: they are compiled on the Pi and a
+given vehicle needs at most one of them, so the installer deliberately runs
+`npm install --omit=optional` and a Pi without that hardware still provisions cleanly.
+(It then re-installs the *ground* workspace with optional deps allowed — the flag is
+global, and rollup/esbuild ship their platform binaries as optional deps, which
+`vite build` needs.)
+
+**Install the one you need in the browser** — Setup › Vehicle configuration ›
+**Native driver modules**:
+
+| module | needed for |
+| --- | --- |
+| `i2c-bus` | PCA9685 servo/ESC driver · INA2xx current sensors · ADS1115 ADC |
+| `pigpio` | GPIO-PWM output instead of a PCA9685 (pin map: 2.8) |
+| `serialport` | SBUS output (flight controller) · serial GPS |
+
+Each row shows whether it is installed and has an **Install** button; afterwards the page
+offers the service restart that picks it up. No SSH — which is the point on a vehicle you
+can only reach over its own hotspot. Three things to know:
+
+- The Pi needs **internet** for it (WiFi or LTE). Its own hotspot has no uplink, so join a
+  network in Setup › WiFi first.
+- It **takes a minute** — the module is compiled on the Pi.
+- If the build fails, the page names the cause and the command that fixes it. Usually
+  `sudo apt install -y build-essential` (no compiler), and `pigpio` additionally needs its
+  C library: `sudo apt install -y pigpio`.
+
+What you installed is **remembered** (`hardwareDeps` in `yonderrc-config.json`) and
+restored by `install.sh` after every update — an update can't silently turn a configured
+vehicle back into a simulator.
+
+The same thing over SSH, if you prefer:
 
 ```bash
 cd /opt/yonderrc

@@ -254,7 +254,9 @@ curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisio
 
 This clones the repo to `/opt/yonderrc` and runs the installer. Then open
 `http://<pi-ip>:8080/setup` and press **Detect hardware** to have it suggest the
-driver/sensors from what's on the I²C bus. Prefer to do it by hand? Use the steps below.
+driver/sensors from what's on the I²C bus — the native driver module a suggestion needs
+(`i2c-bus`, `pigpio`, `serialport`) installs from the same page, no SSH. Prefer to do it
+by hand? Use the steps below.
 
 **1. Copy the repo onto the Pi** (`/opt/yonderrc`) — one way is enough:
 

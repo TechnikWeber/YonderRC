@@ -786,6 +786,63 @@ async function main() {
   ok('mAh threshold triggers', evaluateBattery(mahCfg, mk({ mah: 1850 })).low === true);
   ok('mAh below threshold ok', evaluateBattery(mahCfg, mk({ mah: 1000 })).low === false);
 
+  // ---- native driver modules: allowlist, npm args, failure diagnosis ----
+  // These sentences are the whole user-facing failure story on a vehicle that may
+  // only be reachable from a phone, so they are pinned here.
+  const { isHwDep, npmInstallArgs, explainNpmFailure, errorExcerpt, lastLines, HW_DEPS } = await import('../packages/vehicle/src/system/hwDeps');
+  ok('allowlist has exactly the three modules', HW_DEPS.length === 3 && isHwDep('i2c-bus') && isHwDep('pigpio') && isHwDep('serialport'));
+  ok('allowlist rejects everything else', !isHwDep('rimraf') && !isHwDep('i2c-bus; rm -rf /') && !isHwDep('') && !isHwDep(42));
+  ok('npm args target the vehicle workspace', npmInstallArgs('i2c-bus').join(' ') === 'install i2c-bus -w @yonderrc/vehicle --no-audit --no-fund --foreground-scripts');
+  // Without --foreground-scripts npm hides the build output of an optional dependency,
+  // which is where the reason for a failed install lives.
+  ok('npm args show the build output', npmInstallArgs('i2c-bus').includes('--foreground-scripts'));
+  ok('npm args carry no shell syntax', npmInstallArgs('serialport').every((a) => !/[;&|$`<>]/.test(a)));
+
+  const netFail = explainNpmFailure('npm error code ENOTFOUND\nnpm error network request to https://registry.npmjs.org/i2c-bus failed');
+  ok('no internet is named as such', /internet|registry/.test(netFail.cause) && /WiFi|LTE/.test(netFail.fix));
+  // Regression: a node-gyp stack trace mentions the identifier `eNotFound`, which a
+  // case-insensitive ENOTFOUND match read as "the Pi has no internet" — on a log whose
+  // real cause was a broken Python. Error codes are matched case-sensitively now.
+  const camelTrap = explainNpmFailure(
+    'gyp ERR! stack at getNotFoundError (/opt/yonderrc/node_modules/which/which.js:13:12)\n' +
+      "ModuleNotFoundError: No module named 'distutils'",
+    { dep: 'i2c-bus', silentDrop: true },
+  );
+  ok('camelCase identifier is not read as a network error', !/internet|registry/.test(camelTrap.cause));
+  ok('the real cause (python/distutils) wins', camelTrap.cause.includes('distutils') && camelTrap.fix.includes('python3-setuptools'));
+  ok('a real ENOTFOUND is still caught', explainNpmFailure('npm error code ENOTFOUND').cause.includes('internet'));
+  // npm exits 0 when an optionalDependency fails to build: that must never read as success.
+  const silent = explainNpmFailure('up to date in 2s', { dep: 'i2c-bus', silentDrop: true });
+  ok('a silently dropped module is explained', silent.cause.includes('optional dependency') && silent.fix.includes('build-essential'));
+  const excerpt = errorExcerpt('n1\nn2\nn3\nn4\nfatal error: pigpio.h: No such file\ndetail\nboilerplate', 3);
+  ok('excerpt starts just before the error, not at the end', excerpt === 'n3\nn4\nfatal error: pigpio.h: No such file', excerpt);
+  ok('excerpt without an error keeps the tail', errorExcerpt('a\nb\nc', 2) === 'b\nc');
+
+  const gypFail = explainNpmFailure('npm error gyp ERR! stack Error: not found: make\nnpm error gyp ERR! stack at getNotFoundError');
+  ok('missing compiler points at build-essential', gypFail.fix.includes('sudo apt install -y build-essential'));
+  // A missing C library must NOT be reported as a missing compiler — that sends
+  // the operator down the wrong path (pigpio needs its own apt package).
+  const libFail = explainNpmFailure('../src/pigpio.cc:5:10: fatal error: pigpio.h: No such file or directory\nmake: *** [pigpio.o] Error 1', { dep: 'pigpio' });
+  ok('missing library names the header', libFail.cause.includes('pigpio.h'));
+  ok('missing library points at its apt package', libFail.fix.includes('apt install -y pigpio') && !libFail.fix.includes('build-essential'));
+  ok('missing python is its own case', explainNpmFailure('npm error gyp ERR! find Python').fix.includes('python3'));
+  ok('timeout has its own explanation', explainNpmFailure('', { timedOut: true }).cause.includes('too long'));
+  ok('full disk is recognised', explainNpmFailure('npm error ENOSPC: no space left on device').cause.includes('full'));
+  ok('permission trouble suggests chown', explainNpmFailure('npm error EACCES: permission denied, mkdir').fix.includes('chown'));
+  const unknown = explainNpmFailure('something nobody anticipated');
+  ok('an unknown failure still says something useful', unknown.cause.length > 0 && unknown.fix.length > 0);
+  ok('log tail keeps the end', lastLines('a\nb\nc\nd', 2) === 'c\nd');
+  ok('log tail drops blank lines', lastLines('a\n\n\nb', 5) === 'a\nb');
+
+  // The sim system runs the same flow end to end on a dev machine (`sys` above).
+  const simSys = sys;
+  ok('sim: nothing installed initially', (await simSys.hwDeps()).every((d) => !d.installed));
+  const simOk = await simSys.hwDepInstall('i2c-bus');
+  ok('sim: install succeeds and sticks', simOk.ok && (await simSys.hwDeps()).some((d) => d.name === 'i2c-bus' && d.installed));
+  ok('sim: install asks for a service restart', simOk.restartRequired === true);
+  const simBad = await simSys.hwDepInstall('pigpio');
+  ok('sim: failure carries cause, fix and log', !simBad.ok && !!simBad.fix && simBad.output.includes('pigpio.h'));
+
   // ---- WiFi scan parsing + hotspot arguments ----
   const { parseWifiScan, hotspotArgs, HOTSPOT_DEFAULTS } = await import('../packages/vehicle/src/system/SystemManager');
   const scan = parseWifiScan(

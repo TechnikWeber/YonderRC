@@ -57,6 +57,30 @@ npm install --omit=optional
 # hardware drivers stay out because that workspace is not selected here.
 npm install --include-workspace-root -w @yonderrc/ground
 
+# Native driver modules the operator installed from the setup UI (Setup > Vehicle
+# configuration > Native driver modules) are optionalDependencies too, so pass 1
+# just pruned them. Put back exactly the ones this vehicle recorded — an update
+# must not silently turn a configured vehicle back into a simulator.
+CONFIG="${YRC_CONFIG:-$REPO/yonderrc-config.json}"
+if [ -f "$CONFIG" ] && command -v python3 >/dev/null 2>&1; then
+  DEPS=$(python3 - "$CONFIG" <<'PY'
+import json, sys
+ALLOWED = {'i2c-bus', 'pigpio', 'serialport'}   # mirrors hwDeps.ts
+try:
+    with open(sys.argv[1]) as f:
+        deps = (json.load(f) or {}).get('hardwareDeps') or []
+except Exception:
+    deps = []
+print(' '.join(sorted(d for d in deps if d in ALLOWED)))
+PY
+) || DEPS=""
+  for dep in $DEPS; do
+    echo "-- restoring native driver module: $dep"
+    npm install "$dep" -w @yonderrc/vehicle ||
+      echo "   ($dep failed to build — reinstall it in Setup > Vehicle configuration, it shows why)"
+  done
+fi
+
 echo "-- build the ground control app (so a phone can fly/configure via the Pi)"
 if ! npm run build -w @yonderrc/ground; then
   echo "   build failed — retrying once with a full install (incl. all optional deps)"

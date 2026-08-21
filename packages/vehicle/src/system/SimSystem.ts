@@ -1,6 +1,8 @@
 import { hostname } from 'node:os';
 import type {
   ActionResult,
+  HwDepInstallResult,
+  HwDepStatus,
   LteConfig,
   LtePinChange,
   LteStatus,
@@ -13,6 +15,7 @@ import type {
   WifiNetwork,
   HotspotConfig,
 } from './SystemManager.js';
+import { HW_DEPS, explainNpmFailure, isHwDep, lastLines, type HwDepName } from './hwDeps.js';
 
 /**
  * Mock system: pretends to have an LTE modem and Tailscale so the entire setup
@@ -202,6 +205,59 @@ export class SimSystem implements SystemManager {
       serial: ['/dev/ttyAMA0 (simulated)'],
       notes: ['Simulated detection — real probe runs on the Pi.'],
     };
+  }
+
+  /** Mock state: nothing installed until the setup UI "installs" it. */
+  private installedDeps = new Set<HwDepName>();
+
+  async hwDeps(): Promise<HwDepStatus[]> {
+    return HW_DEPS.map((d) => ({
+      name: d.name,
+      installed: this.installedDeps.has(d.name),
+      version: this.installedDeps.has(d.name) ? '0.0.0-sim' : null,
+      needFor: d.needFor,
+    }));
+  }
+
+  /**
+   * Simulated install. `pigpio` deliberately fails with a realistic node-gyp log:
+   * it is the module that genuinely needs a separate C library, and it means the
+   * whole error path (cause, fix, log tail) can be seen on a dev machine instead
+   * of first appearing on a Pi in a field.
+   */
+  async hwDepInstall(name: HwDepName): Promise<HwDepInstallResult> {
+    if (!isHwDep(name)) return { ok: false, message: `Refused: "${String(name)}" is not a known driver module.`, output: '' };
+    if (name === 'pigpio') {
+      const log = [
+        'npm error code 1',
+        'npm error path /opt/yonderrc/node_modules/pigpio',
+        'npm error command sh -c node-gyp rebuild',
+        'npm error gyp info spawn make',
+        'npm error ../src/pigpio.cc:5:10: fatal error: pigpio.h: No such file or directory',
+        'npm error    5 | #include <pigpio.h>',
+        'npm error      |          ^~~~~~~~~~',
+        'npm error compilation terminated.',
+        'npm error make: *** [pigpio.o] Error 1',
+      ].join('\n');
+      const f = explainNpmFailure(log, { dep: name });
+      return {
+        ok: false,
+        message: `Could not install ${name} — ${f.cause}. (Simulated: the sim system reproduces this failure so the error path is visible without a Pi.)`,
+        fix: f.fix,
+        output: lastLines(log),
+      };
+    }
+    this.installedDeps.add(name);
+    return {
+      ok: true,
+      message: `${name} installed (simulated) — restart the vehicle service to use it.`,
+      output: `added 1 package in 12s (simulated)`,
+      restartRequired: true,
+    };
+  }
+
+  async restartService(): Promise<ActionResult> {
+    return { ok: true, message: 'Vehicle service restart requested (simulated — no-op).' };
   }
 
   async reboot(): Promise<ActionResult> {

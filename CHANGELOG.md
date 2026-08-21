@@ -3,6 +3,81 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.39.0
+**English**
+- **Native driver modules install from the browser.** Setup › Vehicle configuration now has
+  **Native driver modules**: `i2c-bus`, `pigpio` and `serialport` with their status and an
+  **Install** button, plus a **Restart service now** button afterwards. Until now a detected
+  PCA9685 or INA228 still meant opening an SSH session — absurd on a vehicle whose whole
+  onboarding story is "join its hotspot with a phone".
+- **A failed install explains itself.** The npm/node-gyp log is translated into a cause and
+  the command that fixes it: no internet (the most likely one — its own hotspot has no
+  uplink), missing compiler (`build-essential`), a missing C library (`pigpio` needs its own
+  apt package, which is *not* a missing compiler), node-gyp without Python, a full SD card,
+  wrong ownership, or a timeout. The raw log tail is shown underneath, because the compiler's
+  own last words are sometimes the only real clue.
+- **Detect hardware now says when a module is missing.** Finding a device at 0x40 is useless
+  while the module that talks to it is absent, so the probe result points at it instead of
+  letting the driver fall back to `sim` silently.
+- **An update no longer disarms your hardware.** What you install is recorded
+  (`hardwareDeps`) and `install.sh` restores it after its `--omit=optional` pass — before,
+  every re-run of the installer silently removed the driver modules again.
+- Only allowlisted module names ever reach npm (`i2c-bus`/`pigpio`/`serialport`, checked in
+  the router *and* in the system layer), the call carries no shell, and the endpoint sits
+  behind the API secret like every other mutating call.
+- **"npm said it worked" is not proof.** These modules are optional dependencies, so when
+  the native build fails npm removes the module again, prints `up to date` and **exits 0**.
+  Trusting that exit code would have reported a successful install of a driver that isn't
+  there — the very silent failure this feature exists to prevent. Success is therefore
+  decided by whether the module actually resolves afterwards, never by npm's exit code.
+- Verified in sim end to end (status, install, failure path, allowlist rejection, secret
+  gate, persistence), against a **real npm/node-gyp run** on a scratch checkout — which
+  really did fail to build and was reported correctly — plus 26 new unit tests covering
+  the allowlist and every failure message. Only the arm64/Pi specifics remain
+  hardware-only-verifiable.
+- One of those tests exists because of a bug found in that real run: a node-gyp stack
+  trace contains the identifier `eNotFound`, and a case-insensitive `ENOTFOUND` match
+  turned a broken Python into "the Pi has no internet". Error codes are matched
+  case-sensitively as whole words now.
+
+**Deutsch**
+- **Native Treibermodule installieren sich im Browser.** Setup › Vehicle configuration hat
+  jetzt **Native driver modules**: `i2c-bus`, `pigpio` und `serialport` mit Status und
+  **Install**-Knopf, danach **Restart service now**. Bisher bedeutete ein erkannter PCA9685
+  oder INA228 trotzdem: SSH-Sitzung aufmachen — absurd bei einem Fahrzeug, dessen ganze
+  Inbetriebnahme „mit dem Handy in seinen Hotspot" lautet.
+- **Ein gescheiterter Build erklärt sich selbst.** Das npm/node-gyp-Protokoll wird in eine
+  Ursache plus den passenden Befehl übersetzt: kein Internet (der wahrscheinlichste Fall —
+  der eigene Hotspot hat keinen Uplink), fehlender Compiler (`build-essential`), fehlende
+  C-Bibliothek (`pigpio` braucht sein eigenes apt-Paket und ist *kein* Compiler-Problem),
+  node-gyp ohne Python, volle SD-Karte, falsche Besitzrechte oder ein Timeout. Darunter
+  steht das Ende des Rohprotokolls — manchmal ist das letzte Wort des Compilers der einzige
+  echte Hinweis.
+- **Detect hardware sagt jetzt, wenn ein Modul fehlt.** Ein Gerät auf 0x40 nützt nichts,
+  solange das Modul fehlt, das mit ihm spricht — statt still auf `sim` zurückzufallen, weist
+  das Ergebnis darauf hin.
+- **Ein Update entwaffnet die Hardware nicht mehr.** Was du installierst, wird gemerkt
+  (`hardwareDeps`), und `install.sh` stellt es nach seinem `--omit=optional`-Lauf wieder
+  her — vorher entfernte jeder Installer-Rerun die Treibermodule klammheimlich.
+- Nur Modulnamen von der Positivliste erreichen npm (`i2c-bus`/`pigpio`/`serialport`,
+  geprüft im Router *und* in der Systemschicht), der Aufruf läuft ohne Shell, und der
+  Endpunkt liegt wie jeder andere schreibende Aufruf hinter dem API-Secret.
+- **„npm hat Erfolg gemeldet" ist kein Beweis.** Die Module sind optionale
+  Abhängigkeiten: Scheitert der native Build, entfernt npm das Modul wieder, schreibt
+  `up to date` und **endet mit Exit-Code 0**. Diesem Code zu glauben hätte einen Treiber
+  als installiert gemeldet, der gar nicht da ist — genau das stille Versagen, gegen das
+  diese Funktion gebaut ist. Erfolg entscheidet deshalb, ob sich das Modul danach
+  tatsächlich auflösen lässt, nie der Exit-Code.
+- In sim komplett durchgetestet (Status, Installation, Fehlerpfad, abgelehnte
+  Positivliste, Secret-Gate, Persistenz), dazu ein **echter npm/node-gyp-Lauf** in einer
+  Wegwerf-Kopie — der tatsächlich scheiterte und korrekt gemeldet wurde — plus 26 neue
+  Unit-Tests für Positivliste und jede Fehlermeldung. Offen bleibt nur, was arm64/Pi
+  spezifisch ist.
+- Einer dieser Tests existiert wegen eines Fehlers aus genau diesem echten Lauf: In einem
+  node-gyp-Stacktrace steht der Bezeichner `eNotFound`, und ein case-insensitiver
+  Treffer auf `ENOTFOUND` machte daraus „der Pi hat kein Internet", obwohl in Wahrheit
+  Python kaputt war. Fehlercodes werden jetzt case-sensitiv als ganze Wörter geprüft.
+
 ## v1.38.5
 **English**
 - **Fixed: `yonderrc-onboard.service` failed to start on a fresh Pi.** `onboard.sh` was

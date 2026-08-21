@@ -134,6 +134,15 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   itself out. `hotspot.mode` (auto/always/off, pure `shouldStartHotspot`, mirrored in
   `onboard.sh`) decides when boot starts it; a WiFi client connection always wins (one
   radio). nmcli paths are hardware-only-verified; the sim has a mock neighbourhood.
+- **Native driver modules from the UI — DONE (v1.39.0)**: `vehicle/system/hwDeps.ts` holds
+  the allowlist (`i2c-bus`/`pigpio`/`serialport`), the npm args and `explainNpmFailure`
+  (pure, unit-tested: no internet / no compiler / missing C library / timeout / full disk /
+  permissions each get a cause + the command that fixes it). `GET|POST /api/hw-deps`
+  installs one, `POST /api/restart` restarts the unit, and Setup › Vehicle configuration
+  lists status + Install buttons — the point is that a vehicle reachable only over its own
+  hotspot never forces an SSH session. Successful installs are recorded in `hardwareDeps`
+  and **restored by `install.sh`** after an update (`--omit=optional` prunes them). Only
+  the sim path is proven; the real npm/node-gyp run is hardware-only-verified.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 - Screenshots: `Mobile_FPV.jpeg` is a real phone screenshot and still shows the

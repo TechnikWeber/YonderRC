@@ -48,6 +48,15 @@
       .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
       .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
       .mono { font-family: var(--mono); font-size: .92em; }
+      /* npm / node-gyp log tail — long lines wrap, tall logs scroll inside the box. */
+      .log {
+        white-space: pre-wrap; word-break: break-word; font-family: var(--mono); font-size: 12px;
+        color: var(--muted); background: var(--panel-2); border: 1px solid var(--line);
+        border-radius: 8px; padding: 8px 10px; margin-top: 8px; max-height: 220px; overflow: auto;
+      }
+      .hw-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 7px 0; font-size: 13px; border-top: 1px solid var(--line); }
+      .hw-row:first-child { border-top: 0; }
+      .hw-right { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
       /* WiFi scan results: one full-width row per network, signal right-aligned. */
       .wifi-row { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; margin-bottom: 6px; font-weight: 500; }
       .wifi-sig { color: var(--muted); font-family: var(--mono); font-size: 12px; }
@@ -183,6 +192,12 @@
           </label>
           <label>Watchdog (ms)<input id="watchdogTimeoutMs" type="number" /></label>
         </div>
+        <div class="eyebrow2" style="margin-top:12px">Native driver modules</div>
+        <div id="hwdeps"><div class="msg">Reading module status…</div></div>
+        <p class="msg">Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>.</p>
+        <div class="msg" id="hw-msg"></div>
+        <div class="log" id="hw-out" style="display:none"></div>
+
         <div class="grid2">
           <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
           <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
@@ -453,6 +468,67 @@
         setTimeout(loadGps, 300);
       }
 
+      // ---- native driver modules (i2c-bus / pigpio / serialport) ----
+      let hwDeps = [];
+      function esc(v) { return String(v == null ? '' : v).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+      /** Render `backticked` commands as monospace without trusting the string as HTML. */
+      function fmtFix(v) { return esc(v).replace(/`([^`]+)`/g, '<span class="mono" style="color:var(--text)">$1</span>'); }
+      function hwDepInstalled(name) { const d = hwDeps.find((x) => x.name === name); return !!(d && d.installed); }
+
+      async function loadHwDeps() {
+        try {
+          const r = await getJSON('/api/hw-deps');
+          hwDeps = r.deps || [];
+          renderHwDeps();
+        } catch {
+          $('hwdeps').innerHTML = '<div class="msg">Could not read the module status (is the vehicle service running?).</div>';
+        }
+      }
+      function renderHwDeps() {
+        $('hwdeps').innerHTML = hwDeps.map((d) => `
+          <div class="hw-row">
+            <span><b class="mono">${esc(d.name)}</b><br><span style="color:var(--muted)">${esc(d.needFor)}</span></span>
+            <span class="hw-right">
+              <span class="v ${d.installed ? 'go' : 'warn'}">${d.installed ? 'installed' + (d.version ? ' · ' + esc(d.version) : '') : 'not installed'}</span>
+              ${d.installed ? '' : `<button class="btn tiny" id="hw-btn-${esc(d.name)}" onclick="installHwDep('${esc(d.name)}')">Install</button>`}
+            </span>
+          </div>`).join('') || '<div class="msg">No modules listed.</div>';
+      }
+
+      async function installHwDep(name) {
+        const btn = $('hw-btn-' + name);
+        if (btn) { btn.disabled = true; btn.textContent = 'Installing…'; }
+        $('hw-out').style.display = 'none';
+        $('hw-msg').innerHTML = `Installing <b class="mono">${esc(name)}</b>… it is compiled on the Pi, so give it a minute or two. Keep this page open.`;
+        let r;
+        try {
+          r = await post('/api/hw-deps', { pkg: name });
+        } catch (e) {
+          // Lost connection mid-install (service restarted, WiFi blip): the install
+          // itself may well have succeeded, so don't claim it failed.
+          r = { ok: false, message: 'Lost contact with the vehicle during the install.', fix: 'Reload this page — the status below shows whether it made it through.', output: String(e) };
+        }
+        if (r.ok) {
+          $('hw-msg').innerHTML = `<b style="color:var(--go)">✓ ${esc(r.message)}</b> <button class="btn tiny" onclick="restartService()">Restart service now</button>`;
+        } else {
+          $('hw-msg').innerHTML = `<b style="color:var(--bad)">${esc(r.message || 'Install failed.')}</b>${r.fix ? '<br>' + fmtFix(r.fix) : ''}`;
+        }
+        if (r.output) { $('hw-out').textContent = r.output; $('hw-out').style.display = 'block'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Install'; }
+        loadHwDeps();
+      }
+
+      async function restartService() {
+        $('hw-msg').textContent = 'Restarting the vehicle service…';
+        try {
+          const r = await post('/api/restart', {});
+          $('hw-msg').textContent = r.message || 'Restart requested.';
+        } catch {
+          $('hw-msg').textContent = 'Restart requested — the vehicle dropped the connection, which is expected.';
+        }
+        setTimeout(() => { loadHwDeps(); refresh(); }, 6000);
+      }
+
       async function detectHw() {
         $('detect-out').innerHTML = '<div class="msg">Probing hardware…</div>';
         try {
@@ -462,7 +538,12 @@
           const serial = (d.serial || []).map((s) => `<div class="row"><span class="k">serial (GPS?)</span><span class="v">${s}</span></div>`).join('');
           const modem = `<div class="row"><span class="k">LTE modem</span><span class="v ${d.modemPresent ? 'go' : 'warn'}">${d.modemPresent ? 'present' : 'not found'}</span></div>`;
           const notes = (d.notes || []).map((n) => `<div class="msg">• ${n}</div>`).join('');
-          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${serial}${modem}${notes}<div class="msg">Suggestions only — set the driver/sensors above accordingly, then Save.</div>`;
+          // A detected I²C device is useless while the module that talks to it is
+          // missing — say so here, where the operator is actually looking.
+          const needI2c = (d.i2c || []).length && !hwDepInstalled('i2c-bus')
+            ? '<div class="msg" style="color:var(--idle)">⚠ <b class="mono">i2c-bus</b> is not installed — the <b>pca9685</b> driver and the INA/ADS sensors would fall back to <b>sim</b>. Install it under “Native driver modules” above.</div>'
+            : '';
+          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${serial}${modem}${notes}${needI2c}<div class="msg">Suggestions only — set the driver/sensors above accordingly, then Save.</div>`;
         } catch {
           $('detect-out').innerHTML = '<div class="msg">Detection failed.</div>';
         }
@@ -913,6 +994,7 @@
       }
 
       loadConfig();
+      loadHwDeps();
       loadLte();
       loadCameras();
       loadTelemetry();

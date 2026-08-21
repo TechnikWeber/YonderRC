@@ -267,7 +267,9 @@ curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisio
 
 Das klont das Repo nach `/opt/yonderrc` und startet den Installer. Danach
 `http://<pi-ip>:8080/setup` öffnen und **Detect hardware** drücken — es schlägt
-Treiber/Sensoren anhand des I²C-Bus vor. Lieber manuell? Dann die Schritte unten.
+Treiber/Sensoren anhand des I²C-Bus vor. Das nötige native Treibermodul (`i2c-bus`,
+`pigpio`, `serialport`) installiert dieselbe Seite, ganz ohne SSH. Lieber manuell? Dann
+die Schritte unten.
 
 **1. Repo auf den Pi kopieren** (`/opt/yonderrc`) — ein Weg genügt:
 

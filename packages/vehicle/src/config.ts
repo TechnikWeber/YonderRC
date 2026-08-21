@@ -5,6 +5,7 @@ import type { TelemetryConfig, CameraCfg, GpsConfig } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';
+import type { HwDepName } from './system/hwDeps.js';
 import { HOTSPOT_DEFAULTS } from './system/SystemManager.js';
 
 /**
@@ -78,6 +79,13 @@ export interface PersistentConfig {
   telemetry?: TelemetryConfig;
   gps?: GpsConfig;
   cameras?: CameraCfg[];
+  /**
+   * Native driver modules installed from the setup UI. Only a record: they live in
+   * node_modules, which `install.sh --omit=optional` prunes on every update — the
+   * installer reads this list back and reinstalls them, so an update can't quietly
+   * turn a configured vehicle back into a simulator.
+   */
+  hardwareDeps?: HwDepName[];
 }
 
 function num(name: string, fallback: number): number {

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { VehicleConfig, PersistentConfig } from '../config.js';
-import { savePersisted, resetPersisted } from '../config.js';
+import { loadPersisted, savePersisted, resetPersisted } from '../config.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
@@ -21,6 +21,7 @@ import {
   type LteConfig,
 } from '../system/SystemManager.js';
 import { redactLteConfig, isValidPin } from '../system/lte.js';
+import { HW_DEPS, isHwDep } from '../system/hwDeps.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -101,6 +102,40 @@ export async function handleSetup(
 
   if (url === '/api/detect' && method === 'GET') {
     json(res, 200, await ctx.system.detectHardware());
+    return true;
+  }
+
+  // ---- native driver modules (i2c-bus / pigpio / serialport) ----
+  // The whole point is that a vehicle you only reach from a phone never forces
+  // the operator into an SSH session; see hwDeps.ts.
+  if (url === '/api/hw-deps' && method === 'GET') {
+    json(res, 200, { deps: await ctx.system.hwDeps() });
+    return true;
+  }
+
+  if (url === '/api/hw-deps' && method === 'POST') {
+    const body = (await readBody(req)) as { pkg?: unknown };
+    if (!isHwDep(body.pkg)) {
+      json(res, 400, {
+        ok: false,
+        message: `Unknown module. Installable: ${HW_DEPS.map((d) => d.name).join(', ')}.`,
+      });
+      return true;
+    }
+    const r = await ctx.system.hwDepInstall(body.pkg);
+    if (r.ok) {
+      // Remember it so `install.sh` can restore it after the next update.
+      const known = new Set(loadPersisted(ctx.config.configPath).hardwareDeps ?? []);
+      known.add(body.pkg);
+      savePersisted(ctx.config.configPath, { hardwareDeps: [...known] });
+      ctx.onConfigSaved?.({ hardwareDeps: [...known] });
+    }
+    json(res, r.ok ? 200 : 500, r);
+    return true;
+  }
+
+  if (url === '/api/restart' && method === 'POST') {
+    json(res, 200, await ctx.system.restartService());
     return true;
   }
 

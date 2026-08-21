@@ -1,10 +1,14 @@
 import { exec, execFile } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import type {
   ActionResult,
+  HwDepInstallResult,
+  HwDepStatus,
   LteConfig,
   LtePinChange,
   LteStatus,
@@ -21,6 +25,7 @@ import { normaliseWireguardConf, parseWifiScan, hotspotArgs, HOTSPOT_DEFAULTS } 
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c } from './detect.js';
+import { HW_DEPS, errorExcerpt, explainNpmFailure, hwDepInfo, isHwDep, lastLines, npmInstallArgs, type HwDepName } from './hwDeps.js';
 
 const run = promisify(exec);
 const runFile = promisify(execFile);
@@ -49,6 +54,36 @@ async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out:
     return { ok: true, out: stdout.trim() };
   } catch (err) {
     return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
+  }
+}
+
+/** The repo checkout (…/packages/vehicle/src/system → repo root), where npm must run. */
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+/** Resolves from the vehicle package, i.e. through the workspace's node_modules. */
+const requireFrom = createRequire(import.meta.url);
+
+/**
+ * execFile for SLOW jobs (npm + node-gyp): minutes instead of seconds, a buffer
+ * big enough for a full compiler log, and stderr kept — npm writes nearly all of
+ * its diagnostics there, and throwing that away is what makes an install failure
+ * unreadable.
+ */
+async function shSlow(
+  file: string,
+  args: string[],
+  opts: { cwd: string; timeoutMs: number },
+): Promise<{ ok: boolean; out: string; timedOut: boolean }> {
+  try {
+    const { stdout, stderr } = await runFile(file, args, {
+      cwd: opts.cwd,
+      timeout: opts.timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    return { ok: true, out: [stdout, stderr].filter(Boolean).join('\n').trim(), timedOut: false };
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string; killed?: boolean; message?: string };
+    const out = [e.stdout, e.stderr].filter(Boolean).join('\n').trim();
+    return { ok: false, out: out || e.message || String(err), timedOut: !!e.killed };
   }
 }
 
@@ -392,6 +427,78 @@ export class RealSystem implements SystemManager {
     if ((await sh('systemctl is-active gpsd')).out.trim() === 'active') notes.push('gpsd is running — you can use the "gpsd" GPS source.');
 
     return { i2c, modemPresent, cameras: cams, serial, notes };
+  }
+
+  /**
+   * Which native modules are present. Resolution only — the module is never
+   * imported here, so probing can't touch I²C/GPIO or fail on missing hardware.
+   */
+  async hwDeps(): Promise<HwDepStatus[]> {
+    return HW_DEPS.map((d) => {
+      let installed = false;
+      let version: string | null = null;
+      try {
+        requireFrom.resolve(d.name);
+        installed = true;
+      } catch {
+        return { name: d.name, installed: false, version: null, needFor: d.needFor };
+      }
+      try {
+        const pkg = JSON.parse(readFileSync(requireFrom.resolve(`${d.name}/package.json`), 'utf8')) as { version?: string };
+        version = pkg.version ?? null;
+      } catch {
+        /* an "exports" map can hide package.json — installed is what matters */
+      }
+      return { name: d.name, installed, version, needFor: d.needFor };
+    });
+  }
+
+  async hwDepInstall(name: HwDepName): Promise<HwDepInstallResult> {
+    // Defence in depth: the router allowlists too, but this is the thing that
+    // actually runs a command, so it refuses anything off the list itself.
+    if (!isHwDep(name)) return { ok: false, message: `Refused: "${String(name)}" is not a known driver module.`, output: '' };
+
+    const started = Date.now();
+    const r = await shSlow('npm', npmInstallArgs(name), { cwd: REPO_ROOT, timeoutMs: 10 * 60_000 });
+    const secs = Math.max(1, Math.round((Date.now() - started) / 1000));
+
+    // npm's exit code is NOT the truth here. These modules are optionalDependencies
+    // of the vehicle package, so when the native build fails npm quietly removes the
+    // package again, prints "up to date" and exits 0 — reporting that as success is
+    // exactly the silent fallback-to-sim this feature exists to prevent. What counts
+    // is whether the module can be resolved afterwards.
+    const after = (await this.hwDeps()).find((d) => d.name === name);
+    if (r.ok && after?.installed) {
+      return {
+        ok: true,
+        message: `${name}${after.version ? ` ${after.version}` : ''} installed in ${secs}s — restart the vehicle service to use it.`,
+        output: lastLines(r.out),
+        restartRequired: true,
+      };
+    }
+
+    const f = explainNpmFailure(r.out, { dep: name, timedOut: r.timedOut, silentDrop: r.ok });
+    const apt = hwDepInfo(name).apt;
+    return {
+      ok: false,
+      message: `Could not install ${name} — ${f.cause}.`,
+      fix: f.fix,
+      output:
+        errorExcerpt(r.out) ||
+        `npm produced no output (after ${secs}s).${apt.length ? ` This module also needs: ${apt.join(', ')}.` : ''}`,
+    };
+  }
+
+  /**
+   * Restart our own systemd unit. Deferred by a moment so the HTTP response is
+   * flushed before systemd kills this process — otherwise the browser sees a
+   * dropped connection instead of "restarting".
+   */
+  async restartService(): Promise<ActionResult> {
+    setTimeout(() => {
+      void sh('sudo systemctl restart yonderrc-vehicle.service');
+    }, 700).unref();
+    return { ok: true, message: 'Restarting the vehicle service — this page comes back on its own in a few seconds.' };
   }
 
   async reboot(): Promise<ActionResult> {

@@ -1,5 +1,6 @@
 import type { LinkSignal } from '@yonderrc/protocol';
 import type { I2cSuggestion } from './detect.js';
+import type { HwDepName } from './hwDeps.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -9,6 +10,30 @@ export interface DetectResult {
   /** Serial device candidates for a GPS receiver (/dev/ttyAMA0, ttyUSB*, ttyACM*). */
   serial: string[];
   notes: string[];
+}
+
+/** One native driver module and whether this vehicle actually has it. */
+export interface HwDepStatus {
+  name: HwDepName;
+  installed: boolean;
+  /** Installed version when we could read it (a package may hide its package.json). */
+  version: string | null;
+  /** What it is needed for — copy for the setup UI. */
+  needFor: string;
+}
+
+/**
+ * Result of installing a native driver module. Carries the npm log tail on
+ * purpose: this runs on a vehicle the operator may only reach from a phone, so
+ * "it failed" without the reason would send them looking for a terminal again.
+ */
+export interface HwDepInstallResult extends ActionResult {
+  /** Tail of the npm output, success or failure. */
+  output: string;
+  /** Concrete next step when it failed. */
+  fix?: string;
+  /** The module is only picked up after the vehicle service restarts. */
+  restartRequired?: boolean;
 }
 
 /**
@@ -246,6 +271,12 @@ export interface SystemManager {
   remoteUp(cfg: RemoteAccessConfig): Promise<ActionResult>;
   remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult>;
   remoteStatus(cfg: RemoteAccessConfig): Promise<RemoteAccessStatus>;
+  /** Which native driver modules (i2c-bus/pigpio/serialport) are installed. */
+  hwDeps(): Promise<HwDepStatus[]>;
+  /** Install one allowlisted native driver module via npm (slow: it compiles). */
+  hwDepInstall(name: HwDepName): Promise<HwDepInstallResult>;
+  /** Restart the vehicle service itself, so a freshly installed driver is picked up. */
+  restartService(): Promise<ActionResult>;
   reboot(): Promise<ActionResult>;
 }
 

@@ -307,12 +307,38 @@ go2rtc, richtet die drei systemd-Dienste ein (`yonderrc-vehicle`, `go2rtc`,
 
 ### 3.3 Hardware-Treiber-Abhängigkeiten (nur was du nutzt)
 
-Die nativen Bibliotheken sind **optionale Abhängigkeiten**, und der Installer führt
+Die nativen Bibliotheken sind **optionale Abhängigkeiten**: sie werden auf dem Pi
+kompiliert, und ein Fahrzeug braucht höchstens eine davon. Deshalb führt der Installer
 bewusst `npm install --omit=optional` aus — so installiert auch ein Pi ohne diese
 Hardware sauber durch. (Danach installiert er das *ground*-Workspace noch einmal mit
 optionalen Abhängigkeiten: der Schalter gilt global, und rollup/esbuild liefern ihre
-Plattform-Binaries als optionale Abhängigkeiten, die `vite build` braucht.) Installiere
-den Treiber, den du brauchst:
+Plattform-Binaries als optionale Abhängigkeiten, die `vite build` braucht.)
+
+**Installiere die passende direkt im Browser** — Setup › Vehicle configuration ›
+**Native driver modules**:
+
+| Modul | wofür |
+| --- | --- |
+| `i2c-bus` | PCA9685 Servo/ESC-Treiber · INA2xx Stromsensoren · ADS1115 ADC |
+| `pigpio` | GPIO-PWM statt PCA9685 (Pinbelegung: 2.8) |
+| `serialport` | SBUS-Ausgang (Flugcontroller) · serielles GPS |
+
+Jede Zeile zeigt den Status und hat einen **Install**-Knopf; danach bietet die Seite den
+Neustart des Dienstes an, der das Modul übernimmt. Kein SSH — genau darum geht es bei
+einem Fahrzeug, das du nur über seinen eigenen Hotspot erreichst. Drei Dinge dazu:
+
+- Der Pi braucht dafür **Internet** (WLAN oder LTE). Sein eigener Hotspot hat keinen
+  Uplink — vorher also in Setup › WiFi ins Netz gehen.
+- Es **dauert eine Minute**, weil das Modul auf dem Pi kompiliert wird.
+- Scheitert der Build, nennt die Seite die Ursache und den Befehl, der hilft. Meist
+  `sudo apt install -y build-essential` (kein Compiler); `pigpio` braucht zusätzlich seine
+  C-Bibliothek: `sudo apt install -y pigpio`.
+
+Was du installiert hast, wird **gemerkt** (`hardwareDeps` in `yonderrc-config.json`) und
+von `install.sh` nach jedem Update wiederhergestellt — ein Update kann ein eingerichtetes
+Fahrzeug damit nicht mehr klammheimlich zum Simulator zurückbauen.
+
+Dasselbe über SSH, falls dir das lieber ist:
 
 ```bash
 cd /opt/yonderrc
