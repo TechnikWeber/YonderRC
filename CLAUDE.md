@@ -98,9 +98,10 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   blocked `git pull --ff-only` — keep generated state out of the working tree.
 
 ## Release / packaging flow
-Bump all five `package.json` to the same version, update the masthead string in
-`ground/src/App.tsx` and the banner in `vehicle/src/index.ts`, add a `CHANGELOG.md`
-entry. Locally you can just commit + tag + `gh release create`. README describes the
+Bump all five `package.json` to the same version and update the masthead string in
+`ground/src/App.tsx`, then add a `CHANGELOG.md` entry. The **vehicle banner and the setup
+page read the version from `package.json`** (`config.version`, since v1.45.1) — nothing to
+bump there, and the test suite fails if the ground masthead falls behind. Locally you can just commit + tag + `gh release create`. README describes the
 current feature set; detailed history lives in `CHANGELOG.md` + releases.
 
 ## Open / next

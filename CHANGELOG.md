@@ -3,6 +3,38 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.45.1
+**English**
+- **The setup page shows its version, the same way the control app does.** The header now
+  reads `YonderRC · Setup  vehicle · v1.45.1` next to the control app's
+  `ground · v1.45.1` — so it takes a glance, not an investigation, to see whether both
+  halves are on the same build.
+- **The version is read from `package.json` instead of being hardcoded.** The vehicle
+  banner had its own copy of the string, which is one more thing to forget on release
+  day; banner, setup header and the update check now all come from the same source, and a
+  test fails if the ground masthead falls behind.
+- **Fixed: `install.sh` did not apply unit changes to running services.** `enable --now`
+  starts what is stopped but leaves a running service on its OLD unit, so a changed
+  `ExecStart` or `Environment=` only took effect at the next reboot — exactly what
+  happened with v1.45.0's new go2rtc path. The installer now does a `try-restart` on
+  go2rtc and the vehicle service.
+
+**Deutsch**
+- **Die Setup-Seite zeigt ihre Version, genau wie die Steuer-App.** Die Kopfzeile lautet
+  jetzt `YonderRC · Setup  vehicle · v1.45.1`, passend zum `ground · v1.45.1` der
+  Steuer-App — ob beide Hälften auf demselben Stand sind, ist damit ein Blick und keine
+  Nachforschung.
+- **Die Version wird aus `package.json` gelesen statt fest verdrahtet.** Das Banner des
+  Fahrzeugdienstes hatte eine eigene Kopie der Zeichenkette — eine Stelle mehr, die man am
+  Release-Tag vergessen kann. Banner, Setup-Kopfzeile und Update-Prüfung stammen jetzt aus
+  derselben Quelle, und ein Test schlägt fehl, wenn die Kopfzeile der Boden-App
+  zurückbleibt.
+- **Behoben: `install.sh` wendete Unit-Änderungen nicht auf laufende Dienste an.**
+  `enable --now` startet, was steht, lässt einen laufenden Dienst aber auf seiner ALTEN
+  Unit — ein geändertes `ExecStart` oder `Environment=` wirkte damit erst beim nächsten
+  Reboot. Genau das passierte mit dem neuen go2rtc-Pfad aus v1.45.0. Der Installer macht
+  jetzt ein `try-restart` auf go2rtc und den Fahrzeugdienst.
+
 ## v1.45.0
 **English**
 - **The generated video config moved out of the git checkout.** go2rtc's config is

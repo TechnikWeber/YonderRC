@@ -65,6 +65,13 @@ export interface VehicleConfig {
   h264Encoder: string;
   /** Where the persistent config file lives. */
   configPath: string;
+  /**
+   * The version this vehicle is running, read from the repo's package.json at
+   * startup. Read rather than hardcoded: it is shown in the banner, in the setup
+   * page's header and next to the update check, and three copies of a version
+   * string are three chances for them to disagree.
+   */
+  version: string;
 }
 
 /**
@@ -120,6 +127,16 @@ function num(name: string, fallback: number): number {
 
 function publicHost(): string {
   return process.env.YRC_PUBLIC_HOST ?? 'localhost';
+}
+
+/** Version from the repo's own package.json; '' when it cannot be read. */
+export function readVersion(): string {
+  try {
+    const pkg = readFileSync(fileURLToPath(new URL('../../../package.json', import.meta.url)), 'utf8');
+    return (JSON.parse(pkg) as { version?: string }).version ?? '';
+  } catch {
+    return '';
+  }
 }
 
 export function loadPersisted(path: string): PersistentConfig {
@@ -190,6 +207,7 @@ export function loadConfig(): VehicleConfig {
     go2rtcConfigPath:
       process.env.YRC_GO2RTC_CONFIG ??
       fileURLToPath(new URL('../../../docker/go2rtc.yaml', import.meta.url)),
+    version: readVersion(),
     h264Encoder: 'libx264',
 
     // Env-only fields.

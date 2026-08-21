@@ -104,7 +104,7 @@ export async function handleSetup(
   if (url === '/api/system' && method === 'GET') {
     // groundApp tells the setup page whether linking to "/" leads anywhere: the
     // control app is only there if it was built on this vehicle.
-    json(res, 200, { ...(await ctx.system.status()), groundApp: groundAppAvailable() });
+    json(res, 200, { ...(await ctx.system.status()), groundApp: groundAppAvailable(), version: ctx.config.version });
     return true;
   }
 

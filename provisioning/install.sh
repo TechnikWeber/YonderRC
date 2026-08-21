@@ -119,6 +119,9 @@ systemctl enable --now go2rtc.service yonderrc-vehicle.service
 # has a network). Never let it abort provisioning — the vehicle service is what matters.
 systemctl enable --now yonderrc-onboard.service ||
   echo "   (onboard hotspot service did not start — check: journalctl -u yonderrc-onboard)"
+# `enable --now` starts what is stopped but leaves running services on their OLD unit,
+# so a changed ExecStart or Environment= would only take effect at the next reboot.
+systemctl try-restart go2rtc.service yonderrc-vehicle.service || true
 
 echo
 echo "== Done =="

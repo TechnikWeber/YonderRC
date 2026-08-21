@@ -11,6 +11,7 @@ import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
+import { readFileSync } from 'node:fs';
 
 let pass = 0;
 let fail = 0;
@@ -868,19 +869,27 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
+  // ---- one version, three places ----
+  // The banner, the setup header and the update check all show it; a hardcoded copy
+  // in the service was one more thing to forget on release day.
+  const { readVersion } = await import('../packages/vehicle/src/config');
+  const pkgVersion = JSON.parse(readFileSync('package.json', 'utf8')).version as string;
+  ok('the vehicle reads its version from package.json', readVersion() === pkgVersion, `${readVersion()} vs ${pkgVersion}`);
+  ok('and the ground masthead agrees', readFileSync('packages/ground/src/App.tsx', 'utf8').includes(`ground · v${pkgVersion}`));
+  ok('no hardcoded version left in the vehicle banner', !/YonderRC vehicle service {2}v\d/.test(readFileSync('packages/vehicle/src/index.ts', 'utf8')));
+
   // ---- generated video config lives outside the checkout ----
   // It used to be written into docker/go2rtc.yaml inside the repo, which left every
   // running vehicle with a modified checkout and blocked `git pull --ff-only`. The two
   // units must agree on the runtime path, or the vehicle writes a config go2rtc never
   // reads — a failure that is invisible until the cameras stay dark.
-  const { readFileSync: readUnit } = await import('node:fs');
-  const go2rtcUnit = readUnit('provisioning/systemd/go2rtc.service', 'utf8');
-  const vehicleUnit = readUnit('provisioning/systemd/yonderrc-vehicle.service', 'utf8');
+  const go2rtcUnit = readFileSync('provisioning/systemd/go2rtc.service', 'utf8');
+  const vehicleUnit = readFileSync('provisioning/systemd/yonderrc-vehicle.service', 'utf8');
   const unitPath = go2rtcUnit.match(/-config\s+(\S+)/)?.[1] ?? '';
   const envPath = vehicleUnit.match(/YRC_GO2RTC_CONFIG=(\S+)/)?.[1] ?? '';
   ok('go2rtc reads a runtime path, not the checkout', unitPath === '/var/lib/yonderrc/go2rtc.yaml', unitPath);
   ok('the vehicle writes exactly that path', envPath === unitPath, `${envPath} vs ${unitPath}`);
-  ok('the installer creates the directory', readUnit('provisioning/install.sh', 'utf8').includes('install -d -m 0755 /var/lib/yonderrc'));
+  ok('the installer creates the directory', readFileSync('provisioning/install.sh', 'utf8').includes('install -d -m 0755 /var/lib/yonderrc'));
 
   // ---- self-update: what the vehicle would do, and in which order ----
   const U = await import('../packages/vehicle/src/system/update');
