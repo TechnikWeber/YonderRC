@@ -6,7 +6,7 @@ import { startWsServer } from './transport/wsServer.js';
 import { createSystem } from './system/index.js';
 import { TelemetryService } from './sensors/TelemetryService.js';
 import { GpsService } from './sensors/GpsService.js';
-import { applyCameras, detectH264Encoder } from './video/cameraManager.js';
+import { applyCameras, detectH264Encoder, detectRpicamBinary } from './video/cameraManager.js';
 import { startCaptivePortal } from './transport/captivePortal.js';
 
 async function main() {
@@ -66,7 +66,15 @@ async function main() {
   // Generate go2rtc.yaml from the graphical camera list (best effort at boot).
   config.h264Encoder = await detectH264Encoder();
   console.log(`  encoder   : ${config.h264Encoder} (auto-detected)`);
-  await applyCameras(config.cameras, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch(
+  config.rpicamBin = await detectRpicamBinary();
+  console.log(`  pi camera : ${config.rpicamBin} (auto-detected)`);
+  await applyCameras(
+    config.cameras,
+    config.go2rtcConfigPath,
+    config.videoBaseUrl,
+    config.h264Encoder,
+    config.rpicamBin,
+  ).catch(
     (e) => console.error('[video] initial camera generation failed:', (e as Error).message),
   );
 

@@ -581,7 +581,40 @@ async function main() {
   const cam: CameraCfg = { name: 'test', type: 'sim', width: 640, height: 480, fps: 20 };
   ok('libx264 source', cameraSource(cam, 'libx264').includes('-c:v libx264'));
   ok('libopenh264 source', cameraSource(cam, 'libopenh264').includes('libopenh264'));
-  ok('rpicam uses libcamera', cameraSource({ ...cam, type: 'rpicam' }).includes('libcamera-vid'));
+  const rpi = cameraSource({ ...cam, type: 'rpicam' });
+  ok('rpicam uses rpicam-vid by default', rpi.includes('rpicam-vid'));
+  // go2rtc runs exec: without a shell — a pipe would be a literal argv, and the
+  // stream dies before the first frame. This is what shipped broken until v1.47.0.
+  ok('rpicam source has no shell pipe', !rpi.includes('|'));
+  ok('rpicam source has no {output}', !rpi.includes('{output}'));
+  ok('rpicam writes to stdout', rpi.trimEnd().endsWith('-o -'));
+  ok('rpicam honours legacy binary', cameraSource({ ...cam, type: 'rpicam' }, 'libx264', 'libcamera-vid').includes('libcamera-vid'));
+  ok(
+    'rpicam binary sanitised',
+    cameraSource({ ...cam, type: 'rpicam' }, 'libx264', 'rm -rf /').includes('exec:rpicam-vid '),
+  );
+  ok(
+    'rpicam bitrate in bits',
+    cameraSource({ ...cam, type: 'rpicam', bitrateKbps: 3000 }).includes('--bitrate 3000000'),
+  );
+
+  // ---- CSI camera detection (pure part) ----
+  const { parseCameraList, captureNodes, explainNoCamera } = await import(
+    '../packages/vehicle/src/system/cameras'
+  );
+  ok(
+    'parseCameraList reads rpicam-hello',
+    parseCameraList('Available cameras\n-----------------\n0 : imx519 [4656x3496] (/base/soc/i2c0mux/i2c@1/imx519@1a)')[0].startsWith(
+      'imx519',
+    ),
+  );
+  ok('parseCameraList empty on none', parseCameraList('No cameras available!').length === 0);
+  ok(
+    'captureNodes drops codec nodes',
+    captureNodes(['/dev/video0', '/dev/video10', '/dev/video31']).join() === '/dev/video0',
+  );
+  ok('explainNoCamera names dtoverlay', explainNoCamera(true).includes('dtoverlay'));
+  ok('explainNoCamera names rpicam-apps', explainNoCamera(false).includes('rpicam-apps'));
 
   // ---- camera name / device sanitisation (no YAML break, no shell injection) ----
   const { safeStreamName, generateGo2rtcYaml } = await import('../packages/vehicle/src/video/cameraManager');

@@ -3,6 +3,62 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.47.0
+**English**
+- **The Pi camera stream never worked on current Raspberry Pi OS.** Two independent bugs,
+  both found on real hardware (Pi 4B, Bookworm): the generated go2rtc source called
+  `libcamera-vid`, but Bookworm renamed the tools to `rpicam-*` and dropped the old
+  symlinks — go2rtc logged `executable file not found in $PATH` and the ground station
+  showed connecting → black → reconnecting. `detectRpicamBinary()` now resolves the real
+  name at startup, `rpicam-vid` first, `libcamera-vid` for Bullseye.
+- **The second bug would have survived the rename.** The source was
+  `libcamera-vid … -o - | ffmpeg … -f rtsp {output}`, but go2rtc runs `exec:` **without a
+  shell** (`shell.QuoteSplit` + `exec.Command`), so the `|` and everything after it went
+  to the camera binary as literal arguments. Without `{output}` go2rtc reads the process
+  stdout and sniffs the format itself, and raw H.264 Annex-B is exactly what `rpicam-vid`
+  writes — so ffmpeg is gone from the `rpicam` path. One process less, no transcode, less
+  latency, and it works on a Pi 5 with no hardware encoder.
+- **Detect hardware told the truth about cameras for the first time.** It ran the same
+  hardcoded `libcamera-hello` and, finding nothing, fell back to listing every
+  `/dev/video*` — on a Pi with no camera at all that is `video10`…`video31`, the V4L2
+  codec/ISP nodes, so the page claimed fourteen cameras. It now tries `rpicam-hello`
+  first, counts only real capture nodes (`video0`–`video9`), and when there is nothing it
+  says what to change: ribbon cable and CAM-vs-DISPLAY port, or `camera_auto_detect=0`
+  plus an explicit `dtoverlay=` for sensors outside the auto-detect set (Arducam IMX519 /
+  64MP / Pivariety, OV64A40).
+- Pure helpers in `vehicle/system/cameras.ts` (`parseCameraList`, `captureNodes`,
+  `explainNoCamera`) with tests; the camera binary is sanitised like the V4L2 device path.
+- Both hardware guides gained a troubleshooting note for a black `rpicam` stream.
+
+**Deutsch**
+- **Der Pi-Kamera-Stream hat auf aktuellem Raspberry Pi OS nie funktioniert.** Zwei
+  unabhängige Fehler, beide an echter Hardware gefunden (Pi 4B, Bookworm): die erzeugte
+  go2rtc-Quelle rief `libcamera-vid` auf, aber Bookworm hat die Tools nach `rpicam-*`
+  umbenannt und die alten Symlinks entfernt — go2rtc protokollierte
+  `executable file not found in $PATH`, die Bodenstation zeigte connecting → schwarz →
+  reconnecting. `detectRpicamBinary()` löst den echten Namen jetzt beim Start auf,
+  `rpicam-vid` zuerst, `libcamera-vid` für Bullseye.
+- **Der zweite Fehler hätte die Umbenennung überlebt.** Die Quelle war
+  `libcamera-vid … -o - | ffmpeg … -f rtsp {output}`, aber go2rtc führt `exec:` **ohne
+  Shell** aus (`shell.QuoteSplit` + `exec.Command`) — das `|` und alles danach landete als
+  literales Argument beim Kamera-Binary. Ohne `{output}` liest go2rtc stattdessen den
+  stdout des Prozesses und erkennt das Format selbst, und rohes H.264 Annex-B ist genau
+  das, was `rpicam-vid` schreibt — ffmpeg fliegt damit aus dem `rpicam`-Pfad. Ein Prozess
+  weniger, kein Transcode, weniger Latenz, und es läuft auf einer Pi 5 ohne
+  Hardware-Encoder.
+- **Detect hardware sagt zum ersten Mal die Wahrheit über Kameras.** Es rief dasselbe
+  hartkodierte `libcamera-hello` auf und listete mangels Treffer jedes `/dev/video*` —
+  auf einem Pi ganz ohne Kamera sind das `video10`…`video31`, die V4L2-Codec/ISP-Knoten,
+  die Seite behauptete also vierzehn Kameras. Jetzt zuerst `rpicam-hello`, nur echte
+  Capture-Knoten (`video0`–`video9`), und wenn nichts da ist, steht dort auch, was zu
+  ändern ist: Flachbandkabel und CAM- statt DISPLAY-Port, oder `camera_auto_detect=0`
+  plus explizites `dtoverlay=` für Sensoren außerhalb der Auto-Detect-Menge (Arducam
+  IMX519 / 64MP / Pivariety, OV64A40).
+- Pure Helfer in `vehicle/system/cameras.ts` (`parseCameraList`, `captureNodes`,
+  `explainNoCamera`) mit Tests; das Kamera-Binary wird wie der V4L2-Gerätepfad bereinigt.
+- Beide Hardware-Leitfäden haben eine Fehlersuche-Notiz für einen schwarzen
+  `rpicam`-Stream bekommen.
+
 ## v1.46.3
 **English**
 - **A test now fails if the two READMEs drift apart.** `README.md` and `README.de.md` must

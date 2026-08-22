@@ -72,6 +72,7 @@ import {
   type HilinkStatus,
 } from './hilink.js';
 import { HW_DEPS, errorExcerpt, explainNpmFailure, hwDepInfo, isHwDep, lastLines, npmInstallArgs, type HwDepName } from './hwDeps.js';
+import { parseCameraList, captureNodes, explainNoCamera } from './cameras.js';
 
 const run = promisify(exec);
 const runFile = promisify(execFile);
@@ -714,15 +715,21 @@ export class RealSystem implements SystemManager {
     const modemPresent = /Modem\/\d+/.test((await sh('mmcli -L')).out);
     if (!modemPresent) notes.push('No LTE modem detected (mmcli -L).');
 
-    // Prefer libcamera (CSI) names; fall back to V4L2 /dev/video* nodes.
+    // Prefer libcamera (CSI) names; fall back to V4L2 capture nodes. Pi OS Bookworm
+    // renamed the tools to rpicam-*, so try that first and keep the old name for
+    // Bullseye — a hardcoded libcamera-hello silently reported "no cameras".
+    const camTool = await sh('command -v rpicam-hello || command -v libcamera-hello');
+    const toolFound = camTool.out.trim().length > 0;
     const cams: string[] = [];
-    const lc = await sh('libcamera-hello --list-cameras -t 1 2>/dev/null');
-    for (const m of lc.out.matchAll(/^\s*\d+\s*:\s*(.+)$/gm)) cams.push(m[1].trim());
+    if (toolFound) {
+      const lc = await sh(`${camTool.out.trim().split('\n')[0]} --list-cameras -t 1 2>&1`);
+      cams.push(...parseCameraList(lc.out));
+    }
     if (cams.length === 0) {
       const v4l = await sh('ls /dev/video* 2>/dev/null');
-      for (const d of v4l.out.split(/\s+/)) if (d.startsWith('/dev/video')) cams.push(d);
+      cams.push(...captureNodes(v4l.out.split(/\s+/)));
     }
-    if (cams.length === 0) notes.push('No cameras detected (libcamera / /dev/video*).');
+    if (cams.length === 0) notes.push(explainNoCamera(toolFound));
 
     // Serial candidates for a GPS receiver.
     const serial: string[] = [];

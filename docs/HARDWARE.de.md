@@ -410,6 +410,18 @@ sudo bash provisioning/install.sh
    passenden Wert (Auto/Boot an, Flugzeug/Drohne aus).
 2. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
    → **Save & apply**. go2rtc wird neu geladen.
+
+   > **Ein `rpicam`-Stream bleibt schwarz / verbindet sich immer neu?** Maßgeblich ist
+   > `rpicam-hello --list-cameras` auf dem Pi — sagt das *No cameras available!*, hilft
+   > keine Einstellung im UI. Raspberry Pi OS Bookworm hat die Kamera-Tools von
+   > `libcamera-*` nach `rpicam-*` umbenannt und die alten Symlinks entfernt; YonderRC
+   > erkennt den Namen seit v1.47.0 selbst. Die offiziellen OV5647 / IMX219 / IMX477 /
+   > IMX708 findet `camera_auto_detect=1` allein. Sensoren außerhalb dieser Menge —
+   > **Arducam IMX519 / 64MP / Pivariety, OV64A40** — brauchen zusätzlich
+   > `camera_auto_detect=0` plus ein explizites `dtoverlay=<sensor>` in
+   > `/boot/firmware/config.txt` und einen Reboot. Schweigt selbst die I²C-Adresse des
+   > Sensors (`sudo i2cdetect -y 10`, mit `dtparam=i2c_vc=on`), ist es das Flachbandkabel:
+   > Kontakte zur HDMI-Seite, Port **CAM**, nicht DISPLAY.
 3. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
    `ina238`), `Shunt Ω` eintragen (z. B. 0.002) und beim INA228/237/238 zusätzlich
    **Max current A** plus Shunt-Bereich. Einen Spannungskanal derselben Art anlegen

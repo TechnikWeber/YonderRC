@@ -61,6 +61,8 @@ export interface VehicleConfig {
   cameras: CameraCfg[];
   /** Path of the generated go2rtc config. */
   go2rtcConfigPath: string;
+  /** Detected Pi camera binary (rpicam-vid / libcamera-vid, set at startup). */
+  rpicamBin: string;
   /** Detected H.264 encoder for generated camera sources (set at startup). */
   h264Encoder: string;
   /** Where the persistent config file lives. */
@@ -209,6 +211,7 @@ export function loadConfig(): VehicleConfig {
       fileURLToPath(new URL('../../../docker/go2rtc.yaml', import.meta.url)),
     version: readVersion(),
     h264Encoder: 'libx264',
+    rpicamBin: 'rpicam-vid',
 
     // Env-only fields.
     host: process.env.YRC_HOST ?? '0.0.0.0',

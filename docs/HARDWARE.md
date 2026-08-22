@@ -400,6 +400,18 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    type (car/boat on, plane/drone off).
 2. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
    **Save & apply**. go2rtc reloads.
+
+   > **A `rpicam` stream stays black / reconnects?** `rpicam-hello --list-cameras` on
+   > the Pi is the ground truth — if that says *No cameras available!*, no setting in
+   > the UI can help. Raspberry Pi OS Bookworm renamed the camera tools from
+   > `libcamera-*` to `rpicam-*` and dropped the old symlinks; YonderRC detects the
+   > name itself since v1.47.0. The official OV5647 / IMX219 / IMX477 / IMX708 are
+   > found by `camera_auto_detect=1` alone. Sensors outside that set — **Arducam
+   > IMX519 / 64MP / Pivariety, OV64A40** — additionally need `camera_auto_detect=0`
+   > plus an explicit `dtoverlay=<sensor>` in `/boot/firmware/config.txt` and a
+   > reboot. If even the sensor's I²C address is silent (`sudo i2cdetect -y 10`, with
+   > `dtparam=i2c_vc=on`), it is the ribbon cable: contacts towards the HDMI side,
+   > **CAM** port, not DISPLAY.
 3. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
    `ina238`), enter `Shunt Ω` (e.g. 0.002) and, for the INA228/237/238, **Max current A**
    plus the shunt range. Add a voltage channel of the same kind ("Voltage 1") — the INA
