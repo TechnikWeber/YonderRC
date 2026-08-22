@@ -174,13 +174,30 @@ export function applyCameraModule(text: string, overlay: string | null): string 
   return `${body.replace(/\n*$/, '')}\n\n${block}\n`;
 }
 
+/** The camera part of config.txt as it was when the running system booted. */
+export interface CameraBootRecord {
+  bootId: string;
+  booted: { autoDetect: boolean; overlay: string | null };
+}
+
 /**
- * A config.txt change only takes effect at boot. The boot id changes on every boot, so
- * comparing the one recorded at write time against the current one answers "is the
- * running kernel still the old one?" exactly, and survives a service restart.
+ * Whether the record still describes the running kernel. The boot id changes on every
+ * boot, so this survives a service restart and goes stale exactly at the next reboot.
  */
-export function rebootStillPending(savedBootId: string | null, currentBootId: string): boolean {
-  return !!savedBootId && savedBootId.trim() === currentBootId.trim();
+export function recordIsCurrent(record: CameraBootRecord | null, currentBootId: string): boolean {
+  return !!record && record.bootId.trim() === currentBootId.trim();
+}
+
+/**
+ * A reboot is due when the *effective* configuration differs from what the system booted
+ * with — comparing file text instead would nag after a change that cancels itself out
+ * (auto → imx519 → auto rewrites the file but changes nothing the firmware cares about).
+ */
+export function bootedStateChanged(
+  booted: { autoDetect: boolean; overlay: string | null },
+  current: { autoDetect: boolean; overlay: string | null },
+): boolean {
+  return booted.autoDetect !== current.autoDetect || (booted.overlay ?? null) !== (current.overlay ?? null);
 }
 
 /** What `detectHardware` should say about the boot config, given what libcamera found. */

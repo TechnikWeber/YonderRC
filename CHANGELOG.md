@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.49.1
+**English**
+- **"Reboot required" now means it.** v1.49.0 raised the flag whenever the *text* of
+  config.txt changed, so selecting a module and then selecting the one that is already
+  running left a reboot notice standing for a change the firmware would not notice.
+  YonderRC now records the effective camera configuration the system actually booted with
+  — keyed by the kernel boot id, so it survives a service restart — and compares against
+  that. Switching away and back is silent; a real change is still flagged.
+- The answer to *Select module* says which of the two happened instead of always
+  promising a reboot.
+
+**Deutsch**
+- **„Reboot required" heißt jetzt auch wirklich Reboot.** v1.49.0 setzte die Meldung,
+  sobald sich der *Text* der config.txt änderte — wer ein Modul auswählte und danach
+  wieder das ohnehin laufende, bekam eine Reboot-Warnung für eine Änderung, welche die
+  Firmware gar nicht bemerken würde. YonderRC merkt sich jetzt die effektive
+  Kamera-Konfiguration, mit der das System tatsächlich gebootet hat — über die
+  Kernel-Boot-ID, damit sie einen Dienst-Neustart übersteht — und vergleicht damit. Hin
+  und zurück schalten bleibt still, eine echte Änderung wird weiterhin angezeigt.
+- Die Antwort auf *Select module* sagt, welcher der beiden Fälle eingetreten ist, statt
+  immer einen Reboot zu versprechen.
+
 ## v1.49.0
 **English**
 - **Pick the camera module in the setup page instead of over SSH.** A new *CSI camera

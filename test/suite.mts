@@ -684,9 +684,13 @@ async function main() {
   ok('overlay shell chars rejected', !bc.validOverlayName('imx296;reboot'));
   ok('overlay base name', bc.overlayBaseName('imx519,cam0') === 'imx519');
 
-  ok('reboot pending while boot id unchanged', bc.rebootStillPending('abc', 'abc'));
-  ok('reboot done after new boot id', !bc.rebootStillPending('abc', 'def'));
-  ok('nothing pending without a record', !bc.rebootStillPending(null, 'abc'));
+  ok('boot record current while boot id unchanged', bc.recordIsCurrent({ bootId: 'abc', booted: { autoDetect: true, overlay: null } }, 'abc'));
+  ok('boot record stale after a reboot', !bc.recordIsCurrent({ bootId: 'abc', booted: { autoDetect: true, overlay: null } }, 'def'));
+  ok('no record is never current', !bc.recordIsCurrent(null, 'abc'));
+  ok('reboot due when the overlay changed', bc.bootedStateChanged({ autoDetect: true, overlay: null }, { autoDetect: false, overlay: 'imx519' }));
+  // auto → imx519 → auto rewrites the file but changes nothing the firmware cares about.
+  ok('no reboot when the effective state is unchanged', !bc.bootedStateChanged({ autoDetect: true, overlay: null }, bc.parseBootConfig(bc.applyCameraModule(bc.applyCameraModule(PI_CONFIG, 'imx519'), null))));
+  ok('reboot due when only auto-detect flipped', bc.bootedStateChanged({ autoDetect: true, overlay: null }, { autoDetect: false, overlay: null }));
 
   ok('explain: overlay set but nothing bound', (bc.explainBootConfig({ autoDetect: false, overlay: 'imx519' }, 0) || '').includes('ribbon cable'));
   ok('explain: auto-detect found nothing', (bc.explainBootConfig({ autoDetect: true, overlay: null }, 0) || '').includes('CSI camera module'));

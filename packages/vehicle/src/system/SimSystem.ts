@@ -25,6 +25,7 @@ import {
   moduleIdFor,
   parseBootConfig,
   validOverlayName,
+  bootedStateChanged,
 } from './bootConfig.js';
 import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
 import { type HilinkStatus } from './hilink.js';
@@ -371,7 +372,8 @@ export class SimSystem implements SystemManager {
    * reboot the same way a real one clears it.
    */
   private bootConfig = ['# Simulated Raspberry Pi firmware config', 'camera_auto_detect=1', ''].join('\n');
-  private moduleRebootPending = false;
+  /** What the simulated system "booted" with — a simulated reboot catches this up. */
+  private bootedConfig = this.bootConfig;
 
   async cameraModule(): Promise<CameraModuleStatus> {
     const state = parseBootConfig(this.bootConfig);
@@ -381,7 +383,7 @@ export class SimSystem implements SystemManager {
       moduleId: moduleIdFor(state),
       overlay: state.overlay,
       autoDetect: state.autoDetect,
-      rebootRequired: this.moduleRebootPending,
+      rebootRequired: bootedStateChanged(parseBootConfig(this.bootedConfig), state),
       message: null,
     };
   }
@@ -395,25 +397,23 @@ export class SimSystem implements SystemManager {
       // config.txt injection there, so the simulator must not pretend it is fine.
       const want = (customOverlay ?? '').trim();
       if (!validOverlayName(want)) {
-        return { ok: false, message: `"${want}" is not a valid overlay name.`, rebootRequired: this.moduleRebootPending };
+        return { ok: false, message: `"${want}" is not a valid overlay name.`, rebootRequired: (await this.cameraModule()).rebootRequired };
       }
       overlay = want;
     }
-    const next = applyCameraModule(this.bootConfig, overlay);
-    const changed = next !== this.bootConfig;
-    this.bootConfig = next;
-    if (changed) this.moduleRebootPending = true;
+    this.bootConfig = applyCameraModule(this.bootConfig, overlay);
+    const pending = (await this.cameraModule()).rebootRequired;
     return {
       ok: true,
-      message: changed
+      message: pending
         ? `${mod.label} selected (simulated). Reboot to apply.`
-        : 'Already configured — nothing to change.',
-      rebootRequired: this.moduleRebootPending,
+        : `${mod.label} selected — that is what the Pi already booted with, so no reboot is needed.`,
+      rebootRequired: pending,
     };
   }
 
   async reboot(): Promise<ActionResult> {
-    this.moduleRebootPending = false;
+    this.bootedConfig = this.bootConfig;
     return { ok: true, message: 'Reboot requested (simulated — no-op).' };
   }
 }

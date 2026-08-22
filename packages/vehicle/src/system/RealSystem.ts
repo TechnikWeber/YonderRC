@@ -80,7 +80,9 @@ import {
   moduleById,
   moduleIdFor,
   parseBootConfig,
-  rebootStillPending,
+  recordIsCurrent,
+  bootedStateChanged,
+  type CameraBootRecord,
   validOverlayName,
   overlayBaseName,
 } from './bootConfig.js';
@@ -100,8 +102,8 @@ const WIFI_IFACE = 'wlan0';
  */
 const C_LOCALE = { ...process.env, LC_ALL: 'C', LANG: 'C' };
 
-/** Records the boot id at the time a config.txt change was written (reboot detection). */
-const PENDING_FILE = '/var/lib/yonderrc/camera-module.json';
+/** What the running system booted with, so a pending reboot can be detected exactly. */
+const BOOT_RECORD_FILE = '/var/lib/yonderrc/camera-module.json';
 
 async function sh(cmd: string): Promise<{ ok: boolean; out: string }> {
   try {
@@ -967,13 +969,28 @@ export class RealSystem implements SystemManager {
       };
     }
     const state = parseBootConfig(boot.text);
-    let pending = false;
+    // The first read after a boot records what the running system actually booted with;
+    // from then on a pending reboot is simply "config.txt asks for something else".
+    const now = await this.bootId();
+    let stored: CameraBootRecord | null = null;
     try {
-      const saved = JSON.parse(readFileSync(PENDING_FILE, 'utf8')) as { bootId?: string };
-      pending = rebootStillPending(saved.bootId ?? null, await this.bootId());
+      stored = JSON.parse(readFileSync(BOOT_RECORD_FILE, 'utf8')) as CameraBootRecord;
     } catch {
-      pending = false;
+      stored = null;
     }
+    let record: CameraBootRecord;
+    if (recordIsCurrent(stored, now)) {
+      record = stored as CameraBootRecord;
+    } else {
+      record = { bootId: now, booted: state };
+      try {
+        mkdirSync(dirname(BOOT_RECORD_FILE), { recursive: true });
+        writeFileSync(BOOT_RECORD_FILE, JSON.stringify(record), 'utf8');
+      } catch {
+        // read-only state dir: we just lose the reboot hint, not the feature
+      }
+    }
+    const pending = bootedStateChanged(record.booted, state);
     return {
       available: true,
       configPath: boot.path,
@@ -1019,8 +1036,6 @@ export class RealSystem implements SystemManager {
       const backup = `${boot.path}.yonderrc-bak`;
       if (!existsSync(backup)) writeFileSync(backup, boot.text, 'utf8');
       writeFileSync(boot.path, next, 'utf8');
-      mkdirSync(dirname(PENDING_FILE), { recursive: true });
-      writeFileSync(PENDING_FILE, JSON.stringify({ bootId: await this.bootId(), moduleId: id }), 'utf8');
     } catch (err) {
       return {
         ok: false,
@@ -1028,10 +1043,13 @@ export class RealSystem implements SystemManager {
         rebootRequired: false,
       };
     }
+    const after = await this.cameraModule();
     return {
       ok: true,
-      message: `${mod.label} selected. Reboot to apply — the firmware only reads config.txt at boot.`,
-      rebootRequired: true,
+      message: after.rebootRequired
+        ? `${mod.label} selected. Reboot to apply — the firmware only reads config.txt at boot.`
+        : `${mod.label} selected — that is what the Pi already booted with, so no reboot is needed.`,
+      rebootRequired: after.rebootRequired,
     };
   }
 
