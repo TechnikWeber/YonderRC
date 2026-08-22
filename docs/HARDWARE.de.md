@@ -408,7 +408,18 @@ sudo bash provisioning/install.sh
    Throttle-Kanal prüfen. Die Checkbox *Auto-disarm on reconnect* ist hier nur ein
    **Fallback** — sobald sich eine Bodenstation verbindet, pusht sie den zum Modelltyp
    passenden Wert (Auto/Boot an, Flugzeug/Drohne aus).
-2. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
+2. **CSI camera module:** auswählen, welcher Sensor am Kameraport sitzt. Automatisch
+   erkannt werden nur die offiziellen Raspberry-Pi-Kameras; eine Arducam braucht ein
+   explizites Device-Tree-Overlay in der Firmware-Konfiguration, und die wird **nur beim
+   Booten** gelesen. Die Auswahl eines Moduls schreibt `camera_auto_detect` und
+   `dtoverlay=` für dich in `/boot/firmware/config.txt` — ein Backup bleibt als
+   `config.txt.yonderrc-bak` liegen, konkurrierende Zeilen werden auskommentiert statt
+   gelöscht — danach zeigt das Panel *Reboot required*, bis der Pi damit gebootet hat.
+   Daneben liegt ein **Reboot now**-Knopf. Ein Pi 4 hat einen CSI-Anschluss, das ist also
+   eine Auswahl pro Fahrzeug; USB-Kameras sind davon unberührt und können zusätzlich
+   dazukommen. Ein Sensor, der nicht in der Liste steht, geht über *Other module* — der
+   Overlay-Name wird nur akzeptiert, wenn die `.dtbo` auf dem Pi wirklich existiert.
+3. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
    → **Save & apply**. go2rtc wird neu geladen.
 
    > **Ein `rpicam`-Stream bleibt schwarz / verbindet sich immer neu?** Maßgeblich ist
@@ -418,22 +429,23 @@ sudo bash provisioning/install.sh
    > erkennt den Namen seit v1.47.0 selbst. Die offiziellen OV5647 / IMX219 / IMX477 /
    > IMX708 findet `camera_auto_detect=1` allein. Sensoren außerhalb dieser Menge —
    > **Arducam IMX519 / 64MP / Pivariety, OV64A40** — brauchen zusätzlich
-   > `camera_auto_detect=0` plus ein explizites `dtoverlay=<sensor>` in
-   > `/boot/firmware/config.txt` und einen Reboot. Schweigt selbst die I²C-Adresse des
+   > `camera_auto_detect=0` plus ein explizites `dtoverlay=<sensor>` und einen Reboot —
+   > genau das erledigt das Panel **CSI camera module** weiter oben. Schweigt selbst die I²C-Adresse des
    > Sensors (`sudo i2cdetect -y 10`, mit `dtparam=i2c_vc=on`), ist es das Flachbandkabel:
    > Kontakte zur HDMI-Seite, Port **CAM**, nicht DISPLAY.
 
-   > **Arducam 16 MP IMX519 — scharfes Bild.** Für die Erkennung braucht es
-   > `camera_auto_detect=0` + `dtoverlay=imx519`; der AK7375-Fokusmotor taucht danach von
-   > allein als v4l-subdev auf. Der Fokus funktioniert trotzdem noch nicht, weil
+   > **Arducam 16 MP IMX519 — scharfes Bild.** Unter **CSI camera module** *Arducam 16MP
+   > IMX519* wählen und neu starten; der AK7375-Fokusmotor taucht danach von allein als
+   > v4l-subdev auf. Der Fokus funktioniert trotzdem noch nicht, weil
    > Raspberry Pis `imx519.json` keinen `rpi.af`-Algorithmus enthält — libcamera
    > beantwortet jede Fokus-Anforderung mit *Could not set AF_MODE - no AF algorithm*,
    > die Linse bleibt in Ruhelage, und das sieht exakt aus wie ein unscharfes Objektiv.
-   > **Tuning file** auf `/var/lib/yonderrc/tuning/imx519-af.json` setzen (bringt
-   > `install.sh` mit) und in Setup › Cameras einen **Focus**-Modus wählen. Am fahrenden
+   > Die Modulauswahl trägt **Tuning file**
+   > (`/var/lib/yonderrc/tuning/imx519-af.json`, bringt `install.sh` mit) für dich ein;
+   > danach in Setup › Cameras einen **Focus**-Modus wählen. Am fahrenden
    > Modell ist `manual` auf 0 Dioptrien (unendlich) meist besser als `continuous`, das
    > bei jedem Szenenwechsel neu sucht.
-3. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
+4. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
    `ina238`), `Shunt Ω` eintragen (z. B. 0.002) und beim INA228/237/238 zusätzlich
    **Max current A** plus Shunt-Bereich. Einen Spannungskanal derselben Art anlegen
    („Spannung 1") — der INA liefert beides. Batteriekapazität (mAh) angeben, Anzeige
@@ -445,7 +457,7 @@ sudo bash provisioning/install.sh
    Stromkanal den Kanal am Pack als **primary** markieren — er speist %, mAh und
    Warnungen. **Temperaturkanäle** sind optional (siehe 2.7); jeder Wert lässt sich pro
    Bodengerät unter FPV › ⚙ › *Sensor values* ausblenden.
-4. **Security (optional):** Ein **API-Secret** setzen, wenn das Fahrzeug in einem Netz
+5. **Security (optional):** Ein **API-Secret** setzen, wenn das Fahrzeug in einem Netz
    hängt, dem du nicht voll vertraust — siehe 6.1. Für die ersten Tests auf der
    Werkbank leer lassen; standardmäßig ist es aus.
 

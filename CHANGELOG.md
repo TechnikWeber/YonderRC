@@ -3,6 +3,67 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.49.0
+**English**
+- **Pick the camera module in the setup page instead of over SSH.** A new *CSI camera
+  module* panel above the camera list writes `camera_auto_detect` and `dtoverlay=` into
+  `/boot/firmware/config.txt`, then says *Reboot required* until the Pi has actually
+  booted with the change — with a **Reboot now** button next to it. The catalogue covers
+  auto-detect, the four official sensors forced explicitly, Arducam IMX519 / 64MP Hawkeye
+  / OV64A40 Owlsight / Pivariety, and *Other module* for anything else.
+- **The choice is a property of the Pi, not of a stream.** It deliberately did not become
+  a fourth entry next to `sim`/`rpicam`/`usb`: the stream type says how the picture is
+  produced (and an Arducam is produced by `rpicam-vid` exactly like any other CSI camera),
+  while the overlay is one setting for the one camera connector. Putting it in the stream
+  list would let you express two conflicting overlays for hardware that has one port —
+  and "arducam" alone could never say *which* Arducam, since each needs a different
+  overlay.
+- Selecting a module that ships a tuning file fills it into the `rpicam` cameras that have
+  none, so the IMX519's autofocus works without knowing any path.
+- **Nothing is rewritten blind.** One backup is kept as `config.txt.yonderrc-bak`,
+  competing lines are commented out rather than deleted, our block is marked and replaced
+  as a whole on the next change, and it is appended under its own `[all]` so it can't land
+  in a `[cm4]`/`[pi5]` section. A custom overlay name must pass a syntax check *and* exist
+  as a `.dtbo` on that Pi.
+- Reboot detection compares the kernel boot id recorded at write time against the current
+  one, so it survives a service restart and clears exactly when the Pi has really rebooted.
+- **`Detect hardware` now explains the boot config**, which is what was missing: it used
+  to advise adding a `dtoverlay` even when the actual problem was that
+  `camera_auto_detect` had been switched off for a module that is no longer attached.
+- Fully usable in the simulator — `SimSystem` keeps its own config.txt, including the
+  reboot-pending state and the same overlay-name validation as the real one.
+
+**Deutsch**
+- **Das Kameramodul wird auf der Setup-Seite ausgewählt statt über SSH.** Ein neues Panel
+  *CSI camera module* über der Kameraliste schreibt `camera_auto_detect` und `dtoverlay=`
+  in `/boot/firmware/config.txt` und zeigt danach *Reboot required*, bis der Pi wirklich
+  damit gebootet hat — mit einem **Reboot now**-Knopf daneben. Der Katalog umfasst
+  Auto-Detect, die vier offiziellen Sensoren explizit erzwungen, Arducam IMX519 / 64MP
+  Hawkeye / OV64A40 Owlsight / Pivariety und *Other module* für alles Übrige.
+- **Die Auswahl gehört zum Pi, nicht zu einem Stream.** Sie ist bewusst kein vierter
+  Eintrag neben `sim`/`rpicam`/`usb` geworden: Der Stream-Typ sagt, *wie* das Bild
+  entsteht (und eine Arducam entsteht durch `rpicam-vid` wie jede andere CSI-Kamera),
+  während das Overlay eine Einstellung für den einen Kameraanschluss ist. In der
+  Stream-Liste ließen sich zwei widersprüchliche Overlays für Hardware ausdrücken, die
+  einen Port hat — und „arducam" allein könnte nie sagen, *welche* Arducam, denn jede
+  braucht ein anderes Overlay.
+- Wird ein Modul gewählt, das eine eigene Tuning-Datei mitbringt, trägt YonderRC sie in
+  die `rpicam`-Kameras ein, die noch keine haben — der Autofokus der IMX519 funktioniert
+  damit, ohne einen Pfad zu kennen.
+- **Es wird nichts blind überschrieben.** Ein Backup bleibt als `config.txt.yonderrc-bak`
+  liegen, konkurrierende Zeilen werden auskommentiert statt gelöscht, unser Block ist
+  markiert und wird bei der nächsten Änderung als Ganzes ersetzt, und er hängt unter einem
+  eigenen `[all]`, damit er nicht in einem `[cm4]`/`[pi5]`-Abschnitt landet. Ein eigener
+  Overlay-Name muss die Syntaxprüfung bestehen *und* als `.dtbo` auf diesem Pi existieren.
+- Die Reboot-Erkennung vergleicht die beim Schreiben notierte Kernel-Boot-ID mit der
+  aktuellen — sie übersteht damit einen Dienst-Neustart und verschwindet genau dann, wenn
+  der Pi tatsächlich neu gestartet wurde.
+- **`Detect hardware` erklärt jetzt die Boot-Konfiguration** — genau das, was fehlte:
+  bisher riet es zu einem `dtoverlay`, auch wenn das eigentliche Problem war, dass
+  `camera_auto_detect` für ein gar nicht mehr angestecktes Modul abgeschaltet war.
+- Im Simulator vollständig bedienbar — `SimSystem` führt eine eigene config.txt, inklusive
+  Reboot-Pending-Zustand und derselben Overlay-Namensprüfung wie das echte System.
+
 ## v1.48.1
 **English**
 - **The IMX519 focus map is now measured instead of assumed.** v1.48.0 mapped 0 dioptres

@@ -29,8 +29,8 @@ export function explainNoCamera(toolFound: boolean): string {
   }
   return (
     'No CSI camera detected. Check the ribbon cable (contacts towards the HDMI side, ' +
-    'CAM port not DISPLAY). Sensors outside the auto-detect set (Arducam IMX519 / 64MP / ' +
-    'Pivariety, OV64A40, …) additionally need camera_auto_detect=0 plus an explicit ' +
-    'dtoverlay=<sensor> in /boot/firmware/config.txt and a reboot.'
+    'CAM port not DISPLAY). A sensor outside the auto-detect set (Arducam IMX519 / 64MP / ' +
+    'Pivariety, OV64A40, …) needs its own dtoverlay — pick it under "CSI camera module" ' +
+    'and reboot.'
   );
 }

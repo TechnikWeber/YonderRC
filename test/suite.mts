@@ -636,6 +636,64 @@ async function main() {
   );
   ok('focus only on rpicam', !cameraSource({ ...cam, type: 'sim', focus: 'auto' }).includes('--autofocus-mode'));
 
+  // ---- CSI camera module (config.txt, pure part) ----
+  const bc = await import('../packages/vehicle/src/system/bootConfig');
+  const PI_CONFIG = [
+    '# Some comments',
+    'dtparam=i2c_arm=on',
+    'camera_auto_detect=1',
+    'dtoverlay=vc4-kms-v3d',
+    'max_framebuffers=2',
+    '[cm5]',
+    'dtoverlay=dwc2,dr_mode=host',
+    '[all]',
+    'enable_uart=1',
+    '',
+  ].join('\n');
+
+  ok('parse default is auto-detect', bc.parseBootConfig(PI_CONFIG).autoDetect === true);
+  ok('parse finds no camera overlay', bc.parseBootConfig(PI_CONFIG).overlay === null);
+  ok('parse maps to the auto module', bc.moduleIdFor(bc.parseBootConfig(PI_CONFIG)) === 'auto');
+
+  const withImx = bc.applyCameraModule(PI_CONFIG, 'imx519');
+  ok('apply turns auto-detect off', /\ncamera_auto_detect=0/.test(withImx));
+  ok('apply writes the overlay', /\ndtoverlay=imx519\n/.test(withImx));
+  ok('apply comments the old auto-detect', withImx.includes('# camera_auto_detect=1  # (replaced by YonderRC)'));
+  // The block must land in [all], not in whatever conditional section the file ended in.
+  ok('apply opens an [all] section', withImx.slice(withImx.indexOf('--- YonderRC')).includes('[all]'));
+  ok('apply leaves foreign overlays alone', withImx.includes('\ndtoverlay=vc4-kms-v3d') && withImx.includes('\ndtoverlay=dwc2,dr_mode=host'));
+  ok('round-trip reads back the module', bc.moduleIdFor(bc.parseBootConfig(withImx)) === 'imx519');
+
+  // Switching modules must not stack blocks up.
+  const switched = bc.applyCameraModule(withImx, 'arducam-64mp');
+  ok('switch leaves one managed block', switched.split('--- YonderRC camera module').length === 2);
+  ok('switch drops the old overlay', !/\ndtoverlay=imx519\n/.test(switched));
+  ok('switch reads back', bc.moduleIdFor(bc.parseBootConfig(switched)) === 'arducam-64mp');
+
+  const backToAuto = bc.applyCameraModule(switched, null);
+  ok('back to auto sets 1', /\ncamera_auto_detect=1/.test(backToAuto));
+  ok('back to auto writes no overlay', bc.parseBootConfig(backToAuto).overlay === null);
+  ok('back to auto is the auto module', bc.moduleIdFor(bc.parseBootConfig(backToAuto)) === 'auto');
+  ok('apply is idempotent', bc.applyCameraModule(backToAuto, null) === backToAuto);
+
+  ok('overlay name accepted', bc.validOverlayName('imx296'));
+  ok('overlay with params accepted', bc.validOverlayName('imx519,cam0'));
+  ok('overlay with assignment accepted', bc.validOverlayName('imx477,rotation=180'));
+  ok('overlay newline rejected', !bc.validOverlayName('imx296\nenable_uart=0'));
+  ok('overlay space rejected', !bc.validOverlayName('imx296 foo'));
+  ok('overlay shell chars rejected', !bc.validOverlayName('imx296;reboot'));
+  ok('overlay base name', bc.overlayBaseName('imx519,cam0') === 'imx519');
+
+  ok('reboot pending while boot id unchanged', bc.rebootStillPending('abc', 'abc'));
+  ok('reboot done after new boot id', !bc.rebootStillPending('abc', 'def'));
+  ok('nothing pending without a record', !bc.rebootStillPending(null, 'abc'));
+
+  ok('explain: overlay set but nothing bound', (bc.explainBootConfig({ autoDetect: false, overlay: 'imx519' }, 0) || '').includes('ribbon cable'));
+  ok('explain: auto-detect found nothing', (bc.explainBootConfig({ autoDetect: true, overlay: null }, 0) || '').includes('CSI camera module'));
+  ok('explain: auto off and no overlay', (bc.explainBootConfig({ autoDetect: false, overlay: null }, 0) || '').includes('never looks'));
+  ok('explain: silent when a camera is there', bc.explainBootConfig({ autoDetect: true, overlay: null }, 1) === null);
+  ok('catalogue has the arducam 16MP with a tuning file', !!bc.moduleById('imx519')?.tuningFile);
+
   // ---- CSI camera detection (pure part) ----
   const { parseCameraList, captureNodes, explainNoCamera } = await import(
     '../packages/vehicle/src/system/cameras'

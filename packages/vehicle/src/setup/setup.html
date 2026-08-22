@@ -330,6 +330,26 @@
       </section>
 
       <section class="panel">
+        <div class="eyebrow">CSI camera module</div>
+        <p class="msg">
+          Which sensor sits on the Pi's camera port. Only the official Raspberry Pi cameras are
+          found automatically; an Arducam needs an explicit device-tree overlay, which lives in
+          the firmware config and is therefore only read at boot. Picking one here writes that
+          for you — no SSH — and tells you when a reboot is due.
+        </p>
+        <div class="grid2">
+          <label>Module<select id="csi-module" onchange="onCsiModuleChange()"></select></label>
+          <label id="csi-custom-wrap" style="display:none">Overlay name<input id="csi-overlay" placeholder="e.g. imx296" /></label>
+        </div>
+        <div class="msg" id="csi-note"></div>
+        <div class="btns">
+          <button class="btn primary" onclick="run(this, () => saveCsiModule())">Select module</button>
+          <button class="btn" onclick="run(this, () => rebootForModule())">Reboot now</button>
+        </div>
+        <div class="msg" id="csi-msg"></div>
+      </section>
+
+      <section class="panel">
         <div class="eyebrow">Cameras</div>
         <div id="cam-list"></div>
         <div class="btns">
@@ -1104,7 +1124,7 @@
           <div class="item">
             <div class="grid3">
               <label>Name<input value="${c.name || ''}" oninput="camSet(${i},'name',this.value)" /></label>
-              <label>Type<select onchange="camSet(${i},'type',this.value); renderCams()">
+              <label>Type<select onchange="camSetType(${i}, this.value)">
                 ${CAM_TYPES.map((t) => `<option value="${t}" ${c.type === t ? 'selected' : ''}>${t}</option>`).join('')}
               </select></label>
               <label>Device<input value="${c.device || ''}" placeholder="/dev/video0" oninput="camSet(${i},'device',this.value)" /></label>
@@ -1128,12 +1148,72 @@
           </div>`).join('');
       }
       function camSet(i, k, v) { cams[i][k] = v; }
+      function camSetType(i, v) {
+        cams[i].type = v;
+        // Switching to rpicam while a module with its own tuning file is selected: fill it
+        // in, so nobody has to know the path by heart.
+        const m = csiSelected();
+        if (v === 'rpicam' && m && m.tuningFile && !cams[i].tuningFile) cams[i].tuningFile = m.tuningFile;
+        renderCams();
+      }
       function camDel(i) { cams.splice(i, 1); renderCams(); }
       function addCamera() { cams.push({ name: 'cam' + (cams.length + 1), type: 'sim', width: 1280, height: 720, fps: 25 }); renderCams(); }
+      // ---- CSI camera module (config.txt) ----
+      let csiModules = [], csiCurrent = null;
+      function csiSelected() { return csiModules.find((m) => m.id === $('csi-module').value) || null; }
+      function onCsiModuleChange() {
+        const m = csiSelected();
+        $('csi-custom-wrap').style.display = m && m.id === 'custom' ? '' : 'none';
+        $('csi-note').textContent = m ? m.note : '';
+      }
+      async function loadCsiModule() {
+        const r = await getJSON('/api/camera-module');
+        csiModules = r.modules || [];
+        csiCurrent = r.current || null;
+        $('csi-module').innerHTML = csiModules
+          .map((m) => `<option value="${m.id}">${m.label}</option>`)
+          .join('');
+        if (csiCurrent) $('csi-module').value = csiCurrent.moduleId;
+        if (csiCurrent && csiCurrent.moduleId === 'custom' && csiCurrent.overlay) {
+          $('csi-overlay').value = csiCurrent.overlay;
+        }
+        onCsiModuleChange();
+        renderCsiState();
+      }
+      function renderCsiState() {
+        if (!csiCurrent) return;
+        if (!csiCurrent.available) { $('csi-msg').textContent = csiCurrent.message || ''; return; }
+        const what = csiCurrent.overlay ? `dtoverlay=${csiCurrent.overlay}` : 'auto-detect';
+        $('csi-msg').innerHTML = csiCurrent.rebootRequired
+          ? `<b>Reboot required</b> — ${csiCurrent.configPath} now says ${what}, but the running system still uses the previous setting.`
+          : `Active: ${what} (${csiCurrent.configPath}).`;
+      }
+      async function saveCsiModule() {
+        $('csi-msg').textContent = 'Writing config.txt…';
+        const r = await post('/api/camera-module', { id: $('csi-module').value, overlay: $('csi-overlay').value });
+        csiCurrent = r.current || csiCurrent;
+        const m = csiSelected();
+        if (r.ok && m && m.tuningFile) {
+          // Prefill the tuning file on rpicam cameras that have none — the whole point of
+          // picking a module is not having to know that path.
+          let touched = 0;
+          for (const c of cams) if (c.type === 'rpicam' && !c.tuningFile) { c.tuningFile = m.tuningFile; touched++; }
+          if (touched) { renderCams(); await post('/api/cameras', { cameras: cams }); }
+        }
+        renderCsiState();
+        if (!r.ok) $('csi-msg').textContent = r.message || 'Failed.';
+      }
+      async function rebootForModule() {
+        if (!confirm('Reboot the vehicle now? The link drops for about a minute.')) return;
+        const r = await post('/api/reboot', {});
+        $('csi-msg').textContent = r.message || 'Rebooting…';
+      }
+
       async function loadCameras() {
         const r = await getJSON('/api/cameras');
         cams = r.cameras || [];
         renderCams();
+        await loadCsiModule();
       }
       async function saveCameras() {
         $('cam-msg').textContent = 'Applying…';

@@ -10,6 +10,7 @@ import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
+import { CSI_MODULES } from '../system/bootConfig.js';
 import { secretOk, readSecretFromReq, originAllowed, originOf, secFetchSiteOf } from './auth.js';
 import { groundAppAvailable } from './staticServer.js';
 import {
@@ -604,6 +605,18 @@ export async function handleSetup(
     }
     ctx.core.clearTestOverride();
     json(res, 200, { ok: true, message: `Swept channel ${ch + 1} (min→max→center).` });
+    return true;
+  }
+
+  // --- CSI camera module (writes config.txt, needs a reboot) ---
+  if (url === '/api/camera-module' && method === 'GET') {
+    json(res, 200, { modules: CSI_MODULES, current: await ctx.system.cameraModule() });
+    return true;
+  }
+  if (url === '/api/camera-module' && method === 'POST') {
+    const body = (await readBody(req)) as { id?: string; overlay?: string | null };
+    const r = await ctx.system.setCameraModule(String(body.id ?? ''), body.overlay ?? null);
+    json(res, r.ok ? 200 : 400, { ...r, current: await ctx.system.cameraModule() });
     return true;
   }
 

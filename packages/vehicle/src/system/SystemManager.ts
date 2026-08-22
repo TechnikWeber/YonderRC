@@ -262,6 +262,21 @@ export interface RemoteAccessStatus {
   loginUrl?: string | null;
 }
 
+/** Current CSI camera module selection, read back from the firmware config. */
+export interface CameraModuleStatus {
+  /** False when there is no Raspberry Pi firmware config (dev machine, container). */
+  available: boolean;
+  configPath: string | null;
+  /** Catalogue id, see CSI_MODULES. */
+  moduleId: string;
+  /** The dtoverlay currently asked for, params included, or null for auto-detect. */
+  overlay: string | null;
+  autoDetect: boolean;
+  /** A change was written but the Pi has not booted with it yet. */
+  rebootRequired: boolean;
+  message: string | null;
+}
+
 export interface SystemManager {
   readonly kind: string;
   status(): Promise<SystemStatus>;
@@ -315,6 +330,10 @@ export interface SystemManager {
   updateCheck(src?: UpdateSource): Promise<UpdateCheck>;
   /** Apply the update (pull, install/rebuild if needed) and restart. */
   updateApply(src?: UpdateSource): Promise<UpdateResult>;
+  /** Which CSI camera module the firmware is configured for (config.txt). */
+  cameraModule(): Promise<CameraModuleStatus>;
+  /** Select a camera module; takes effect on the next boot. */
+  setCameraModule(id: string, customOverlay?: string | null): Promise<ActionResult & { rebootRequired: boolean }>;
   reboot(): Promise<ActionResult>;
 }
 

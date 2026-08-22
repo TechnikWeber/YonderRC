@@ -398,7 +398,17 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    extra board: `gpio-pwm`, pin map in 2.8), check the throttle channel. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
    — as soon as a ground station connects, it pushes the setting that matches the model
    type (car/boat on, plane/drone off).
-2. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
+2. **CSI camera module:** pick which sensor sits on the camera port. Only the official
+   Raspberry Pi cameras are auto-detected; an Arducam needs an explicit device-tree
+   overlay in the firmware config, and that is read **only at boot**. Selecting a module
+   writes `camera_auto_detect` and `dtoverlay=` into `/boot/firmware/config.txt` for you —
+   one backup is kept as `config.txt.yonderrc-bak`, and competing lines are commented out
+   rather than deleted — after which the panel says *Reboot required* until the Pi has
+   booted with it. There is a **Reboot now** button next to it. A Pi 4 has one CSI
+   connector, so this is one choice per vehicle; USB cameras are unaffected and can be
+   added alongside. A sensor that is not in the list goes under *Other module*, where the
+   overlay name is accepted only if that `.dtbo` really exists on the Pi.
+3. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
    **Save & apply**. go2rtc reloads.
 
    > **A `rpicam` stream stays black / reconnects?** `rpicam-hello --list-cameras` on
@@ -408,21 +418,21 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    > name itself since v1.47.0. The official OV5647 / IMX219 / IMX477 / IMX708 are
    > found by `camera_auto_detect=1` alone. Sensors outside that set — **Arducam
    > IMX519 / 64MP / Pivariety, OV64A40** — additionally need `camera_auto_detect=0`
-   > plus an explicit `dtoverlay=<sensor>` in `/boot/firmware/config.txt` and a
-   > reboot. If even the sensor's I²C address is silent (`sudo i2cdetect -y 10`, with
+   > plus an explicit `dtoverlay=<sensor>` and a reboot, which is exactly what the
+   > **CSI camera module** panel above does for you. If even the sensor's I²C address is silent (`sudo i2cdetect -y 10`, with
    > `dtparam=i2c_vc=on`), it is the ribbon cable: contacts towards the HDMI side,
    > **CAM** port, not DISPLAY.
 
-   > **Arducam 16 MP IMX519 — sharp picture.** Detection needs
-   > `camera_auto_detect=0` + `dtoverlay=imx519`; the AK7375 lens actuator then shows up
-   > as a v4l-subdev on its own. Focus does **not** work yet, because Raspberry Pi's
+   > **Arducam 16 MP IMX519 — sharp picture.** Pick *Arducam 16MP IMX519* under **CSI
+   > camera module** and reboot; the AK7375 lens actuator then shows up as a v4l-subdev
+   > on its own. Focus does **not** work yet, because Raspberry Pi's
    > `imx519.json` has no `rpi.af` algorithm — libcamera answers every focus request with
    > *Could not set AF_MODE - no AF algorithm* and the lens stays where it rests, which
    > looks exactly like a soft lens. Set **Tuning file** to
    > `/var/lib/yonderrc/tuning/imx519-af.json` (shipped by `install.sh`) and pick a
    > **Focus** mode in Setup › Cameras. On a moving model prefer `manual` at 0 dioptres
    > (infinity) — `continuous` hunts whenever the scene changes.
-3. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
+4. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
    `ina238`), enter `Shunt Ω` (e.g. 0.002) and, for the INA228/237/238, **Max current A**
    plus the shunt range. Add a voltage channel of the same kind ("Voltage 1") — the INA
    provides both. Enter the battery capacity (mAh), choose consumed/remaining display,
@@ -433,7 +443,7 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    voltage or current channel, mark the one that measures the pack as **primary** — it
    drives the %, the mAh and the warnings. **Temperature channels** are optional (see
    2.7); each value can be hidden per ground device under FPV › ⚙ › *Sensor values*.
-4. **Security (optional):** set an **API secret** if the vehicle sits on a network you
+5. **Security (optional):** set an **API secret** if the vehicle sits on a network you
    don't fully trust — see 6.1. Leave it empty for the first bench tests; it's off by
    default.
 
