@@ -183,3 +183,10 @@ gateway backends, a localhost/Tailscale-only bind mode, auto WS↔WebRTC switch 
 ## Style
 German UI copy is fine in chat with the owner; **code, comments and identifiers stay
 in English**. Keep responses about verified-vs-needs-hardware honest.
+
+**Both language versions are edited in the same commit — always.** `README.md` /
+`README.de.md`, `docs/HARDWARE.md` / `.de.md`. A translation that lags is worse than
+none: it states as current something the project stopped doing, and the reader has no
+way to tell which of the two is the lie. The test suite fails if the two READMEs stop
+matching in structure (heading count), which catches the common case of adding a
+section to one of them.

@@ -3,6 +3,32 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.46.3
+**English**
+- **A test now fails if the two READMEs drift apart.** `README.md` and `README.de.md` must
+  have the same sections and point at each other; the German one must link the German
+  hardware guide. It cannot judge a translation, but it catches the thing that actually
+  happens — a section added to one of them and forgotten in the other.
+- **CLAUDE.md says the rule out loud**: both language versions are edited in the *same
+  commit*, always. A translation that lags is worse than none — it states as current
+  something the project stopped doing, and the reader has no way to tell which of the two
+  is the lie.
+- Same guard and same wording in **YonderGate** (v0.12.12), which just gained its own
+  `README.de.md`.
+
+**Deutsch**
+- **Ein Test schlägt jetzt fehl, wenn die beiden READMEs auseinanderlaufen.** `README.md`
+  und `README.de.md` müssen dieselben Abschnitte haben und aufeinander verweisen; die
+  deutsche muss den deutschen Hardware-Leitfaden verlinken. Über die Qualität einer
+  Übersetzung sagt das nichts, aber es fängt das, was wirklich passiert — ein Abschnitt,
+  der in einer der beiden ergänzt und in der anderen vergessen wird.
+- **CLAUDE.md sagt die Regel ausdrücklich**: Beide Sprachfassungen werden im *selben
+  Commit* bearbeitet, immer. Eine hinterherhinkende Übersetzung ist schlechter als keine —
+  sie behauptet als aktuell, was das Projekt nicht mehr tut, und der Leser kann nicht
+  erkennen, welche der beiden lügt.
+- Derselbe Wächter und derselbe Wortlaut in **YonderGate** (v0.12.12), das gerade sein
+  eigenes `README.de.md` bekommen hat.
+
 ## v1.46.2
 **English**
 - **WireGuard can now be set up by hand, not only from a file.** Uploading the `.conf`

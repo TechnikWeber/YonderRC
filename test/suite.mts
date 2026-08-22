@@ -977,6 +977,23 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
+  // ---- the two READMEs must not drift apart ----
+  // A translation that lags is worse than none: it states as current something the
+  // project stopped doing, and the reader cannot tell which of the two is the lie. This
+  // will not catch a bad translation, but it catches the case that actually happens —
+  // a section added to one of them and not the other.
+  {
+    const en = readFileSync('README.md', 'utf8');
+    const de = readFileSync('README.de.md', 'utf8');
+    const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
+    ok('both READMEs exist', en.length > 0 && de.length > 0);
+    ok('each points at the other', en.includes('[Deutsch](README.de.md)') && de.includes('[English](README.md)'));
+    ok('the same sections in both', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
+    ok('the German README links the German hardware guide', de.includes('docs/HARDWARE.de.md'));
+    ok('and CLAUDE.md says both are edited together',
+      readFileSync('CLAUDE.md', 'utf8').includes('Both language versions are edited in the same commit'));
+  }
+
   // ---- one version, three places ----
   // The banner, the setup header and the update check all show it; a hardcoded copy
   // in the service was one more thing to forget on release day.
