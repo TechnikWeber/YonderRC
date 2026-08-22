@@ -3,6 +3,49 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.48.0
+**English**
+- **Focus control for CSI cameras** — the reason an Arducam 16 MP IMX519 streams a
+  permanently soft picture even after v1.47.0. Its AK7375 lens actuator is bound by the
+  kernel and visible as a v4l-subdev, but Raspberry Pi's stock `imx519.json` tuning has
+  no `rpi.af` algorithm, so libcamera answers every focus request with *Could not set
+  AF_MODE - no AF algorithm* and the lens simply stays where it rests.
+- `CameraCfg` gained `focus` (`off` / `manual` / `auto` / `continuous`), `lensPosition`
+  in dioptres and `tuningFile`; Setup › Cameras shows the three fields for `rpicam`
+  cameras. Default is `off`, i.e. exactly the previous behaviour.
+- **`provisioning/tuning/imx519-af.json`** ships Raspberry Pi's tuning with an `rpi.af`
+  block appended, mapped to the AK7375's full range; `install.sh` copies it to
+  `/var/lib/yonderrc/tuning/`, outside the checkout, so an update can't clobber it.
+  Verified on a Pi 4B with the real module: without the file `--autofocus-mode` is
+  refused, with it `auto` finds focus and `manual` + `--lens-position` holds it.
+- On a moving model **`manual` at 0 dioptres beats `continuous`**, which re-hunts on every
+  scene change — the setup page says so next to the field.
+- The tuning path is validated like the V4L2 device: absolute, no spaces, `.json`, no
+  `..` — go2rtc splits `exec:` on whitespace, so a path with a space would quietly become
+  two arguments.
+
+**Deutsch**
+- **Fokussteuerung für CSI-Kameras** — der Grund, warum eine Arducam 16 MP IMX519 auch
+  nach v1.47.0 dauerhaft unscharf streamt. Ihr AK7375-Fokusmotor ist vom Kernel gebunden
+  und als v4l-subdev sichtbar, aber Raspberry Pis mitgelieferte Tuning-Datei
+  `imx519.json` enthält keinen `rpi.af`-Algorithmus — libcamera beantwortet jede
+  Fokus-Anforderung mit *Could not set AF_MODE - no AF algorithm*, und die Linse bleibt
+  schlicht in Ruhelage.
+- `CameraCfg` hat jetzt `focus` (`off` / `manual` / `auto` / `continuous`),
+  `lensPosition` in Dioptrien und `tuningFile`; Setup › Cameras zeigt die drei Felder bei
+  `rpicam`-Kameras. Voreinstellung ist `off`, also exakt das bisherige Verhalten.
+- **`provisioning/tuning/imx519-af.json`** enthält Raspberry Pis Tuning mit angehängtem
+  `rpi.af`-Block, abgebildet auf den vollen Bereich des AK7375; `install.sh` kopiert sie
+  nach `/var/lib/yonderrc/tuning/`, außerhalb des Checkouts, damit ein Update sie nicht
+  überschreibt. Am echten Modul auf einem Pi 4B verifiziert: ohne die Datei wird
+  `--autofocus-mode` abgelehnt, mit ihr findet `auto` den Fokus und `manual` +
+  `--lens-position` hält ihn.
+- Am fahrenden Modell ist **`manual` auf 0 Dioptrien besser als `continuous`**, das bei
+  jedem Szenenwechsel neu sucht — die Setup-Seite sagt das neben dem Feld.
+- Der Tuning-Pfad wird wie der V4L2-Gerätepfad geprüft: absolut, ohne Leerzeichen,
+  `.json`, kein `..` — go2rtc trennt `exec:` an Leerzeichen, ein Pfad mit Leerzeichen
+  würde also stillschweigend zu zwei Argumenten.
+
 ## v1.47.0
 **English**
 - **The Pi camera stream never worked on current Raspberry Pi OS.** Two independent bugs,

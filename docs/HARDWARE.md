@@ -412,6 +412,16 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    > reboot. If even the sensor's I²C address is silent (`sudo i2cdetect -y 10`, with
    > `dtparam=i2c_vc=on`), it is the ribbon cable: contacts towards the HDMI side,
    > **CAM** port, not DISPLAY.
+
+   > **Arducam 16 MP IMX519 — sharp picture.** Detection needs
+   > `camera_auto_detect=0` + `dtoverlay=imx519`; the AK7375 lens actuator then shows up
+   > as a v4l-subdev on its own. Focus does **not** work yet, because Raspberry Pi's
+   > `imx519.json` has no `rpi.af` algorithm — libcamera answers every focus request with
+   > *Could not set AF_MODE - no AF algorithm* and the lens stays where it rests, which
+   > looks exactly like a soft lens. Set **Tuning file** to
+   > `/var/lib/yonderrc/tuning/imx519-af.json` (shipped by `install.sh`) and pick a
+   > **Focus** mode in Setup › Cameras. On a moving model prefer `manual` at 0 dioptres
+   > (infinity) — `continuous` hunts whenever the scene changes.
 3. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
    `ina238`), enter `Shunt Ω` (e.g. 0.002) and, for the INA228/237/238, **Max current A**
    plus the shunt range. Add a voltage channel of the same kind ("Voltage 1") — the INA

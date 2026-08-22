@@ -422,6 +422,17 @@ sudo bash provisioning/install.sh
    > `/boot/firmware/config.txt` und einen Reboot. Schweigt selbst die I²C-Adresse des
    > Sensors (`sudo i2cdetect -y 10`, mit `dtparam=i2c_vc=on`), ist es das Flachbandkabel:
    > Kontakte zur HDMI-Seite, Port **CAM**, nicht DISPLAY.
+
+   > **Arducam 16 MP IMX519 — scharfes Bild.** Für die Erkennung braucht es
+   > `camera_auto_detect=0` + `dtoverlay=imx519`; der AK7375-Fokusmotor taucht danach von
+   > allein als v4l-subdev auf. Der Fokus funktioniert trotzdem noch nicht, weil
+   > Raspberry Pis `imx519.json` keinen `rpi.af`-Algorithmus enthält — libcamera
+   > beantwortet jede Fokus-Anforderung mit *Could not set AF_MODE - no AF algorithm*,
+   > die Linse bleibt in Ruhelage, und das sieht exakt aus wie ein unscharfes Objektiv.
+   > **Tuning file** auf `/var/lib/yonderrc/tuning/imx519-af.json` setzen (bringt
+   > `install.sh` mit) und in Setup › Cameras einen **Focus**-Modus wählen. Am fahrenden
+   > Modell ist `manual` auf 0 Dioptrien (unendlich) meist besser als `continuous`, das
+   > bei jedem Szenenwechsel neu sucht.
 3. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
    `ina238`), `Shunt Ω` eintragen (z. B. 0.002) und beim INA228/237/238 zusätzlich
    **Max current A** plus Shunt-Bereich. Einen Spannungskanal derselben Art anlegen

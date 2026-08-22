@@ -76,6 +76,31 @@ export function safeStreamName(name: string): string {
   return cleaned || 'cam';
 }
 
+/**
+ * A tuning file path lands in an `exec:` argv. go2rtc splits that on whitespace, so a
+ * path with spaces would silently become two arguments — require an absolute, safe,
+ * space-free .json path and drop anything else.
+ */
+function safeTuningFile(path: string | undefined): string | null {
+  if (!path) return null;
+  const t = path.trim();
+  if (!/^\/[A-Za-z0-9_\-./]+\.json$/.test(t) || t.includes('..')) return null;
+  return t;
+}
+
+/** Focus flags for rpicam-vid. 'off' emits nothing — the historic behaviour. */
+function focusArgs(cam: CameraCfg): string {
+  const mode = cam.focus ?? 'off';
+  if (mode === 'off') return '';
+  if (mode === 'manual') {
+    // Dioptres: 0 = infinity, 10 = 10 cm. Clamp to what the actuators actually cover.
+    const d = Number(cam.lensPosition);
+    const pos = Number.isFinite(d) ? Math.min(20, Math.max(0, Math.round(d * 100) / 100)) : 0;
+    return ` --autofocus-mode manual --lens-position ${pos}`;
+  }
+  return ` --autofocus-mode ${mode}`;
+}
+
 /** The camera binary lands in an `exec:` command line — allow only a bare safe name. */
 function safeBinary(bin: string | undefined): string {
   const b = bin ?? 'rpicam-vid';
@@ -129,9 +154,12 @@ export function cameraSource(cam: CameraCfg, encoder = 'libx264', rpicamBin = 'r
     // stdout instead and sniffs the format itself — a raw H.264 Annex-B stream is
     // exactly what rpicam-vid writes, so the encoder is irrelevant here and we
     // save a transcode hop.
+    const tuning = safeTuningFile(cam.tuningFile);
+    const tuneArg = tuning ? ` --tuning-file ${tuning}` : '';
     return (
       `exec:${safeBinary(rpicamBin)} -t 0 --inline --flush --nopreview --codec h264 ` +
-      `--width ${w} --height ${h} --framerate ${fps} --intra ${fps}${brArg} -o -`
+      `--width ${w} --height ${h} --framerate ${fps} --intra ${fps}${brArg}` +
+      `${tuneArg}${focusArgs(cam)} -o -`
     );
   }
   // usb (V4L2): transcode to H.264 with the detected encoder.

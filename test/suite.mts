@@ -598,6 +598,44 @@ async function main() {
     cameraSource({ ...cam, type: 'rpicam', bitrateKbps: 3000 }).includes('--bitrate 3000000'),
   );
 
+  // ---- rpicam focus / tuning file ----
+  const rpiBase: CameraCfg = { ...cam, type: 'rpicam' };
+  ok('focus off emits nothing', !cameraSource(rpiBase).includes('--autofocus-mode'));
+  ok(
+    'focus continuous',
+    cameraSource({ ...rpiBase, focus: 'continuous' }).includes('--autofocus-mode continuous'),
+  );
+  const man = cameraSource({ ...rpiBase, focus: 'manual', lensPosition: 3.5 });
+  ok('focus manual carries lens position', man.includes('--autofocus-mode manual --lens-position 3.5'));
+  ok(
+    'lens position clamped',
+    cameraSource({ ...rpiBase, focus: 'manual', lensPosition: -4 }).includes('--lens-position 0'),
+  );
+  ok(
+    'manual without position → infinity',
+    cameraSource({ ...rpiBase, focus: 'manual' }).includes('--lens-position 0'),
+  );
+  ok(
+    'tuning file passed through',
+    cameraSource({ ...rpiBase, tuningFile: '/var/lib/yonderrc/tuning/imx519-af.json' }).includes(
+      '--tuning-file /var/lib/yonderrc/tuning/imx519-af.json',
+    ),
+  );
+  // go2rtc splits exec: on whitespace, so a path with a space would become two args.
+  ok(
+    'tuning file with space rejected',
+    !cameraSource({ ...rpiBase, tuningFile: '/etc/my tuning.json' }).includes('--tuning-file'),
+  );
+  ok(
+    'relative / traversing tuning file rejected',
+    !cameraSource({ ...rpiBase, tuningFile: '/var/../etc/shadow.json' }).includes('--tuning-file'),
+  );
+  ok(
+    'non-json tuning file rejected',
+    !cameraSource({ ...rpiBase, tuningFile: '/tmp/evil.sh' }).includes('--tuning-file'),
+  );
+  ok('focus only on rpicam', !cameraSource({ ...cam, type: 'sim', focus: 'auto' }).includes('--autofocus-mode'));
+
   // ---- CSI camera detection (pure part) ----
   const { parseCameraList, captureNodes, explainNoCamera } = await import(
     '../packages/vehicle/src/system/cameras'

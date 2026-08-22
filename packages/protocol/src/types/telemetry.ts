@@ -238,4 +238,22 @@ export interface CameraCfg {
   height: number;
   fps: number;
   bitrateKbps?: number;
+  /**
+   * Focus control for a CSI module with a lens actuator (rpicam only). 'off' keeps
+   * the historic behaviour — no flag at all, the lens stays wherever it rests.
+   * 'manual' uses `lensPosition`; for a vehicle that is usually the better choice,
+   * since continuous AF hunts while the model moves.
+   */
+  focus?: FocusMode;
+  /** Manual focus distance in dioptres (0 = infinity, 10 = 10 cm). */
+  lensPosition?: number;
+  /**
+   * Absolute path of a libcamera tuning file. Needed for the Arducam 16MP IMX519:
+   * Raspberry Pi's stock imx519.json has no `rpi.af` algorithm, so libcamera refuses
+   * every focus control ("Could not set AF_MODE - no AF algorithm") even though the
+   * AK7375 actuator is bound. See docs/HARDWARE.md §7.2.
+   */
+  tuningFile?: string;
 }
+
+export type FocusMode = 'off' | 'auto' | 'continuous' | 'manual';
