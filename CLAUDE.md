@@ -167,6 +167,23 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   (root-level, since the HiLink UI is full of absolute paths), gated by the API secret via
   `?secret=` → cookie; `config.hilink.proxyPort` null = off (default). The XML shapes are
   recorded-from-docs, so the real stick is still the only proof.
+- **CSI camera pipeline — DONE (v1.47.0–v1.49.1)**: three separate bugs, all found on a
+  real Pi 4B. (a) The generated go2rtc source called `libcamera-vid`; Bookworm renamed the
+  tools to `rpicam-*` — `detectRpicamBinary()` resolves it at startup. (b) The source
+  piped through ffmpeg, but **go2rtc runs `exec:` without a shell** (`shell.QuoteSplit` +
+  `exec.Command`), so the `|` was a literal argv; without `{output}` go2rtc reads stdout
+  and sniffs the format, so the `rpicam` path is now plain `rpicam-vid … -o -`. Never
+  reintroduce a pipe there. (c) A sensor outside the firmware's auto-detect set needs
+  `camera_auto_detect=0` + `dtoverlay=`, which **Setup › CSI camera module** now writes
+  (`vehicle/system/bootConfig.ts`, pure + tested; competing lines are commented out, one
+  backup as `config.txt.yonderrc-bak`, reboot detected via the kernel boot id). The module
+  choice is deliberately *not* a fourth `CameraCfg.type` — the type says how the picture is
+  produced, the overlay is one setting for the one CSI connector.
+  **Focus**: `CameraCfg.focus`/`lensPosition`/`tuningFile`. Raspberry Pi's `imx519.json`
+  has no `rpi.af` algorithm, so an Arducam 16MP is permanently soft; we ship
+  `provisioning/tuning/imx519-af.json` with a **measured** map (`[0.0, 597, 10.0, 1023]` —
+  the actuator's rest position is *not* infinity). `manual` at 0 dioptres beats
+  `continuous` on a moving model.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 - Screenshots: `Mobile_FPV.jpeg` is a real phone screenshot and still shows the
