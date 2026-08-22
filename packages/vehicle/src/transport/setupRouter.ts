@@ -22,6 +22,16 @@ import {
   type LteConfig,
 } from '../system/SystemManager.js';
 import { redactLteConfig, isValidPin } from '../system/lte.js';
+import {
+  buildWireguardConf,
+  hasMultiplePeers,
+  parseWireguardConf,
+  redactWireguardFields,
+  unsupportedWireguardKeys,
+  validateWireguardFields,
+  WIREGUARD_DEFAULTS,
+  type WireguardFields,
+} from '../system/wireguard.js';
 import { HW_DEPS, isHwDep } from '../system/hwDeps.js';
 import { isCountryCode } from '../system/wifi.js';
 import { isIpv4 } from '../system/hilink.js';
@@ -288,9 +298,17 @@ export async function handleSetup(
 
   // --- remote access (Tailscale / ZeroTier / WireGuard), one active at a time ---
   if (url === '/api/remote' && method === 'GET') {
+    // The stored conf is the source of truth; the form is filled by reading it back,
+    // so a file somebody uploaded can afterwards be edited field by field. Without the
+    // two secrets: this endpoint answers without the API secret, and on a box whose
+    // onboarding hotspot is open by default that would hand out the VPN key.
+    const conf = ctx.config.remoteAccess.wireguardConf;
     json(res, 200, {
       config: redactRemoteConfig(ctx.config.remoteAccess),
       status: await ctx.system.remoteStatus(ctx.config.remoteAccess),
+      wireguardFields: redactWireguardFields(conf ? parseWireguardConf(conf) : WIREGUARD_DEFAULTS),
+      wireguardMultiPeer: conf ? hasMultiplePeers(conf) : false,
+      wireguardExtraKeys: conf ? unsupportedWireguardKeys(conf) : [],
     });
     return true;
   }
@@ -309,8 +327,29 @@ export async function handleSetup(
       return true;
     }
     if (cfg.kind === 'wireguard') {
+      // Two ways in, one thing stored. Fields win when they are sent, because the page
+      // only sends them when the operator was actually editing them.
+      const sent = (body as { wireguardFields?: Partial<Record<keyof WireguardFields, unknown>> }).wireguardFields;
+      if (sent) {
+        const stored = cur.wireguardConf ? parseWireguardConf(cur.wireguardConf) : WIREGUARD_DEFAULTS;
+        const fields: WireguardFields = { ...WIREGUARD_DEFAULTS };
+        for (const key of Object.keys(WIREGUARD_DEFAULTS) as (keyof WireguardFields)[]) {
+          const v = sent[key];
+          fields[key] = v === undefined || v === null ? '' : String(v).trim();
+        }
+        // A blank secret means "keep the one you have", the same bargain the ntfy token
+        // and the API secret make: the page never received it, so it cannot send it back.
+        if (!fields.privateKey) fields.privateKey = stored.privateKey;
+        if (!fields.presharedKey) fields.presharedKey = stored.presharedKey;
+        const bad = validateWireguardFields(fields);
+        if (bad) {
+          json(res, 400, { ok: false, message: bad });
+          return true;
+        }
+        cfg.wireguardConf = buildWireguardConf(fields);
+      }
       if (!cfg.wireguardConf) {
-        json(res, 400, { ok: false, message: 'Upload a WireGuard .conf first.' });
+        json(res, 400, { ok: false, message: 'WireGuard needs either an uploaded .conf or the values typed in below.' });
         return true;
       }
       cfg.wireguardConf = normaliseWireguardConf(cfg.wireguardConf);

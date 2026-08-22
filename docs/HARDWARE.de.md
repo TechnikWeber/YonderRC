@@ -575,10 +575,15 @@ Unter **Setup › Remote access** wählst du **eine** Methode:
   eintragen, *Bring up* drücken und den Pi in ZeroTier Central autorisieren. Die
   Ground-App dann auf die ZeroTier-IP des Pi verbinden.
 - **WireGuard (eigener Server / FritzBox)** — wenn du bereits einen WireGuard-Server
-  betreibst, füge den Pi als Peer hinzu und **lade die exportierte `.conf` hoch**. Bei
-  einer **FritzBox**: *Internet › Freigaben › VPN (WireGuard) › Verbindung hinzufügen*,
-  eine Verbindung für den Pi anlegen, die Konfigurationsdatei herunterladen und unter
-  *Setup › Remote access › WireGuard* hochladen, dann *Bring up*. Das Fahrzeug speichert
+  betreibst, füge den Pi als Peer hinzu. Zwei Wege, beide unter *Setup › Remote access ›
+  WireGuard*: die exportierte **`.conf` hochladen**, oder die **Werte eintragen**
+  (privater Schlüssel, Adresse im Tunnel, öffentlicher Schlüssel des Servers, Endpoint,
+  AllowedIPs), wenn dein Peer als Seite mit Einstellungen statt als Datei kam. Bei einer
+  **FritzBox** gibt es eine Datei: *Internet › Freigaben › VPN (WireGuard) › Verbindung
+  hinzufügen*, eine Verbindung für den Pi anlegen, die Konfigurationsdatei herunterladen,
+  hochladen, dann *Bring up*. Einen Schlüssel erzeugst du bei Bedarf auf dem Pi mit
+  `wg genkey`, und lass **PersistentKeepalive auf 25** — hinter Carrier-NAT funktioniert
+  ein Tunnel ohne das bis zur ersten Leerlaufminute. Das Fahrzeug speichert
   die Datei, wendet sie mit `wg-quick` an und ist danach unter seiner WireGuard-Adresse
   erreichbar (z. B. aus dem Heimnetz / über MyFRITZ!). Beim nächsten Boot kommt sie
   automatisch hoch.

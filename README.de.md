@@ -202,8 +202,11 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Fernzugriff, WiFi) und der robuste **LTE**-Bereich — APN, SIM-PIN, APN-Benutzer/Passwort
   und Netzmodus. Bedienbar vom Handy ohne Bildschirm.*
 - **Fernzugriff, eine Methode wählen**: **Tailscale** oder **ZeroTier** (Zero-Config-
-  Mesh-VPNs) oder **WireGuard** — einfach die von deinem eigenen Server oder einer
-  **FritzBox** exportierte **`.conf` hochladen**. Kommt beim Boot automatisch hoch.
+  Mesh-VPNs) oder **WireGuard** — entweder die von deinem eigenen Server oder einer
+  **FritzBox** exportierte **`.conf` hochladen**, oder die Werte **von Hand eintragen**
+  (Schlüssel, Adresse, Endpoint, AllowedIPs), wenn es nur eine Seite mit Einstellungen
+  gab. Beides landet als dieselbe gespeicherte `.conf`, eine hochgeladene Datei lässt
+  sich also danach feldweise bearbeiten. Kommt beim Boot automatisch hoch.
 - **Robustes LTE-Setup** (nicht nur Plug-and-Play): APN, **SIM-PIN**, **APN-Benutzer/
   Passwort**, **Netzmodus** (nur 4G), **Roaming**-Schalter, live **Diagnose** (rohe
   `mmcli`-Ausgabe) und **SIM-PIN ändern/entfernen**. `autoconnect` wählt selbst neu.

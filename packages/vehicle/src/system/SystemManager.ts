@@ -328,15 +328,9 @@ export function redactRemoteConfig(cfg: RemoteAccessConfig): Record<string, unkn
   };
 }
 
-/** Normalise an uploaded WireGuard conf: LF line endings, single trailing newline. */
-export function normaliseWireguardConf(conf: string): string {
-  return conf.replace(/\r\n?/g, '\n').trim() + '\n';
-}
-
-/** A plausible WireGuard conf has an [Interface] section with a PrivateKey. */
-export function looksLikeWireguardConf(conf: string): boolean {
-  return /\[Interface\]/i.test(conf) && /PrivateKey\s*=/.test(conf) && /\[Peer\]/i.test(conf);
-}
+// The WireGuard helpers live in ./wireguard.ts, next to the field-by-field setup that
+// shares their rules; re-exported here so every existing import keeps working.
+export { normaliseWireguardConf, looksLikeWireguardConf } from './wireguard.js';
 
 /** A ZeroTier network ID is 16 hex chars. */
 export function isZerotierNetworkId(id: string): boolean {

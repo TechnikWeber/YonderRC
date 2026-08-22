@@ -190,8 +190,10 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   access, Wi-Fi) and the robust **LTE** section — APN, SIM PIN, APN username/password
   and network mode. Usable from a phone with no screen.*
 - **Remote access, pick one method**: **Tailscale** or **ZeroTier** (zero-config mesh
-  VPNs) or **WireGuard** — just **upload the `.conf`** exported by your own server or a
-  **FritzBox**. Brought up automatically at boot.
+  VPNs) or **WireGuard** — either **upload the `.conf`** exported by your own server or a
+  **FritzBox**, or **type the values in** (keys, address, endpoint, AllowedIPs) when all
+  you were given is a page of settings. Both end up as the same stored `.conf`, so a file
+  you uploaded can afterwards be edited field by field. Brought up automatically at boot.
 - **Robust LTE setup** (not just plug-and-play): APN, **SIM PIN**, **APN username/
   password**, **network mode** (4G-only), **roaming** toggle, live **diagnostics**
   (raw `mmcli`), and **SIM PIN change/remove**. `autoconnect` redials by itself.

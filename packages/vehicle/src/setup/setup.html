@@ -244,10 +244,37 @@
           <p class="msg">After bring-up, authorize this node in your ZeroTier Central.</p>
         </div>
         <div id="remote-wireguard" class="remote-fields" style="display:none">
-          <label>WireGuard .conf (e.g. exported by your FritzBox)
-            <input id="wgFile" type="file" accept=".conf,text/plain" onchange="loadWgFile(event)" />
-          </label>
-          <p class="msg" id="wg-file-msg">Upload the .conf file; it's stored on the vehicle and applied with wg-quick.</p>
+          <label class="chk"><input type="radio" name="wgSource" value="file" id="wgSrcFile" onchange="renderWgSource()" checked /> <span><b>From a .conf file</b> — what a FritzBox and most servers hand you.</span></label>
+          <label class="chk"><input type="radio" name="wgSource" value="fields" id="wgSrcFields" onchange="renderWgSource()" /> <span><b>Type the values</b> — when there is no file, only a page of settings.</span></label>
+          <div id="wg-file-box">
+            <label>WireGuard .conf (e.g. exported by your FritzBox)
+              <input id="wgFile" type="file" accept=".conf,text/plain" onchange="loadWgFile(event)" />
+            </label>
+            <p class="msg" id="wg-file-msg">Upload the .conf file; it's stored on the vehicle and applied with wg-quick.</p>
+          </div>
+          <div id="wg-fields-box" style="display:none">
+            <div class="eyebrow2">This box</div>
+            <label>Private key<input id="wgPrivateKey" placeholder="wg genkey — 44 characters ending in =" /></label>
+            <div class="grid2">
+              <label>Address in the tunnel<input id="wgAddress" placeholder="10.0.0.2/32" /></label>
+              <label>DNS (optional)<input id="wgDns" placeholder="10.0.0.1" /></label>
+            </div>
+            <div class="eyebrow2" style="margin-top:12px">The server it dials</div>
+            <div class="grid2">
+              <label>Its public key<input id="wgPeerPublicKey" placeholder="44 characters ending in =" /></label>
+              <label>Endpoint<input id="wgEndpoint" placeholder="vpn.example.org:51820" /></label>
+            </div>
+            <div class="grid2">
+              <label>AllowedIPs<input id="wgAllowedIps" placeholder="0.0.0.0/0, ::/0" /></label>
+              <label>Preshared key (optional)<input id="wgPresharedKey" placeholder="only if your server uses one" /></label>
+            </div>
+            <div class="grid2">
+              <label>Keepalive (s)<input id="wgKeepalive" type="number" min="0" max="65535" placeholder="25" /></label>
+              <label>Listen port (optional)<input id="wgListenPort" type="number" min="1" max="65535" placeholder="let WireGuard pick" /></label>
+            </div>
+            <p class="msg">Keepalive 25 is not optional dressing on a box like this: behind carrier NAT the tunnel works until the first idle minute and then quietly stops carrying anything inbound. Leave the secret fields blank to keep the ones already stored — they are never sent back to this page.</p>
+            <p class="msg" id="wg-fields-warn" style="display:none"></p>
+          </div>
         </div>
         <div class="btns">
           <button class="btn primary" onclick="run(this, () => remoteUp())">Bring up</button>
@@ -959,6 +986,49 @@
           $('remote-' + kind).style.display = k === kind ? 'block' : 'none';
         }
       }
+      // ---- WireGuard: a file, or the values typed in ----
+      // Both end up as the same stored .conf; the form is filled by parsing it back, so
+      // an uploaded file can afterwards be edited field by field. What the form cannot
+      // represent (a second peer, MTU, PostUp) is named rather than silently dropped.
+      let wgFieldsKnown = null;
+      function wgFieldIds() {
+        return {
+          privateKey: 'wgPrivateKey', address: 'wgAddress', dns: 'wgDns', listenPort: 'wgListenPort',
+          peerPublicKey: 'wgPeerPublicKey', presharedKey: 'wgPresharedKey', endpoint: 'wgEndpoint',
+          allowedIps: 'wgAllowedIps', persistentKeepalive: 'wgKeepalive',
+        };
+      }
+      function renderWgSource() {
+        const fields = $('wgSrcFields').checked;
+        $('wg-file-box').style.display = fields ? 'none' : '';
+        $('wg-fields-box').style.display = fields ? '' : 'none';
+      }
+      function fillWgFields(f, extraKeys, multiPeer) {
+        wgFieldsKnown = f || null;
+        if (!f) return;
+        const ids = wgFieldIds();
+        for (const key of Object.keys(ids)) {
+          if (key === 'privateKey' || key === 'presharedKey') continue;
+          $(ids[key]).value = f[key] || '';
+        }
+        $('wgPrivateKey').placeholder = f.hasPrivateKey ? '(stored — blank keeps it)' : 'wg genkey — 44 characters ending in =';
+        $('wgPresharedKey').placeholder = f.hasPresharedKey ? '(stored — blank keeps it)' : 'only if your server uses one';
+        const lost = [].concat(multiPeer ? ['a second [Peer]'] : [], extraKeys || []);
+        const warn = $('wg-fields-warn');
+        if (lost.length) {
+          warn.style.display = '';
+          warn.innerHTML = `<b style="color:var(--warn)">The stored file also has ${esc(lost.join(', '))}.</b> Saving from these fields writes exactly what is above and drops the rest — stay on the file if you need it.`;
+        } else {
+          warn.style.display = 'none';
+        }
+      }
+      function wgFieldsBody() {
+        const ids = wgFieldIds();
+        const out = {};
+        for (const key of Object.keys(ids)) out[key] = $(ids[key]).value.trim();
+        return out;
+      }
+
       function loadWgFile(ev) {
         const f = ev.target.files && ev.target.files[0];
         if (!f) return;
@@ -975,6 +1045,8 @@
           $('remoteKind').value = c.kind || 'none';
           if (c.zerotierNetworkId) $('ztNetwork').value = c.zerotierNetworkId;
           if (c.hasWireguardConf) $('wg-file-msg').textContent = 'A WireGuard .conf is stored. Upload a new file only to replace it.';
+          fillWgFields(r.wireguardFields, r.wireguardExtraKeys, r.wireguardMultiPeer);
+          renderWgSource();
           renderRemote();
           showRemoteStatus(r.status);
         } catch {}
@@ -991,7 +1063,11 @@
         const body = { kind };
         if (kind === 'tailscale') body.tailscaleAuthKey = $('authkey').value.trim() || null;
         if (kind === 'zerotier') body.zerotierNetworkId = $('ztNetwork').value.trim() || null;
-        if (kind === 'wireguard' && wgConf) body.wireguardConf = wgConf;
+        if (kind === 'wireguard') {
+          // Whichever half of the panel is showing is the one that is meant.
+          if ($('wgSrcFields').checked) body.wireguardFields = wgFieldsBody();
+          else if (wgConf) body.wireguardConf = wgConf;
+        }
         $('ts-msg').textContent = 'Starting…';
         const r = await post('/api/remote', body);
         if (r.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${r.loginUrl}" target="_blank" rel="noreferrer">${r.loginUrl}</a>`;

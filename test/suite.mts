@@ -318,6 +318,77 @@ async function main() {
   ok('wg conf normalises CRLF', RA.normaliseWireguardConf('a\r\nb\r\n') === 'a\nb\n');
   const red = RA.redactRemoteConfig({ kind: 'wireguard', wireguardConf: 'secret', tailscaleAuthKey: 'tskey', zerotierNetworkId: '8056c2e21c000001' });
   ok('redact hides secrets', !('wireguardConf' in red) && !('tailscaleAuthKey' in red) && red.hasWireguardConf === true && red.hasTailscaleAuthKey === true && red.zerotierNetworkId === '8056c2e21c000001');
+  // ---- WireGuard set up by hand ----
+  // The upload path stays; this is the other half, for a peer that came as a page of
+  // values rather than a file. One stored representation (the .conf) either way, so the
+  // two cannot drift apart.
+  const WG = await import('../packages/vehicle/src/system/wireguard');
+  // Real-shaped keys: 32 bytes of base64, which is 43 characters and a '='.
+  const KEY_A = '4k9IqqA4sX3r013U7WoG3R/clIqSHynjMP0qj/w/stw=';
+  const KEY_B = 'KpcpI1RB/6lURHP/5Tb84x7wx3H7+iI65kz/cqjvACI=';
+  ok('a WireGuard key is recognised', WG.isWireguardKey(KEY_A) && WG.isWireguardKey(KEY_B));
+  ok('a truncated key is not', !WG.isWireguardKey(KEY_A.slice(0, 20)));
+  ok('an unpadded key is not', !WG.isWireguardKey(KEY_A.slice(0, 43) + 'x'));
+  ok('a name endpoint is fine', WG.isEndpoint('vpn.example.org:51820'));
+  ok('so is an address', WG.isEndpoint('203.0.113.9:51820'));
+  ok('so is a bracketed v6 one', WG.isEndpoint('[2001:db8::1]:51820'));
+  ok('a missing port is not', !WG.isEndpoint('vpn.example.org'));
+  ok('an impossible port is not', !WG.isEndpoint('vpn.example.org:70000'));
+  // People type what their server told them, which is often a bare address.
+  ok('a bare v4 address becomes a host route', WG.normaliseCidrList('10.0.0.2') === '10.0.0.2/32');
+  ok('a bare v6 address too', WG.normaliseCidrList('fd00::2') === 'fd00::2/128');
+  ok('a list keeps its prefixes', WG.normaliseCidrList('0.0.0.0/0, ::/0') === '0.0.0.0/0, ::/0');
+
+  const wgGood = {
+    ...WG.WIREGUARD_DEFAULTS,
+    privateKey: KEY_A, address: '10.0.0.2/32', peerPublicKey: KEY_B, endpoint: 'vpn.example.org:51820',
+  };
+  ok('a complete set validates', WG.validateWireguardFields(wgGood) === null, String(WG.validateWireguardFields(wgGood)));
+  // Every message has to say what to do about it — this is read on a phone.
+  const missingKey = WG.validateWireguardFields({ ...wgGood, privateKey: '' }) ?? '';
+  ok('a missing private key names the fix', missingKey.includes('wg genkey'), missingKey);
+  ok('but not when one is already stored', WG.validateWireguardFields({ ...wgGood, privateKey: '' }, { keyStored: true }) === null);
+  ok('a bad peer key is caught', (WG.validateWireguardFields({ ...wgGood, peerPublicKey: 'nope' }) ?? '').includes('public key'));
+  ok('a bad endpoint names the shape', (WG.validateWireguardFields({ ...wgGood, endpoint: 'vpn.example.org' }) ?? '').includes('host:port'));
+  ok('a missing address is caught', (WG.validateWireguardFields({ ...wgGood, address: '' }) ?? '').includes('inside the tunnel'));
+  ok('a stray preshared key is caught', (WG.validateWireguardFields({ ...wgGood, presharedKey: 'x' }) ?? '').includes('genpsk'));
+
+  const built = WG.buildWireguardConf(wgGood);
+  ok('what it builds is a WireGuard conf', WG.looksLikeWireguardConf(built), built);
+  ok('the optional lines stay out when empty', !built.includes('DNS') && !built.includes('ListenPort') && !built.includes('PresharedKey'));
+  // Behind CGNAT a tunnel without keepalive works until the first idle minute.
+  ok('keepalive is there by default', built.includes('PersistentKeepalive = 25'));
+
+  // The round trip is what lets an uploaded file be edited field by field afterwards.
+  const back = WG.parseWireguardConf(built);
+  ok('a built conf parses back to the same values',
+    back.privateKey === KEY_A && back.peerPublicKey === KEY_B && back.endpoint === 'vpn.example.org:51820' && back.address === '10.0.0.2/32',
+    JSON.stringify(back));
+  // Base64 ends in '=', so splitting a line on every '=' truncates every key in the file.
+  ok('a key is not cut at its own padding', back.privateKey.endsWith('='));
+
+  const foreign = [
+    '# exported by something else', '[Interface]', 'privatekey=' + KEY_A, 'Address = 10.0.0.9/24',
+    'DNS = 10.0.0.1', 'MTU = 1412', '', '[Peer]', 'PublicKey   =   ' + KEY_B,
+    'AllowedIPs = 192.168.178.0/24', 'Endpoint = fritz.box:51820', 'PersistentKeepalive = 25',
+  ].join('\n');
+  const wgParsed = WG.parseWireguardConf(foreign);
+  ok('a foreign file parses too', wgParsed.address === '10.0.0.9/24' && wgParsed.dns === '10.0.0.1' && wgParsed.endpoint === 'fritz.box:51820', JSON.stringify(wgParsed));
+  ok('lower-case and loose spacing are fine', wgParsed.privateKey === KEY_A && wgParsed.peerPublicKey === KEY_B);
+  ok('comments are ignored', !wgParsed.address.includes('#'));
+  // Rebuilding that file from the form would drop MTU — say so rather than find out later.
+  ok('what the form cannot hold is named', WG.unsupportedWireguardKeys(foreign).includes('MTU'), WG.unsupportedWireguardKeys(foreign).join(','));
+  ok('and what it can hold is not', !WG.unsupportedWireguardKeys(foreign).includes('Address'));
+  ok('one peer is not several', !WG.hasMultiplePeers(foreign));
+  ok('two peers are', WG.hasMultiplePeers(foreign + '\n[Peer]\nPublicKey = ' + KEY_A));
+
+  // The page may fill in everything except the two secrets: /api/remote answers without
+  // the API secret, and this box's onboarding hotspot is open by default.
+  const pub = WG.redactWireguardFields(wgGood);
+  ok('the private key never leaves the box', !('privateKey' in pub) && pub.hasPrivateKey === true);
+  ok('nor does a preshared key', !('presharedKey' in pub) && pub.hasPresharedKey === false);
+  ok('the rest is there to fill the form', pub.endpoint === 'vpn.example.org:51820' && pub.address === '10.0.0.2/32');
+
   const { SimSystem } = await import('../packages/vehicle/src/system/SimSystem');
   const sys = new SimSystem();
   const ztUp = await sys.remoteUp({ kind: 'zerotier', zerotierNetworkId: '8056c2e21c000001' });

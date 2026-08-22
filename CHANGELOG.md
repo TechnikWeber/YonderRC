@@ -3,6 +3,69 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.46.2
+**English**
+- **WireGuard can now be set up by hand, not only from a file.** Uploading the `.conf`
+  is perfect when there is one — a FritzBox hands you a file. It is useless when there is
+  not: a peer somebody set up for you, a provider that shows the values on a web page, a
+  key you generated on the Pi. Then you had seven pieces of information and nowhere to
+  type them. Setup › Remote access › WireGuard now offers both, on a radio button.
+- **One stored representation either way.** The fields are turned into the `.conf` and
+  that stays the source of truth — `wg-quick` reads a file regardless, and keeping a
+  second parallel copy in the config would be a drift bug waiting for the day the two
+  disagree. The form is filled by parsing the stored file back, which has the pleasant
+  side effect that **a `.conf` you uploaded can afterwards be edited field by field**.
+- **What the form cannot hold, it says so about** rather than dropping quietly: a second
+  `[Peer]`, or directives like `MTU` and `PostUp`. The panel names them and tells you to
+  stay on the file if you need them.
+- **The two secrets never come back out of the box.** `/api/remote` answers without the
+  API secret so the page always loads, and the vehicle's onboarding hotspot is open by
+  default — returning the private key there would hand anyone in Wi-Fi range the VPN.
+  The form shows them as stored and leaves the boxes blank; blank means keep.
+- **Every refusal names the fix**, because this is read on a phone: a missing private key
+  says `wg genkey`, a bad endpoint says what host:port looks like, a stray preshared key
+  says `wg genpsk`. A bare address like `10.0.0.2` is accepted and written as `/32`, since
+  that is what people are told to type.
+- **Keepalive defaults to 25 on purpose.** Behind carrier NAT a tunnel without it works
+  until the first idle minute and then quietly stops carrying anything inbound.
+- Identical in **YonderGate** (v0.12.7): same module, same endpoint, same panel — the two
+  repositories differ only in the word they use for the box.
+- 772 tests (33 new): key and endpoint shapes, the round trip through a conf and back, a
+  foreign file with lower-case keys and comments, and the redaction.
+
+**Deutsch**
+- **WireGuard lässt sich jetzt auch von Hand einrichten, nicht nur per Datei.** Die
+  `.conf` hochzuladen ist perfekt, wenn es eine gibt — eine FritzBox liefert eine Datei.
+  Es hilft nichts, wenn es keine gibt: ein Peer, den jemand für dich eingerichtet hat, ein
+  Anbieter, der die Werte auf einer Webseite anzeigt, ein Schlüssel, den du auf dem Pi
+  erzeugt hast. Dann hatte man sieben Angaben und kein Feld dafür. Setup › Remote access ›
+  WireGuard bietet jetzt beides, per Radiobutton.
+- **Gespeichert wird in beiden Fällen dasselbe.** Aus den Feldern wird die `.conf`, und die
+  bleibt die maßgebliche Fassung — `wg-quick` liest ohnehin eine Datei, und eine zweite
+  parallele Kopie in der Konfiguration wäre ein Drift-Bug, der auf den Tag wartet, an dem
+  beide sich widersprechen. Das Formular wird durch Zurücklesen der Datei gefüllt, mit dem
+  angenehmen Nebeneffekt: **eine hochgeladene `.conf` lässt sich danach feldweise
+  bearbeiten**.
+- **Was das Formular nicht abbilden kann, sagt es** statt es still zu verlieren: ein
+  zweiter `[Peer]` oder Direktiven wie `MTU` und `PostUp`. Das Panel benennt sie und rät,
+  bei der Datei zu bleiben, wenn man sie braucht.
+- **Die beiden Geheimnisse verlassen die Box nie.** `/api/remote` antwortet ohne
+  API-Secret, damit die Seite immer lädt, und der Onboarding-Hotspot des Fahrzeugs ist
+  standardmäßig offen — den privaten Schlüssel dort zurückzugeben hieße, jedem in
+  WLAN-Reichweite das VPN zu schenken. Das Formular zeigt sie als gespeichert an und lässt
+  die Felder leer; leer heißt behalten.
+- **Jede Ablehnung nennt die Abhilfe**, weil das auf einem Handy gelesen wird: ein
+  fehlender privater Schlüssel verweist auf `wg genkey`, ein falscher Endpoint zeigt die
+  Form host:port, ein verirrter Preshared Key auf `wg genpsk`. Eine nackte Adresse wie
+  `10.0.0.2` wird angenommen und als `/32` geschrieben — genau das tippen die Leute.
+- **Keepalive steht absichtlich auf 25.** Hinter Carrier-NAT funktioniert ein Tunnel ohne
+  das bis zur ersten Leerlaufminute und trägt danach still nichts mehr herein.
+- In **YonderGate** identisch gelöst (v0.12.7): dasselbe Modul, derselbe Endpunkt, dasselbe
+  Panel — die beiden Repositories unterscheiden sich nur im Wort für die Box.
+- 772 Tests (33 neue): Schlüssel- und Endpoint-Formen, der Rundlauf durch eine conf und
+  zurück, eine fremde Datei mit klein geschriebenen Schlüsseln und Kommentaren, und die
+  Schwärzung.
+
 ## v1.46.1
 **English**
 - The origin gate from v1.46.0 now also reads **`Sec-Fetch-Site`**, which browsers send
