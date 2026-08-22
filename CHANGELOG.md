@@ -3,6 +3,26 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.48.1
+**English**
+- **The IMX519 focus map is now measured instead of assumed.** v1.48.0 mapped 0 dioptres
+  to the AK7375's rest position — and on the real module that is the *blurriest* setting,
+  not infinity. Sweeping the actuator's 10-bit range against a distant scene peaks at code
+  ≈ 597, so the shipped tuning anchors 0 dioptres there: `"map": [0.0, 597, 10.0, 1023]`.
+  `focus: manual` + `lensPosition: 0` is now the sharp far setting a vehicle wants.
+- Verified through the live stream on a Pi 4B: the same frame went from 26 kB to 40 kB and
+  the scene outside the window became legible.
+
+**Deutsch**
+- **Die IMX519-Fokusabbildung ist jetzt gemessen statt angenommen.** v1.48.0 bildete 0
+  Dioptrien auf die Ruhelage des AK7375 ab — am echten Modul ist das die *unschärfste*
+  Position, nicht Unendlich. Ein Durchlauf über den 10-Bit-Bereich des Aktuators gegen
+  eine weite Szene hat sein Maximum bei Code ≈ 597, dort verankert die mitgelieferte
+  Tuning-Datei nun 0 Dioptrien: `"map": [0.0, 597, 10.0, 1023]`. `focus: manual` +
+  `lensPosition: 0` ist damit die scharfe Fern-Einstellung, die man am Fahrzeug will.
+- Über den Live-Stream auf einem Pi 4B verifiziert: dasselbe Bild ging von 26 kB auf 40 kB,
+  die Szene vor dem Fenster wurde lesbar.
+
 ## v1.48.0
 **English**
 - **Focus control for CSI cameras** — the reason an Arducam 16 MP IMX519 streams a
