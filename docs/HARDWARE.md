@@ -118,7 +118,19 @@ Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB
 ```
 
 - Do **not** power the Pi from a PCA9685 channel.
-- Power-on order: electronics/Pi first, drive last.
+- **Do not take servo V+ from the Pi either.** The 5 V header pins sit directly on the
+  input rail with no fuse of their own, so a servo pulling current browns the whole board
+  out. That failure does not announce itself as a power problem: the picture is fine, then
+  the vehicle freezes and comes back a minute later, exactly like a software crash. It
+  costs an SD card eventually. Servo V+ goes to its own BEC.
+- **Give the Pi a real supply**: 5.1 V / 3 A with a short, thick cable. A camera plus an
+  LTE stick on a phone charger is already over the edge, and it will be under-voltage at
+  idle before you have driven anywhere.
+- The vehicle checks this itself and shows **⚠ POWER** in the OSD while the rail is below
+  spec (and tells a thermal clamp apart from it) — the reading comes from the firmware, so
+  it is the same verdict `vcgencmd get_throttled` gives. `0x0` is a healthy rail.
+- Power-on order: electronics/Pi first, drive last. To switch off, use **Shut down** on
+  the setup page and wait for the green LED before cutting power.
 
 ### 2.4 Camera
 

@@ -119,7 +119,21 @@ Fahrakku ──► BEC 5V/3A ──► Pi (5V/GND, z. B. GPIO Pin 2/6 oder USB-C
 ```
 
 - Den Pi **nicht** aus einem PCA9685-Kanal speisen.
-- Reihenfolge beim Einschalten: erst Elektronik/Pi, Antrieb zuletzt.
+- **Servo-V+ ebenfalls nicht vom Pi nehmen.** Die 5-V-Header-Pins hängen direkt am
+  Eingangsrail, ohne eigene Sicherung — ein ziehender Servo bricht das ganze Board ein.
+  Dieser Fehler meldet sich nicht als Stromproblem: das Bild läuft, dann friert das
+  Fahrzeug ein und ist eine Minute später wieder da, exakt wie ein Softwareabsturz.
+  Irgendwann kostet es die SD-Karte. Servo-V+ gehört ans eigene BEC.
+- **Dem Pi ein ordentliches Netzteil geben**: 5,1 V / 3 A mit kurzem, dickem Kabel. Kamera
+  plus LTE-Stick an einem Handy-Netzteil ist schon darüber und liegt im Leerlauf in
+  Unterspannung, bevor du überhaupt gefahren bist.
+- Das Fahrzeug prüft das selbst und zeigt **⚠ POWER** im OSD, solange die Schiene unter
+  Spezifikation liegt (und unterscheidet eine thermische Drosselung davon) — der Wert kommt
+  aus der Firmware, es ist also dasselbe Urteil wie `vcgencmd get_throttled`. `0x0` heißt
+  gesunde Schiene.
+- Reihenfolge beim Einschalten: erst Elektronik/Pi, Antrieb zuletzt. Zum Ausschalten
+  **Shut down** auf der Setup-Seite benutzen und die grüne LED abwarten, bevor der Strom
+  weggeht.
 
 ### 2.4 Kamera
 

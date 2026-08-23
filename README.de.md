@@ -11,7 +11,7 @@ Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Au
 auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.de.md`](docs/HARDWARE.de.md).
 
-![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png?v=2)
+![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png?v=3)
 
 *Bodenstation im Fahrbetrieb: latenzarmes FPV mit vollem OSD — GPS-Fix + **Home-Kompass,
 Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
@@ -45,11 +45,13 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
   exakten Leerlauf und wird nur nach oben begrenzt. Endpunkte, Failsafe, Disarm-Wert und
   Pre-Arm-Check bleiben unangetastet.
 
-![Touch-Steuerung mit Lenk-/Gas-Joysticks, Halten-zum-Armen-Button, Lights/Horn-Buttons, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=3)
+![Touch-Steuerung: ein großer Lenk-/Gas-Stick, Halten-zum-Armen-Button, Lights- und Horn-Buttons, Speed-Limiter, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=4)
 
-*Touch-Steuerung (Multitouch-Joysticks, belegbare Buttons), der **Halten-zum-Armen**-
-Button, der optionale **WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link,
-Zustand, Session-Zeit, Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie.*
+*Touch-Steuerung, der **Halten-zum-Armen**-Button, der **Speed-Limiter**, der optionale
+**WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Session-Zeit,
+Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie. Ein Auto in Stick-Modus 2 fährt
+mit einem **einzigen Stick** — Lenkung auf X, Gas auf Y — und bekommt dafür die ganze
+Reihe und die Größe, die damit möglich ist; Modus 4 verteilt beides auf zwei.*
 
 **Am Handy**
 - Die Boden-App ist eine normale Webseite — vom Handy über das LAN, den eigenen
@@ -92,12 +94,19 @@ Buttons.*
   Taste/Button, immer über die zuverlässige Verbindung gesendet. Panic ist **ab Werk
   unbelegt**: es löst ohne Halten sofort aus, du wählst also selbst eine Taste oder
   Controller-Taste, die du nicht versehentlich triffst.
+- **Spüren, wo der Stick steht** (standardmäßig aus, Setup › Controls). Beim FPV-Fahren
+  hat der Daumen keine Kante zum Ertasten, also markiert der Bildschirm-Stick die beiden
+  Positionen, auf die es ankommt: zurück in der Mitte und hart am Anschlag, je einmal pro
+  Überschreitung. Ein **iPhone kann von einer Webseite aus nicht vibrieren** — Safari hat
+  keine Vibration-API —, deshalb ist der Standardkanal ein kurzer Klick, der dort
+  funktioniert; Vibration wird nur angeboten, wo der Browser sie wirklich hat, und ein
+  angeschlossenes Gamepad wird über seinen Aktuator gerüttelt.
 - Modellwechsel und Einstellungen sind im gearmten Zustand gesperrt.
 - **Optionales Shared Secret** (standardmäßig aus): einmal gesetzt, verlangen der
   Steuer-Link und die Setup-API es — erster Verbindungsaufbau bleibt schnell, bei
   Bedarf abschließbar.
 
-![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=2)
+![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=3)
 
 *Kanal-Monitor: zeigt die **echte** Fahrzeug-Ausgabe in µs inklusive Failsafe und
 Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
@@ -108,8 +117,24 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
 - **Selbstheilend**: erkennt eingefrorenes/abgerissenes Bild und verbindet sich
   automatisch neu; der letzte Frame bleibt stehen.
 - **Video-Qualität live umschaltbar** von der Groundstation (High/Medium/Low) oder
-  **Auto**: schaltet bei steigendem Verlust/Latenz schnell herunter und erst wieder
-  hoch, wenn die Verbindung klar gut ist (Schwellen einstellbar).
+  **Auto**: schaltet bei steigendem Verlust/Latenz schnell herunter und erst wieder hoch,
+  wenn die Verbindung klar gut ist (Schwellen einstellbar). Sie **startet auf Low** — in
+  den ersten Sekunden zählt ein flüssiges Bild, nicht die höchste Auflösung — und Auto
+  steigt von dort, statt in voller Auflösung zu öffnen und erst nach dem Ruckeln
+  herunterzuschalten.
+- **Das Kameramodul ohne Terminal auswählen.** Automatisch erkannt werden nur die vier
+  offiziellen Raspberry-Pi-Sensoren; eine Arducam braucht ein explizites
+  Device-Tree-Overlay in der Firmware-Konfiguration, die nur beim Booten gelesen wird.
+  *Setup › CSI camera module* schreibt es, legt ein Backup an und sagt, wann ein Neustart
+  fällig ist. **Rotation (0°/180°) und Spiegelung** gibt es pro Kamera — über Kopf verbaut
+  ist der Normalfall, und auf einem CSI-Sensor kostet die Transformation nichts. Der
+  **Fokus** eines Moduls mit Fokusmotor ist ebenfalls einstellbar; eine Arducam 16 MP
+  braucht dafür eine Tuning-Datei, die YonderRC mitbringt und selbst einträgt, weil die von
+  Raspberry Pi keinen Autofokus-Algorithmus enthält.
+- **Keine Kamera ist eine unterstützte Betriebsart**, kein Defekt: löscht man alle
+  Einträge, bleibt die FPV-Fläche dunkel, nichts wird wiederholt, nichts meldet einen
+  Fehler, und OSD, Telemetrie und Steuerung laufen weiter. Genau so konfiguriert man einen
+  reinen IP/WLAN/AP-Empfänger fürs Fahren auf Sicht.
 - OSD mit Status, Kanälen, **Bitrate/Paketverlust/FPS/Video-Latenz** und Telemetrie.
   Jeder Block **und jeder einzelne Sensorwert** ist abschaltbar, und die ganze
   Einblendung hat einen **Kompakt-Modus** fürs Handy.
@@ -196,7 +221,7 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Das **API-Secret** lässt sich per Klick erzeugen. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
   verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
-  ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png?v=2)
+  ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png?v=3)
 
   *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE-Modem/Betreiber,
   Fernzugriff, WiFi) und der robuste **LTE**-Bereich — APN, SIM-PIN, APN-Benutzer/Passwort
@@ -231,6 +256,16 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   installiert geänderte Abhängigkeiten, baut bei Bedarf die Steuer-App neu und startet
   den Dienst — ein Fahrzeug lässt sich damit im Feld allein mit dem Handy aktualisieren.
 - **Geführter Hardware-Selbsttest**: Kanal-Sweep, Sensoren lesen, Kamera-Standbild.
+- **Das Fahrzeug sagt, wenn seine eigene Versorgung zusammenbricht.** Ein Pi mit
+  einbrechender 5-V-Schiene setzt mitten in der Fahrt zurück, und von der Bodenstation aus
+  ist das von einem Softwareabsturz nicht zu unterscheiden — Video läuft, dann Freeze und
+  eine Minute Reconnect. YonderRC liest das Urteil der Firmware und zeigt **⚠ POWER** im
+  OSD, solange es anliegt, mit einem Satz, der die Abhilfe benennt (Servo-V+ gehört ans
+  eigene BEC, nie an den Pi) und eine thermische Drosselung von einbrechender Versorgung
+  unterscheidet, denn die wollen Verschiedenes.
+- **Das Fahrzeug von der Seite aus herunterfahren.** Einem Pi mitten im Schreibvorgang den
+  Strom zu nehmen ist der Weg, auf dem eine SD-Karte unlesbar wird. Abgelehnt, solange
+  scharfgeschaltet.
 - **Werksreset** für Fahrzeug und Boden-App.
 **Im Feld gemessen** (21.08.2026, ein Nachmittag, ein Netz, ein Ort — kein Benchmark):
 Pi 4 mit **Huawei E3372h-320** und dessen interner Antenne, gesteuert von einem

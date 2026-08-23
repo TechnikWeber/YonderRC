@@ -3,6 +3,41 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.59.0
+**English**
+- **Fresh screenshots.** The four in the READMEs were from v1.20.4 and v1.3x — old enough
+  to show an OSD and an arm button that no longer exist. Retaken against the simulator with
+  the current build: the FPV overview with the full OSD, the touch pad, the channel monitor
+  and the setup page. The phone shot stays as it is; it is a real photo of a real phone and
+  cannot be reproduced headlessly.
+- The touch screenshot now shows what actually happens: a car in stick mode 2 drives from
+  **one large stick**, not two small ones, and the caption says why.
+- **The READMEs had fallen behind the code.** Nothing about picking a CSI camera module,
+  rotation and mirroring, focus and tuning files, "no camera" as a supported setup, video
+  starting on low, stick feedback, the power warning or the shutdown button. All of it is
+  in now, in both languages.
+- **The hardware guide says the thing that cost a day.** Servo V+ does not belong on the
+  Pi's 5 V pins — they sit on the input rail with no fuse, and the brownout that follows
+  presents as a software crash, not as a power problem. Plus what a real supply looks like,
+  and that the vehicle now checks this itself.
+
+**Deutsch**
+- **Neue Screenshots.** Die vier in den READMEs stammten aus v1.20.4 und v1.3x — alt genug,
+  um ein OSD und einen Arm-Button zu zeigen, die es nicht mehr gibt. Neu aufgenommen gegen
+  den Simulator mit dem aktuellen Stand: die FPV-Übersicht mit vollem OSD, das Touch-Pad,
+  der Kanal-Monitor und die Setup-Seite. Das Handy-Bild bleibt, wie es ist — es ist ein
+  echtes Foto eines echten Telefons und headless nicht reproduzierbar.
+- Der Touch-Screenshot zeigt jetzt, was wirklich passiert: ein Auto in Stick-Modus 2 fährt
+  mit **einem großen Stick**, nicht mit zwei kleinen, und die Bildunterschrift sagt warum.
+- **Die READMEs waren hinter dem Code zurückgeblieben.** Nichts über die Auswahl des
+  CSI-Kameramoduls, Rotation und Spiegelung, Fokus und Tuning-Dateien, „keine Kamera" als
+  unterstützte Betriebsart, den Videostart auf Low, die Stick-Rückmeldung, die
+  Strom-Warnung oder den Shutdown-Knopf. Das steht jetzt drin, in beiden Sprachen.
+- **Der Hardware-Leitfaden sagt, was einen Tag gekostet hat.** Servo-V+ gehört nicht an die
+  5-V-Pins des Pi — die hängen ohne Sicherung am Eingangsrail, und der folgende Brownout
+  tritt als Softwareabsturz auf, nicht als Stromproblem. Dazu, wie ein ordentliches
+  Netzteil aussieht, und dass das Fahrzeug das inzwischen selbst prüft.
+
 ## v1.58.3
 **English**
 - **The setup page's panel headings had no space beneath them.** It only showed under

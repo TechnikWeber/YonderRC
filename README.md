@@ -11,7 +11,7 @@ Everything runs **in a simulator — with no hardware at all**. For the real bui
 the Pi (parts list, wiring, step by step from Wi-Fi → LTE) see
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
-![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, link signal and stats bottom right](docs/screenshots/Overview_OSD.png?v=2)
+![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, link signal and stats bottom right](docs/screenshots/Overview_OSD.png?v=3)
 
 *Ground station while driving: low-latency FPV with a full OSD — GPS fix + **home
 compass, distance, odometer and speed** (top left), battery bar (top right), and the
@@ -42,11 +42,13 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
   reverse is capped in both directions, a plane keeps its exact idle and is capped only
   upwards. Endpoints, failsafe, the disarmed value and the pre-arm check stay untouched.
 
-![Touch control with steering/throttle joysticks, the hold-to-arm button, Lights/Horn buttons, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png?v=3)
+![Touch control: one large steering/throttle stick, the hold-to-arm button, Lights and Horn buttons, the speed limiter, the WebRTC control toggle and a status strip](docs/screenshots/TouchInputs_and_Status.png?v=4)
 
-*Touch control (multitouch joysticks, bindable buttons), the **hold-to-arm** button, the
-optional **WebRTC control channel** toggle, and a status strip: link, state, session
-time, round-trip, input method, vehicle/driver, telemetry.*
+*Touch control, the **hold-to-arm** button, the **speed limiter**, the optional
+**WebRTC control channel** toggle, and a status strip: link, state, session time,
+round-trip, input method, vehicle/driver, telemetry. A car in stick mode 2 drives from a
+**single stick** — steering on X, throttle on Y — so it gets the whole row and the size
+that comes with it; mode 4 splits them across two.*
 
 **On a phone**
 - The ground app is a normal web page — open it from a phone over the LAN, the Pi's
@@ -86,11 +88,17 @@ second row, and below it the arm button with the touch joysticks and bindable bu
   bindable key/button, always sent over the reliable link. Panic ships **unbound**: it
   fires instantly with no hold, so you choose a key or controller button you can't hit
   by accident.
+- **Feel where the stick is** (off by default, Setup › Controls). On FPV your thumb has
+  no edge to feel for, so the on-screen stick marks the two positions that matter: back at
+  centre, and hard against the rim, once per crossing. An **iPhone cannot vibrate from a
+  web page** — Safari has no Vibration API — so the default channel is a short click,
+  which does work there; vibration is offered only where the browser actually has it, and
+  a connected gamepad is rumbled through its actuator.
 - Model switching and settings are locked while armed.
 - **Optional shared secret** (off by default): when set, the control link and the
   setup API require it — quick to connect the first time, lockable when you want it.
 
-![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png?v=2)
+![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png?v=3)
 
 *Channel monitor: shows the **real** vehicle output in µs including failsafe and
 disarm — the throttle channel is visibly held safe while disarmed.*
@@ -102,7 +110,22 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   the last frame stays on screen.
 - **Video quality switchable live** from the ground station (high/medium/low) or
   **Auto**: it steps down quickly when loss/latency rise and back up slowly when the
-  link is clearly good again (thresholds are editable).
+  link is clearly good again (thresholds are editable). It **starts on low** — what
+  matters in the first seconds is a fluid picture, not the most pixels — and Auto climbs
+  from there rather than opening at full resolution and stepping down after it has
+  already stuttered.
+- **Pick the camera module without a terminal.** Only the four official Raspberry Pi
+  sensors are auto-detected; an Arducam needs an explicit device-tree overlay in the
+  firmware config, which is read only at boot. *Setup › CSI camera module* writes it,
+  keeps one backup, and says when a reboot is due. **Rotation (0°/180°) and mirroring**
+  are per camera — a camera bolted in upside down is the normal case, and on a CSI sensor
+  the transform is free. The **focus** of a module with a lens actuator is settable too;
+  an Arducam 16 MP needs a tuning file for it, which YonderRC ships and fills in for you,
+  because Raspberry Pi's own one has no autofocus algorithm.
+- **No camera is a supported setup**, not a broken one: remove every entry and the FPV
+  area stays dark, nothing is retried, nothing reports an error, and the OSD, telemetry
+  and controls carry on. That is the configuration for a plain IP/WiFi/AP receiver used
+  for line-of-sight driving.
 - OSD with status, channels, **bitrate/packet loss/FPS/video latency** and telemetry.
   Every block **and every single sensor value** can be switched off individually, and
   the whole overlay has a **compact mode** for phones.
@@ -184,7 +207,7 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   The **API secret** can be generated with one click. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
   vehicle (works over LAN, the Pi's AP, or a VPN address).
 
-  ![Vehicle setup page: system status (LTE modem, operator, Tailscale, Wi-Fi) and the LTE section with APN, SIM PIN, APN auth and network mode](docs/screenshots/VehicleConfig_Setup.png?v=2)
+  ![Vehicle setup page: system status (LTE modem, operator, Tailscale, Wi-Fi) and the LTE section with APN, SIM PIN, APN auth and network mode](docs/screenshots/VehicleConfig_Setup.png?v=3)
 
   *Setup page served by the vehicle: system status (mode, LTE modem/operator, remote
   access, Wi-Fi) and the robust **LTE** section — APN, SIM PIN, APN username/password
@@ -216,6 +239,14 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   dependencies, rebuilds the control app if needed and restarts the service — so a
   vehicle can be updated from a field with nothing but a phone.
 - **Guided hardware self-test**: channel sweep, read sensors, camera snapshot.
+- **The vehicle says when its own power is failing.** A Pi whose 5 V rail sags resets
+  mid-drive, and from the ground that is indistinguishable from a software crash — video
+  fine, then a freeze and a minute of reconnecting. YonderRC reads the firmware's own
+  verdict and puts **⚠ POWER** in the OSD while it lasts, with a line that names the fix
+  (servo V+ belongs on its own BEC, never on the Pi) and tells a thermal clamp apart from
+  a sagging supply, because those want different things.
+- **Shut down the vehicle from the page.** Pulling power from a Pi mid-write is how an SD
+  card stops being readable. Refused while armed.
 - **Factory reset** for both the vehicle and the ground app.
 **Measured in the field** (2026-08-21, one afternoon, one carrier, one location — not a
 benchmark): a Pi 4 on a **Huawei E3372h-320** with its internal antenna, controlled from a
