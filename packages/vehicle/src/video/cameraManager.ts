@@ -208,10 +208,33 @@ export async function applyCameras(
     return;
   }
   if (!videoBaseUrl) return;
+  const ok = () => console.log(`[video] go2rtc reloaded with ${cameras.length} camera(s), encoder ${encoder}`);
   try {
     await fetch(`${videoBaseUrl}/api/restart`, { method: 'POST' });
-    console.log(`[video] go2rtc reloaded with ${cameras.length} camera(s), encoder ${encoder}`);
+    ok();
   } catch {
-    console.log('[video] wrote go2rtc.yaml; start/restart go2rtc to apply');
+    // go2rtc restarts *itself* in response to this call, so it often drops the
+    // connection before answering — the fetch rejects even though the reload
+    // happened. Saying "start go2rtc to apply" then is simply wrong, so ask it what
+    // it is serving before claiming anything.
+    if (await reloadTookEffect(videoBaseUrl, cameras)) ok();
+    else console.log('[video] wrote go2rtc.yaml; start/restart go2rtc to apply');
   }
+}
+
+/** Did go2rtc come back with exactly the streams we just wrote? */
+async function reloadTookEffect(videoBaseUrl: string, cameras: CameraCfg[]): Promise<boolean> {
+  const want = new Set(cameras.map((c) => safeStreamName(c.name)));
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      const res = await fetch(`${videoBaseUrl}/api/streams`);
+      if (!res.ok) continue;
+      const have = Object.keys((await res.json()) as Record<string, unknown>);
+      if (have.length === want.size && have.every((k) => want.has(k))) return true;
+    } catch {
+      // still restarting — try again
+    }
+  }
+  return false;
 }

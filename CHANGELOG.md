@@ -3,7 +3,7 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
-## v1.52.0
+## v1.52.1
 **English**
 - **Deleting every camera is now a supported way to run YonderRC**, not a broken state.
   It was broken: emptying the list left the panel holding the id of a stream that no
@@ -22,6 +22,11 @@ self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
   from a real blip is unchanged.
 - The vehicle banner says `no cameras (fine — the ground station just stays dark)`
   instead of printing an empty list.
+- **The reload log no longer lies.** go2rtc restarts *itself* in response to
+  `POST /api/restart`, so it often drops the connection before answering and the fetch
+  rejects — after which the vehicle printed "wrote go2rtc.yaml; start/restart go2rtc to
+  apply" although the reload had happened. It now asks go2rtc what it is serving before
+  claiming anything, and only says that when the streams really did not change.
 
 **Deutsch**
 - **Alle Kameras zu löschen ist jetzt eine unterstützte Betriebsart**, kein kaputter
@@ -43,6 +48,12 @@ self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
   unverändert.
 - Das Fahrzeug-Banner sagt `no cameras (fine — the ground station just stays dark)`
   statt eine leere Liste zu drucken.
+- **Das Reload-Log lügt nicht mehr.** go2rtc startet sich auf `POST /api/restart`
+  *selbst* neu und legt dabei oft die Verbindung, bevor es antwortet — der Fetch schlägt
+  fehl, und das Fahrzeug schrieb daraufhin „wrote go2rtc.yaml; start/restart go2rtc to
+  apply", obwohl der Reload längst passiert war. Jetzt wird zuerst nachgefragt, was
+  go2rtc tatsächlich ausliefert, und die Meldung kommt nur noch, wenn sich die Streams
+  wirklich nicht geändert haben.
 
 ## v1.51.0
 **English**
