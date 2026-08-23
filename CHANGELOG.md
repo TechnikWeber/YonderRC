@@ -3,6 +3,67 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.56.0
+**English**
+- **The vehicle now says when its own power is failing.** `vcgencmd get_throttled` is the
+  firmware's verdict on the 5 V rail, and it was going unread. A brownout mid-drive is a
+  reset mid-drive, and from the ground that is indistinguishable from a software crash —
+  which is exactly how it presented: video fine, then a freeze and a minute of
+  "reconnecting" every time a servo was asked to move. Measured on the real Pi:
+  `throttled=0x50005`, continuously, at idle.
+- Pure `vehicle/system/power.ts` decodes the mask and, more importantly, **names the fix**:
+  under-voltage points at servo V+ on the Pi's rail and a 5.1 V / 3 A supply; a thermal
+  clamp points at airflow, because that is a different problem and must not be described
+  as a supply one. A past event still gets a quieter warning — no headroom is worth fixing
+  before the next drive, not after the crash.
+- Shown as **⚠ POWER** in the OSD next to the battery warning, carried on the status frame
+  beside the uplink signal, and put at the *top* of Detect hardware — on a Pi that is
+  browning out, nothing else on that page is trustworthy either.
+
+- **A superseded ground station could stop the new one from steering.** Connect the phone
+  while the PC is connected and the PC is correctly kicked, but the phone's first session
+  would not steer until it disconnected and reconnected. Control frames travel over the
+  **WebRTC data channel**, which takes seconds to tear down — far longer than the
+  WebSocket. The old ground kept sending during that window, its high sequence number
+  landed after the new session had reset the counter to −1, and every frame from the new
+  ground was then dropped as "stale". Arm and configuration kept working because those go
+  over the reliable WebSocket: a connected vehicle that would not steer.
+- `beginControlSession()` hands out a token that **both** transports carry, so the moment a
+  new ground takes over the previous one stops being able to move anything. Two separate
+  guards is how this was missed in the first place; there is now one rule in the core.
+
+**Deutsch**
+- **Das Fahrzeug sagt jetzt, wenn seine eigene Versorgung zusammenbricht.**
+  `vcgencmd get_throttled` ist das Urteil der Firmware über die 5-V-Schiene, und es wurde
+  nicht gelesen. Ein Brownout während der Fahrt ist ein Reset während der Fahrt, und von
+  der Bodenstation aus ist das von einem Softwareabsturz nicht zu unterscheiden — genau so
+  trat es auf: Video läuft, dann Freeze und eine Minute „reconnecting", sobald sich ein
+  Servo bewegen sollte. Am echten Pi gemessen: `throttled=0x50005`, durchgehend, im
+  Leerlauf.
+- Das reine `vehicle/system/power.ts` dekodiert die Maske und **benennt vor allem die
+  Abhilfe**: Unterspannung verweist auf Servo-V+ an der Pi-Schiene und ein 5,1-V/3-A-Netzteil;
+  eine thermische Drosselung verweist auf Luftstrom, denn das ist ein anderes Problem und
+  darf nicht als Versorgungsproblem beschrieben werden. Ein vergangenes Ereignis bekommt
+  weiterhin eine leisere Warnung — fehlende Reserve behebt man vor der nächsten Fahrt, nicht
+  nach dem Absturz.
+- Angezeigt als **⚠ POWER** im OSD neben der Akkuwarnung, mit dem Statusframe neben dem
+  Uplink-Signal übertragen, und **ganz oben** in Detect hardware — auf einem Pi, der
+  brownt, ist auf dieser Seite ohnehin nichts anderes vertrauenswürdig.
+
+- **Eine verdrängte Bodenstation konnte die neue am Steuern hindern.** Verbindet man das
+  Handy, während der PC verbunden ist, wird der PC korrekt hinausgeworfen — aber die erste
+  Sitzung des Handys lenkte nicht, bis man einmal trennte und neu verband. Steuerframes
+  laufen über den **WebRTC-Datenkanal**, dessen Abbau Sekunden dauert, viel länger als der
+  des WebSockets. Die alte Bodenstation sendete in diesem Fenster weiter, ihre hohe
+  Sequenznummer landete, nachdem die neue Sitzung den Zähler auf −1 zurückgesetzt hatte,
+  und jedes Frame der neuen Bodenstation galt danach als „veraltet". Arm und Konfiguration
+  funktionierten weiter, weil die über den zuverlässigen WebSocket gehen: ein verbundenes
+  Fahrzeug, das nicht lenkt.
+- `beginControlSession()` vergibt ein Token, das **beide** Transportwege mitführen — sobald
+  eine neue Bodenstation übernimmt, kann die vorherige nichts mehr bewegen. Zwei getrennte
+  Absicherungen sind der Grund, warum das durchgerutscht ist; jetzt gibt es eine Regel im
+  Kern.
+
 ## v1.55.0
 **English**
 - **A radio's percentage is not a quality score** — and treating it as one put a permanent

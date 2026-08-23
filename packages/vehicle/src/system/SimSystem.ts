@@ -19,6 +19,7 @@ import type {
   CameraModuleStatus,
 } from './SystemManager.js';
 import { HW_DEPS, explainNpmFailure, isHwDep, lastLines, type HwDepName } from './hwDeps.js';
+import { powerState } from './power.js';
 import {
   applyCameraModule,
   moduleById,
@@ -67,6 +68,12 @@ export class SimSystem implements SystemManager {
     { ssid: 'Gastnetz', signal: 33, secured: false, active: false },
   ];
 
+  /** Raw throttle mask the simulator reports; 0 = a healthy rail. Settable for demos. */
+  private simThrottled = 0;
+  setSimThrottled(mask: number): void {
+    this.simThrottled = mask;
+  }
+
   async status(): Promise<SystemStatus> {
     return {
       kind: this.kind,
@@ -74,6 +81,8 @@ export class SimSystem implements SystemManager {
       tailscale: { ...this.tailscale },
       lte: { ...this.lte },
       wifi: { ...this.wifi },
+      // A simulated Pi has a perfect supply. `simPower` lets the panel be exercised.
+      power: powerState(this.simThrottled),
     };
   }
 

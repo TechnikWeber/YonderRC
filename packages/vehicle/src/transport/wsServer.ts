@@ -17,6 +17,7 @@ import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
+import { powerBadge } from '../system/power.js';
 import { serveGroundApp } from './staticServer.js';
 import { secretOk, readSecretFromUrl, originAllowed, originOf, secFetchSiteOf } from './auth.js';
 
@@ -73,8 +74,25 @@ export function startWsServer(
   // so the ground OSD can show one "link health" number. Reading shells out, so a
   // 5 s cadence is plenty — the value changes slowly.
   let currentLink: import('@yonderrc/protocol').LinkSignal | undefined;
+  // Same cadence for the supply: it also shells out, and a sagging rail is not a
+  // millisecond-scale event — but it IS the difference between "the app crashed" and
+  // "your servo is browning out the Pi".
+  let currentPower: import('@yonderrc/protocol').PowerFlags | undefined;
   const refreshLink = () => {
     system.linkSignal().then((l) => { currentLink = l; }).catch(() => {});
+    system
+      .status()
+      .then((st) => {
+        currentPower = {
+          underVoltageNow: st.power.underVoltageNow,
+          underVoltagePast: st.power.underVoltagePast,
+          throttledNow: st.power.throttledNow,
+          hotNow: st.power.hotNow,
+          badge: powerBadge(st.power),
+          message: st.power.message,
+        };
+      })
+      .catch(() => {});
   };
   refreshLink();
   setInterval(refreshLink, 5000);
@@ -118,7 +136,7 @@ export function startWsServer(
     console.log(`[link] ground connected from ${who}`);
     // Fresh ground session: its seq restarts at 0, so forget the old high-water
     // mark or every new frame would be dropped as "stale".
-    core.resetControlLink();
+    const session = core.beginControlSession();
     // Safety: by default every new connection starts DISARMED, so after a link
     // loss + reconnect the operator must re-arm deliberately. The flag lives on the
     // core (seeded from config, then overridden per vehicle type by the ground), so
@@ -128,7 +146,7 @@ export function startWsServer(
     const sendSignal = (msg: RtcSignalMessage) => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
     };
-    const rtc = new WebRtcControl(core, sendSignal);
+    const rtc = new WebRtcControl(core, sendSignal, session);
 
     const welcome: WelcomeMessage = {
       type: 'welcome',
@@ -143,7 +161,7 @@ export function startWsServer(
     ws.send(JSON.stringify(welcome));
 
     const statusTimer = setInterval(() => {
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ ...core.status(), link: currentLink }));
+      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ ...core.status(), link: currentLink, power: currentPower }));
     }, 50);
     // Telemetry at a calmer rate (voltage/current/mAh change slowly).
     const telemetryTimer = setInterval(() => {
@@ -175,7 +193,7 @@ export function startWsServer(
         console.log(`[video] quality → ${msg.quality}`);
         return;
       }
-      handleClientMessage(core, msg);
+      handleClientMessage(core, msg, session);
     });
 
     ws.on('close', () => {

@@ -8,6 +8,7 @@ import {
   type TelemetryReading,
   readingKey,
   type LinkSignal,
+  type PowerFlags,
   type GpsMessage,
   distanceMeters,
   bearingDeg,
@@ -382,6 +383,7 @@ export function VideoPanel({
   batteryLow,
   batteryReason,
   linkSignal,
+  power,
   gps,
   odoMeters,
   budget,
@@ -407,6 +409,8 @@ export function VideoPanel({
   batteryLow: boolean;
   batteryReason: string | null;
   linkSignal: LinkSignal | null;
+  /** The vehicle's verdict on its own supply, or null when not connected. */
+  power: PowerFlags | null;
   gps: GpsMessage | null;
   /** Trip odometer, metres. Owned by App so the OSD and the energy budget agree. */
   odoMeters: number;
@@ -890,6 +894,14 @@ export function VideoPanel({
         <video ref={videoRef} autoPlay playsInline muted />
         {rec.recording && <div className="rec-badge">● REC</div>}
         {batteryLow && <div className="batt-warn">⚠ BATTERY LOW{batteryReason ? ` · ${batteryReason}` : ''}</div>}
+        {/* A sagging supply resets the vehicle mid-drive and looks like a software
+            crash from here. It belongs next to the battery warning, not in a log. */}
+        {power?.badge && (
+          <div className="batt-warn" title={power.message ?? undefined}>
+            ⚠ {power.badge}
+            {power.underVoltageNow ? ' · 5 V RAIL LOW' : power.underVoltagePast ? ' · SUPPLY HAS SAGGED' : ''}
+          </div>
+        )}
         {rec.lastAction && <div className="rec-toast">{rec.lastAction}</div>}
 
         {play !== 'playing' && (

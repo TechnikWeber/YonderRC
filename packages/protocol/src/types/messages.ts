@@ -123,6 +123,27 @@ export interface StatusMessage {
   calibration?: CalibrationStatus;
   /** Vehicle uplink signal (LTE/WiFi), refreshed slowly on the vehicle. */
   link?: LinkSignal;
+  /**
+   * The Pi's verdict on its own 5 V rail, refreshed on the same slow cadence. A
+   * brownout mid-drive is a reset mid-drive, and from the ground it is indistinguishable
+   * from a software crash unless the vehicle says so.
+   */
+  power?: PowerFlags;
+}
+
+export interface PowerFlags {
+  /** The 5 V rail is below spec right now. */
+  underVoltageNow: boolean;
+  /** It has been at some point since boot. */
+  underVoltagePast: boolean;
+  /** The firmware is clamping the clock right now. */
+  throttledNow: boolean;
+  /** …because of temperature, rather than voltage. */
+  hotNow: boolean;
+  /** Short OSD tag ("POWER", "THROTTLED", "HOT"), or null when all is well. */
+  badge: string | null;
+  /** One line naming the cause and the fix, or null. */
+  message: string | null;
 }
 
 export interface CalibrationStatus {

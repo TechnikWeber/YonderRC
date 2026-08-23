@@ -7,7 +7,7 @@ import type { VehicleCore } from '../core/VehicleCore.js';
  * WebSocket path and the WebRTC data-channel path behave identically. RTC
  * signaling ('rtc') is handled by the transport, not here.
  */
-export function handleClientMessage(core: VehicleCore, msg: ClientMessage): void {
+export function handleClientMessage(core: VehicleCore, msg: ClientMessage, session?: number): void {
   switch (msg.type) {
     case 'hello':
       if (msg.protocol !== PROTOCOL_VERSION) {
@@ -17,7 +17,7 @@ export function handleClientMessage(core: VehicleCore, msg: ClientMessage): void
       }
       break;
     case 'control':
-      core.applyControl(msg);
+      core.applyControl(msg, session);
       break;
     case 'arm':
       core.setArmed(msg.armed);

@@ -58,6 +58,7 @@ export class VehicleCore {
   private failsafeActive = true;
   private lastFrameAt = 0;
   private lastSeq = -1;
+  private controlSession = 0;
   private lastClientT = 0;
 
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -91,8 +92,20 @@ export class VehicleCore {
     await this.driver.close();
   }
 
-  /** Apply an incoming control frame. Older/duplicate frames are ignored. */
-  applyControl(msg: ControlMessage): void {
+  /**
+   * Apply an incoming control frame. Older/duplicate frames are ignored, and so are
+   * frames from a session that has been superseded.
+   *
+   * The session check is not belt-and-braces. A superseded ground keeps sending for a
+   * while — a WebSocket close is quick, but a **WebRTC data channel takes seconds to
+   * tear down**, and control frames travel over that channel. One straggler carrying the
+   * old session's high sequence number lands after the new session reset `lastSeq` to
+   * −1, pins it back up there, and every frame from the new ground is then dropped as
+   * "stale". Arm and config still work, because those go over the reliable WS — which is
+   * exactly what it looked like: a connected vehicle that would not steer.
+   */
+  applyControl(msg: ControlMessage, session?: number): void {
+    if (session !== undefined && session !== this.controlSession) return; // superseded ground
     if (msg.seq <= this.lastSeq) return; // newest-wins, drop stale
     this.lastSeq = msg.seq;
     this.lastClientT = msg.t;
@@ -124,6 +137,32 @@ export class VehicleCore {
     this.lastSeq = -1;
     this.lastFrameAt = 0;
     this.lastClientT = 0;
+  }
+
+  /**
+   * Start a control session and return its token. Everything that can reach
+   * `applyControl` for this ground — the WebSocket and its WebRTC data channel — carries
+   * the same token, so the moment a new ground takes over, the previous one stops being
+   * able to move anything.
+   */
+  beginControlSession(): number {
+    this.controlSession += 1;
+    this.resetControlLink();
+    return this.controlSession;
+  }
+
+  /** The session token currently accepted. */
+  get activeControlSession(): number {
+    return this.controlSession;
+  }
+
+  /**
+   * What the ground last asked for, before arming, failsafe and the test override have
+   * their say. `status()` reports what the driver actually wrote, which needs a running
+   * tick; this is the raw command.
+   */
+  readCommanded(): number[] {
+    return this.commanded.slice();
   }
 
   // --- ESC calibration control (from the ground) ---

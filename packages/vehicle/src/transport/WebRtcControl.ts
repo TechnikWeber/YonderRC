@@ -16,10 +16,16 @@ export class WebRtcControl {
   private core: VehicleCore;
   private sendSignal: (msg: RtcSignalMessage) => void;
   private open = false;
+  /**
+   * The control session this channel belongs to. A data channel outlives the WebSocket
+   * that negotiated it by seconds, so without this a superseded ground keeps steering.
+   */
+  private session: number;
 
-  constructor(core: VehicleCore, sendSignal: (msg: RtcSignalMessage) => void) {
+  constructor(core: VehicleCore, sendSignal: (msg: RtcSignalMessage) => void, session: number) {
     this.core = core;
     this.sendSignal = sendSignal;
+    this.session = session;
     this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     this.pc.onicecandidate = (e) => {
@@ -40,7 +46,7 @@ export class WebRtcControl {
       ch.onmessage = (m) => {
         try {
           const msg = JSON.parse(String(m.data)) as ClientMessage;
-          handleClientMessage(this.core, msg);
+          handleClientMessage(this.core, msg, this.session);
         } catch {
           /* ignore malformed frame; newest supersedes */
         }

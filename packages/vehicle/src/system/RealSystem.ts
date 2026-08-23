@@ -74,6 +74,7 @@ import {
 } from './hilink.js';
 import { HW_DEPS, errorExcerpt, explainNpmFailure, hwDepInfo, isHwDep, lastLines, npmInstallArgs, type HwDepName } from './hwDeps.js';
 import { parseCameraList, captureNodes, explainNoCamera } from './cameras.js';
+import { parseThrottled, powerState, type PowerState } from './power.js';
 import {
   applyCameraModule,
   explainBootConfig,
@@ -200,16 +201,26 @@ export class RealSystem implements SystemManager {
   readonly kind = 'real';
 
   async status(): Promise<SystemStatus> {
-    const [ts, mm, wifi] = await Promise.all([
+    const [ts, mm, wifi, power] = await Promise.all([
       this.tailscaleStatus(),
       this.lteStatus(),
       this.wifiStatus(),
+      this.powerState(),
     ]);
     // No ModemManager modem doesn't mean no LTE: a HiLink stick dials on its own and
     // is invisible to mmcli. Reporting "no modem" next to a working uplink is just
     // wrong, so the stick fills the LTE row when there is no real modem.
     const lte = mm.present ? { ...mm, kind: 'modemmanager' as const } : await this.lteFromHilink(mm);
-    return { kind: this.kind, hostname: hostname(), tailscale: ts, lte, wifi };
+    return { kind: this.kind, hostname: hostname(), tailscale: ts, lte, wifi, power };
+  }
+
+  /**
+   * Ask the firmware about the 5 V rail. Not a Pi, or no vcgencmd? Then there is nothing
+   * to report — an unknown state, not a healthy one.
+   */
+  private async powerState(): Promise<PowerState> {
+    const out = await sh('vcgencmd get_throttled');
+    return powerState(out.ok ? parseThrottled(out.out) : null);
   }
 
   /** Map a HiLink reading onto the LTE row, or keep the empty ModemManager one. */
@@ -723,6 +734,10 @@ export class RealSystem implements SystemManager {
 
   async detectHardware() {
     const notes: string[] = [];
+    // First, because nothing else on this page is trustworthy on a Pi that is browning
+    // out — the I²C scan, the camera probe and the driver all misbehave under it.
+    const power = await this.powerState();
+    if (power.message) notes.push(power.message);
     const i2cOut = await sh('i2cdetect -y 1');
     if (!i2cOut.ok) notes.push('i2cdetect failed — is i2c-tools installed and I²C enabled?');
     const i2c = suggestI2c(parseI2cAddresses(i2cOut.out));

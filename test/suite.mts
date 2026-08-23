@@ -577,6 +577,63 @@ async function main() {
   const planeLow = setDetent(plane, 'leftY', 'low');
   ok('setDetent low', currentDetents(planeLow).leftY === 'low');
 
+  // ---- the Pi's verdict on its own 5 V rail ----
+  const pw = await import('../packages/vehicle/src/system/power');
+  ok('parses the firmware hex', pw.parseThrottled('throttled=0x50005') === 0x50005);
+  ok('parses a healthy rail', pw.parseThrottled('throttled=0x0') === 0);
+  ok('unreadable is unknown, not healthy', pw.parseThrottled('command not found') === null);
+  ok('unknown reports nothing', pw.powerState(null).message === null && pw.powerBadge(pw.powerState(null)) === null);
+  ok('healthy reports nothing', pw.powerState(0).message === null && pw.powerBadge(pw.powerState(0)) === null);
+
+  // The mask measured on the real Pi while a servo was browning it out.
+  const real = pw.powerState(0x50005);
+  ok('under-voltage now', real.underVoltageNow && real.throttledNow);
+  ok('and recorded since boot', real.underVoltagePast && real.throttledPast);
+  ok('not a temperature problem', !real.hotNow);
+  ok('badge is POWER', pw.powerBadge(real) === 'POWER');
+  ok('the message names the fix, not just the fault', /BEC/.test(real.message ?? ''));
+
+  // A past event still matters: no headroom, fix it before the next drive.
+  const past = pw.powerState(0x10000);
+  ok('past under-voltage is reported', past.underVoltagePast && !past.underVoltageNow);
+  ok('with a calmer badge', pw.powerBadge(past) === 'POWER?');
+
+  // Heat is a different fix, so it must not be described as a supply problem.
+  const hot = pw.powerState((1 << 2) | (1 << 3));
+  ok('thermal clamp is named as such', pw.powerBadge(hot) === 'HOT' && /airflow|heatsink/.test(hot.message ?? ''));
+  ok('and does not mention the supply', !/BEC/.test(hot.message ?? ''));
+  const clamped = pw.powerState(1 << 2);
+  ok('a clamp with no heat is treated as power', /supply/.test(clamped.message ?? ''));
+
+  // ---- a superseded ground must not be able to steer ----
+  {
+    const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
+    const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
+    const core = new VehicleCore({ driver: new SimDriver() });
+
+    const pc = core.beginControlSession();
+    core.applyControl({ type: 'control', seq: 50000, t: Date.now(), channels: [1800, 1500, 1500, 1500] }, pc);
+    ok('the established ground steers', core.readCommanded()[0] === 1800);
+
+    const phone = core.beginControlSession();
+    ok('a new session gets a new token', phone !== pc);
+    // The straggler: a WebRTC data channel takes seconds to tear down, so the superseded
+    // ground keeps sending. Its high sequence number used to pin lastSeq back up and make
+    // every frame from the new ground look stale — a connected vehicle that would not steer.
+    core.applyControl({ type: 'control', seq: 60000, t: Date.now(), channels: [1900, 1500, 1500, 1500] }, pc);
+    ok('the superseded ground is ignored', core.readCommanded()[0] !== 1900);
+    core.applyControl({ type: 'control', seq: 0, t: Date.now(), channels: [1200, 1500, 1500, 1500] }, phone);
+    ok('and the new ground steers from sequence 0', core.readCommanded()[0] === 1200);
+
+    core.applyControl({ type: 'control', seq: 1, t: Date.now(), channels: [1300, 1500, 1500, 1500] }, phone);
+    ok('it keeps steering', core.readCommanded()[0] === 1300);
+    core.applyControl({ type: 'control', seq: 1, t: Date.now(), channels: [1400, 1500, 1500, 1500] }, phone);
+    ok('duplicates are still dropped', core.readCommanded()[0] === 1300);
+    // Callers without a token (tests, future paths) keep the old newest-wins behaviour.
+    core.applyControl({ type: 'control', seq: 2, t: Date.now(), channels: [1250, 1500, 1500, 1500] });
+    ok('an untokened frame still applies', core.readCommanded()[0] === 1250);
+  }
+
   // ---- signal is not a score: each radio gets its own curve ----
   const lh = await import('../packages/ground/src/lib/linkHealth');
   // The report that started this: a HiLink stick on RSRP −101 dBm reports 62 %, which

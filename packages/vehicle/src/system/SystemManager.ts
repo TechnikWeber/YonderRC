@@ -1,4 +1,5 @@
 import type { LinkSignal } from '@yonderrc/protocol';
+import type { PowerState } from './power.js';
 import type { I2cSuggestion } from './detect.js';
 import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
@@ -224,7 +225,11 @@ export interface SystemStatus {
   tailscale: TailscaleStatus;
   lte: LteStatus;
   wifi: WifiStatus;
+  /** What the Pi's firmware says about its own 5 V rail — see system/power.ts. */
+  power: PowerState;
 }
+
+export type { PowerState } from './power.js';
 
 export interface ActionResult {
   ok: boolean;
