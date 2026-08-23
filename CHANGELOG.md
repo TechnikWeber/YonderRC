@@ -3,6 +3,23 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.58.3
+**English**
+- **The setup page's panel headings had no space beneath them.** It only showed under
+  *System*, where the heading is followed straight by a row of buttons — everywhere else a
+  label or a `.msg` follows, and those bring their own margin, which hid it. Fixed on
+  `.eyebrow` rather than on the button row: the next block to sit under a heading would
+  have had the same problem. It collapses with the following margin where there is one, so
+  no other panel moves.
+
+**Deutsch**
+- **Den Panel-Überschriften der Setup-Seite fehlte der Abstand nach unten.** Sichtbar wurde
+  es nur unter *System*, wo direkt eine Knopfreihe folgt — überall sonst kommt ein Label
+  oder ein `.msg`, und die bringen einen eigenen Abstand mit, der es verdeckt hat. Behoben
+  an `.eyebrow` statt an der Knopfreihe: der nächste Block unter einer Überschrift hätte
+  dasselbe Problem gehabt. Wo schon ein Abstand folgt, fällt er mit diesem zusammen — es
+  verschiebt sich also kein anderes Panel.
+
 ## v1.58.2
 **English**
 - **Text selection is off by default in the ground app now, instead of being switched off

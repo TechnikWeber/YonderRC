@@ -16,7 +16,12 @@
       body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
       .wrap { max-width: 640px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
       h1 { font-size: 20px; margin: 4px 0; }
-      .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+      /* The heading needs its own breathing room. Most panels follow it with a label or
+         a .msg, which bring their own margin and hid this — but a .btns row has none, so
+         under "System" the buttons sat flush against the word. Set here rather than on
+         .btns: the next block to follow a heading would have the same problem. Collapses
+         with the following margin where there is one, so nothing else moves. */
+      .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
       .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
       .row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 14px; }
       .row .k { color: var(--muted); }
