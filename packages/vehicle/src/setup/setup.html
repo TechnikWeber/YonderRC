@@ -1135,6 +1135,15 @@
               <label>FPS<input type="number" value="${c.fps || 25}" oninput="camSet(${i},'fps',+this.value)" /></label>
               <label>kbps<input type="number" value="${c.bitrateKbps || ''}" placeholder="auto" oninput="camSet(${i},'bitrateKbps',+this.value)" /></label>
             </div>
+            ${c.type === 'sim' ? '' : `
+            <div class="grid3">
+              <label>Rotation<select onchange="camSet(${i},'rotation',+this.value)">
+                <option value="0" ${(c.rotation || 0) !== 180 ? 'selected' : ''}>0°</option>
+                <option value="180" ${c.rotation === 180 ? 'selected' : ''}>180° (upside down)</option>
+              </select></label>
+              <label class="opt"><input type="checkbox" ${c.hflip ? 'checked' : ''} onchange="camSet(${i},'hflip',this.checked)" /> Mirror horizontally</label>
+              <label class="opt"><input type="checkbox" ${c.vflip ? 'checked' : ''} onchange="camSet(${i},'vflip',this.checked)" /> Mirror vertically</label>
+            </div>`}
             ${c.type === 'rpicam' ? `
             <div class="grid3">
               <label>Focus<select onchange="camSet(${i},'focus',this.value)">

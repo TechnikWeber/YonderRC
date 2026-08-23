@@ -666,6 +666,30 @@ async function main() {
     cameraSource({ ...cam, type: 'rpicam', bitrateKbps: 3000 }).includes('--bitrate 3000000'),
   );
 
+  // ---- mounting orientation ----
+  const cm = await import('../packages/vehicle/src/video/cameraManager');
+  const plain: CameraCfg = { name: 'c', type: 'rpicam', width: 640, height: 480, fps: 20 };
+  ok('no transform by default', cm.orientationArgs(plain) === '' && cm.orientationFilter(plain) === null);
+  // 180° IS both mirrors, so it collapses to the same two booleans rather than being a
+  // third, separately-ordered option.
+  const upside = cm.orientationOf({ ...plain, rotation: 180 });
+  ok('180 is both mirrors', upside.hflip && upside.vflip);
+  ok('180 on rpicam', cm.orientationArgs({ ...plain, rotation: 180 }) === ' --hflip --vflip');
+  ok('hflip alone', cm.orientationArgs({ ...plain, hflip: true }) === ' --hflip');
+  // …which also makes "upside down, but the lens is mirrored" behave as expected.
+  ok('180 + hflip cancels on that axis', cm.orientationArgs({ ...plain, rotation: 180, hflip: true }) === ' --vflip');
+  ok('180 + both flips is a no-op', cm.orientationArgs({ ...plain, rotation: 180, hflip: true, vflip: true }) === '');
+  ok('rpicam source carries the flags', cm.cameraSource({ ...plain, rotation: 180 }).includes('--hflip --vflip'));
+
+  const usbCam: CameraCfg = { name: 'u', type: 'usb', device: '/dev/video0', width: 640, height: 480, fps: 30 };
+  ok('usb filter for 180', cm.orientationFilter({ ...usbCam, rotation: 180 }) === 'hflip,vflip');
+  // go2rtc splits exec: on whitespace, so the filter must stay a single argument.
+  ok('usb filter has no spaces', !cm.orientationFilter({ ...usbCam, rotation: 180 })!.includes(' '));
+  const usbSrc = cm.cameraSource({ ...usbCam, vflip: true }, 'libx264');
+  ok('usb source carries -vf', usbSrc.includes('-vf vflip '));
+  ok('-vf sits before the encoder', usbSrc.indexOf('-vf ') < usbSrc.indexOf('-c:v'));
+  ok('no -vf when there is nothing to do', !cm.cameraSource(usbCam, 'libx264').includes('-vf'));
+
   // ---- rpicam focus / tuning file ----
   const rpiBase: CameraCfg = { ...cam, type: 'rpicam' };
   ok('focus off emits nothing', !cameraSource(rpiBase).includes('--autofocus-mode'));

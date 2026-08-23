@@ -422,6 +422,13 @@ sudo bash provisioning/install.sh
 3. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
    → **Save & apply**. go2rtc wird neu geladen.
 
+   > **Über Kopf montiert?** Jede Kamera hat unter Setup › Cameras eine **Rotation**
+   > (0° / 180°) plus getrennte horizontale und vertikale Spiegelung. Bei einer
+   > CSI-Kamera macht das der Sensor, es kostet also nichts; eine USB-Kamera bekommt
+   > einen ffmpeg-Filter. 90° und 270° gibt es bewusst nicht — der Sensor kann das nicht,
+   > und es nachzubilden hieße, einen Transcode in eine Pipeline zurückzuholen, die genau
+   > dafür gebaut wurde, ohne auszukommen. Dann lieber die Kamera in der Halterung drehen.
+
    > **Keine Kamera ist eine gültige Konfiguration.** Löscht man alle Einträge, bleibt
    > die FPV-Fläche einfach dunkel: nichts wird wiederholt, nichts meldet einen Fehler,
    > und OSD, Telemetrie und Steuerung laufen weiter. Genau so konfiguriert man YonderRC,

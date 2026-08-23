@@ -411,6 +411,13 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 3. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
    **Save & apply**. go2rtc reloads.
 
+   > **Mounted upside down?** Each camera has **Rotation** (0° / 180°) plus separate
+   > horizontal and vertical mirrors, under Setup › Cameras. On a CSI camera the sensor
+   > applies them, so they cost nothing; a USB camera gets an ffmpeg filter. 90° and 270°
+   > are deliberately not offered — the sensor cannot do them, and faking them would put
+   > a transcode back into a pipeline built to avoid one. Turn the camera in its mount
+   > instead, or accept the crop of a rotated USB stream elsewhere.
+
    > **No camera is a valid setup.** Remove every entry and the FPV area simply stays
    > dark: nothing is retried, nothing reports an error, and the OSD, telemetry and
    > controls carry on. That is the configuration to use if you want YonderRC purely as

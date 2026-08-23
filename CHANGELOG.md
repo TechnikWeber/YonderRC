@@ -3,6 +3,38 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.54.0
+**English**
+- **Rotation and mirroring per camera** (Setup › Cameras): 0° / 180° plus independent
+  horizontal and vertical mirrors, for CSI and USB alike. A camera bolted in upside down
+  is the normal case, not an exception.
+- **It is one transform, not three options.** A 180° rotation *is* a horizontal plus a
+  vertical flip, so all three settings collapse into two booleans before anything is
+  emitted. That is why "180° and also mirrored horizontally" cancels on that axis instead
+  of depending on the order a camera stack happens to apply two separate flags in.
+- On the CSI path the sensor applies the transform (`rpicam-vid --hflip/--vflip`), so it
+  is free; the V4L2 path gets an ffmpeg `-vf` filter, written without spaces because
+  go2rtc splits an `exec:` line on whitespace.
+- **90° and 270° are deliberately absent.** `rpicam-vid` only offers 0 and 180 — the
+  sensor cannot do the others — and faking them would mean putting a transcode back into
+  a pipeline that was rebuilt in v1.47.0 specifically to avoid one.
+
+**Deutsch**
+- **Rotation und Spiegelung pro Kamera** (Setup › Cameras): 0° / 180° plus unabhängige
+  horizontale und vertikale Spiegelung, für CSI und USB gleichermaßen. Eine über Kopf
+  verbaute Kamera ist der Normalfall, keine Ausnahme.
+- **Es ist eine Transformation, nicht drei Optionen.** Eine 180°-Drehung *ist* eine
+  horizontale plus eine vertikale Spiegelung, also fallen alle drei Einstellungen in zwei
+  Booleans zusammen, bevor irgendetwas erzeugt wird. Deshalb hebt sich „180° und
+  zusätzlich horizontal gespiegelt" auf dieser Achse auf, statt davon abzuhängen, in
+  welcher Reihenfolge ein Kamera-Stack zwei getrennte Flags anwendet.
+- Auf dem CSI-Pfad macht das der Sensor (`rpicam-vid --hflip/--vflip`), es ist also
+  kostenlos; der V4L2-Pfad bekommt einen ffmpeg-`-vf`-Filter, geschrieben ohne
+  Leerzeichen, weil go2rtc eine `exec:`-Zeile an Leerzeichen trennt.
+- **90° und 270° fehlen bewusst.** `rpicam-vid` bietet nur 0 und 180 — der Sensor kann
+  die anderen nicht — und sie nachzubilden hieße, einen Transcode in eine Pipeline
+  zurückzuholen, die in v1.47.0 genau dafür umgebaut wurde, ohne auszukommen.
+
 ## v1.53.0
 **English**
 - **Switching camera module now cleans up after the previous one.** A tuning file is a

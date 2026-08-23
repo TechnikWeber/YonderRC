@@ -244,6 +244,17 @@ export interface CameraCfg {
    * 'manual' uses `lensPosition`; for a vehicle that is usually the better choice,
    * since continuous AF hunts while the model moves.
    */
+  /**
+   * Mounting orientation. 180° is a rotation, not a crop: on the CSI path the sensor
+   * does it, so it costs nothing. 90/270 are deliberately absent — the sensor cannot do
+   * them, and faking them would mean putting a transcode back into a pipeline built to
+   * avoid one.
+   */
+  rotation?: 0 | 180;
+  /** Mirror horizontally (a camera looking at a mirror, or a reversed lens module). */
+  hflip?: boolean;
+  /** Mirror vertically. */
+  vflip?: boolean;
   focus?: FocusMode;
   /** Manual focus distance in dioptres (0 = infinity, 10 = 10 cm). */
   lensPosition?: number;

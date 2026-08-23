@@ -61,6 +61,35 @@ function encoderArgs(encoder: string, fps: number, bitrateKbps?: number): string
   return `-c:v ${encoder} -g ${fps}` + (br ? ` -b:v ${br}k` : '');
 }
 
+/**
+ * The mounting transform as two mirrors.
+ *
+ * A 180° rotation *is* a horizontal plus a vertical flip, so everything collapses to
+ * two booleans — which also means `rotation: 180` combined with `hflip` behaves the way
+ * you would expect (they cancel on that axis) instead of depending on how the camera
+ * stack happens to order two separate options.
+ */
+export function orientationOf(cam: CameraCfg): { hflip: boolean; vflip: boolean } {
+  const half = cam.rotation === 180;
+  return { hflip: !!cam.hflip !== half, vflip: !!cam.vflip !== half };
+}
+
+/** rpicam-vid flags for the transform (it takes the flips natively, in the sensor). */
+export function orientationArgs(cam: CameraCfg): string {
+  const { hflip, vflip } = orientationOf(cam);
+  return `${hflip ? ' --hflip' : ''}${vflip ? ' --vflip' : ''}`;
+}
+
+/**
+ * ffmpeg filter for the V4L2 path, or null for none. No spaces: go2rtc splits an
+ * `exec:` line on whitespace, so `hflip,vflip` must stay one argument.
+ */
+export function orientationFilter(cam: CameraCfg): string | null {
+  const { hflip, vflip } = orientationOf(cam);
+  const parts = [hflip ? 'hflip' : null, vflip ? 'vflip' : null].filter(Boolean);
+  return parts.length ? parts.join(',') : null;
+}
+
 /** Round to an even number ≥ 2 (H.264 needs even dimensions). */
 function even(n: number): number {
   return Math.max(2, Math.round(n / 2) * 2);
@@ -159,12 +188,14 @@ export function cameraSource(cam: CameraCfg, encoder = 'libx264', rpicamBin = 'r
     return (
       `exec:${safeBinary(rpicamBin)} -t 0 --inline --flush --nopreview --codec h264 ` +
       `--width ${w} --height ${h} --framerate ${fps} --intra ${fps}${brArg}` +
-      `${tuneArg}${focusArgs(cam)} -o -`
+      `${orientationArgs(cam)}${tuneArg}${focusArgs(cam)} -o -`
     );
   }
   // usb (V4L2): transcode to H.264 with the detected encoder.
   const dev = safeDevice(cam.device);
-  return `exec:ffmpeg -f v4l2 -framerate ${fps} -video_size ${w}x${h} -i ${dev} ${enc} -f rtsp {output}`;
+  const filter = orientationFilter(cam);
+  const vf = filter ? `-vf ${filter} ` : '';
+  return `exec:ffmpeg -f v4l2 -framerate ${fps} -video_size ${w}x${h} -i ${dev} ${vf}${enc} -f rtsp {output}`;
 }
 
 export function generateGo2rtcYaml(cameras: CameraCfg[], encoder = 'libx264', rpicamBin = 'rpicam-vid'): string {
