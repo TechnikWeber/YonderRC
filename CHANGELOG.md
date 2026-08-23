@@ -3,6 +3,46 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.54.2
+**English**
+- **Auto quality could freeze the picture into a permanent "reconnecting".** Stepping the
+  level makes the vehicle rescale the camera and reload go2rtc, which kills the current
+  WebRTC stream — the connection has to be rebuilt either way. A **manual** change got
+  that for free, because it moves the `quality` state the connect effect depends on: full
+  teardown, attempt counter back to zero, fresh connect. An **automatic** change only
+  moved `effectiveQuality`, which the effect did *not* depend on, so nothing rebuilt the
+  connection. The dead stream was left to the 4-second frame-liveness watchdog, which
+  reconnects on the accumulated failed-attempt count and its widening backoff — and once
+  frozen, auto-quality cannot rescue itself either, because it only steps while the
+  picture is playing. Picking a level by hand broke the loop, which is exactly what was
+  observed.
+- `effectiveQuality` is now part of the connect effect, so an automatic step takes the
+  identical path to a manual one.
+- The vehicle side was ruled out first: the medium rescale of a 1280×720 camera
+  (844×476 at 1200 kbps) was applied and served a frame on the real Pi.
+- Verified by reasoning and by the manual path already being known-good, **not** by a
+  test — this is a React effect dependency, not a pure function.
+
+**Deutsch**
+- **Auto-Qualität konnte das Bild dauerhaft in „reconnecting" einfrieren.** Ein
+  Stufenwechsel lässt das Fahrzeug die Kamera neu skalieren und go2rtc neu laden, was den
+  laufenden WebRTC-Stream beendet — die Verbindung muss also ohnehin neu aufgebaut werden.
+  Ein **manueller** Wechsel bekam das geschenkt, weil er den Zustand `quality` ändert, von
+  dem der Verbindungs-Effekt abhängt: kompletter Abbau, Versuchszähler auf null, frischer
+  Verbindungsaufbau. Ein **automatischer** Wechsel änderte nur `effectiveQuality`, wovon
+  der Effekt *nicht* abhing — es baute also nichts neu auf. Der tote Stream blieb dem
+  4-Sekunden-Frame-Watchdog überlassen, der mit dem angesammelten Fehlversuchszähler und
+  dessen wachsendem Backoff neu verbindet. Und einmal eingefroren kann sich die
+  Auto-Qualität auch nicht selbst befreien, weil sie nur schaltet, solange das Bild läuft.
+  Eine Stufe von Hand zu wählen durchbrach die Schleife — genau das war zu beobachten.
+- `effectiveQuality` gehört jetzt zum Verbindungs-Effekt, ein automatischer Schritt nimmt
+  damit exakt denselben Weg wie ein manueller.
+- Die Fahrzeugseite wurde zuerst ausgeschlossen: die Medium-Skalierung einer
+  1280×720-Kamera (844×476 bei 1200 kbps) wurde am echten Pi angewandt und lieferte ein
+  Bild.
+- Belegt durch Herleitung und dadurch, dass der manuelle Weg nachweislich funktioniert —
+  **nicht** durch einen Test: das ist eine React-Effect-Abhängigkeit, keine reine Funktion.
+
 ## v1.54.1
 **English**
 - **The camera row stopped talking about the IMX519 under every other sensor.** The

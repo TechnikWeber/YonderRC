@@ -626,8 +626,15 @@ export function VideoPanel({
       pcRef.current?.close();
       pcRef.current = null;
     };
+    // `effectiveQuality` belongs here, not just `quality`. Any level change makes the
+    // vehicle rescale the camera and reload go2rtc, which kills the current stream — so
+    // the connection has to be rebuilt either way. A manual change got that for free
+    // because it moves `quality`; an automatic one only moved `effectiveQuality` and was
+    // left to the 4 s frame-liveness watchdog, reusing the failed-attempt count and its
+    // backoff. That is why auto low→medium could sit in "reconnecting" until someone
+    // picked a level by hand.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoBaseUrl, camera, linkState, quality]);
+  }, [videoBaseUrl, camera, linkState, quality, effectiveQuality]);
 
   // Fullscreen the whole stage (video + OSD overlays stay together).
   useEffect(() => {
@@ -709,7 +716,9 @@ export function VideoPanel({
       setEffectiveQuality(q);
       onQuality(q); // vehicle rescales + reloads go2rtc; the watchdog reconnects
     }
-    // For 'auto', the controller in the watchdog takes over from the current level.
+    // For 'auto', the controller in the watchdog takes over from the current level —
+    // and its changes rebuild the connection the same way this one does, because
+    // `effectiveQuality` drives the connect effect too.
   }
 
   function saveAutoCfg(patch: Partial<AutoQualityCfg>) {
