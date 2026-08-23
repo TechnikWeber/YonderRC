@@ -145,6 +145,20 @@ body {
  * and it was missing everywhere. Applied to every control at once rather than
  * per button, because the next button to grow a hold would hit the same thing.
  */
+/*
+ * …and the selection has to be blocked on the whole driving surface, not just on the
+ * controls. iOS does not stop at a `user-select: none` element: a long press there
+ * starts a selection in the nearest selectable text *around* it, which is how holding
+ * the Light button ends up highlighting the "Speed" label underneath. There is nothing
+ * in this panel worth selecting — it is all button captions.
+ */
+.controlpad,
+.controlpad *:not(input):not(textarea) {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 button,
 summary,
 .btn,

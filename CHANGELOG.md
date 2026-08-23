@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.58.1
+**English**
+- **Holding a pad button no longer highlights the label underneath on iOS.** The buttons
+  themselves were already marked non-selectable, which is not enough: iOS does not stop at
+  a `user-select: none` element — a long press there starts a selection in the nearest
+  selectable text *around* it. Holding **Light** for its hold time therefore selected the
+  **Speed** caption below it, complete with the callout menu. The whole driving surface is
+  now non-selectable (`.controlpad`), because there is nothing in that panel worth
+  selecting — it is all button captions. Inputs are excluded, so nothing that should be
+  typeable stops being typeable.
+
+**Deutsch**
+- **Einen Pad-Knopf zu halten markiert unter iOS nicht mehr die Beschriftung darunter.**
+  Die Knöpfe selbst waren bereits als nicht markierbar gekennzeichnet, was nicht reicht:
+  iOS hält bei einem `user-select: none`-Element nicht an — ein langer Druck darauf startet
+  eine Markierung im nächstgelegenen markierbaren Text *daneben*. **Light** für die
+  Haltedauer zu drücken markierte deshalb die Beschriftung **Speed** darunter, samt
+  Kontextmenü. Die gesamte Steuerfläche ist jetzt nicht markierbar (`.controlpad`), denn in
+  diesem Panel gibt es nichts, was man markieren wollte — es sind ausschließlich
+  Knopfbeschriftungen. Eingabefelder sind ausgenommen, es hört also nichts auf, tippbar zu
+  sein.
+
 ## v1.58.0
 **English**
 - **Shut down vehicle**, next to Reboot in Setup › System. Pulling the plug on a Pi is how

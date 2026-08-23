@@ -165,7 +165,8 @@ export function ControlPad({
         : 'Touch: drag the sticks. Detents (centering) are set per axis in Setup.';
 
   return (
-    <section className="panel">
+    // `controlpad` marks the whole driving surface as non-selectable — see styles.css.
+    <section className="panel controlpad">
       <span className="eyebrow">
         {profile.name} · {profile.vehicleType} · {profile.inputMethod}
       </span>
