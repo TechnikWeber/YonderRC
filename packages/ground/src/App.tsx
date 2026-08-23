@@ -39,6 +39,7 @@ import {
   loadSpeechCfg, saveSpeechCfg, announcementsFor, batteryRepeat, linkVoice, speak, primeSpeech,
   LINK_VOICE_INITIAL, type SpeechCfg, type SpeechState, type LinkVoiceState,
 } from './lib/speech';
+import { loadHapticCfg, saveHapticCfg, type HapticCfg } from './lib/haptics';
 import { linkHealth, linkTrend } from './lib/linkHealth';
 import {
   loadReturnBudgetCfg, saveReturnBudgetCfg, returnBudget, consumptionRate, pushSample, odoStep, latchReturnNow,
@@ -586,6 +587,14 @@ export function App() {
     return () => clearInterval(id);
   }, []);
 
+  // Stick feedback at centre and rim, so a thumb can find them without looking away
+  // from the picture. Off by default — it is a preference, not a safety feature.
+  const [hapticCfg, setHapticCfgState] = useState<HapticCfg>(loadHapticCfg);
+  const setHapticCfg = (c: HapticCfg) => {
+    setHapticCfgState(c);
+    saveHapticCfg(c);
+  };
+
   // Spoken callouts. The pure part decides what is worth saying; this only hands
   // it to the browser's voice.
   const [speechCfg, setSpeechCfgState] = useState<SpeechCfg>(loadSpeechCfg);
@@ -654,7 +663,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.50.0</span>
+        <span className="ver">ground · v1.51.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -710,7 +719,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} budget={budgetCfg} onBudget={setBudgetCfg} budgetLive={budget} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} haptics={hapticCfg} onHaptics={setHapticCfg} budget={budgetCfg} onBudget={setBudgetCfg} budgetLive={budget} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>
@@ -768,6 +777,7 @@ export function App() {
             onTrim={(id, delta) => updateProfile(nudgeTrim(active, id, delta))}
             onTrimClear={(id) => updateProfile(clearTrim(active, id))}
             version={tick}
+            haptics={hapticCfg}
           />
           <div className="link-opts">
             <label

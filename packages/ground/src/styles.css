@@ -525,6 +525,23 @@ summary,
   justify-content: center;
   flex-wrap: wrap;
   margin: 14px 0 4px;
+  /* One knob (0.3125 of the base) and its travel are derived from the base, so a
+     bigger stick stays the same stick — same proportions, same feel, more room. */
+  --joy-size: 128px;
+  --joy-knob: calc(var(--joy-size) * 0.3125);
+  --joy-throw: calc((var(--joy-size) - var(--joy-knob)) / 2);
+}
+/* Stick modes 2 and 3 put both axes on one stick, so the other half of the row is
+   empty — spend it on the stick that is left. On a phone that is the difference
+   between a thumb-tip and a thumb-width of precision. */
+.joy-row.solo {
+  --joy-size: clamp(128px, 62vw, 300px);
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Landscape on a phone: height is the scarce axis, not width. */
+  .joy-row.solo {
+    --joy-size: clamp(128px, 46vh, 260px);
+  }
 }
 .joy-wrap {
   display: flex;
@@ -534,8 +551,8 @@ summary,
 }
 .joy-base {
   position: relative;
-  width: 128px;
-  height: 128px;
+  width: var(--joy-size, 128px);
+  height: var(--joy-size, 128px);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 40%, #16202b, #0d131a);
   border: 1px solid var(--line-bright);
@@ -566,9 +583,9 @@ summary,
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 40px;
-  height: 40px;
-  margin: -20px 0 0 -20px;
+  width: var(--joy-knob, 40px);
+  height: var(--joy-knob, 40px);
+  margin: calc(var(--joy-knob, 40px) / -2) 0 0 calc(var(--joy-knob, 40px) / -2);
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);

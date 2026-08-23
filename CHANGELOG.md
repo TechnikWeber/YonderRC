@@ -3,6 +3,53 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.51.0
+**English**
+- **The on-screen stick gets the space it deserves.** Stick modes 2 and 3 put both axes
+  on one stick, which left the other half of the row empty while the stick you actually
+  use stayed 128 px. It now grows to `clamp(128px, 62vw, 300px)` whenever only one stick
+  is rendered — on a phone roughly twice the travel for the same thumb, which is the
+  difference between thumb-tip and thumb-width precision. Landscape on a phone scales off
+  the height instead, since that is the scarce axis there. Base, knob and travel all come
+  from one `--joy-size` variable, so it is the same stick, just bigger; the knob's travel
+  used to be a hardcoded 44 px that only fitted the 128 px base.
+- Keyed on **how many sticks are shown**, not on the mode number, so a custom binding that
+  leaves one side empty gets the same benefit.
+- **Stick feedback at the centre and the rim** (Setup › Controls, off by default). Each
+  boundary fires once per crossing, with hysteresis on both — holding the stick against
+  the stop stays quiet instead of chattering.
+- **An iPhone cannot vibrate from a web page.** Safari has no Vibration API and no setting
+  changes that, so a phone-only "rumble" cannot be built. What does work on iOS is a very
+  short Web Audio click, and that is the default channel; vibration is offered where the
+  browser actually has it (Android) and greys out where it does not, rather than being a
+  switch that silently does nothing. A connected gamepad is rumbled through
+  `vibrationActuator`. The click is deliberately separate from `beep.ts`, whose tones are
+  alerts meant to be heard over wind and must not be competed with.
+
+**Deutsch**
+- **Der Bildschirm-Stick bekommt den Platz, der da ist.** Die Stick-Modi 2 und 3 legen
+  beide Achsen auf einen Stick — die andere Hälfte der Reihe blieb leer, während der Stick,
+  den man tatsächlich benutzt, 128 px klein blieb. Er wächst jetzt auf
+  `clamp(128px, 62vw, 300px)`, sobald nur ein Stick angezeigt wird: am Handy grob der
+  doppelte Weg für denselben Daumen, also der Unterschied zwischen Daumenspitzen- und
+  Daumenbreiten-Genauigkeit. Im Querformat am Handy skaliert er über die Höhe, weil dort
+  die knapp ist. Basis, Knopf und Weg kommen aus einer einzigen Variable `--joy-size` —
+  es ist derselbe Stick, nur größer; der Weg des Knopfes war vorher fest auf 44 px
+  verdrahtet und passte nur zur 128-px-Basis.
+- Ausschlaggebend ist, **wie viele Sticks angezeigt werden**, nicht die Modusnummer — eine
+  eigene Belegung, die eine Seite frei lässt, profitiert genauso.
+- **Rückmeldung an Mitte und Rand** (Setup › Controls, standardmäßig aus). Jede Grenze
+  löst einmal pro Überschreitung aus, mit Hysterese in beide Richtungen — den Stick am
+  Anschlag zu halten bleibt still statt zu rattern.
+- **Ein iPhone kann von einer Webseite aus nicht vibrieren.** Safari hat keine
+  Vibration-API, und keine Einstellung ändert das — ein reines „Rumble" am Telefon lässt
+  sich also nicht bauen. Was unter iOS funktioniert, ist ein sehr kurzer Web-Audio-Klick,
+  und der ist der Standardkanal; Vibration wird angeboten, wo der Browser sie wirklich hat
+  (Android), und ist sonst ausgegraut, statt ein Schalter zu sein, der stillschweigend
+  nichts tut. Ein verbundenes Gamepad wird über `vibrationActuator` gerüttelt. Der Klick
+  ist bewusst von `beep.ts` getrennt, dessen Töne Warnungen sind, die man über Fahrtwind
+  hören soll — dem darf er keine Konkurrenz machen.
+
 ## v1.50.0
 **English**
 - **The update button no longer turns a configured vehicle back into a simulator.** The

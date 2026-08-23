@@ -6,6 +6,7 @@ import type { AutoDisarmMode } from '../lib/templates';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
 import { clampButtonHoldSeconds, BUTTON_HOLD_MAX_S, BUTTON_HOLD_MIN_S, type ButtonHoldCfg } from '../lib/buttonHold';
 import { speechAvailable, speak, type SpeechCfg } from '../lib/speech';
+import { playHaptic, vibrationAvailable, type HapticCfg } from '../lib/haptics';
 import {
   clampReservePct, RESERVE_MAX_PCT, RESERVE_MIN_PCT,
   type ReturnBudgetCfg, type ReturnBudgetResult,
@@ -23,6 +24,8 @@ export function ControlsPanel({
   buttonHold,
   onButtonHold,
   speech,
+  haptics,
+  onHaptics,
   onSpeech,
   budget,
   onBudget,
@@ -52,6 +55,8 @@ export function ControlsPanel({
   buttonHold: ButtonHoldCfg;
   onButtonHold: (c: ButtonHoldCfg) => void;
   speech: SpeechCfg;
+  haptics: HapticCfg;
+  onHaptics: (c: HapticCfg) => void;
   onSpeech: (c: SpeechCfg) => void;
   budget: ReturnBudgetCfg;
   onBudget: (c: ReturnBudgetCfg) => void;
@@ -220,6 +225,62 @@ export function ControlsPanel({
         on the vehicle, a current sensor and a GPS home point</b> — without any of them it
         simply shows nothing, which is the normal case for a vehicle that is just a
         servo driver.
+      </p>
+
+      <div className="eyebrow" style={{ marginTop: 14 }}>Stick feedback</div>
+      <label className="opt big">
+        <input
+          type="checkbox"
+          checked={haptics.enabled}
+          onChange={(e) => onHaptics({ ...haptics, enabled: e.target.checked })}
+        />
+        Signal the centre and the rim of the on-screen stick
+      </label>
+      <label className="opt">
+        <input
+          type="checkbox"
+          checked={haptics.click}
+          disabled={!haptics.enabled}
+          onChange={(e) => onHaptics({ ...haptics, click: e.target.checked })}
+        />
+        Click (works everywhere, including iPhone)
+      </label>
+      <label className="opt">
+        <input
+          type="checkbox"
+          checked={haptics.vibrate}
+          disabled={!haptics.enabled || !vibrationAvailable()}
+          onChange={(e) => onHaptics({ ...haptics, vibrate: e.target.checked })}
+        />
+        Vibration {vibrationAvailable() ? '' : '— not available in this browser'}
+      </label>
+      <label className="opt">
+        <input
+          type="checkbox"
+          checked={haptics.gamepad}
+          disabled={!haptics.enabled}
+          onChange={(e) => onHaptics({ ...haptics, gamepad: e.target.checked })}
+        />
+        Rumble a connected gamepad
+      </label>
+      <div className="log-row">
+        <button className="btn tiny" disabled={!haptics.enabled} onClick={() => playHaptic('center', haptics)}>
+          Test centre
+        </button>
+        <button className="btn tiny" disabled={!haptics.enabled} onClick={() => playHaptic('edge', haptics)}>
+          Test rim
+        </button>
+      </div>
+      <p className="note">
+        On FPV your thumb has no edge to feel for. This marks the two positions that matter:
+        back at <b>centre</b>, and hard against the <b>rim</b>. Each fires once per crossing —
+        holding the stick at the stop stays quiet.
+        {' '}
+        {vibrationAvailable()
+          ? <>Vibration is available here.</>
+          : <><b>An iPhone cannot vibrate from a web page</b> — Safari has no Vibration API, and no
+            setting changes that. The click is the feedback that does work on iOS; turn the phone's
+            silent switch off to hear it.</>}
       </p>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Voice callouts</div>

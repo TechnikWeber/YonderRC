@@ -577,6 +577,26 @@ async function main() {
   const planeLow = setDetent(plane, 'leftY', 'low');
   ok('setDetent low', currentDetents(planeLow).leftY === 'low');
 
+  // ---- stick feedback zones (centre / rim, with hysteresis) ----
+  const hap = await import('../packages/ground/src/lib/haptics');
+  ok('rest is centre', hap.axisZone(0, 'center') === 'center');
+  ok('leaving centre needs more than entering', hap.axisZone(0.1, 'center') === 'center');
+  ok('past the outer centre threshold → mid', hap.axisZone(0.2, 'center') === 'mid');
+  ok('back inside → centre again', hap.axisZone(0.05, 'mid') === 'center');
+  ok('rim needs 0.97', hap.axisZone(0.95, 'mid') === 'mid' && hap.axisZone(0.98, 'mid') === 'edge');
+  // Holding a stick against the stop must buzz once, not chatter: leaving the rim
+  // needs a bigger move than entering it did.
+  ok('rim holds through jitter', hap.axisZone(0.93, 'edge') === 'edge');
+  ok('rim released below 0.9', hap.axisZone(0.85, 'edge') === 'mid');
+  ok('slammed from rim to centre', hap.axisZone(0.0, 'edge') === 'center');
+
+  ok('entering centre fires', hap.zoneEvents('mid', 'center').join() === 'center');
+  ok('entering the rim fires', hap.zoneEvents('mid', 'edge').join() === 'edge');
+  ok('leaving is silent', hap.zoneEvents('center', 'mid').length === 0 && hap.zoneEvents('edge', 'mid').length === 0);
+  ok('staying put is silent', hap.zoneEvents('edge', 'edge').length === 0);
+  ok('rim is firmer than centre', hap.patternFor('edge')[0] > hap.patternFor('center')[0]);
+  ok('feedback is off until asked for', hap.HAPTICS_DEFAULTS.enabled === false);
+
   // ---- PCA9685: only changed channels go on the wire ----
   const { channelsToWrite } = await import('../packages/vehicle/src/drivers/pca9685');
   ok('first write sends everything', channelsToWrite(null, [1, 2, 3]).join() === '0,1,2');

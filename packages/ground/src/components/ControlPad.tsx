@@ -5,6 +5,7 @@ import type { BindingEngine } from '../lib/input/bindingEngine';
 import { holdProgress, holdRemainingS } from '../lib/hold';
 import { LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { VirtualJoystick } from './VirtualJoystick';
+import type { HapticCfg } from '../lib/haptics';
 import { HoldButton } from './HoldButton';
 import { TrimPanel } from './TrimPanel';
 
@@ -56,12 +57,15 @@ export function ControlPad({
   onTrim,
   onTrimClear,
   version,
+  haptics,
 }: {
   profile: Profile;
   input: InputManager;
   engine: BindingEngine;
   armed: boolean;
   onToggleArm: () => void;
+  /** Stick feedback (centre / rim) settings; undefined or disabled = silent. */
+  haptics?: HapticCfg;
   /** Hold time for the arm button in ms; 0 = protection off (plain tap). */
   holdMs: number;
   /** Hold progress coming from the bound arm key/button, so the fill matches. */
@@ -83,6 +87,10 @@ export function ControlPad({
   const joys = useMemo(() => joyConfigs(profile), [profile]);
   const onscreen = profile.bindings.filter((b) => b.source === 'onscreen');
   const hasJoys = !!(joys.L || joys.R);
+  // Stick modes 2 and 3 collapse both axes onto one stick. Keyed on what is actually
+  // rendered rather than on the mode number, so a custom binding that leaves one side
+  // empty gets the same benefit.
+  const soloJoy = !!(joys.L ? !joys.R : joys.R);
   // Stable identity so the joystick's effect doesn't churn (which used to cancel
   // the spring animation mid-flight).
   const handleJoy = useCallback((jid: string, x: number, y: number) => input.setJoystick(jid, x, y), [input]);
@@ -192,7 +200,7 @@ export function ControlPad({
       </button>
 
       {hasJoys && (
-        <div className="joy-row" data-version={version}>
+        <div className={soloJoy ? 'joy-row solo' : 'joy-row'} data-version={version}>
           {(['L', 'R'] as const).map((k) =>
             joys[k] ? (
               <VirtualJoystick
@@ -204,6 +212,7 @@ export function ControlPad({
                 detentX={joys[k]!.detentX}
                 detentY={joys[k]!.detentY}
                 onChange={handleJoy}
+                haptics={haptics}
               />
             ) : null,
           )}

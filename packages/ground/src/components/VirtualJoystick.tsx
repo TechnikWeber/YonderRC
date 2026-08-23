@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Detent } from '@yonderrc/protocol';
+import { axisZone, playHaptic, zoneEvents, type AxisZone, type HapticCfg } from '../lib/haptics';
 
 /**
  * Full virtual joystick: multitouch (each stick tracks its own pointer id, so two
@@ -19,6 +20,7 @@ export function VirtualJoystick({
   detentX = 'center',
   detentY = 'center',
   onChange,
+  haptics,
 }: {
   id: string;
   label: string;
@@ -27,6 +29,7 @@ export function VirtualJoystick({
   detentX?: Detent;
   detentY?: Detent;
   onChange: (id: string, x: number, y: number) => void;
+  haptics?: HapticCfg;
 }) {
   const baseRef = useRef<HTMLDivElement>(null);
   // Resting position: center axes rest at 0; low/free axes rest at minimum
@@ -42,6 +45,13 @@ export function VirtualJoystick({
   const DEADZONE = 0.06;
   const dz = (v: number) => (Math.abs(v) < DEADZONE ? 0 : v);
 
+  // Zone per axis, so centre and rim can be felt without looking away from the FPV
+  // picture. Kept in a ref: this runs on every pointer move and must not re-render.
+  const zoneX = useRef<AxisZone>('center');
+  const zoneY = useRef<AxisZone>('center');
+  const hapticsRef = useRef(haptics);
+  hapticsRef.current = haptics;
+
   const emit = useCallback(
     (x: number, y: number) => {
       const nx = axisX ? dz(x) : 0;
@@ -49,6 +59,26 @@ export function VirtualJoystick({
       value.current = { x: nx, y: ny };
       setKnob({ x: nx, y: ny });
       onChange(id, nx, ny);
+
+      const cfg = hapticsRef.current;
+      if (cfg?.enabled) {
+        // One event per boundary crossing even when both axes cross at once —
+        // two buzzes in the same millisecond just read as one longer buzz.
+        const fired = new Set<string>();
+        if (axisX) {
+          const next = axisZone(nx, zoneX.current);
+          for (const e of zoneEvents(zoneX.current, next)) fired.add(e);
+          zoneX.current = next;
+        }
+        if (axisY) {
+          const next = axisZone(ny, zoneY.current);
+          for (const e of zoneEvents(zoneY.current, next)) fired.add(e);
+          zoneY.current = next;
+        }
+        // Rim wins: hitting the edge is the more important of the two to feel.
+        if (fired.has('edge')) playHaptic('edge', cfg);
+        else if (fired.has('center')) playHaptic('center', cfg);
+      }
     },
     [axisX, axisY, id, onChange],
   );
@@ -156,7 +186,11 @@ export function VirtualJoystick({
         {axisY && <div className="joy-cross-v" />}
         <div
           className="joy-knob"
-          style={{ transform: `translate(${knob.x * 44}px, ${-knob.y * 44}px)` }}
+          style={{
+            // Travel comes from --joy-throw so the knob keeps reaching the rim at
+            // every size; a hardcoded 44px only fitted the 128px stick.
+            transform: `translate(calc(var(--joy-throw) * ${knob.x}), calc(var(--joy-throw) * ${-knob.y}))`,
+          }}
         />
       </div>
       <span className="joy-label">{label}</span>
