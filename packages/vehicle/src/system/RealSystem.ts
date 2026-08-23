@@ -898,7 +898,7 @@ export class RealSystem implements SystemManager {
    * service never comes back into a half-updated checkout — the setup page you are
    * holding is served by that same service.
    */
-  async updateApply(src: UpdateSource = UPDATE_SOURCE_DEFAULT): Promise<UpdateResult> {
+  async updateApply(src: UpdateSource = UPDATE_SOURCE_DEFAULT, hardwareDeps: string[] = []): Promise<UpdateResult> {
     const check = await this.updateCheck(src);
     if (!check.ok) {
       return { ok: false, message: check.message, output: [check.note, check.detail].filter(Boolean).join('\n\n'), steps: [] };
@@ -909,7 +909,7 @@ export class RealSystem implements SystemManager {
     const steps: { label: string; ok: boolean }[] = [];
     const logs: string[] = [];
     const { env } = gitEnv(REPO_ROOT);
-    for (const step of updateSteps(check.impact, src, check.tree.generated)) {
+    for (const step of updateSteps(check.impact, src, check.tree.generated, hardwareDeps)) {
       const args = step.cmd === 'git' ? gitArgs(REPO_ROOT, step.args) : step.args;
       const r = await shSlow(step.cmd, args, { cwd: REPO_ROOT, timeoutMs: 15 * 60_000, env: step.cmd === 'git' ? env : undefined });
       steps.push({ label: step.label, ok: r.ok });

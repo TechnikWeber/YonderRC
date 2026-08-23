@@ -329,7 +329,12 @@ export interface SystemManager {
   /** What an update would change — fetches, changes nothing. */
   updateCheck(src?: UpdateSource): Promise<UpdateCheck>;
   /** Apply the update (pull, install/rebuild if needed) and restart. */
-  updateApply(src?: UpdateSource): Promise<UpdateResult>;
+  /**
+   * Apply the update. `hardwareDeps` are the native driver modules this vehicle has
+   * recorded: `npm install --omit=optional` prunes them, so they are reinstalled as
+   * part of the update instead of leaving a configured vehicle running as a simulator.
+   */
+  updateApply(src?: UpdateSource, hardwareDeps?: string[]): Promise<UpdateResult>;
   /** Which CSI camera module the firmware is configured for (config.txt). */
   cameraModule(): Promise<CameraModuleStatus>;
   /** Select a camera module; takes effect on the next boot. */

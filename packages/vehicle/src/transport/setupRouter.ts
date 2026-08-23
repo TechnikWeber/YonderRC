@@ -182,7 +182,10 @@ export async function handleSetup(
   }
 
   if (url === '/api/update' && method === 'POST') {
-    const r = await ctx.system.updateApply(ctx.config.update);
+    const r = await ctx.system.updateApply(
+      ctx.config.update,
+      loadPersisted(ctx.config.configPath).hardwareDeps ?? [],
+    );
     json(res, r.ok ? 200 : 500, r);
     return true;
   }

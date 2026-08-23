@@ -45,3 +45,23 @@ export function channelBytes(offCount: number): [number, number, number, number]
 export function channelRegister(channel: number): number {
   return PCA9685_LED0_ON_L + 4 * channel;
 }
+
+/**
+ * Which channels have to go out on the wire. The PCA9685 holds the last value it was
+ * given, so re-sending an unchanged one buys nothing — and it is not free: each channel
+ * is its own I²C transaction, sixteen of them nearly fill the 20 ms control tick, and
+ * `VehicleCore` then drops the next tick ("driver write still busy").
+ *
+ * `null` in `next` means "leave this channel alone" (the caller had no value for it),
+ * which is not the same as "write zero". `prev` of null means nothing is known about the
+ * chip — after init, or after a failed write — and forces every known value out again,
+ * so the cache can never claim a value the chip never received.
+ */
+export function channelsToWrite(prev: (number | null)[] | null, next: (number | null)[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < next.length; i++) {
+    if (next[i] === null) continue;
+    if (!prev || prev[i] !== next[i]) out.push(i);
+  }
+  return out;
+}

@@ -351,7 +351,7 @@ export class SimSystem implements SystemManager {
     return { ...base, ...describeCheck(base) };
   }
 
-  async updateApply(_src?: unknown): Promise<UpdateResult> {
+  async updateApply(_src?: unknown, _hardwareDeps?: string[]): Promise<UpdateResult> {
     if (!this.simBehind) return { ok: true, message: 'Up to date (simulated).', output: '', steps: [] };
     this.simBehind = 0;
     return {

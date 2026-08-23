@@ -18,6 +18,8 @@
  * All of it is pure here; RealSystem runs the commands.
  */
 
+import { isHwDep } from './hwDeps.js';
+
 /**
  * Files the vehicle writes into its own checkout, so they are modified on every
  * running vehicle and must not be mistaken for someone's work in progress. They are
@@ -170,10 +172,20 @@ export function isGitBranch(v: unknown): v is string {
  * platform binaries), build before the restart (so the service comes back with a
  * matching ground app rather than a half-updated one).
  */
+/**
+ * Which recorded native modules an update may reinstall. Same allowlist as
+ * `hwDeps.ts` and the shell version in install.sh: the value comes from a config file
+ * and ends up in an npm command line, so it is never passed through unchecked.
+ */
+export function restorableHwDeps(deps: string[]): string[] {
+  return [...new Set(deps)].filter(isHwDep).sort();
+}
+
 export function updateSteps(
   impact: UpdateImpact,
   src: UpdateSource = UPDATE_SOURCE_DEFAULT,
   generated: string[] = [],
+  hardwareDeps: string[] = [],
 ): UpdateStep[] {
   const steps: UpdateStep[] = [];
   if (generated.length) {
@@ -187,6 +199,17 @@ export function updateSteps(
     // Mirrors install.sh: --omit=optional also drops rollup's/esbuild's platform
     // binaries, which the ground build needs.
     steps.push({ label: 'Restoring the build tooling', cmd: 'npm', args: ['install', '--include-workspace-root', '-w', '@yonderrc/ground', '--no-audit', '--no-fund'] });
+    // …and it drops the native driver modules the operator installed from the setup
+    // page, because those are optionalDependencies too. install.sh has restored them
+    // since v1.39.0; the update button did not, so pressing Update silently turned a
+    // configured vehicle back into a simulator until someone reinstalled them by hand.
+    for (const dep of restorableHwDeps(hardwareDeps)) {
+      steps.push({
+        label: `Restoring the ${dep} driver module`,
+        cmd: 'npm',
+        args: ['install', dep, '-w', '@yonderrc/vehicle', '--no-audit', '--no-fund'],
+      });
+    }
   }
   if (impact.ground || impact.deps) {
     steps.push({ label: 'Rebuilding the control app', cmd: 'npm', args: ['run', 'build', '-w', '@yonderrc/ground'] });

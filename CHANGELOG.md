@@ -3,6 +3,47 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.50.0
+**English**
+- **The update button no longer turns a configured vehicle back into a simulator.** The
+  native driver modules (`i2c-bus`, `pigpio`, `serialport`) are optionalDependencies, and
+  the update runs `npm install --omit=optional` — which prunes them. `install.sh` has put
+  them back from the recorded `hardwareDeps` since v1.39.0, but the **in-app update never
+  did**, so pressing *Update & restart* silently removed the PCA9685 driver and the INA
+  sensors until someone reinstalled them by hand. `updateSteps` now appends one restore
+  step per recorded module, after the pruning install, through the same allowlist as
+  `hwDeps.ts` (`restorableHwDeps`) — the value comes from a config file and ends up in an
+  npm command line.
+- **The PCA9685 driver only writes channels that changed.** Every channel is its own I²C
+  transaction; sixteen of them nearly fill the 20 ms control tick, and `VehicleCore` then
+  drops the next one — visible on real hardware as a steadily climbing
+  `[core] driver write still busy — N ticks skipped`. Driving a car moves one or two
+  channels per tick, so the bus traffic drops accordingly. Comparison is on PWM **counts**,
+  not µs, since two µs values that round to the same count are the same pulse. A channel
+  the caller has no value for stays untouched, exactly as before, and a failed write
+  clears the cache so the next tick sends everything again — the cache can never claim a
+  value the chip did not receive.
+
+**Deutsch**
+- **Der Update-Knopf macht aus einem konfigurierten Fahrzeug keinen Simulator mehr.** Die
+  nativen Treibermodule (`i2c-bus`, `pigpio`, `serialport`) sind optionalDependencies, und
+  das Update führt `npm install --omit=optional` aus — das entfernt sie. `install.sh`
+  stellt sie seit v1.39.0 aus den gespeicherten `hardwareDeps` wieder her, **das Update im
+  UI aber nie**: *Update & restart* hat also stillschweigend den PCA9685-Treiber und die
+  INA-Sensoren entfernt, bis jemand sie von Hand nachinstalliert hat. `updateSteps` hängt
+  jetzt pro gespeichertem Modul einen Wiederherstellungsschritt an, nach dem
+  aufräumenden Install, über dieselbe Allowlist wie `hwDeps.ts` (`restorableHwDeps`) — der
+  Wert kommt aus einer Konfigurationsdatei und landet in einer npm-Kommandozeile.
+- **Der PCA9685-Treiber schreibt nur noch geänderte Kanäle.** Jeder Kanal ist eine eigene
+  I²C-Transaktion; sechzehn davon füllen den 20-ms-Regeltakt fast aus, und `VehicleCore`
+  verwirft dann den nächsten — auf echter Hardware sichtbar als stetig wachsendes
+  `[core] driver write still busy — N ticks skipped`. Beim Fahren bewegen sich ein bis
+  zwei Kanäle pro Takt, entsprechend sinkt die Buslast. Verglichen wird in PWM-**Counts**,
+  nicht in µs, denn zwei µs-Werte, die auf denselben Count runden, sind derselbe Impuls.
+  Ein Kanal, für den der Aufrufer keinen Wert hat, bleibt unangetastet wie bisher, und ein
+  fehlgeschlagener Schreibvorgang löscht den Cache, damit der nächste Takt wieder alles
+  sendet — der Cache kann nie einen Wert behaupten, den der Chip nicht bekommen hat.
+
 ## v1.49.1
 **English**
 - **"Reboot required" now means it.** v1.49.0 raised the flag whenever the *text* of

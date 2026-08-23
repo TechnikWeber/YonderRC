@@ -577,6 +577,34 @@ async function main() {
   const planeLow = setDetent(plane, 'leftY', 'low');
   ok('setDetent low', currentDetents(planeLow).leftY === 'low');
 
+  // ---- PCA9685: only changed channels go on the wire ----
+  const { channelsToWrite } = await import('../packages/vehicle/src/drivers/pca9685');
+  ok('first write sends everything', channelsToWrite(null, [1, 2, 3]).join() === '0,1,2');
+  ok('unchanged sends nothing', channelsToWrite([1, 2, 3], [1, 2, 3]).length === 0);
+  ok('only the changed one', channelsToWrite([1, 2, 3], [1, 9, 3]).join() === '1');
+  // "no value for this channel" must stay untouched, not be driven to zero.
+  ok('null leaves a channel alone', channelsToWrite([1, 2, 3], [1, null, 3]).length === 0);
+  ok('null on a first write too', channelsToWrite(null, [1, null, 3]).join() === '0,2');
+  ok('unknown chip state rewrites all', channelsToWrite(null, [1, 1, 1]).length === 3);
+
+  // ---- update: an update must not prune the operator's native driver modules ----
+  const { restorableHwDeps, updateSteps } = await import('../packages/vehicle/src/system/update');
+  ok('restorable keeps the allowlisted', restorableHwDeps(['i2c-bus', 'pigpio']).join() === 'i2c-bus,pigpio');
+  ok('restorable drops anything else', restorableHwDeps(['i2c-bus', 'rm -rf /', 'left-pad']).join() === 'i2c-bus');
+  ok('restorable dedupes', restorableHwDeps(['pigpio', 'pigpio']).join() === 'pigpio');
+  const depSteps = updateSteps({ deps: true, ground: false } as never, undefined, [], ['i2c-bus']);
+  ok(
+    'update reinstalls the recorded module',
+    depSteps.some((s) => s.cmd === 'npm' && s.args.join(' ') === 'install i2c-bus -w @yonderrc/vehicle --no-audit --no-fund'),
+  );
+  ok(
+    'restore runs after the pruning install',
+    depSteps.findIndex((s) => s.args.includes('--omit=optional')) <
+      depSteps.findIndex((s) => s.args.includes('i2c-bus')),
+  );
+  const noDepSteps = updateSteps({ deps: false, ground: true } as never, undefined, [], ['i2c-bus']);
+  ok('no restore when nothing was pruned', !noDepSteps.some((s) => s.args.includes('i2c-bus')));
+
   // ---- camera source per encoder ----
   const cam: CameraCfg = { name: 'test', type: 'sim', width: 640, height: 480, fps: 20 };
   ok('libx264 source', cameraSource(cam, 'libx264').includes('-c:v libx264'));

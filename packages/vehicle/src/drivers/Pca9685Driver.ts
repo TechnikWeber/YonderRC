@@ -10,6 +10,7 @@ import {
   PCA9685_PRESCALE,
   channelBytes,
   channelRegister,
+  channelsToWrite,
   prescaleFor,
   pulseWidthToCounts,
 } from './pca9685.js';
@@ -30,6 +31,8 @@ export interface Pca9685Options {
 export class Pca9685Driver implements OutputDriver {
   readonly kind = 'pca9685';
   private last = neutralChannels();
+  /** Counts last written to the chip; null = unknown, so the next write is a full one. */
+  private written: (number | null)[] | null = null;
   private freqHz: number;
   private bus: number;
   private address: number;
@@ -71,14 +74,29 @@ export class Pca9685Driver implements OutputDriver {
   }
 
   async writeChannels(channelsUs: number[]): Promise<void> {
+    // Compare in counts, not µs: two µs values that round to the same count are the
+    // same pulse on the wire, and re-sending them would cost a transaction for nothing.
+    const counts: (number | null)[] = [];
     for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
       const us = channelsUs[ch];
-      if (typeof us !== 'number') continue;
-      const counts = pulseWidthToCounts(us, this.freqHz);
-      const [onL, onH, offL, offH] = channelBytes(counts);
-      const reg = channelRegister(ch);
-      await this.i2c.writeI2cBlock(this.address, reg, 4, Buffer.from([onL, onH, offL, offH]));
+      // null keeps the old behaviour for a channel the caller has no value for: untouched.
+      counts.push(typeof us === 'number' ? pulseWidthToCounts(us, this.freqHz) : null);
     }
+    const todo = channelsToWrite(this.written, counts);
+    try {
+      for (const ch of todo) {
+        const [onL, onH, offL, offH] = channelBytes(counts[ch] as number);
+        const reg = channelRegister(ch);
+        await this.i2c.writeI2cBlock(this.address, reg, 4, Buffer.from([onL, onH, offL, offH]));
+      }
+    } catch (err) {
+      // A half-written frame leaves the chip in a state the cache does not describe.
+      // Forget it so the next tick writes everything again.
+      this.written = null;
+      throw err;
+    }
+    // Channels we skipped keep whatever the chip last got from us.
+    this.written = counts.map((c, i) => c ?? this.written?.[i] ?? null);
     this.last = channelsUs.slice(0, CHANNEL_COUNT);
   }
 
