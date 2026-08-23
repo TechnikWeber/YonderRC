@@ -3,6 +3,35 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.58.2
+**English**
+- **Text selection is off by default in the ground app now, instead of being switched off
+  one element at a time.** v1.58.1 stopped the Light button from highlighting the "Speed"
+  caption below it — and double-tapping Horn then reached past the whole pad to select
+  "Control via WebRTC data channel" underneath it. That is the shape of the bug: iOS does
+  not stop at a `user-select: none` element, it starts the selection in the nearest
+  selectable text *around* it, so every fix that names one more element loses the same way.
+  The default is now the other way round for the whole app — this is a control surface
+  driven with thumbs, not a document.
+- Switched back on for the two things worth it: **prose** (`.note` — the explanatory
+  paragraphs) and **values worth copying into a terminal** (`.mono`), plus a `.selectable`
+  opt-in and every input. Nothing that should be readable, copyable or typeable stopped
+  being so.
+
+**Deutsch**
+- **Textmarkierung ist in der Bodenstation jetzt standardmäßig aus, statt Element für
+  Element abgeschaltet zu werden.** v1.58.1 hat den Light-Knopf davon abgehalten, die
+  Beschriftung „Speed" darunter zu markieren — und ein Doppeltipp auf Horn griff daraufhin
+  am ganzen Pad vorbei auf „Control via WebRTC data channel" darunter. Das ist die Form
+  des Fehlers: iOS hält an einem `user-select: none`-Element nicht an, sondern beginnt die
+  Markierung im nächstgelegenen markierbaren Text *daneben* — jede Korrektur, die ein
+  weiteres Element benennt, verliert also auf dieselbe Weise. Der Standard ist jetzt für
+  die ganze App umgedreht: das hier ist eine Steuerfläche für Daumen, kein Dokument.
+- Wieder eingeschaltet für die zwei Dinge, bei denen es zählt: **Fließtext** (`.note` — die
+  Erklärungsabsätze) und **Werte, die man in ein Terminal kopiert** (`.mono`), dazu ein
+  `.selectable`-Opt-in und alle Eingabefelder. Nichts, was lesbar, kopierbar oder tippbar
+  sein soll, hat aufgehört es zu sein.
+
 ## v1.58.1
 **English**
 - **Holding a pad button no longer highlights the label underneath on iOS.** The buttons

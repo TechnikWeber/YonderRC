@@ -146,17 +146,33 @@ body {
  * per button, because the next button to grow a hold would hit the same thing.
  */
 /*
- * …and the selection has to be blocked on the whole driving surface, not just on the
- * controls. iOS does not stop at a `user-select: none` element: a long press there
- * starts a selection in the nearest selectable text *around* it, which is how holding
- * the Light button ends up highlighting the "Speed" label underneath. There is nothing
- * in this panel worth selecting — it is all button captions.
+ * Selection is OFF by default across the ground app, and switched back ON for the few
+ * things worth copying.
+ *
+ * iOS does not stop at a `user-select: none` element: a long press or double tap there
+ * starts a selection in the nearest selectable text *around* it. Marking the buttons was
+ * not enough — holding Light highlighted the "Speed" caption below it, and once the whole
+ * pad was excluded, double-tapping Horn simply reached past it to "Control via WebRTC
+ * data channel" underneath. Every fix that names one more element loses the same way; the
+ * default has to be the other way round. This is a control surface driven with thumbs,
+ * not a document.
  */
-.controlpad,
-.controlpad *:not(input):not(textarea) {
+.app,
+.app *:not(input):not(textarea) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* The exceptions: prose worth reading twice, and values worth copying into a terminal. */
+.app .note,
+.app .note *,
+.app .mono,
+.app .selectable,
+.app .selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 button,
