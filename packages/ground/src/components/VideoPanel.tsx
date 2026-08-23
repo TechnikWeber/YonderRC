@@ -20,7 +20,7 @@ import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } f
 import { reconnectDelayMs, selectedCamera } from '../lib/videoLink';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
-import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend } from '../lib/linkHealth';
+import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend, signalScore, LINK_FAIR } from '../lib/linkHealth';
 import type { ReturnBudgetResult } from '../lib/returnBudget';
 import { enterRealFullscreen, exitRealFullscreen } from '../lib/immersive';
 
@@ -684,7 +684,9 @@ export function VideoPanel({
   const weakLink =
     (latencyMs != null && latencyMs > 300) ||
     (stats?.lossPct != null && stats.lossPct >= 5) ||
-    (linkSignal?.quality != null && linkSignal.quality < 25);
+    // Same curve the health score uses, so the badge and the warning cannot disagree
+    // about whether the radio is the problem.
+    (linkSignal?.quality != null && signalScore(linkSignal.quality, linkSignal.kind) < LINK_FAIR);
 
   // Distance + direction to home, when we have both a fix and a home point.
   // arrowDeg points at home relative to the vehicle's travel direction (course),
@@ -1024,7 +1026,7 @@ export function VideoPanel({
                     {linkState === 'connected' ? controlPath.toUpperCase() : linkState === 'connecting' ? 'RECONNECTING' : 'NO LINK'}
                   </span>
                   {linkSignal && linkSignal.kind !== 'none' && (
-                    <span className={linkSignal.quality != null && linkSignal.quality < 25 ? 'osd-warn' : undefined}>{linkSignal.label}</span>
+                    <span className={linkSignal.quality != null && signalScore(linkSignal.quality, linkSignal.kind) < LINK_FAIR ? 'osd-warn' : undefined}>{linkSignal.label}</span>
                   )}
                   <span>ctrl {latencyMs === null ? '--' : `${latencyMs}`} ms</span>
                   {videoLatency !== null && <span className="osd-sec">video ~{videoLatency} ms</span>}

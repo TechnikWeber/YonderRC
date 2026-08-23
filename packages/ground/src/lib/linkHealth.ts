@@ -12,6 +12,8 @@
 export type LinkLevel = 'good' | 'fair' | 'bad';
 export type LinkTrend = 'up' | 'flat' | 'down';
 
+export type SignalKind = 'lte' | 'wifi' | 'ethernet' | 'none';
+
 export interface LinkInputs {
   /** Control round-trip in ms, or null when unknown. */
   rttMs: number | null;
@@ -19,6 +21,8 @@ export interface LinkInputs {
   lossPct: number | null;
   /** Radio signal 0–100 (LTE or WiFi), or null when there is no radio reading. */
   signalPct: number | null;
+  /** Which radio the percentage came from — it decides how to read it. */
+  signalKind?: SignalKind;
 }
 
 export interface LinkHealth {
@@ -44,6 +48,35 @@ export function lossScore(pct: number): number {
   return band(pct, 0, 10);
 }
 
+/**
+ * Signal needs its own curve per radio, because **a radio's percentage is not a
+ * quality score**. Treating it as one is what put a permanent ⚠ SIGNAL on a link
+ * that was fine: a HiLink stick derives its percentage from RSRP over
+ * −140…−75 dBm, so a thoroughly usable −100 dBm reads as 62 % — and 62 was taken
+ * straight as the score, landing under the 70 that means "good".
+ *
+ * The bands below are the point where each radio actually starts to hurt:
+ *  - **LTE**: 60 % is RSRP ≈ −101 dBm and still fine; 30 % is ≈ −120 dBm, the edge
+ *    of coverage. Between them the score falls off.
+ *  - **WiFi**: the percentage is a linear map of −100…−50 dBm, so 60 % is −70 dBm
+ *    (the usual "reliable" mark) and 25 % is −87 dBm (about to drop).
+ *
+ * A cable has no signal to worry about.
+ */
+export function signalScore(pct: number, kind: SignalKind = 'lte'): number {
+  if (kind === 'ethernet') return 100;
+  const [bad, good] = kind === 'wifi' ? [25, 60] : [30, 60];
+  return bandUp(pct, bad, good);
+}
+
+/** Linear 0→100 between `bad` and `good`, clamped — for readings where more is better. */
+function bandUp(value: number, bad: number, good: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value >= good) return 100;
+  if (value <= bad) return 0;
+  return Math.round(((value - bad) / (good - bad)) * 100);
+}
+
 /** Linear 100→0 between `good` and `bad`, clamped at both ends. */
 function band(value: number, good: number, bad: number): number {
   if (!Number.isFinite(value)) return 100;
@@ -61,7 +94,7 @@ export function linkHealth(inputs: LinkInputs): LinkHealth {
   const parts = {
     rtt: inputs.rttMs == null ? null : rttScore(inputs.rttMs),
     loss: inputs.lossPct == null ? null : lossScore(inputs.lossPct),
-    signal: inputs.signalPct == null ? null : clamp100(inputs.signalPct),
+    signal: inputs.signalPct == null ? null : signalScore(clamp100(inputs.signalPct), inputs.signalKind ?? 'lte'),
   };
   const known = (Object.entries(parts) as ['rtt' | 'loss' | 'signal', number | null][])
     .filter((e): e is ['rtt' | 'loss' | 'signal', number] => e[1] !== null);

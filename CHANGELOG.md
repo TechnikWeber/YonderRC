@@ -3,6 +3,45 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.55.0
+**English**
+- **A radio's percentage is not a quality score** — and treating it as one put a permanent
+  ⚠ SIGNAL on a link that was fine. The health model fed the signal percentage straight in
+  as a 0–100 sub-score, while round-trip and packet loss each went through a curve with a
+  sensible "good" and "useless" point. A HiLink stick derives its percentage from RSRP over
+  −140…−75 dBm, so a thoroughly usable **−101 dBm reads as 62 %** — and 62 sat under the 70
+  that means "good", making the radio the named culprit for a link with **19 dB SINR** and
+  no loss.
+- `signalScore(pct, kind)` gives each radio its own curve, because the two percentages come
+  off different scales: **LTE** is full marks at 60 % (RSRP ≈ −101 dBm) and zero at 30 %
+  (≈ −120 dBm, the edge of coverage); **WiFi** is full marks at 60 % (−70 dBm, the usual
+  reliable mark) and zero at 25 % (−87 dBm). Ethernet has no signal to worry about.
+- The OSD's weak-link warning and the signal label now use the same curve instead of a flat
+  25 %, so the badge and the warning can no longer disagree about whether the radio is the
+  problem.
+- A genuinely weak radio is still caught and still named — only the definition of weak
+  changed. Measured on the real stick: RSRP −101 dBm, RSRQ −7.0 dB, SINR 19 dB, 4 of 5 bars.
+
+**Deutsch**
+- **Die Prozentzahl eines Funkmoduls ist kein Qualitätswert** — sie als solchen zu behandeln
+  hat einer völlig intakten Verbindung ein dauerhaftes ⚠ SIGNAL verpasst. Das
+  Gesundheitsmodell nahm die Signalprozente direkt als 0–100-Teilwert, während Laufzeit und
+  Paketverlust jeweils durch eine Kurve mit sinnvollem „gut"- und „unbrauchbar"-Punkt gehen.
+  Ein HiLink-Stick leitet seine Prozente aus RSRP über −140…−75 dBm ab, ein absolut
+  brauchbares **−101 dBm ergibt also 62 %** — und 62 lag unter den 70, die „gut" bedeuten.
+  Damit war das Funkmodul der benannte Schuldige einer Verbindung mit **19 dB SINR** und
+  ohne Verlust.
+- `signalScore(pct, kind)` gibt jeder Funkart eine eigene Kurve, denn die beiden
+  Prozentzahlen stammen von verschiedenen Skalen: **LTE** volle Punktzahl ab 60 %
+  (RSRP ≈ −101 dBm), null bei 30 % (≈ −120 dBm, Rand der Versorgung); **WLAN** volle
+  Punktzahl ab 60 % (−70 dBm, die übliche Verlässlichkeitsmarke), null bei 25 % (−87 dBm).
+  Ein Kabel hat kein Signalproblem.
+- Die Schwachstellen-Warnung im OSD und das Signal-Label nutzen jetzt dieselbe Kurve statt
+  einer starren 25 % — Abzeichen und Warnung können sich also nicht mehr widersprechen.
+- Ein wirklich schwaches Funkmodul wird weiterhin erkannt und benannt; geändert hat sich
+  nur, was „schwach" heißt. Am echten Stick gemessen: RSRP −101 dBm, RSRQ −7,0 dB,
+  SINR 19 dB, 4 von 5 Balken.
+
 ## v1.54.2
 **English**
 - **Auto quality could freeze the picture into a permanent "reconnecting".** Stepping the

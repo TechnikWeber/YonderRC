@@ -577,6 +577,25 @@ async function main() {
   const planeLow = setDetent(plane, 'leftY', 'low');
   ok('setDetent low', currentDetents(planeLow).leftY === 'low');
 
+  // ---- signal is not a score: each radio gets its own curve ----
+  const lh = await import('../packages/ground/src/lib/linkHealth');
+  // The report that started this: a HiLink stick on RSRP −101 dBm reports 62 %, which
+  // used to be taken straight as the score and sat under the 70 that means "good" —
+  // a permanent ⚠ SIGNAL on a link with 19 dB SINR.
+  ok('62 % LTE is a healthy link', lh.signalScore(62, 'lte') === 100);
+  ok('and no longer drags the score down', lh.linkHealth({ rttMs: 20, lossPct: 0, signalPct: 62, signalKind: 'lte' }).level === 'good');
+  ok('nothing is named as the culprit', lh.linkHealth({ rttMs: 20, lossPct: 0, signalPct: 62, signalKind: 'lte' }).worst === null);
+  ok('LTE at the edge of coverage still scores 0', lh.signalScore(30, 'lte') === 0);
+  ok('LTE half way is half a score', lh.signalScore(45, 'lte') === 50);
+  // WiFi percentages come off a different scale (a linear map of −100…−50 dBm), so the
+  // same number must not mean the same thing.
+  ok('WiFi −70 dBm (60 %) is fine', lh.signalScore(60, 'wifi') === 100);
+  ok('WiFi is judged more strictly at the bottom', lh.signalScore(30, 'wifi') > lh.signalScore(30, 'lte'));
+  ok('a cable has no signal problem', lh.signalScore(0, 'ethernet') === 100);
+  ok('a genuinely weak LTE link is still caught', lh.linkHealth({ rttMs: 20, lossPct: 0, signalPct: 38, signalKind: 'lte' }).worst === 'signal');
+  ok('unknown radio defaults to the LTE curve', lh.signalScore(62) === 100);
+  ok('signal never outvotes real loss', lh.linkHealth({ rttMs: 20, lossPct: 12, signalPct: 100, signalKind: 'lte' }).worst === 'loss');
+
   // ---- FPV link: no camera is a valid state, not an error ----
   const vl = await import('../packages/ground/src/lib/videoLink');
   ok('picks the first camera', vl.selectedCamera(['cam1', 'cam2'], '') === 'cam1');
@@ -1774,8 +1793,10 @@ async function main() {
   ok('bad level below the threshold', lossy.level === 'bad');
   const laggy = linkHealth({ rttMs: 350, lossPct: 0, signalPct: 90 });
   ok('latency can be the culprit', laggy.worst === 'rtt' && laggy.level !== 'good', `${laggy.worst}/${laggy.level}`);
-  const weakRadio = linkHealth({ rttMs: 30, lossPct: 0, signalPct: 20 });
-  ok('so can the radio', weakRadio.worst === 'signal' && weakRadio.score === 20);
+  // 20 % is RSRP ≈ −127 dBm — the edge of coverage. The score is no longer the raw
+  // percentage (see signalScore), but the radio is still correctly named as the culprit.
+  const weakRadio = linkHealth({ rttMs: 30, lossPct: 0, signalPct: 20, signalKind: 'lte' });
+  ok('so can the radio', weakRadio.worst === 'signal' && weakRadio.level === 'bad', `worst=${weakRadio.worst} score=${weakRadio.score}`);
   // A good link names no culprit — at 95 there is nothing to fix.
   ok('a good link blames nobody', linkHealth({ rttMs: 40, lossPct: 0.5, signalPct: 95 }).worst === null);
   // Missing inputs are skipped rather than counted as zero.
