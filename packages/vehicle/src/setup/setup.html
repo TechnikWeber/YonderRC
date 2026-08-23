@@ -1118,7 +1118,6 @@
       let cams = [];
       const CAM_TYPES = ['sim', 'rpicam', 'usb'];
       const FOCUS_MODES = ['off', 'manual', 'auto', 'continuous'];
-      const TUNING_HINT = '/var/lib/yonderrc/tuning/imx519-af.json';
       function renderCams() {
         $('cam-list').innerHTML = cams.map((c, i) => `
           <div class="item">
@@ -1144,15 +1143,27 @@
               <label class="opt"><input type="checkbox" ${c.hflip ? 'checked' : ''} onchange="camSet(${i},'hflip',this.checked)" /> Mirror horizontally</label>
               <label class="opt"><input type="checkbox" ${c.vflip ? 'checked' : ''} onchange="camSet(${i},'vflip',this.checked)" /> Mirror vertically</label>
             </div>`}
-            ${c.type === 'rpicam' ? `
+            ${c.type === 'rpicam' ? (() => {
+              // The selected CSI module decides what is worth showing here: a sensor with
+              // no lens actuator has no focus to set, and the tuning-file hint has to be
+              // that module's file — a leftover IMX519 path under an OV5647 is exactly the
+              // kind of wrong-but-plausible detail nobody double-checks.
+              const m = csiSelected();
+              // Only a module that names one sensor can rule focus out. Auto-detect might
+              // turn up an IMX708, which has an actuator, so there the controls stay.
+              const knownSensor = m && m.overlay;
+              const canFocus = !knownSensor || m.focus || (c.focus && c.focus !== 'off');
+              return `
             <div class="grid3">
-              <label>Focus<select onchange="camSet(${i},'focus',this.value)">
+              ${canFocus ? `<label>Focus<select onchange="camSet(${i},'focus',this.value)">
                 ${FOCUS_MODES.map((f) => `<option value="${f}" ${(c.focus || 'off') === f ? 'selected' : ''}>${f}</option>`).join('')}
               </select></label>
-              <label>Lens position (dioptres, 0 = ∞)<input type="number" step="0.1" value="${c.lensPosition ?? ''}" placeholder="0" oninput="camSet(${i},'lensPosition',+this.value)" /></label>
-              <label>Tuning file<input value="${c.tuningFile || ''}" placeholder="${TUNING_HINT}" oninput="camSet(${i},'tuningFile',this.value)" /></label>
+              <label>Lens position (dioptres, 0 = ∞)<input type="number" step="0.1" value="${c.lensPosition ?? ''}" placeholder="0" oninput="camSet(${i},'lensPosition',+this.value)" /></label>` : ''}
+              <label>Tuning file<input value="${c.tuningFile || ''}" placeholder="${m && m.tuningFile ? esc(m.tuningFile) : 'none needed for this module'}" oninput="camSet(${i},'tuningFile',this.value)" /></label>
             </div>
-            <div class="msg">An Arducam 16MP IMX519 needs the tuning file — Raspberry Pi's own imx519.json has no autofocus algorithm, so every focus mode is silently refused. On a moving model <b>manual</b> at 0 dioptres usually beats continuous AF, which hunts.</div>` : ''}
+            ${m && m.tuningFile ? `<div class="msg">${esc(m.label)} needs this tuning file — Raspberry Pi's own tuning for that sensor has no autofocus algorithm, so every focus mode is silently refused without it. On a moving model <b>manual</b> at 0 dioptres usually beats continuous AF, which hunts.</div>` : ''}
+            ${knownSensor && !m.focus ? `<div class="msg">${esc(m.label)} has no lens actuator, so there is no focus to set.</div>` : ''}`;
+            })() : ''}
             <div class="btns"><button class="btn tiny" onclick="run(this, () => camDel(${i}))">Remove</button></div>
           </div>`).join('');
       }
@@ -1174,6 +1185,8 @@
         const m = csiSelected();
         $('csi-custom-wrap').style.display = m && m.id === 'custom' ? '' : 'none';
         $('csi-note').textContent = m ? m.note : '';
+        // The camera rows show focus and tuning per module, so they follow this select.
+        renderCams();
       }
       async function loadCsiModule() {
         const r = await getJSON('/api/camera-module');
@@ -1188,6 +1201,7 @@
         }
         onCsiModuleChange();
         renderCsiState();
+        renderCams();
       }
       function renderCsiState() {
         if (!csiCurrent) return;

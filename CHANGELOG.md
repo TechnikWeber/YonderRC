@@ -3,6 +3,37 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.54.1
+**English**
+- **The camera row stopped talking about the IMX519 under every other sensor.** The
+  tuning-file placeholder and the note underneath were hardcoded, so an OV5647 was still
+  offered an Arducam's file path and told about an autofocus algorithm it has no motor
+  for. Both now follow the selected CSI module: the placeholder is that module's tuning
+  file (or "none needed for this module"), and the note names the module it is about.
+- **Focus controls only where there is a lens to move.** A module that names one sensor
+  without an actuator says so instead of offering a Focus dropdown that does nothing;
+  auto-detect and a custom overlay keep the controls, because either might turn up an
+  IMX708. A focus setting already stored on a camera stays visible and editable rather
+  than being hidden with its value still in the config.
+- The camera rows re-render when the module selection changes, so the two follow each
+  other without a page reload.
+
+**Deutsch**
+- **Die Kamerazeile redet nicht mehr unter jedem anderen Sensor von der IMX519.** Der
+  Platzhalter für die Tuning-Datei und der Hinweis darunter waren hartkodiert — einer
+  OV5647 wurde also der Dateipfad einer Arducam angeboten und von einem
+  Autofokus-Algorithmus erzählt, für den sie keinen Motor hat. Beides folgt jetzt dem
+  gewählten CSI-Modul: der Platzhalter ist dessen Tuning-Datei (oder „none needed for
+  this module"), und der Hinweis nennt das Modul, um das es geht.
+- **Fokus-Bedienelemente nur dort, wo es eine Linse zu bewegen gibt.** Ein Modul, das
+  genau einen Sensor ohne Aktuator benennt, sagt das, statt ein Focus-Dropdown
+  anzubieten, das nichts tut; bei Auto-Detect und einem eigenen Overlay bleiben die
+  Bedienelemente, weil dort auch eine IMX708 auftauchen kann. Eine bereits gespeicherte
+  Fokus-Einstellung bleibt sichtbar und änderbar, statt versteckt zu werden, während ihr
+  Wert in der Konfiguration steht.
+- Die Kamerazeilen werden neu gezeichnet, wenn die Modulauswahl wechselt — beides folgt
+  einander also ohne Neuladen der Seite.
+
 ## v1.54.0
 **English**
 - **Rotation and mirroring per camera** (Setup › Cameras): 0° / 180° plus independent
