@@ -3,6 +3,46 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.57.0
+**English**
+- **Video starts on `low`.** What matters in the first seconds of a drive is a fluid
+  picture with the least latency, not the most pixels — starting high and discovering the
+  link cannot carry it costs you exactly the seconds you spend working out where the
+  vehicle is pointing. Stepping up stays a deliberate act. **Auto** starts low too and
+  climbs once the link has proved it can carry more, instead of opening at full resolution
+  and stepping down after it has already stuttered.
+- **…and the selection is now actually applied.** It was only ever sent to the vehicle when
+  someone touched the dropdown, so after a page reload the panel could claim "low" while
+  the vehicle streamed full resolution — the setting was cosmetic until you changed it to
+  something else and back. The welcome message now carries the level the vehicle is
+  serving, and the ground sends its own only when the two differ, so a matching level costs
+  no go2rtc reload.
+- `VideoQuality` moved into the protocol. The union was written out by hand in the vehicle
+  and in the ground, which is how the two ended up able to disagree about a level in the
+  first place.
+- A stored preference still wins over the new default — this changes what a fresh browser
+  does, not what you have already chosen.
+
+**Deutsch**
+- **Video startet auf `low`.** In den ersten Sekunden einer Fahrt zählt ein flüssiges Bild
+  mit möglichst wenig Latenz, nicht die höchste Auflösung — hoch zu starten und dann
+  festzustellen, dass die Verbindung das nicht trägt, kostet genau die Sekunden, in denen
+  man herausfindet, wohin das Fahrzeug zeigt. Hochstellen bleibt eine bewusste Handlung.
+  **Auto** startet ebenfalls niedrig und steigt, sobald die Verbindung zeigt, dass sie mehr
+  trägt, statt in voller Auflösung zu öffnen und erst nach dem Ruckeln herunterzuschalten.
+- **…und die Auswahl wird jetzt auch angewandt.** Sie wurde nur dann ans Fahrzeug
+  geschickt, wenn jemand das Dropdown anfasste — nach einem Neuladen konnte das Panel also
+  „low" behaupten, während das Fahrzeug in voller Auflösung sendete. Die Einstellung war
+  Kosmetik, bis man sie einmal weg und wieder zurück stellte. Die Welcome-Nachricht trägt
+  jetzt die Stufe, die das Fahrzeug tatsächlich bedient, und die Bodenstation schickt ihre
+  eigene nur, wenn beide voneinander abweichen — eine passende Stufe kostet damit keinen
+  go2rtc-Neustart.
+- `VideoQuality` ist in das Protokoll gewandert. Die Union stand von Hand ausgeschrieben im
+  Fahrzeug *und* in der Bodenstation — genau deshalb konnten sich die beiden über eine
+  Stufe überhaupt uneinig werden.
+- Eine gespeicherte Vorliebe gewinnt weiterhin über den neuen Standard: das ändert, was ein
+  frischer Browser tut, nicht was du schon gewählt hast.
+
 ## v1.56.0
 **English**
 - **The vehicle now says when its own power is failing.** `vcgencmd get_throttled` is the

@@ -19,10 +19,13 @@ export type ClientMessage =
   | VideoQualityMessage
   | RtcSignalMessage;
 
+/** The three live video levels. Named here so vehicle and ground share one definition. */
+export type VideoQuality = 'high' | 'medium' | 'low';
+
 /** Ground → Vehicle: switch live video quality (rescales cameras + reloads go2rtc). */
 export interface VideoQualityMessage {
   type: 'video';
-  quality: 'high' | 'medium' | 'low';
+  quality: VideoQuality;
 }
 
 export interface HelloMessage {
@@ -94,6 +97,13 @@ export interface WelcomeMessage {
   videoBaseUrl: string | null;
   /** Names of available camera streams for switching, e.g. ["test"] or ["rpicam","usb0"]. */
   cameras: string[];
+  /**
+   * The quality level the cameras are currently scaled to. Without this the ground
+   * cannot know whether its own selection is actually in force: it used to show "low"
+   * after a reload while the vehicle happily streamed full resolution, because the
+   * level was only ever sent when someone touched the dropdown.
+   */
+  videoQuality: VideoQuality;
 }
 
 /** Vehicle uplink signal, unified across LTE / WiFi for the OSD "link health". */

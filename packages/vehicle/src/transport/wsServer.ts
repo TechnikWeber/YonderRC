@@ -73,6 +73,9 @@ export function startWsServer(
   // Uplink signal (LTE/WiFi) refreshed slowly and attached to every status frame,
   // so the ground OSD can show one "link health" number. Reading shells out, so a
   // 5 s cadence is plenty — the value changes slowly.
+  // Which level the cameras are scaled to right now. Starts at 'high' because that is
+  // what the generated config holds after a vehicle restart.
+  let videoQuality: import('@yonderrc/protocol').VideoQuality = 'high';
   let currentLink: import('@yonderrc/protocol').LinkSignal | undefined;
   // Same cadence for the supply: it also shells out, and a sagging rail is not a
   // millisecond-scale event — but it IS the difference between "the app crashed" and
@@ -157,6 +160,7 @@ export function startWsServer(
       watchdogTimeoutMs: config.watchdogTimeoutMs,
       videoBaseUrl: config.videoBaseUrl,
       cameras: config.cameras.map((c) => safeStreamName(c.name)),
+      videoQuality,
     };
     ws.send(JSON.stringify(welcome));
 
@@ -186,6 +190,7 @@ export function startWsServer(
       }
       if (msg.type === 'video') {
         // Rescale all cameras for the requested quality and reload go2rtc.
+        videoQuality = msg.quality;
         const scaled = config.cameras.map((c) => scaleCamera(c, msg.quality));
         applyCameras(scaled, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch((e) =>
           console.error('[video] quality change failed:', (e as Error).message),

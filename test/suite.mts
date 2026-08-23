@@ -577,6 +577,20 @@ async function main() {
   const planeLow = setDetent(plane, 'leftY', 'low');
   ok('setDetent low', currentDetents(planeLow).leftY === 'low');
 
+  // ---- video quality: low by default, and actually applied ----
+  {
+    const { scaleCamera } = await import('../packages/vehicle/src/video/cameraManager');
+    const cam4k: CameraCfg = { name: 'c', type: 'rpicam', width: 1280, height: 720, fps: 25 };
+    // "Max performance at the start" means the smallest picture, not the biggest.
+    ok('low is the smallest', scaleCamera(cam4k, 'low').width < scaleCamera(cam4k, 'medium').width);
+    ok('and caps the bitrate hardest', (scaleCamera(cam4k, 'low').bitrateKbps ?? 0) < (scaleCamera(cam4k, 'medium').bitrateKbps ?? 0));
+    ok('high is untouched', scaleCamera(cam4k, 'high').width === 1280 && scaleCamera(cam4k, 'high').bitrateKbps === undefined);
+    // Scaling must not throw away the mounting transform — it is a property of the
+    // camera, not of the level.
+    const rotated = scaleCamera({ ...cam4k, rotation: 180, hflip: true }, 'low');
+    ok('scaling keeps the orientation', rotated.rotation === 180 && rotated.hflip === true);
+  }
+
   // ---- the Pi's verdict on its own 5 V rail ----
   const pw = await import('../packages/vehicle/src/system/power');
   ok('parses the firmware hex', pw.parseThrottled('throttled=0x50005') === 0x50005);

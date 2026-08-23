@@ -664,7 +664,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.56.0</span>
+        <span className="ver">ground · v1.57.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -737,6 +737,7 @@ export function App() {
           <VideoPanel
             videoBaseUrl={effectiveVideoBase(welcome?.videoBaseUrl, url)}
             cameras={welcome?.cameras ?? []}
+            vehicleQuality={welcome?.videoQuality ?? null}
             linkState={linkState}
             controlPath={controlPath}
             armed={armed}

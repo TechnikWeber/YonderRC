@@ -29,9 +29,15 @@ const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 const QUALITY_KEY = 'yonderrc.videoQuality.v1';
 type QualitySel = 'auto' | VideoQuality;
+/**
+ * Default **low**: the first thing that matters when you connect is a fluid picture with
+ * the least latency, not the most pixels. Stepping up is a deliberate act (or Auto's job)
+ * — starting high and discovering the link cannot carry it costs you the first seconds of
+ * the drive, which are the ones you spend finding out where the vehicle is pointing.
+ */
 function loadQuality(): QualitySel {
   const v = (typeof localStorage !== 'undefined' && localStorage.getItem(QUALITY_KEY)) as QualitySel | null;
-  return v === 'auto' || v === 'high' || v === 'medium' || v === 'low' ? v : 'high';
+  return v === 'auto' || v === 'high' || v === 'medium' || v === 'low' ? v : 'low';
 }
 
 /**
@@ -129,7 +135,8 @@ function useMediaQuery(query: string): boolean {
 }
 
 type PlayState = 'idle' | 'connecting' | 'playing' | 'reconnecting' | 'error';
-export type VideoQuality = 'high' | 'medium' | 'low';
+export type { VideoQuality } from '@yonderrc/protocol';
+import type { VideoQuality } from '@yonderrc/protocol';
 
 export interface VideoStats {
   latencyMs: number | null;
@@ -383,6 +390,7 @@ export function VideoPanel({
   batteryLow,
   batteryReason,
   linkSignal,
+  vehicleQuality,
   power,
   gps,
   odoMeters,
@@ -409,6 +417,8 @@ export function VideoPanel({
   batteryLow: boolean;
   batteryReason: string | null;
   linkSignal: LinkSignal | null;
+  /** The level the vehicle says it is serving, so we only resend when it differs. */
+  vehicleQuality: VideoQuality | null;
   /** The vehicle's verdict on its own supply, or null when not connected. */
   power: PowerFlags | null;
   gps: GpsMessage | null;
@@ -477,7 +487,9 @@ export function VideoPanel({
   const [quality, setQuality] = useState<QualitySel>(loadQuality);
   const [effectiveQuality, setEffectiveQuality] = useState<VideoQuality>(() => {
     const q = loadQuality();
-    return q === 'auto' ? 'high' : q;
+    // Auto starts low too and climbs when the link proves it can carry more, rather than
+    // opening at full resolution and stepping down once it has already stuttered.
+    return q === 'auto' ? 'low' : q;
   });
   const [autoCfg, setAutoCfg] = useState<AutoQualityCfg>(loadAutoCfg);
   const [showRecSettings, setShowRecSettings] = useState(false);
@@ -504,6 +516,17 @@ export function VideoPanel({
     const want = selectedCamera(cameras, camera);
     if (want !== camera) setCamera(want);
   }, [cameras, camera]);
+
+  // Bring the vehicle in line with the selected level on connect. Without this the
+  // selection was only ever sent when someone touched the dropdown, so after a reload the
+  // panel claimed "low" while the vehicle streamed whatever it was last set to — usually
+  // full resolution. Only sent when it actually differs, so a matching level costs no
+  // go2rtc reload.
+  useEffect(() => {
+    if (linkState !== 'connected' || !vehicleQuality) return;
+    if (vehicleQuality !== effectiveQuality) onQuality(effectiveQuality);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkState, vehicleQuality]);
 
   // Self-healing video: connect, watch for stalls/failures, reconnect with backoff.
   useEffect(() => {
