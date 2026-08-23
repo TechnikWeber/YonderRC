@@ -22,6 +22,7 @@ import { reconnectDelayMs, selectedCamera } from '../lib/videoLink';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend, signalScore, LINK_FAIR } from '../lib/linkHealth';
+import { powerAlert, trackFirstPast } from '../lib/powerAlert';
 import type { ReturnBudgetResult } from '../lib/returnBudget';
 import { enterRealFullscreen, exitRealFullscreen } from '../lib/immersive';
 
@@ -766,6 +767,13 @@ export function VideoPanel({
   // ("why doesn't it move?"). ARMED is deliberately silent — that's the normal
   // case, the session timer and the channel bars already show it, and on a phone
   // one badge less keeps the OSD off the middle of the frame.
+  // A live fault shows while it is live and clears itself; the sticky "has sagged since
+  // boot" flag only gets a window, because the firmware never clears it and a permanent
+  // warning is one you stop reading.
+  const firstPastRef = useRef<number | null>(null);
+  firstPastRef.current = trackFirstPast(power, firstPastRef.current, Date.now());
+  const powerWarn = powerAlert(power, firstPastRef.current, Date.now());
+
   const armBadge = failsafe ? (
     <span className="osd-badge bad">FAILSAFE</span>
   ) : armed ? null : (
@@ -917,14 +925,6 @@ export function VideoPanel({
         <video ref={videoRef} autoPlay playsInline muted />
         {rec.recording && <div className="rec-badge">● REC</div>}
         {batteryLow && <div className="batt-warn">⚠ BATTERY LOW{batteryReason ? ` · ${batteryReason}` : ''}</div>}
-        {/* A sagging supply resets the vehicle mid-drive and looks like a software
-            crash from here. It belongs next to the battery warning, not in a log. */}
-        {power?.badge && (
-          <div className="batt-warn" title={power.message ?? undefined}>
-            ⚠ {power.badge}
-            {power.underVoltageNow ? ' · 5 V RAIL LOW' : power.underVoltagePast ? ' · SUPPLY HAS SAGGED' : ''}
-          </div>
-        )}
         {rec.lastAction && <div className="rec-toast">{rec.lastAction}</div>}
 
         {play !== 'playing' && (
@@ -944,10 +944,19 @@ export function VideoPanel({
 
         {showOsd && (
           <div className={`osd${compactOsd ? ' compact' : ''}`}>
-            {((osdFields.timer && sessionSeconds !== null) ||
+            {(powerWarn ||
+              (osdFields.timer && sessionSeconds !== null) ||
               (osdFields.gps && gps && gps.source !== 'off') ||
               (osdFields.homeArrow && gpsHome)) && (
               <div className="osd-tl">
+                {powerWarn && (
+                  <span
+                    className={`osd-badge bad${powerWarn.live ? ' blink' : ''}`}
+                    title={power?.message ?? undefined}
+                  >
+                    ⚠ {powerWarn.text}
+                  </span>
+                )}
                 {osdFields.timer && sessionSeconds !== null && (
                   <span className="osd-badge go">⏱ {Math.floor(sessionSeconds / 60)}:{String(sessionSeconds % 60).padStart(2, '0')}</span>
                 )}

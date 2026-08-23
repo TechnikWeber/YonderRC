@@ -591,6 +591,34 @@ async function main() {
     ok('scaling keeps the orientation', rotated.rotation === 180 && rotated.hflip === true);
   }
 
+  // ---- how long a power warning stays on screen ----
+  const pa = await import('../packages/ground/src/lib/powerAlert');
+  const T0 = 1_000_000;
+  const live = { underVoltageNow: true, underVoltagePast: true, throttledNow: true, hotNow: false };
+  const pastOnly = { underVoltageNow: false, underVoltagePast: true, throttledNow: false, hotNow: false };
+  const railOk = { underVoltageNow: false, underVoltagePast: false, throttledNow: false, hotNow: false };
+
+  ok('nothing to show when all is well', pa.powerAlert(railOk, null, T0) === null);
+  ok('nothing to show without a reading', pa.powerAlert(null, null, T0) === null);
+  ok('a live fault shows', pa.powerAlert(live, T0, T0)?.text === 'POWER');
+  ok('and is marked live', pa.powerAlert(live, T0, T0)?.live === true);
+  // The one that was wrong: it must clear itself the moment the rail recovers, without
+  // anyone reloading or acknowledging anything.
+  ok('a recovered rail clears the warning', pa.powerAlert(railOk, T0, T0 + 1000) === null);
+  ok('a thermal clamp is named differently', pa.powerAlert({ ...live, underVoltageNow: false, hotNow: true }, T0, T0)?.text === 'HOT');
+  ok('a clamp without heat is a power problem', pa.powerAlert({ ...live, underVoltageNow: false }, T0, T0)?.text === 'THROTTLED');
+
+  // The sticky flag never clears until reboot, so it only gets a window — a permanent
+  // warning is one you stop reading.
+  ok('the sticky flag shows briefly', pa.powerAlert(pastOnly, T0, T0 + 5000)?.text === 'POWER?');
+  ok('and is not marked live', pa.powerAlert(pastOnly, T0, T0 + 5000)?.live === false);
+  ok('then goes away on its own', pa.powerAlert(pastOnly, T0, T0 + pa.PAST_ALERT_MS + 1) === null);
+  ok('a live fault outranks the window', pa.powerAlert(live, T0, T0 + pa.PAST_ALERT_MS + 1)?.text === 'POWER');
+
+  ok('the window starts when the flag first appears', pa.trackFirstPast(pastOnly, null, T0) === T0);
+  ok('and does not restart while it stays set', pa.trackFirstPast(pastOnly, T0, T0 + 9999) === T0);
+  ok('a vehicle reboot clears it, so the window can start over', pa.trackFirstPast(railOk, T0, T0 + 1) === null);
+
   // ---- the Pi's verdict on its own 5 V rail ----
   const pw = await import('../packages/vehicle/src/system/power');
   ok('parses the firmware hex', pw.parseThrottled('throttled=0x50005') === 0x50005);

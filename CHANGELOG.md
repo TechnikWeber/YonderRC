@@ -3,6 +3,44 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.57.1
+**English**
+- **The power warning is a badge now, not a banner**, and it clears itself. It sat in the
+  big overlay next to BATTERY LOW, which is too loud for something you may be looking at
+  for a whole drive. It is now a red `⚠ POWER` in the top badge row, next to the timer and
+  GPS, blinking only while the fault is live.
+- **A live fault disappears the moment the rail recovers** — nothing to acknowledge, no
+  reload. That already worked, but it was hidden behind the second problem:
+- **the sticky flag was making it permanent.** The firmware keeps a separate
+  "under-voltage has occurred since boot" bit that it never clears until the next reboot,
+  and the banner reacted to it as well. So even a vehicle whose supply had recovered kept
+  warning, forever, which is how a warning stops being read. That flag now gets a
+  **20-second window** from when it first appears — long enough not to miss a sag that
+  happened while you were watching the road, then gone. The full explanation stays on
+  hover and in Detect hardware.
+- Measured while writing this, on the Pi with everything unplugged: `throttled=0x50005`
+  continuously, and the kernel log alternating *Undervoltage detected* / *Voltage
+  normalised*. The reading was right — the supply itself is the problem, not the servo.
+
+**Deutsch**
+- **Die Strom-Warnung ist jetzt ein Abzeichen statt eines Banners** und verschwindet von
+  selbst. Sie saß im großen Overlay neben BATTERY LOW — zu laut für etwas, das man
+  womöglich eine ganze Fahrt lang vor sich hat. Jetzt ist es ein rotes `⚠ POWER` in der
+  oberen Abzeichenreihe neben Timer und GPS, das nur blinkt, solange der Fehler aktiv ist.
+- **Ein aktiver Fehler verschwindet, sobald sich die Schiene erholt** — nichts zu
+  quittieren, kein Neuladen. Das funktionierte schon, wurde aber vom zweiten Problem
+  verdeckt:
+- **Das Sticky-Bit machte sie dauerhaft.** Die Firmware führt ein separates
+  „Unterspannung ist seit dem Booten aufgetreten"-Bit, das sie bis zum nächsten Neustart
+  nie zurücksetzt, und das Banner reagierte darauf mit. Selbst ein Fahrzeug mit wieder
+  gesunder Versorgung warnte also endlos — und genau so hört man auf, eine Warnung zu
+  lesen. Dieses Bit bekommt jetzt ein **20-Sekunden-Fenster** ab dem ersten Auftreten:
+  lang genug, um einen Einbruch nicht zu verpassen, während man auf die Strecke schaut,
+  dann weg. Die ausführliche Erklärung bleibt im Tooltip und in Detect hardware.
+- Beim Schreiben am Pi gemessen, mit allem abgezogen: `throttled=0x50005` durchgehend, und
+  im Kernel-Log abwechselnd *Undervoltage detected* / *Voltage normalised*. Die Anzeige
+  hatte also recht — das Problem ist die Versorgung selbst, nicht der Servo.
+
 ## v1.57.0
 **English**
 - **Video starts on `low`.** What matters in the first seconds of a drive is a fluid
