@@ -422,6 +422,11 @@ sudo bash provisioning/install.sh
 3. **Cameras:** Kamera hinzufügen (Typ `rpicam` oder `usb`, Auflösung/FPS/Bitrate)
    → **Save & apply**. go2rtc wird neu geladen.
 
+   > **Keine Kamera ist eine gültige Konfiguration.** Löscht man alle Einträge, bleibt
+   > die FPV-Fläche einfach dunkel: nichts wird wiederholt, nichts meldet einen Fehler,
+   > und OSD, Telemetrie und Steuerung laufen weiter. Genau so konfiguriert man YonderRC,
+   > wenn man es rein als IP/WLAN/AP-Empfänger will und auf Sicht fährt.
+
    > **Ein `rpicam`-Stream bleibt schwarz / verbindet sich immer neu?** Maßgeblich ist
    > `rpicam-hello --list-cameras` auf dem Pi — sagt das *No cameras available!*, hilft
    > keine Einstellung im UI. Raspberry Pi OS Bookworm hat die Kamera-Tools von

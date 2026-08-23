@@ -17,6 +17,7 @@ import type { InputManager } from '../lib/input/inputManager';
 import { useRecorder } from '../lib/recorder';
 import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
+import { reconnectDelayMs, selectedCamera } from '../lib/videoLink';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend } from '../lib/linkHealth';
@@ -492,9 +493,12 @@ export function VideoPanel({
   const statsRef = useRef<VideoStats | null>(null);
   const lastFramesRef = useRef<{ frames: number; at: number }>({ frames: 0, at: 0 });
   const wantVideo = !!videoBaseUrl && !!camera && linkState === 'connected';
+  /** There is a camera to work with at all — drives the controls that need a picture. */
+  const hasVideo = cameras.length > 0;
 
   useEffect(() => {
-    if (cameras.length && !cameras.includes(camera)) setCamera(cameras[0]);
+    const want = selectedCamera(cameras, camera);
+    if (want !== camera) setCamera(want);
   }, [cameras, camera]);
 
   // Self-healing video: connect, watch for stalls/failures, reconnect with backoff.
@@ -509,7 +513,7 @@ export function VideoPanel({
     const scheduleReconnect = () => {
       if (cancelled || !wantVideo) return;
       clearReconnect();
-      const delay = Math.min(500 * 2 ** attemptRef.current, 5000);
+      const delay = reconnectDelayMs(attemptRef.current);
       attemptRef.current += 1;
       setPlay('reconnecting');
       reconnectTimer.current = setTimeout(connect, delay);
@@ -751,11 +755,17 @@ export function VideoPanel({
           <button
             className={`btn tiny${rec.recording ? ' rec-on' : ''}`}
             onClick={rec.toggleRecord}
-            title="Record (bindable in Setup › Controls)"
+            disabled={!hasVideo}
+            title={hasVideo ? 'Record (bindable in Setup › Controls)' : 'No camera configured'}
           >
             {rec.recording ? '● REC' : 'Record'}
           </button>
-          <button className="btn tiny" onClick={rec.snapshot} title="Snapshot (bindable in Setup › Controls)">
+          <button
+            className="btn tiny"
+            onClick={rec.snapshot}
+            disabled={!hasVideo}
+            title={hasVideo ? 'Snapshot (bindable in Setup › Controls)' : 'No camera configured'}
+          >
             Snapshot
           </button>
           <button className="btn tiny" onClick={() => setShowRecSettings((v) => !v)} title="Recording settings">
@@ -876,9 +886,11 @@ export function VideoPanel({
             {play === 'connecting' && 'Connecting to camera…'}
             {play === 'reconnecting' && 'Reconnecting…'}
             {play === 'idle' &&
-              (videoBaseUrl
-                ? 'Connect the vehicle to start video.'
-                : 'Video disabled. Start go2rtc on the vehicle to enable FPV.')}
+              (cameras.length === 0 && linkState === 'connected'
+                ? 'No camera configured — the screen stays dark. Add one under Setup › Cameras, or leave it: driving on sight over IP/WiFi is a valid setup.'
+                : videoBaseUrl
+                  ? 'Connect the vehicle to start video.'
+                  : 'Video disabled. Start go2rtc on the vehicle to enable FPV.')}
             {play === 'error' &&
               'No video stream. Is go2rtc running and the camera name correct?'}
           </div>

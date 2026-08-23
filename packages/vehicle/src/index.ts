@@ -20,7 +20,12 @@ async function main() {
   console.log(`  channels  : ${CHANNEL_COUNT} @ ${CONTROL_RATE_HZ} Hz`);
   console.log(`  watchdog  : ${config.watchdogTimeoutMs} ms → failsafe`);
   console.log(`  throttle  : ch [${config.throttleChannels.join(', ')}] safe while disarmed`);
-  console.log(`  video     : ${config.videoBaseUrl ?? 'disabled'} · cams [${config.cameras.map((c) => c.name).join(', ')}]`);
+  console.log(
+    `  video     : ${config.videoBaseUrl ?? 'disabled'} · ` +
+      (config.cameras.length
+        ? `cams [${config.cameras.map((c) => c.name).join(', ')}]`
+        : 'no cameras (fine — the ground station just stays dark)'),
+  );
   console.log('');
 
   // Start the configured driver. If it fails (e.g. a hardware driver was chosen

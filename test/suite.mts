@@ -577,6 +577,26 @@ async function main() {
   const planeLow = setDetent(plane, 'leftY', 'low');
   ok('setDetent low', currentDetents(planeLow).leftY === 'low');
 
+  // ---- FPV link: no camera is a valid state, not an error ----
+  const vl = await import('../packages/ground/src/lib/videoLink');
+  ok('picks the first camera', vl.selectedCamera(['cam1', 'cam2'], '') === 'cam1');
+  ok('keeps a valid pick', vl.selectedCamera(['cam1', 'cam2'], 'cam2') === 'cam2');
+  ok('falls back when the pick vanished', vl.selectedCamera(['cam2'], 'cam1') === 'cam2');
+  // The one that was broken: deleting every camera kept the stale id, so the panel
+  // kept asking a vehicle with no streams for a stream, every few seconds, forever.
+  ok('no cameras → no selection', vl.selectedCamera([], 'cam1') === '');
+  ok('empty stays empty', vl.selectedCamera([], '') === '');
+
+  ok('first retry is quick', vl.reconnectDelayMs(0) === 500);
+  ok('backoff doubles at first', vl.reconnectDelayMs(2) === 2000);
+  ok('brisk plateau covers a blip', vl.reconnectDelayMs(5) === 5000);
+  ok('widens once it is not a blip', vl.reconnectDelayMs(12) === 15000);
+  ok('slow pulse when it is gone for good', vl.reconnectDelayMs(50) === 30000);
+  ok(
+    'never goes backwards',
+    Array.from({ length: 40 }, (_, i) => vl.reconnectDelayMs(i)).every((d, i, a) => i === 0 || d >= a[i - 1]),
+  );
+
   // ---- stick feedback zones (centre / rim, with hysteresis) ----
   const hap = await import('../packages/ground/src/lib/haptics');
   ok('rest is centre', hap.axisZone(0, 'center') === 'center');

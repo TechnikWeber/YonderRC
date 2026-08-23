@@ -3,6 +3,47 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.52.0
+**English**
+- **Deleting every camera is now a supported way to run YonderRC**, not a broken state.
+  It was broken: emptying the list left the panel holding the id of a stream that no
+  longer existed, so it kept asking the vehicle for it every few seconds, forever. The
+  selection is now cleared when the list is empty (`selectedCamera`), which switches the
+  whole video path off — no requests, no reconnects, no error text. The FPV area stays
+  dark and the OSD, telemetry, arming and controls carry on as normal. That is the setup
+  for anyone who wants a plain IP/WiFi/AP receiver and drives on sight.
+- The placeholder says so instead of blaming go2rtc, and Record/Snapshot grey out when
+  there is no camera rather than offering a button that can only fail.
+- **A camera that is gone for good no longer gets hammered.** The reconnect backoff
+  stopped widening at 5 s, so an unplugged camera meant one full RTCPeerConnection plus
+  ICE every five seconds for as long as the app was open — on a phone that competes with
+  the 20 ms control loop. It now stays quick for the first four attempts (a blip is
+  covered), holds 5 s for about half a minute, then widens to 15 s and 30 s. Recovery
+  from a real blip is unchanged.
+- The vehicle banner says `no cameras (fine — the ground station just stays dark)`
+  instead of printing an empty list.
+
+**Deutsch**
+- **Alle Kameras zu löschen ist jetzt eine unterstützte Betriebsart**, kein kaputter
+  Zustand. Kaputt war es: beim Leeren der Liste behielt das Panel die ID eines Streams,
+  den es nicht mehr gab, und fragte das Fahrzeug alle paar Sekunden danach — dauerhaft.
+  Die Auswahl wird jetzt geleert, wenn die Liste leer ist (`selectedCamera`), womit der
+  gesamte Videopfad abgeschaltet ist: keine Anfragen, keine Reconnects, kein Fehlertext.
+  Die FPV-Fläche bleibt dunkel, OSD, Telemetrie, Scharfschaltung und Steuerung laufen
+  normal weiter. Genau so konfiguriert man es, wenn man einen reinen
+  IP/WLAN/AP-Empfänger will und auf Sicht fährt.
+- Der Platzhalter sagt das auch, statt go2rtc zu verdächtigen, und Record/Snapshot sind
+  ohne Kamera ausgegraut, statt einen Knopf anzubieten, der nur scheitern kann.
+- **Eine endgültig verschwundene Kamera wird nicht mehr gehämmert.** Der Reconnect-Backoff
+  hörte bei 5 s auf zu wachsen — eine abgezogene Kamera bedeutete also eine komplette
+  RTCPeerConnection samt ICE alle fünf Sekunden, solange die App offen war; am Handy
+  konkurriert das mit dem 20-ms-Regeltakt. Jetzt bleibt es für die ersten vier Versuche
+  schnell (ein Aussetzer ist damit abgedeckt), hält eine gute halbe Minute bei 5 s und
+  weitet sich dann auf 15 s und 30 s. Die Erholung nach einem echten Aussetzer ist
+  unverändert.
+- Das Fahrzeug-Banner sagt `no cameras (fine — the ground station just stays dark)`
+  statt eine leere Liste zu drucken.
+
 ## v1.51.0
 **English**
 - **The on-screen stick gets the space it deserves.** Stick modes 2 and 3 put both axes

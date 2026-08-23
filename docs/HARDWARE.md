@@ -411,6 +411,11 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 3. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) →
    **Save & apply**. go2rtc reloads.
 
+   > **No camera is a valid setup.** Remove every entry and the FPV area simply stays
+   > dark: nothing is retried, nothing reports an error, and the OSD, telemetry and
+   > controls carry on. That is the configuration to use if you want YonderRC purely as
+   > an IP/WiFi/AP receiver and drive on sight.
+
    > **A `rpicam` stream stays black / reconnects?** `rpicam-hello --list-cameras` on
    > the Pi is the ground truth — if that says *No cameras available!*, no setting in
    > the UI can help. Raspberry Pi OS Bookworm renamed the camera tools from
