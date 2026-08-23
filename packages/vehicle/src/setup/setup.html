@@ -1192,14 +1192,10 @@
         $('csi-msg').textContent = 'Writing config.txt…';
         const r = await post('/api/camera-module', { id: $('csi-module').value, overlay: $('csi-overlay').value });
         csiCurrent = r.current || csiCurrent;
-        const m = csiSelected();
-        if (r.ok && m && m.tuningFile) {
-          // Prefill the tuning file on rpicam cameras that have none — the whole point of
-          // picking a module is not having to know that path.
-          let touched = 0;
-          for (const c of cams) if (c.type === 'rpicam' && !c.tuningFile) { c.tuningFile = m.tuningFile; touched++; }
-          if (touched) { renderCams(); await post('/api/cameras', { cameras: cams }); }
-        }
+        // The vehicle reconciles the camera list with the module it just accepted —
+        // filling in that module's tuning file and dropping the previous module's, which
+        // would otherwise apply another sensor's calibration to this one. Take its answer.
+        if (r.ok && Array.isArray(r.cameras)) { cams = r.cameras; renderCams(); }
         renderCsiState();
         if (!r.ok) $('csi-msg').textContent = r.message || 'Failed.';
       }

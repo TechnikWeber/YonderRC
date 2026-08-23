@@ -220,3 +220,40 @@ export function explainBootConfig(
   }
   return 'camera_auto_detect is off and no overlay is set, so the firmware never looks for a camera. Pick a module under "CSI camera module".';
 }
+
+/** Every tuning file the catalogue knows about — used to spot a leftover from another module. */
+export function knownTuningFiles(): string[] {
+  return CSI_MODULES.map((m) => m.tuningFile).filter((t): t is string => !!t);
+}
+
+/**
+ * Bring the camera list in line with the selected module.
+ *
+ * Switching sensors leaves the previous module's settings behind, and they are not
+ * inert: a tuning file is a *sensor* calibration, so an IMX519's file on an OV5647
+ * silently gives it the wrong colour and exposure model, and a focus mode on a
+ * fixed-focus camera is noise in the log. Only values this catalogue put there are
+ * removed — a hand-entered tuning path is the operator's, and stays.
+ */
+export function reconcileCameras<T extends { type: string; tuningFile?: string; focus?: string; lensPosition?: number }>(
+  cameras: T[],
+  mod: CsiModule,
+): T[] {
+  const known = knownTuningFiles();
+  return cameras.map((cam) => {
+    if (cam.type !== 'rpicam') return cam;
+    const next: T = { ...cam };
+    if (mod.tuningFile) {
+      if (!next.tuningFile || (known.includes(next.tuningFile) && next.tuningFile !== mod.tuningFile)) {
+        next.tuningFile = mod.tuningFile;
+      }
+    } else if (next.tuningFile && known.includes(next.tuningFile)) {
+      delete next.tuningFile;
+    }
+    if (!mod.focus && next.focus && next.focus !== 'off') {
+      delete next.focus;
+      delete next.lensPosition;
+    }
+    return next;
+  });
+}

@@ -766,6 +766,23 @@ async function main() {
   ok('explain: silent when a camera is there', bc.explainBootConfig({ autoDetect: true, overlay: null }, 1) === null);
   ok('catalogue has the arducam 16MP with a tuning file', !!bc.moduleById('imx519')?.tuningFile);
 
+  // ---- switching module reconciles the camera settings ----
+  const imx = bc.moduleById('imx519')!;
+  const ov = bc.moduleById('ov5647')!;
+  const rpiCam = { name: 'cam1', type: 'rpicam', width: 1280, height: 720, fps: 25 } as Record<string, unknown>;
+  const withImxTuning = bc.reconcileCameras([{ ...rpiCam }], imx);
+  ok('module with a tuning file fills it in', withImxTuning[0].tuningFile === imx.tuningFile);
+  // The trap: an IMX519 tuning file is a *sensor* calibration; leaving it on an OV5647
+  // silently gives that sensor the wrong colour and exposure model.
+  const swapped = bc.reconcileCameras([{ ...rpiCam, tuningFile: imx.tuningFile, focus: 'manual', lensPosition: 0 }], ov);
+  ok('switching sensors drops the old tuning file', swapped[0].tuningFile === undefined);
+  ok('and the focus mode a fixed-focus sensor cannot use', swapped[0].focus === undefined && swapped[0].lensPosition === undefined);
+  const handEntered = bc.reconcileCameras([{ ...rpiCam, tuningFile: '/home/pi/mine.json' }], ov);
+  ok('a hand-entered tuning path is left alone', handEntered[0].tuningFile === '/home/pi/mine.json');
+  const usb = bc.reconcileCameras([{ name: 'u', type: 'usb', width: 640, height: 480, fps: 30, tuningFile: imx.tuningFile } as Record<string, unknown>], ov);
+  ok('usb cameras are untouched', usb[0].tuningFile === imx.tuningFile);
+  ok('idempotent', JSON.stringify(bc.reconcileCameras(swapped, ov)) === JSON.stringify(swapped));
+
   // ---- CSI camera detection (pure part) ----
   const { parseCameraList, captureNodes, explainNoCamera } = await import(
     '../packages/vehicle/src/system/cameras'

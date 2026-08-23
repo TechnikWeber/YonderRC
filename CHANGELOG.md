@@ -3,6 +3,38 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.53.0
+**English**
+- **Switching camera module now cleans up after the previous one.** A tuning file is a
+  *sensor* calibration, not a preference: swapping an Arducam IMX519 for a Raspberry Pi
+  OV5647 left `imx519-af.json` on the camera entry, which hands the new sensor another
+  one's colour and exposure model — silently, with a picture that looks plausible. The
+  same applies to a focus mode on a camera that has no lens actuator. `reconcileCameras`
+  now runs whenever a module is selected: it fills in that module's tuning file and drops
+  the previous module's, and clears a focus mode the new module cannot use. Only values
+  the catalogue put there are touched — a hand-entered tuning path is the operator's and
+  stays. USB cameras are never touched.
+- The reconciliation lives on the vehicle rather than in the setup page, so it applies
+  whoever makes the change; the page just takes the camera list back from the response.
+- Found by walking into it: a working IMX519 was replaced with an OV5647, and the stale
+  tuning file came along for the ride.
+
+**Deutsch**
+- **Ein Modulwechsel räumt jetzt hinter dem vorherigen auf.** Eine Tuning-Datei ist eine
+  *Sensor*-Kalibrierung, keine Vorliebe: tauscht man eine Arducam IMX519 gegen eine
+  Raspberry Pi OV5647, blieb `imx519-af.json` am Kameraeintrag stehen und gibt dem neuen
+  Sensor das Farb- und Belichtungsmodell eines fremden — stillschweigend, mit einem Bild,
+  das plausibel aussieht. Dasselbe gilt für einen Fokusmodus an einer Kamera ohne
+  Fokusmotor. `reconcileCameras` läuft jetzt bei jeder Modulauswahl: es trägt die
+  Tuning-Datei des Moduls ein, entfernt die des vorherigen und löscht einen Fokusmodus,
+  den das neue Modul nicht nutzen kann. Angefasst wird nur, was der Katalog selbst
+  gesetzt hat — ein von Hand eingetragener Pfad gehört dem Betreiber und bleibt.
+  USB-Kameras bleiben unberührt.
+- Der Abgleich liegt im Fahrzeug statt in der Setup-Seite, gilt also unabhängig davon, wer
+  die Änderung macht; die Seite übernimmt die Kameraliste einfach aus der Antwort.
+- Gefunden, indem ich hineingelaufen bin: eine laufende IMX519 wurde durch eine OV5647
+  ersetzt, und die alte Tuning-Datei ist mitgefahren.
+
 ## v1.52.1
 **English**
 - **Deleting every camera is now a supported way to run YonderRC**, not a broken state.
