@@ -486,8 +486,14 @@
         <div class="eyebrow">System</div>
         <div class="btns">
           <button class="btn bad" onclick="run(this, () => reboot())">Reboot vehicle</button>
+          <button class="btn bad" onclick="run(this, () => shutdown())">Shut down vehicle</button>
           <button class="btn bad" onclick="run(this, () => factoryReset())">Factory reset</button>
         </div>
+        <p class="msg">
+          <b>Shut down</b> parks the SD card and powers the Pi off — the safe way to end a
+          session, instead of pulling the plug mid-write. Nothing brings it back but a
+          power cycle, so do it when you can reach the vehicle. Refused while armed.
+        </p>
         <p class="msg">Factory reset clears all saved vehicle settings (incl. the API secret) — restart to apply defaults.</p>
         <div class="msg" id="sys-msg"></div>
       </section>
@@ -1104,6 +1110,11 @@
       async function reboot() {
         if (!confirm('Reboot the vehicle now?')) return;
         const r = await post('/api/reboot');
+        $('sys-msg').textContent = r.message || '';
+      }
+      async function shutdown() {
+        if (!confirm('Shut the vehicle down? It will NOT come back on its own — someone has to power-cycle it.')) return;
+        const r = await post('/api/shutdown');
         $('sys-msg').textContent = r.message || '';
       }
       async function factoryReset() {

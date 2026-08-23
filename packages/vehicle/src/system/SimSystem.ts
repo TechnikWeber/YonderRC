@@ -425,4 +425,8 @@ export class SimSystem implements SystemManager {
     this.bootedConfig = this.bootConfig;
     return { ok: true, message: 'Reboot requested (simulated — no-op).' };
   }
+
+  async shutdown(): Promise<ActionResult> {
+    return { ok: true, message: 'Shutdown requested (simulated — no-op).' };
+  }
 }

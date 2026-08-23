@@ -505,6 +505,18 @@ export async function handleSetup(
     return true;
   }
 
+  if (url === '/api/shutdown' && method === 'POST') {
+    // Refuse while armed. A reboot at least comes back; a shutdown with a live throttle
+    // leaves the vehicle powered down wherever it stopped, and the operator has to walk
+    // to it — which is the wrong moment to discover the motor was still enabled.
+    if (ctx.core.status().armed) {
+      json(res, 409, { ok: false, message: 'Disarm before shutting the vehicle down.' });
+      return true;
+    }
+    json(res, 200, await ctx.system.shutdown());
+    return true;
+  }
+
   if (url === '/api/factory-reset' && method === 'POST') {
     resetPersisted(ctx.config.configPath);
     // Drop the secret live so the operator isn't locked out after a reset; the rest

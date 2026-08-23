@@ -3,6 +3,26 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.58.0
+**English**
+- **Shut down vehicle**, next to Reboot in Setup › System. Pulling the plug on a Pi is how
+  an SD card ends up unreadable; this parks it first. The confirmation says the part that
+  matters — nothing brings it back but a power cycle, so do it when you can reach the
+  vehicle.
+- **Refused while armed.** A reboot at least comes back on its own; a shutdown with a live
+  throttle leaves the vehicle powered down wherever it stopped, and walking out to it is
+  the wrong moment to find out the motor was still enabled.
+
+**Deutsch**
+- **Shut down vehicle**, neben Reboot unter Setup › System. Einem Pi den Stecker zu ziehen
+  ist der Weg, auf dem eine SD-Karte unlesbar wird; das hier fährt ihn vorher sauber
+  herunter. Die Rückfrage sagt das Entscheidende: von allein kommt er nicht wieder, es
+  braucht einen Stromzyklus — also nur machen, wenn man ans Fahrzeug kommt.
+- **Abgelehnt, solange scharfgeschaltet.** Ein Reboot kommt wenigstens von selbst zurück;
+  ein Shutdown mit lebendigem Gas lässt das Fahrzeug stromlos dort stehen, wo es gerade
+  war — und der Weg dorthin ist der falsche Moment, um zu merken, dass der Motor noch
+  freigegeben war.
+
 ## v1.57.1
 **English**
 - **The power warning is a badge now, not a banner**, and it clears itself. It sat in the

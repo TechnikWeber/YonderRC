@@ -345,6 +345,11 @@ export interface SystemManager {
   /** Select a camera module; takes effect on the next boot. */
   setCameraModule(id: string, customOverlay?: string | null): Promise<ActionResult & { rebootRequired: boolean }>;
   reboot(): Promise<ActionResult>;
+  /**
+   * Power the vehicle down. Unlike a reboot this is one-way: nothing brings it back
+   * but a hand on the switch, so the caller has to be sure.
+   */
+  shutdown(): Promise<ActionResult>;
 }
 
 /** Strip secrets (auth key, WG conf) from a remote config for safe display. */

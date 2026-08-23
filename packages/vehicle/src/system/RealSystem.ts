@@ -1072,4 +1072,14 @@ export class RealSystem implements SystemManager {
     void sh('sudo reboot'); // fire and forget
     return { ok: true, message: 'Rebooting…' };
   }
+
+  async shutdown(): Promise<ActionResult> {
+    // `poweroff` rather than pulling the plug: an SD card mid-write is how a vehicle
+    // comes back as a brick. Fire and forget — the answer has to leave before we go.
+    void sh('sudo poweroff');
+    return {
+      ok: true,
+      message: 'Shutting down… wait for the green LED to stop blinking before cutting power. Only a power cycle brings it back.',
+    };
+  }
 }
