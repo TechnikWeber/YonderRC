@@ -1,6 +1,6 @@
 {
   "name": "@yonderrc/vehicle",
-  "version": "1.62.1",
+  "version": "1.62.2",
   "private": true,
   "type": "module",
   "description": "YonderRC vehicle service: owns the output driver, runs the failsafe watchdog and the control link.",

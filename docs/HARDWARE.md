@@ -48,7 +48,7 @@ a requirement.
 | Max current | **20 A** | Sets the chip's internal LSB, i.e. the resolution of the mAh/Wh counter. Use your model's real peak. |
 | Shunt range | ±163.84 mV | 0.002 Ω × 20 A = 40 mV, which *just* fits the ±40.96 mV range — but with no margin, and over it the reading clips silently. Take the small range only when you are sure. |
 | GPS | `/dev/serial0`, 9600 baud | The alias for the UART on the header; ttyAMA0 is the Bluetooth UART (see 2.6). |
-| Control | on-screen pad (touch) | The demo car and boat start in touch mode, so a phone on the vehicle's hotspot can drive without a trip through the binding editor first. The car puts both axes on one stick (mode 2); the boat keeps its ratcheted throttle on its own (mode 1). |
+| Control | on-screen pad (touch) | The demo car and boat start in touch mode, so a phone on the vehicle's hotspot can drive without a trip through the binding editor first. Both put their two axes on one stick (mode 2) — the boat's throttle stays ratcheted there, it just doesn't spring back. |
 
 ### Which current sensor? (INA228 recommended)
 

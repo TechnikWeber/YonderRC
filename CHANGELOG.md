@@ -3,6 +3,20 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.62.2
+**English**
+- **The demo boat goes single-stick as well** (mode 2): rudder and throttle under one
+  thumb, same as the car. Its throttle stays **ratcheted** on that shared stick — the
+  detent travels with the binding, so moving the axis does not quietly turn a boat's
+  hold-position throttle into a spring-centred one. There is now a test for exactly that.
+
+**Deutsch**
+- **Auch das Demo-Boot fährt jetzt einstickig** (Modus 2): Ruder und Gas unter einem
+  Daumen, wie beim Auto. Sein Gas **rastet** auf diesem gemeinsamen Stick weiterhin — der
+  Detent wandert mit dem Binding mit, das Verschieben der Achse macht aus dem
+  Haltegas eines Boots also nicht stillschweigend ein mittenzentriertes. Dafür gibt es
+  jetzt einen Test.
+
 ## v1.62.1
 **English**
 - **The demo boat starts on the on-screen pad too.** Same reason as the car in v1.62.0:

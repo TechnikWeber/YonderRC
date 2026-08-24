@@ -48,7 +48,7 @@ Vorschrift.
 | Max current | **20 A** | Legt den internen LSB des Chips fest, also die Auflösung des mAh-/Wh-Zählers. Nimm den echten Spitzenstrom deines Modells. |
 | Shunt-Bereich | ±163,84 mV | 0,002 Ω × 20 A = 40 mV, das passt *gerade so* in den ±40,96-mV-Bereich — ohne Reserve, und darüber clippt die Anzeige still. Den kleinen Bereich nur nehmen, wenn du sicher bist. |
 | GPS | `/dev/serial0`, 9600 Baud | Der Alias für den UART am Header; ttyAMA0 ist der Bluetooth-UART (siehe 2.6). |
-| Bedienung | Bildschirm-Pad (Touch) | Demo-Auto und -Boot starten im Touch-Modus, damit ein Handy im Hotspot des Fahrzeugs losfahren kann, ohne vorher durch den Binding-Editor zu müssen. Das Auto legt beide Achsen auf einen Stick (Modus 2), das Boot lässt sein rastendes Gas auf einem eigenen (Modus 1). |
+| Bedienung | Bildschirm-Pad (Touch) | Demo-Auto und -Boot starten im Touch-Modus, damit ein Handy im Hotspot des Fahrzeugs losfahren kann, ohne vorher durch den Binding-Editor zu müssen. Beide legen ihre zwei Achsen auf einen Stick (Modus 2) — das Gas des Boots rastet dort weiterhin, es federt nur nicht zurück. |
 
 ### Welcher Stromsensor? (Empfehlung INA228)
 
