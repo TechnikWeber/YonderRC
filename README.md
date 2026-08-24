@@ -26,7 +26,9 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
 - 16 channels over WebSocket or a WebRTC data channel; keyboard, on-screen buttons,
   gamepad, or a full touch joystick (multitouch, deadzone, spring return).
 - **Models** for car / boat / plane / drone with matching channel templates,
-  selectable input method, and per-axis detent (center/min/free).
+  selectable input method, and per-axis detent (center/min/free). The demo car starts on
+  the **on-screen pad**, so a phone joining the vehicle's own hotspot can drive straight
+  away — both axes on one stick, no trip through the binding editor first.
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
 - **Response curves** per stick channel (off by default): a 3/5/7/9-point curve with a
   live plot, for the shapes expo can't express — a throttle that stays gentle to half
@@ -191,9 +193,12 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   mapping tool read without conversion.
 
 **GPS & navigation**
-- **Selectable GPS source**: a local NMEA receiver over serial (Adafruit Ultimate GPS,
-  u-blox NEO-6/7/8/M9, BN-880…), a USB dongle via **gpsd**, a **sim** source, or (later)
-  **MAVLink** from a flight controller — all normalized to one fix.
+- **Selectable GPS source**: a local NMEA receiver over serial (**Adafruit Ultimate GPS
+  v3** is the reference, u-blox NEO-6/7/8/M9, BN-880…), a USB dongle via **gpsd**, a
+  **sim** source, or (later) **MAVLink** from a flight controller — all normalized to one
+  fix. Setup › GPS frees the header UART for you (Raspberry Pi OS parks a login console
+  on it) and counts the arriving NMEA sentences, so a receiver can be verified indoors,
+  where there will never be a fix.
 - **Home point**: set it manually, or **auto-home** on the first good fix (takeoff
   point). The OSD shows fix type + satellites and, once home is set, **distance and
   direction back to home** — the essentials for beyond-line-of-sight.

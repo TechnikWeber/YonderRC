@@ -184,6 +184,24 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   `provisioning/tuning/imx519-af.json` with a **measured** map (`[0.0, 597, 10.0, 1023]` —
   the actuator's rest position is *not* infinity). `manual` at 0 dioptres beats
   `continuous` on a moving model.
+- **I²C identification + addresses from the browser — DONE (v1.60.0–v1.60.2)**:
+  `vehicle/system/detect.ts` reads ID registers via `i2ctransfer` (`probesFor` /
+  `identifyI2c`, pure + tested) and names the actual chip — INA2xx by manufacturer + die
+  id, MCP9808/TMP117/BMP280/BME280 by chip id, and the PCA9685, which has no ID register,
+  through its all-call address 0x70. `Pca9685Driver` therefore **keeps ALLCALL enabled**;
+  clearing it (a bare 0x00 to MODE1) makes a running chip unidentifiable. The PCA's
+  bus/address is a persisted setting with a field in the setup UI (was `YRC_I2C_ADDR`
+  only), voltage/current channels have an address field, and `GET /api/config` answers
+  with the **saved** values plus `restartPending` — reporting only the running ones made
+  a saved change look lost. Reference pairing: **INA228 on 0x40, PCA9685 on 0x41**.
+- **GPS bring-up without a terminal — DONE (v1.61.0/v1.61.1)**: Raspberry Pi OS parks a
+  login console on the header UART, and `install.sh` only ever enabled the hardware — so
+  every wired GPS delivered shredded NMEA. `system/serial.ts` (pure) strips the console
+  token from cmdline.txt token-wise and ensures `enable_uart=1`; Setup › GPS shows the
+  state and frees the port, the installer does it on fresh installs. `/dev/serial0` is the
+  device everywhere — **`/dev/ttyAMA0` is the Bluetooth UART on a Pi 3/4/5** and stays
+  silent, which the panel now warns about. GPS link stats (sentences, satellites in view)
+  make a receiver verifiable **indoors**, where there will never be a fix.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 - Screenshots: `Mobile_FPV.jpeg` is a real phone screenshot and still shows the

@@ -20,11 +20,35 @@ camera for FPV, first over Wi-Fi and then over LTE with Tailscale for the field.
 |---|---|---|
 | Computer | **Raspberry Pi 4** (2 GB is enough) or **Pi Zero 2 W** | Both have a hardware H.264 encoder for low-latency FPV. **The Pi 5 does not** — not ideal for video. |
 | Storage | microSD 32 GB (A1/A2) | For Raspberry Pi OS Lite. |
-| Servo/ESC driver | **PCA9685** 16-channel PWM (I2C) | Produces clean 50 Hz servo signals independent of the CPU. |
-| Current/voltage sensor | **INA228** breakout (I2C) | Measures pack voltage and current high-side. **Counts charge and energy itself** (CHARGE/ENERGY registers), 85 V bus range (up to 12S) and 20-bit resolution. See "Which current sensor?" below for the alternatives. |
+| Servo/ESC driver | **PCA9685** 16-channel PWM (I2C), moved to **0x41** | Produces clean 50 Hz servo signals independent of the CPU. Close solder bridge **A0** so it does not collide with the sensor (see 2.1). |
+| Current/voltage sensor | **INA228** breakout (I2C) on **0x40**, **2 mΩ shunt** (`R002`) | Measures pack voltage and current high-side. **Counts charge and energy itself** (CHARGE/ENERGY registers), 85 V bus range (up to 12S) and 20-bit resolution. See "Which current sensor?" below for the alternatives. |
 | Pi power supply | **UBEC/BEC 5 V / 3 A** | Powers the Pi reliably from the drive battery. |
 | Camera | **Pi Camera Module 3** (CSI) *or* a USB camera with H.264 | CSI = lowest latency. |
 | Wiring | Jumpers, JST, soldering gear | I2C bus, servo connectors, sensor. |
+
+### Optional
+
+| Part | Recommendation | Why |
+|---|---|---|
+| GPS | **Adafruit Ultimate GPS v3** (MTK3339) | NMEA at 9600 baud on the header UART, battery-backed so restarts are warm starts. See 2.6 — u-blox NEO-6/7/8/M9 and BN-880 work identically. |
+| LTE | see "For LTE" below | Beyond line of sight. |
+| Temperature | see 2.7 | Motor/ESC/pack temperatures in the OSD. |
+
+### The reference build
+
+These are the values the setup page fills in for you, and what the rest of this guide
+assumes. Everything is changeable — this is a starting point that is known to work, not
+a requirement.
+
+| What | Value | Why this one |
+|---|---|---|
+| INA228 address | **0x40** | The sensor keeps the factory address; the telemetry channel defaults to it. |
+| PCA9685 address | **0x41** | Both chips ship on 0x40, and the driver's address is the one you can change from the browser (see 2.1). |
+| Shunt | **0.002 Ω** (`R002` on the board) | What the common 85 V breakouts carry. Read your own board and **correct the figure against a reference meter** — that field is the calibration factor, not a datasheet value. |
+| Max current | **20 A** | Sets the chip's internal LSB, i.e. the resolution of the mAh/Wh counter. Use your model's real peak. |
+| Shunt range | ±163.84 mV | 0.002 Ω × 20 A = 40 mV, which *just* fits the ±40.96 mV range — but with no margin, and over it the reading clips silently. Take the small range only when you are sure. |
+| GPS | `/dev/serial0`, 9600 baud | The alias for the UART on the header; ttyAMA0 is the Bluetooth UART (see 2.6). |
+| Control | on-screen pad (touch) | The demo car starts in touch mode, so a phone on the vehicle's hotspot can drive without a trip through the binding editor first. |
 
 ### Which current sensor? (INA228 recommended)
 
@@ -52,6 +76,12 @@ You still set **Max current A** (it picks the chip's internal LSB and with it th
 calibration) and the **shunt value**. Rule of thumb: shunt so that
 `max current × shunt ≤ 163 mV`, e.g. 1 mΩ for 100 A. If `max current × shunt` also
 stays under **40.96 mV**, switch the shunt range to ±40.96 mV for 4× the resolution.
+
+**The shunt field is a calibration factor.** Its tolerance and the resistance of the
+terminals both land in the measurement, so the printed value is a starting point:
+feed a known current, compare against a reference meter and enter
+`old shunt × reading / true current`. On the reference build that turned a nominal
+0.002 Ω into 0.00206 Ω — a 3 % error that no amount of resolution would have found.
 
 ### For LTE (phase 2)
 
@@ -457,8 +487,9 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    the driver and telemetry forms — nothing is saved until you press Save there.
 1. **Vehicle:** set the name, **Output driver = `pca9685`** (drone: `sbus`; without an
    extra board: `gpio-pwm`, pin map in 2.8), check the throttle channel. With `pca9685`
-   an **I²C address** field appears — leave it at 0x40 unless a current sensor already
-   sits there, in which case move the PCA to 0x41 (see 2.1). The driver is built at
+   an **I²C address** field appears. With the reference build it is **0x41** (bridge A0
+   closed, see 2.1); a board straight out of its bag with no current sensor next to it
+   stays on 0x40. The driver is built at
    startup, so the page offers a **Restart vehicle service** button after saving it. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
    — as soon as a ground station connects, it pushes the setting that matches the model
    type (car/boat on, plane/drone off).
@@ -509,8 +540,9 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    > **Focus** mode in Setup › Cameras. On a moving model prefer `manual` at 0 dioptres
    > (infinity) — `continuous` hunts whenever the scene changes.
 4. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
-   `ina238`), enter `Shunt Ω` (the value printed on the board, e.g. `R001` = 0.001) and,
-   for the INA228/237/238, **Max current A** plus the shunt range. The **I²C address**
+   `ina238`) — picking the sensor fills in the reference values (0.002 Ω, 20 A, large
+   range). Correct `Shunt Ω` to what is printed on your board (`R001` = 0.001,
+   `R002` = 0.002) and set **Max current A** to your model's real peak. The **I²C address**
    field next to it stays empty for the default 0x40 — fill it in only if the sensor
    sits elsewhere. Add a voltage channel of the same kind ("Voltage 1") — the INA
    provides both. Enter the battery capacity (mAh), choose consumed/remaining display,

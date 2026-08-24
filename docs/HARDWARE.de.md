@@ -20,11 +20,35 @@ Kamera für FPV, zuerst über WLAN, danach über LTE mit Tailscale für unterweg
 |---|---|---|
 | Rechner | **Raspberry Pi 4** (2 GB reicht) oder **Pi Zero 2 W** | Beide haben einen Hardware-H.264-Encoder für latenzarmes FPV. **Der Pi 5 hat keinen** — nicht ideal fürs Video. |
 | Speicher | microSD 32 GB (A1/A2) | Für Raspberry Pi OS Lite. |
-| Servo-/ESC-Treiber | **PCA9685** 16-Kanal PWM (I2C) | Erzeugt saubere 50-Hz-Servosignale unabhängig von der CPU. |
-| Strom-/Spannungssensor | **INA228** Breakout (I2C) | Misst Pack-Spannung und Strom hochseitig. **Zählt Ladung und Energie selbst** (CHARGE-/ENERGY-Register), 85 V Busbereich (bis 12S) und 20 Bit Auflösung. Alternativen siehe „Welcher Stromsensor?". |
+| Servo-/ESC-Treiber | **PCA9685** 16-Kanal PWM (I2C), auf **0x41** gelegt | Erzeugt saubere 50-Hz-Servosignale unabhängig von der CPU. Lötbrücke **A0** schließen, damit er nicht mit dem Sensor kollidiert (siehe 2.1). |
+| Strom-/Spannungssensor | **INA228** Breakout (I2C) auf **0x40**, **2 mΩ Shunt** (`R002`) | Misst Pack-Spannung und Strom hochseitig. **Zählt Ladung und Energie selbst** (CHARGE-/ENERGY-Register), 85 V Busbereich (bis 12S) und 20 Bit Auflösung. Alternativen siehe „Welcher Stromsensor?". |
 | Stromversorgung Pi | **UBEC/BEC 5 V / 3 A** | Versorgt den Pi stabil aus dem Fahrakku. |
 | Kamera | **Pi Camera Module 3** (CSI) *oder* USB-Kamera mit H.264 | CSI = geringste Latenz. |
 | Verkabelung | Jumper, JST, Lötzeug | I2C-Bus, Servostecker, Sensor. |
+
+### Optional
+
+| Teil | Empfehlung | Warum |
+|---|---|---|
+| GPS | **Adafruit Ultimate GPS v3** (MTK3339) | NMEA mit 9600 Baud am Header-UART, mit Pufferbatterie — Neustarts sind dadurch Warmstarts. Siehe 2.6; u-blox NEO-6/7/8/M9 und BN-880 verhalten sich identisch. |
+| LTE | siehe „Für LTE" weiter unten | Jenseits der Sichtweite. |
+| Temperatur | siehe 2.7 | Motor-/Regler-/Akkutemperatur im OSD. |
+
+### Der Referenzaufbau
+
+Das sind die Werte, die die Setup-Seite für dich vorbelegt, und von denen der Rest
+dieses Leitfadens ausgeht. Alles ist änderbar — es ist ein erprobter Startpunkt, keine
+Vorschrift.
+
+| Was | Wert | Warum dieser |
+|---|---|---|
+| INA228-Adresse | **0x40** | Der Sensor behält die Werksadresse; der Telemetriekanal nimmt sie als Default. |
+| PCA9685-Adresse | **0x41** | Beide Chips kommen ab Werk auf 0x40, und die Treiberadresse ist die, die sich vom Browser aus ändern lässt (siehe 2.1). |
+| Shunt | **0,002 Ω** (`R002` auf dem Board) | Womit die verbreiteten 85-V-Breakouts bestückt sind. Lies dein eigenes Board ab und **korrigiere den Wert gegen ein Referenzmessgerät** — dieses Feld ist der Kalibrierfaktor, kein Datenblattwert. |
+| Max current | **20 A** | Legt den internen LSB des Chips fest, also die Auflösung des mAh-/Wh-Zählers. Nimm den echten Spitzenstrom deines Modells. |
+| Shunt-Bereich | ±163,84 mV | 0,002 Ω × 20 A = 40 mV, das passt *gerade so* in den ±40,96-mV-Bereich — ohne Reserve, und darüber clippt die Anzeige still. Den kleinen Bereich nur nehmen, wenn du sicher bist. |
+| GPS | `/dev/serial0`, 9600 Baud | Der Alias für den UART am Header; ttyAMA0 ist der Bluetooth-UART (siehe 2.6). |
+| Bedienung | Bildschirm-Pad (Touch) | Das Demo-Auto startet im Touch-Modus, damit ein Handy im Hotspot des Fahrzeugs losfahren kann, ohne vorher durch den Binding-Editor zu müssen. |
 
 ### Welcher Stromsensor? (Empfehlung INA228)
 
@@ -53,6 +77,12 @@ Einzutragen sind weiterhin **Max current A** (bestimmt den chipinternen LSB und 
 die Kalibrierung) und der **Shunt-Wert**. Faustregel: Shunt so wählen, dass
 `max. Strom × Shunt ≤ 163 mV`, z. B. 1 mΩ für 100 A. Bleibt `max. Strom × Shunt` sogar
 unter **40,96 mV**, den Shunt-Bereich auf ±40,96 mV stellen — 4× feinere Auflösung.
+
+**Das Shunt-Feld ist ein Kalibrierfaktor.** Seine Toleranz und der Widerstand der
+Klemmen landen beide in der Messung, der aufgedruckte Wert ist also nur der Startpunkt:
+bekannten Strom einspeisen, gegen ein Referenzmessgerät vergleichen und
+`alter Shunt × Anzeige / echter Strom` eintragen. Im Referenzaufbau wurden aus nominal
+0,002 Ω so 0,00206 Ω — 3 % Fehler, die keine Auflösung der Welt gefunden hätte.
 
 ### Für LTE (Phase 2)
 
@@ -470,9 +500,9 @@ sudo bash provisioning/install.sh
    bis du dort auf Save drückst.
 1. **Vehicle:** Name setzen, **Output driver = `pca9685`** (Drohne: `sbus`; ohne
    Zusatzboard: `gpio-pwm`, Pinbelegung in 2.8),
-   Throttle-Kanal prüfen. Bei `pca9685` erscheint ein Feld **I²C address** — auf 0x40
-   lassen, außer dort sitzt bereits ein Stromsensor; dann den PCA auf 0x41 verschieben
-   (siehe 2.1). Der Treiber wird beim Start gebaut, deshalb bietet die Seite nach dem
+   Throttle-Kanal prüfen. Bei `pca9685` erscheint ein Feld **I²C address**. Im
+   Referenzaufbau steht dort **0x41** (Brücke A0 geschlossen, siehe 2.1); ein frisch
+   ausgepacktes Board ohne Stromsensor daneben bleibt auf 0x40. Der Treiber wird beim Start gebaut, deshalb bietet die Seite nach dem
    Speichern einen Button **Restart vehicle service** an. Die Checkbox *Auto-disarm on reconnect* ist hier nur ein
    **Fallback** — sobald sich eine Bodenstation verbindet, pusht sie den zum Modelltyp
    passenden Wert (Auto/Boot an, Flugzeug/Drohne aus).
@@ -526,8 +556,10 @@ sudo bash provisioning/install.sh
    > Modell ist `manual` auf 0 Dioptrien (unendlich) meist besser als `continuous`, das
    > bei jedem Szenenwechsel neu sucht.
 4. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
-   `ina238`), `Shunt Ω` eintragen (den Wert vom Board, z. B. `R001` = 0.001) und beim
-   INA228/237/238 zusätzlich **Max current A** plus Shunt-Bereich. Das Feld **I²C
+   `ina238`) — mit der Auswahl des Sensors werden die Referenzwerte vorbelegt (0,002 Ω,
+   20 A, großer Bereich). `Shunt Ω` auf den Aufdruck deines Boards korrigieren
+   (`R001` = 0.001, `R002` = 0.002) und **Max current A** auf den echten Spitzenstrom
+   deines Modells setzen. Das Feld **I²C
    address** daneben bleibt für den Standard 0x40 leer — nur ausfüllen, wenn der Sensor
    woanders sitzt. Einen Spannungskanal derselben Art anlegen
    („Spannung 1") — der INA liefert beides. Batteriekapazität (mAh) angeben, Anzeige

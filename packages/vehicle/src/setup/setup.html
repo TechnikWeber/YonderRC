@@ -303,7 +303,7 @@
           <label>Watchdog (ms)<input id="watchdogTimeoutMs" type="number" /></label>
         </div>
         <div class="grid2" id="pca-row" style="display:none">
-          <label>PCA9685 I²C address (hex)<input id="pcaAddr" placeholder="0x40" /></label>
+          <label>PCA9685 I²C address (hex)<input id="pcaAddr" placeholder="0x41 (recommended)" /></label>
           <label>PCA9685 I²C bus<input id="pcaBus" type="number" placeholder="1" /></label>
         </div>
         <p class="msg" id="pca-msg" style="display:none">The PCA9685 ships on <b>0x40</b> — and so does every INA2xx current sensor, which can only live at the address you give it under Telemetry. With both on the bus, move the PCA: close solder bridge <b>A0</b> on its board (→ 0x41) and enter that here. It answers on <b>0x70</b> as well; that is its all-call address, not a second chip. Changing this needs a restart of the vehicle service.</p>
@@ -388,6 +388,7 @@
         <div class="eyebrow2">Current channels</div>
         <div id="curr-list"></div>
         <div class="btns"><button class="btn" onclick="run(this, () => addCurr())">+ Current</button></div>
+        <p class="msg"><b>Reference build</b> (docs/HARDWARE.md): an <b>INA228</b> breakout on <b class="mono">0x40</b> with an <b class="mono">R002</b> shunt — pick <i>ina228</i> and the shunt, max current and range are filled in with those values. The chip supplies voltage <i>and</i> current, so add one channel of each with the same kind and address. Read the shunt off your own board (<span class="mono">R001</span> = 0.001 Ω, <span class="mono">R002</span> = 0.002 Ω) and correct the figure against a reference meter — that field is the calibration factor.</p>
         <p class="msg">The channel marked <b>primary</b> drives the battery %, the mAh/Wh counting, the low-battery warning and the blackbox columns. With one channel of a kind there is nothing to choose; with several, mark the one that measures the pack.</p>
         <div class="eyebrow2">Temperature channels</div>
         <div id="temp-list"></div>
@@ -462,7 +463,7 @@
           <button class="btn" onclick="run(this, () => gpsHome('set'))">Set home now</button>
           <button class="btn" onclick="run(this, () => gpsHome('clear'))">Clear home</button>
         </div>
-        <p class="msg">Common receivers: Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880 — most speak NMEA at 9600 baud over UART. Wire <b>GPS TX → pin 10</b>, <b>GPS RX → pin 8</b>, GND to pin 6, and use <b>/dev/serial0</b>. USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
+        <p class="msg">Reference receiver: <b>Adafruit Ultimate GPS v3</b> (MTK3339, NMEA at 9600 baud) — u-blox NEO-6/7/8/M9 and BN-880 behave the same. Wire <b>GPS TX → pin 10</b>, <b>GPS RX → pin 8</b>, GND to pin 6, and use <b>/dev/serial0</b>. USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
         <div id="gps-status"></div>
         <div class="msg" id="gps-msg"></div>
       </section>
@@ -1408,6 +1409,27 @@
       const C_I2C = ['ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238'];
       const V_I2C = [...C_I2C, 'ads1115', 'ads1015'];
       const addrPlaceholder = (k) => (k === 'ads1115' || k === 'ads1015' ? '0x48' : '0x40');
+      /**
+       * What a freshly picked sensor should start with — the values from the reference
+       * build in docs/HARDWARE.md, not empty fields. Only ever fills what is still
+       * unset, so it can never overwrite something the operator typed.
+       *
+       * Shunt values are what the common breakouts actually carry: 2 mΩ on the 85 V
+       * parts (marked R002 on the board), 0.1 Ω on the small INA219/3221 modules.
+       */
+      const KIND_DEFAULTS = {
+        ina228: { shuntOhms: 0.002, maxCurrentA: 20 },
+        ina237: { shuntOhms: 0.002, maxCurrentA: 20 },
+        ina238: { shuntOhms: 0.002, maxCurrentA: 20 },
+        ina226: { shuntOhms: 0.002 },
+        ina219: { shuntOhms: 0.1 },
+        ina3221: { shuntOhms: 0.1 },
+      };
+      function applyKindDefaults(ch) {
+        const d = KIND_DEFAULTS[ch.kind];
+        if (!d) return;
+        for (const [k, v] of Object.entries(d)) if (ch[k] == null || ch[k] === '') ch[k] = v;
+      }
       const addrField = (kind, addr, fn) =>
         `<label>I²C address (hex)<input value="${hexStr(addr)}" placeholder="${addrPlaceholder(kind)} (default)" oninput="${fn}(this.value)" /></label>`;
       // Low range picked but the shunt voltage doesn't fit in it → the current clips.
@@ -1453,9 +1475,9 @@
             <label>Sensor<select onchange="cSet(${i},'kind',this.value); renderCurrs()">
               ${C_KINDS.map((k) => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
             </select></label>
-            <label>Shunt Ω<input type="number" step="0.0001" value="${c.shuntOhms ?? ''}" placeholder="0.001" oninput="cSet(${i},'shuntOhms',+this.value)" /></label>
+            <label>Shunt Ω<input type="number" step="0.0001" value="${c.shuntOhms ?? ''}" placeholder="0.002 (R002)" oninput="cSet(${i},'shuntOhms',+this.value)" /></label>
           </div>${C_I2C.includes(c.kind) ? addrField(c.kind, c.address, `cSetAddr(${i}, `) : ''}${CAL_KINDS.includes(c.kind) ? `<div class="grid2">
-            <label>Max current A<input type="number" step="1" value="${c.maxCurrentA ?? ''}" placeholder="50" oninput="cSet(${i},'maxCurrentA',+this.value)" /></label>
+            <label>Max current A<input type="number" step="1" value="${c.maxCurrentA ?? ''}" placeholder="20" oninput="cSet(${i},'maxCurrentA',+this.value)" /></label>
             <label>Shunt range<select onchange="cSet(${i},'lowShuntRange',this.value==='low'); renderCurrs()">
               <option value="high" ${c.lowShuntRange ? '' : 'selected'}>±163.84 mV (default)</option>
               <option value="low" ${c.lowShuntRange ? 'selected' : ''}>±40.96 mV (4× resolution)</option>
@@ -1509,8 +1531,8 @@
           <div class="btns"><button class="btn tiny" onclick="run(this, () => tDel(${i}))">Remove</button></div></div>`;
         }).join('');
       }
-      function vSet(i, k, val) { volts[i][k] = val; }
-      function cSet(i, k, val) { currs[i][k] = val; }
+      function vSet(i, k, val) { volts[i][k] = val; if (k === 'kind') applyKindDefaults(volts[i]); }
+      function cSet(i, k, val) { currs[i][k] = val; if (k === 'kind') applyKindDefaults(currs[i]); }
       function tSet(i, k, val) { temps[i][k] = val; }
       // The fields are labelled hex: "0x48" and a bare "48" both mean 0x48. Empty
       // clears the field, and the vehicle falls back to the chip's default address.

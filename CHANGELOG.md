@@ -3,6 +3,52 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.62.0
+**English**
+- **The demo car starts on the on-screen pad.** Its default was keyboard, so the first
+  thing anyone does with a new vehicle — join its hotspot from a phone and try to drive —
+  led to an empty control surface and a trip through the binding editor. Both axes sit on
+  one stick (mode 2), which is all a car needs.
+- **Picking a sensor now fills in values instead of empty fields.** Choose `ina228` and
+  the shunt (0.002 Ω, what the common 85 V breakouts carry, marked `R002`), max current
+  (20 A) and the shunt range come with it — only where nothing was entered yet, so it can
+  never overwrite what you typed. Same for the other INA parts, with the 0.1 Ω the small
+  INA219/3221 modules use.
+- **The hardware guide documents a reference build** rather than a menu of options: INA228
+  on 0x40, PCA9685 moved to 0x41, 2 mΩ shunt, GPS on `/dev/serial0`, touch control — the
+  configuration this project is actually tested against, with the reasoning for each
+  choice. GPS gets an *Optional parts* entry (Adafruit Ultimate GPS v3 as the reference
+  receiver), and both READMEs say the demo car is touch-first.
+- **The shunt field is documented as a calibration factor**, not a datasheet value: shunt
+  tolerance and terminal resistance land in the measurement, so feed a known current and
+  enter `old shunt × reading / true current`. On the reference build that turned a nominal
+  0.002 Ω into 0.00206 Ω — a 3 % error no amount of resolution would have found.
+- The test suite now checks that the two hardware guides keep the same structure, the way
+  it already did for the two READMEs.
+
+**Deutsch**
+- **Das Demo-Auto startet auf dem Bildschirm-Pad.** Sein Default war Tastatur — das Erste,
+  was man mit einem neuen Fahrzeug tut (Hotspot mit dem Handy joinen und losfahren
+  wollen), führte also auf eine leere Bedienfläche und in den Binding-Editor. Beide Achsen
+  liegen auf einem Stick (Modus 2), mehr braucht ein Auto nicht.
+- **Die Auswahl eines Sensors füllt jetzt Werte aus statt leerer Felder.** `ina228`
+  wählen, und Shunt (0,002 Ω — womit die verbreiteten 85-V-Breakouts bestückt sind,
+  Aufdruck `R002`), Max current (20 A) und Shunt-Bereich kommen mit. Nur dort, wo noch
+  nichts eingetragen ist, Getipptes wird also nie überschrieben. Für die übrigen INA-Teile
+  genauso, mit den 0,1 Ω der kleinen INA219-/3221-Module.
+- **Der Hardware-Leitfaden dokumentiert einen Referenzaufbau** statt einer Auswahlliste:
+  INA228 auf 0x40, PCA9685 auf 0x41 verschoben, 2 mΩ Shunt, GPS auf `/dev/serial0`,
+  Touch-Bedienung — die Konfiguration, gegen die dieses Projekt tatsächlich getestet wird,
+  mit der Begründung für jede Entscheidung. GPS bekommt einen Eintrag unter *Optional*
+  (Adafruit Ultimate GPS v3 als Referenzempfänger), und beide READMEs sagen, dass das
+  Demo-Auto Touch-first ist.
+- **Das Shunt-Feld ist als Kalibrierfaktor dokumentiert**, nicht als Datenblattwert:
+  Shunt-Toleranz und Klemmenwiderstand landen in der Messung, also bekannten Strom
+  einspeisen und `alter Shunt × Anzeige / echter Strom` eintragen. Im Referenzaufbau
+  wurden aus nominal 0,002 Ω so 0,00206 Ω — 3 % Fehler, die keine Auflösung gefunden hätte.
+- Die Testsuite prüft jetzt auch, dass die beiden Hardware-Leitfäden strukturgleich
+  bleiben — so wie bisher schon die beiden READMEs.
+
 ## v1.61.1
 **English**
 - **The other silent serial trap: `/dev/ttyAMA0`.** On a Pi 3/4/5 that is the PL011, and

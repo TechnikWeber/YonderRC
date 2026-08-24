@@ -134,7 +134,10 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
     ],
     // Car throttle centers (neutral = stop, allows reverse).
     defaultDetents: { ...CENTER },
-    defaultInputMethod: 'keyboard',
+    // Touch, not keyboard: the first thing that happens with a new vehicle is someone
+    // joining its hotspot from a phone and wanting to drive. A keyboard default meant
+    // an empty pad on that screen and a trip through the binding editor first.
+    defaultInputMethod: 'touch',
     // Mode 2 puts steering (X) and throttle (Y) on the SAME left stick — a car
     // needs only two axes, so one thumb drives it. Mode 4 splits them across two
     // sticks if you prefer that.

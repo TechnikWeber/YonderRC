@@ -1104,6 +1104,10 @@ async function main() {
   ok('mode1 element re-derived (touch R stick)', pm1.bindings.find((b) => b.label === 'Throttle')?.element === 'joy:R:y');
   ok('mode survives method switch', rebuildForMethod(pm1, 'gamepad').stickMode === 1 && axOf(rebuildForMethod(pm1, 'gamepad'), 'Throttle') === 'rightY');
   ok('car defaults to mode 2 (one-stick layout)', buildProfile('car').stickMode === 2);
+  // A phone on the vehicle's own hotspot is the first control surface anyone reaches
+  // for — a keyboard default left that screen empty until someone found the editor.
+  ok('car defaults to touch', buildProfile('car').inputMethod === 'touch');
+  ok('and both axes land on the on-screen pad', buildProfile('car').bindings.filter((b) => b.source === 'virtual' && b.element.startsWith('joy:L')).length === 2);
   ok('funcFromLabel maps steering→rudder', funcFromLabel('Steering') === 'rudder');
   // Detents follow the CHANNEL, not the stick axis, across a mode + method change.
   const pMode1 = applyStickMode(buildProfile('plane'), 1); // throttle→rightY, elevator→leftY
@@ -1454,6 +1458,16 @@ async function main() {
     ok('the German README links the German hardware guide', de.includes('docs/HARDWARE.de.md'));
     ok('and CLAUDE.md says both are edited together',
       readFileSync('CLAUDE.md', 'utf8').includes('Both language versions are edited in the same commit'));
+  }
+
+  // ---- the two hardware guides must not drift apart either ----
+  // Same rule as the READMEs, and the guide is where the wiring lives: a German
+  // reader following a section the English one has since corrected is the worst case.
+  {
+    const en = readFileSync('docs/HARDWARE.md', 'utf8');
+    const de = readFileSync('docs/HARDWARE.de.md', 'utf8');
+    const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
+    ok('the same sections in both hardware guides', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
   }
 
   // ---- one version, three places ----

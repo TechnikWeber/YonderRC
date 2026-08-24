@@ -26,7 +26,10 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
 - 16 Kanäle über WebSocket oder WebRTC-Data-Channel; Tastatur, On-Screen-Buttons,
   Gamepad oder vollwertiger Touch-Joystick (Multitouch, Deadzone, Federrücklauf).
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
-  wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei).
+  wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei). Das
+  Demo-Auto startet auf dem **Bildschirm-Pad**, ein Handy im Hotspot des Fahrzeugs kann
+  also sofort losfahren — beide Achsen auf einem Stick, ohne vorher in den
+  Binding-Editor zu müssen.
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 - **Kennlinien** pro Stick-Kanal (standardmäßig aus): eine 3-/5-/7-/9-Punkt-Kurve mit
   Live-Diagramm, für die Verläufe, die Expo nicht abbilden kann — ein Gas, das bis
@@ -205,9 +208,12 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Kartenprogramm ohne Umwandlung lesen.
 
 **GPS & Navigation**
-- **Wählbare GPS-Quelle**: lokaler NMEA-Empfänger über Serial (Adafruit Ultimate GPS,
-  u-blox NEO-6/7/8/M9, BN-880…), ein USB-Dongle über **gpsd**, eine **Sim**-Quelle oder
-  (später) **MAVLink** vom Flight Controller — alles zu einem Fix normalisiert.
+- **Wählbare GPS-Quelle**: lokaler NMEA-Empfänger über Serial (Referenz ist das
+  **Adafruit Ultimate GPS v3**, dazu u-blox NEO-6/7/8/M9, BN-880…), ein USB-Dongle über
+  **gpsd**, eine **Sim**-Quelle oder (später) **MAVLink** vom Flight Controller — alles zu
+  einem Fix normalisiert. Setup › GPS gibt dir den Header-UART frei (Raspberry Pi OS legt
+  eine Login-Konsole darauf) und zählt die ankommenden NMEA-Sätze, ein Empfänger lässt
+  sich also im Haus prüfen, wo es nie einen Fix geben wird.
 - **Home-Punkt**: manuell setzen oder **Auto-Home** beim ersten guten Fix (Startpunkt).
   Das OSD zeigt Fix-Typ + Satelliten und, sobald Home gesetzt ist, **Distanz und
   Richtung zurück zum Home** — das Wesentliche für den Betrieb außerhalb der Sichtweite.
