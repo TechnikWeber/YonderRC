@@ -656,6 +656,14 @@
         $('pcaAddr').value = hexStr(c.pca9685 && c.pca9685.address);
         $('pcaBus').value = (c.pca9685 && c.pca9685.bus) ?? 1;
         renderDriver();
+        // Saved ≠ running: the driver is only built at startup, so say plainly what
+        // is actually driving the servos right now instead of showing the new value
+        // as if it were live.
+        const run = c.pca9685Running || {};
+        $('cfg-restart').style.display = c.restartPending ? '' : 'none';
+        $('cfg-msg').textContent = c.restartPending
+          ? `Saved, not applied: the vehicle is still running driver "${c.driverRunning}"${c.driverRunning === 'pca9685' ? ` @ ${hexStr(run.address)}` : ''}. Restart to apply.`
+          : '';
         $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 300;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';

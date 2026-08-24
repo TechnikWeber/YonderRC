@@ -219,19 +219,32 @@ export async function handleSetup(
 
   if (url === '/api/config' && method === 'GET') {
     const c = ctx.config;
+    const persisted = loadPersisted(c.configPath);
+    const running = { bus: c.driverOptions.pca9685?.bus ?? 1, address: c.driverOptions.pca9685?.address ?? 0x40 };
+    // Saved values win over the running ones for everything the form edits: these
+    // fields are only read at startup, so a page reload before the restart used to
+    // show the pre-save state and look like the save had been dropped.
     json(res, 200, {
-      vehicleName: c.vehicleName,
-      driver: c.driver,
-      watchdogTimeoutMs: c.watchdogTimeoutMs,
-      throttleChannels: c.throttleChannels,
+      vehicleName: persisted.vehicleName ?? c.vehicleName,
+      driver: persisted.driver ?? c.driver,
+      driverRunning: c.driver,
+      watchdogTimeoutMs: persisted.watchdogTimeoutMs ?? c.watchdogTimeoutMs,
+      throttleChannels: persisted.throttleChannels ?? c.throttleChannels,
       cameras: c.cameras,
-      videoBaseUrl: c.videoBaseUrl,
+      videoBaseUrl: persisted.videoBaseUrl !== undefined ? persisted.videoBaseUrl : c.videoBaseUrl,
       apn: c.lte.apn,
       disarmOnReconnect: c.disarmOnReconnect,
       systemKind: c.systemKind,
-      // The RUNNING driver's bus/address — a saved change only shows up here after
-      // the restart, which is what makes "restart required" honest.
-      pca9685: { bus: c.driverOptions.pca9685?.bus ?? 1, address: c.driverOptions.pca9685?.address ?? 0x40 },
+      // What the form must show is what was SAVED — reporting only the running
+      // driver made a saved-but-not-yet-restarted address look like it was lost on
+      // the next page load. `pca9685Running` is what is actually driving the servos
+      // right now, and the two differing is exactly "restart pending".
+      pca9685: { ...running, ...(persisted.pca9685 ?? {}) },
+      pca9685Running: running,
+      restartPending:
+        (persisted.driver !== undefined && persisted.driver !== c.driver) ||
+        (persisted.pca9685?.address !== undefined && persisted.pca9685.address !== running.address) ||
+        (persisted.pca9685?.bus !== undefined && persisted.pca9685.bus !== running.bus),
       // Never return the secret itself — only whether one is required.
       authRequired: !!c.apiSecret,
     });

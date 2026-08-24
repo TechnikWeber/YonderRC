@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.60.1
+**English**
+- **The setup form showed the running driver, not the saved one.** `GET /api/config`
+  answered from the live config, but driver, address, bus, name, watchdog and throttle
+  channels are only read at startup — so reloading the page after saving showed the old
+  values back, exactly as if the save had been dropped. It now answers with what was
+  saved, reports the running driver separately, and says so in one line: *"Saved, not
+  applied: the vehicle is still running driver X @ 0x40. Restart to apply."* Found on the
+  real vehicle: a PCA9685 physically moved to 0x41 while the driver still addressed 0x40 —
+  which means the servo driver was writing onto the current sensor.
+
+**Deutsch**
+- **Das Setup-Formular zeigte den laufenden Treiber, nicht den gespeicherten.**
+  `GET /api/config` antwortete aus der Live-Konfiguration, aber Treiber, Adresse, Bus,
+  Name, Watchdog und Throttle-Kanäle werden nur beim Start gelesen — ein Neuladen der
+  Seite nach dem Speichern zeigte also wieder die alten Werte, genau so, als wäre das
+  Speichern verlorengegangen. Jetzt antwortet sie mit dem Gespeicherten, meldet den
+  laufenden Treiber separat und sagt es in einer Zeile: *„Saved, not applied: the vehicle
+  is still running driver X @ 0x40. Restart to apply."* Am echten Fahrzeug gefunden: ein
+  PCA9685 physisch auf 0x41 umgezogen, während der Treiber weiter 0x40 adressierte — der
+  Servotreiber schrieb damit auf den Stromsensor.
+
 ## v1.60.0
 **English**
 - **The I²C scan now asks the chips what they are.** 0x40 is the factory address of the
