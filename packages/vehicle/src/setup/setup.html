@@ -446,13 +446,14 @@
         </div>
         <div id="gps-serial" style="display:none">
           <div class="grid2">
-            <label>Serial device<input id="gpsDevice" placeholder="/dev/serial0" /></label>
+            <label>Serial device<input id="gpsDevice" placeholder="/dev/serial0" oninput="loadSerial()" /></label>
             <label>Baud<input id="gpsBaud" type="number" placeholder="9600" /></label>
           </div>
           <div class="msg" id="serial-msg">Checking the serial port…</div>
           <div class="btns">
             <button class="btn" id="serial-fix" style="display:none" onclick="run(this, () => freeSerial())">Free the serial port for GPS</button>
             <button class="btn" id="serial-reboot" style="display:none" onclick="run(this, () => rebootNow())">Reboot now</button>
+            <button class="btn" id="serial-alias" style="display:none" onclick="useSerial0()">Use /dev/serial0</button>
           </div>
         </div>
         <label class="chk"><input type="checkbox" id="gpsAutoHome" checked /> Auto-set home on first good fix (session)</label>
@@ -706,11 +707,24 @@
         if ($('gpsSource').value !== 'serial-nmea') return;
         try {
           const r = await getJSON('/api/serial');
-          $('serial-msg').textContent = r.message || '';
-          $('serial-msg').style.color = r.configured && r.configured.ready ? '' : 'var(--idle)';
+          const alias = r.running && r.running.alias;
+          // The second trap after the login console: /dev/ttyAMA0 is the Bluetooth UART
+          // on a Pi 3/4/5. It opens without complaint and never delivers a byte.
+          const dev = $('gpsDevice').value.trim() || '/dev/serial0';
+          const wrongDev = alias && /^\/dev\/tty(AMA0|S0)$/.test(dev) && dev !== alias;
+          $('serial-msg').textContent = wrongDev
+            ? `${dev} is not the header UART on this Pi — /dev/serial0 points at ${alias}. On a Pi with Bluetooth, ttyAMA0 belongs to the Bluetooth chip: it opens fine and stays silent.`
+            : r.message || '';
+          $('serial-msg').style.color = wrongDev || !(r.configured && r.configured.ready) ? 'var(--idle)' : '';
           $('serial-fix').style.display = r.available && !(r.configured && r.configured.ready) ? '' : 'none';
           $('serial-reboot').style.display = r.rebootRequired ? '' : 'none';
+          $('serial-alias').style.display = wrongDev ? '' : 'none';
         } catch { $('serial-msg').textContent = ''; }
+      }
+      /** One click out of the ttyAMA0 trap — still needs Save, like every other field. */
+      function useSerial0() {
+        $('gpsDevice').value = '/dev/serial0';
+        void loadSerial();
       }
       async function freeSerial() {
         const r = await post('/api/serial', {});

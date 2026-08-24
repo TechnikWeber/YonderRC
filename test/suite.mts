@@ -539,6 +539,13 @@ async function main() {
   ok('default Pi state is not GPS-ready', notReady.ready === false && notReady.consoleOn === true && notReady.uartOn === false);
   ok('explanation names both causes', /enable_uart=1 missing/.test(SER.explainSerial(notReady)) && /login console/.test(SER.explainSerial(notReady)));
   ok('prepared state is ready', SER.serialState(strippedCmdline, uartCfg).ready === true);
+  // The second trap: /dev/ttyAMA0 is the Bluetooth UART on a Pi 3/4/5. It opens
+  // without error and never delivers a byte — indistinguishable from bad wiring.
+  ok('ttyAMA0 warned about when serial0 is ttyS0', /Bluetooth/.test(SER.serialAliasWarning('/dev/ttyAMA0', '/dev/ttyS0') ?? ''));
+  ok('serial0 itself is never warned about', SER.serialAliasWarning('/dev/serial0', '/dev/ttyS0') === null);
+  ok('the alias target itself is fine', SER.serialAliasWarning('/dev/ttyS0', '/dev/ttyS0') === null);
+  ok('ttyAMA0 is fine when serial0 points at it', SER.serialAliasWarning('/dev/ttyAMA0', '/dev/ttyAMA0') === null);
+  ok('USB receivers are not second-guessed', SER.serialAliasWarning('/dev/ttyUSB0', '/dev/ttyS0') === null);
   const simSerial = await sys.serialPort();
   ok('sim reports the default Pi trap', simSerial.configured.ready === false);
   await sys.freeSerialPort();

@@ -1,6 +1,6 @@
 import { exec, execFile, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1014,11 +1014,17 @@ export class RealSystem implements SystemManager {
     const cmd = this.readBootFile('cmdline.txt');
     const runningConsole = serialConsoleOn(readFileSafe('/proc/cmdline'));
     const device = ['/dev/serial0', '/dev/ttyAMA0', '/dev/ttyS0'].find((d) => existsSync(d)) ?? null;
+    // Which UART /dev/serial0 actually is. On a Pi with Bluetooth that is ttyS0, and
+    // ttyAMA0 belongs to the Bluetooth chip — a GPS configured on ttyAMA0 opens fine
+    // and stays silent forever, so the answer has to be visible in the UI.
+    let alias: string | null = null;
+    try { alias = readlinkSync('/dev/serial0'); } catch { /* no alias on this system */ }
+    if (alias && !alias.startsWith('/dev/')) alias = `/dev/${alias}`;
     if (!cfg || !cmd) {
       return {
         available: false,
         configured: { consoleOn: runningConsole, uartOn: !!device, ready: !!device && !runningConsole },
-        running: { consoleOn: runningConsole, device },
+        running: { consoleOn: runningConsole, device, alias },
         rebootRequired: false,
         message: 'No Raspberry Pi boot partition here — nothing to configure.',
       };
@@ -1028,7 +1034,7 @@ export class RealSystem implements SystemManager {
     return {
       available: true,
       configured,
-      running: { consoleOn: runningConsole, device },
+      running: { consoleOn: runningConsole, device, alias },
       rebootRequired,
       message: rebootRequired
         ? 'Configured — reboot to apply: this boot still has the serial console on the port.'

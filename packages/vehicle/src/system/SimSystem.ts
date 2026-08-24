@@ -405,7 +405,11 @@ export class SimSystem implements SystemManager {
     return {
       available: true,
       configured,
-      running: { consoleOn: this.serialBooted.console, device: this.serialBooted.uart ? '/dev/serial0' : null },
+      running: {
+        consoleOn: this.serialBooted.console,
+        device: this.serialBooted.uart ? '/dev/serial0' : null,
+        alias: '/dev/ttyS0', // like a Pi 4 with Bluetooth on ttyAMA0
+      },
       rebootRequired,
       message: rebootRequired
         ? 'Configured — reboot to apply: this boot still has the serial console on the port.'

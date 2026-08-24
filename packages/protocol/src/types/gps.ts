@@ -14,7 +14,7 @@ export interface GpsHome {
 
 export interface GpsConfig {
   source: GpsSourceKind;
-  /** Serial device for 'serial-nmea' (e.g. /dev/ttyAMA0, /dev/ttyUSB0). */
+  /** Serial device for 'serial-nmea' (/dev/serial0 on the header, or /dev/ttyUSB0). */
   device?: string | null;
   /** Serial baud for 'serial-nmea' (most modules default to 9600). */
   baud?: number;

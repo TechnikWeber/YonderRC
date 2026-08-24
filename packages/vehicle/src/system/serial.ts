@@ -78,6 +78,23 @@ export function enableUart(text: string): string {
   return `${body.replace(/\n*$/, '')}\n\n${block}\n`;
 }
 
+/**
+ * Warn when the configured GPS device is not the UART on the header.
+ *
+ * On a Pi 3/4/5 `/dev/ttyAMA0` is the PL011 — and that one is wired to **Bluetooth**,
+ * not to GPIO14/15. Opening it succeeds and then simply nothing ever arrives, which
+ * reads as "check your wiring" while the wiring is fine. `/dev/serial0` is the alias
+ * the firmware points at whichever UART really is on the header.
+ */
+export function serialAliasWarning(device: string | null | undefined, aliasTarget: string | null): string | null {
+  if (!device || !aliasTarget) return null;
+  const name = device.replace(/^\/dev\//, '');
+  const target = aliasTarget.replace(/^\/dev\//, '');
+  if (name === 'serial0' || name === target) return null;
+  if (name !== 'ttyAMA0' && name !== 'ttyS0') return null; // USB devices are none of our business
+  return `${device} is not the header UART on this Pi — /dev/serial0 points at /dev/${target}. On a Pi with Bluetooth, ttyAMA0 is the Bluetooth UART: it opens fine and never delivers a byte. Use /dev/serial0.`;
+}
+
 export interface SerialPortState {
   /** A login console holds the port — the one that shreds NMEA data. */
   consoleOn: boolean;

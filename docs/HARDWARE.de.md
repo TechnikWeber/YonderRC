@@ -194,7 +194,10 @@ Gängige Empfänger, die am Pi problemlos laufen: **Adafruit Ultimate GPS** (MTK
   Stille.
 - Den Hardware-UART des Pi nutzen und ihn als **`/dev/serial0`** ansprechen — dieser
   Alias zeigt immer auf den UART, der wirklich am Header liegt, egal welchen die Firmware
-  dorthin gemappt hat. Unter Setup › GPS **local NMEA (serial)** wählen, Device
+  dorthin gemappt hat. **Auf einem Pi 3/4/5 nicht `/dev/ttyAMA0` verwenden**: das ist der
+  PL011, und der gehört dem *Bluetooth*-Chip. Er lässt sich fehlerfrei öffnen und liefert
+  dann nie ein Byte — was exakt wie ein Verdrahtungsfehler aussieht. Setup › GPS warnt,
+  wenn das eingestellte Device nicht das ist, auf das `/dev/serial0` zeigt. Unter Setup › GPS **local NMEA (serial)** wählen, Device
   `/dev/serial0`, 9600. Die serielle Quelle braucht das optionale Paket `serialport`
   (siehe 3.3) — fehlt es, meldet der Dienst das und bleibt auf der bisherigen Quelle.
 - **Raspberry Pi OS legt genau diesen UART standardmäßig auf eine Login-Konsole**, und

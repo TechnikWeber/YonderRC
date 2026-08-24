@@ -167,7 +167,7 @@ class MavlinkGpsSource implements GpsSource {
 function createSource(cfg: GpsConfig): GpsSource | null {
   switch (cfg.source) {
     case 'sim': return new SimGpsSource();
-    case 'serial-nmea': return new SerialNmeaSource(cfg.device ?? '/dev/ttyAMA0', cfg.baud ?? 9600);
+    case 'serial-nmea': return new SerialNmeaSource(cfg.device ?? '/dev/serial0', cfg.baud ?? 9600);
     case 'gpsd': return new GpsdSource();
     case 'mavlink': return new MavlinkGpsSource();
     default: return null; // 'off'

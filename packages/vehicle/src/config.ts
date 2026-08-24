@@ -212,7 +212,9 @@ export function loadConfig(): VehicleConfig {
       percentSource: 'clamp',
       chargeSource: 'auto',
     },
-    gps: p.gps ?? { source: 'off', device: '/dev/ttyAMA0', baud: 9600, autoHome: true, minSats: 6, home: null },
+    // /dev/serial0 rather than /dev/ttyAMA0: the alias always points at the UART on
+    // the header, while ttyAMA0 is the Bluetooth UART on a Pi 3/4/5 (see system/serial.ts).
+    gps: p.gps ?? { source: 'off', device: '/dev/serial0', baud: 9600, autoHome: true, minSats: 6, home: null },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
     go2rtcConfigPath:
       process.env.YRC_GO2RTC_CONFIG ??

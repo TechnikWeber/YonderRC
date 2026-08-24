@@ -3,6 +3,26 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.61.1
+**English**
+- **The other silent serial trap: `/dev/ttyAMA0`.** On a Pi 3/4/5 that is the PL011, and
+  it belongs to the Bluetooth chip — a GPS configured there opens without an error and
+  never delivers a byte, which looks exactly like bad wiring. Setup › GPS now resolves
+  what `/dev/serial0` actually points at, says so when the configured device is a
+  different UART, and offers a **Use /dev/serial0** button. New configs default to
+  `/dev/serial0`; existing ones are warned about rather than silently rewritten, because
+  a Pi with `dtoverlay=disable-bt` genuinely does use ttyAMA0.
+
+**Deutsch**
+- **Die zweite stille Serial-Falle: `/dev/ttyAMA0`.** Auf einem Pi 3/4/5 ist das der
+  PL011, und der gehört dem Bluetooth-Chip — ein dort konfiguriertes GPS lässt sich
+  fehlerfrei öffnen und liefert nie ein Byte, was exakt wie ein Verdrahtungsfehler
+  aussieht. Setup › GPS löst jetzt auf, worauf `/dev/serial0` tatsächlich zeigt, sagt es,
+  wenn das eingestellte Device ein anderer UART ist, und bietet einen Knopf **Use
+  /dev/serial0**. Neue Konfigurationen stehen auf `/dev/serial0`; bestehende werden
+  gewarnt statt still umgeschrieben — ein Pi mit `dtoverlay=disable-bt` benutzt ttyAMA0
+  nämlich zu Recht.
+
 ## v1.61.0
 **English**
 - **A wired GPS no longer needs a terminal.** Raspberry Pi OS pins a login console to the

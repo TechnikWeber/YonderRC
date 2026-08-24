@@ -190,7 +190,10 @@ over UART. Wiring:
   at all: silence.
 - Use the Pi's hardware UART and address it as **`/dev/serial0`** — that alias always
   points at the UART actually wired to the header, whichever one the firmware mapped
-  there. In Setup › GPS pick **local NMEA (serial)**, device `/dev/serial0`, 9600. The
+  there. **Do not use `/dev/ttyAMA0` on a Pi 3/4/5**: that is the PL011, and it belongs
+  to the *Bluetooth* chip. It opens without an error and then never delivers a byte,
+  which reads exactly like a wiring fault. Setup › GPS warns when the configured device
+  is not the one `/dev/serial0` resolves to. In Setup › GPS pick **local NMEA (serial)**, device `/dev/serial0`, 9600. The
   serial source needs the optional `serialport` package (see 3.3) — without it the
   service says so and stays on the previous source.
 - **Raspberry Pi OS hands that same UART to a login console by default**, and a console

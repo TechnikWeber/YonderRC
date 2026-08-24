@@ -289,7 +289,12 @@ export interface SerialPortStatus {
   /** What the boot files ask for (takes effect on the next boot). */
   configured: { consoleOn: boolean; uartOn: boolean; ready: boolean };
   /** What the running system actually has: /proc/cmdline and the device node. */
-  running: { consoleOn: boolean; device: string | null };
+  running: {
+    consoleOn: boolean;
+    device: string | null;
+    /** Which UART /dev/serial0 resolves to — ttyS0 on a Pi whose Bluetooth owns ttyAMA0. */
+    alias: string | null;
+  };
   /** Configured free, but this boot still has the console on it. */
   rebootRequired: boolean;
   message: string;
