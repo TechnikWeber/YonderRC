@@ -3,6 +3,19 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.62.1
+**English**
+- **The demo boat starts on the on-screen pad too.** Same reason as the car in v1.62.0:
+  the first connection to a new vehicle is a phone on its hotspot. It keeps stick mode 1,
+  though — a boat's throttle is ratcheted (free detent), so rudder and throttle stay on
+  separate sticks rather than sharing the car's single-stick layout.
+
+**Deutsch**
+- **Auch das Demo-Boot startet auf dem Bildschirm-Pad.** Gleicher Grund wie beim Auto in
+  v1.62.0: die erste Verbindung zu einem neuen Fahrzeug ist ein Handy in dessen Hotspot.
+  Es behält aber Stick-Modus 1 — das Gas eines Boots rastet (Detent „frei"), Ruder und
+  Gas bleiben deshalb auf getrennten Sticks statt auf dem Ein-Stick-Layout des Autos.
+
 ## v1.62.0
 **English**
 - **The demo car starts on the on-screen pad.** Its default was keyboard, so the first

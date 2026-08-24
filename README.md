@@ -26,9 +26,9 @@ compass, distance, odometer and speed** (top left), battery bar (top right), and
 - 16 channels over WebSocket or a WebRTC data channel; keyboard, on-screen buttons,
   gamepad, or a full touch joystick (multitouch, deadzone, spring return).
 - **Models** for car / boat / plane / drone with matching channel templates,
-  selectable input method, and per-axis detent (center/min/free). The demo car starts on
-  the **on-screen pad**, so a phone joining the vehicle's own hotspot can drive straight
-  away — both axes on one stick, no trip through the binding editor first.
+  selectable input method, and per-axis detent (center/min/free). The demo car and boat
+  start on the **on-screen pad**, so a phone joining the vehicle's own hotspot can drive
+  straight away — no trip through the binding editor first.
 - Per channel: trim, expo, reverse, endpoints (µs) and failsafe value.
 - **Response curves** per stick channel (off by default): a 3/5/7/9-point curve with a
   live plot, for the shapes expo can't express — a throttle that stays gentle to half

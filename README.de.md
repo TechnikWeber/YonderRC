@@ -26,10 +26,9 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
 - 16 Kanäle über WebSocket oder WebRTC-Data-Channel; Tastatur, On-Screen-Buttons,
   Gamepad oder vollwertiger Touch-Joystick (Multitouch, Deadzone, Federrücklauf).
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
-  wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei). Das
-  Demo-Auto startet auf dem **Bildschirm-Pad**, ein Handy im Hotspot des Fahrzeugs kann
-  also sofort losfahren — beide Achsen auf einem Stick, ohne vorher in den
-  Binding-Editor zu müssen.
+  wählbarer Eingabemethode und pro Achse einstellbarem Einrasten (Mitte/Min/frei). Demo-Auto
+  und -Boot starten auf dem **Bildschirm-Pad**, ein Handy im Hotspot des Fahrzeugs kann
+  also sofort losfahren, ohne vorher in den Binding-Editor zu müssen.
 - Pro Kanal Trim, Expo, Reverse, Endpunkte (µs) und Failsafe-Wert.
 - **Kennlinien** pro Stick-Kanal (standardmäßig aus): eine 3-/5-/7-/9-Punkt-Kurve mit
   Live-Diagramm, für die Verläufe, die Expo nicht abbilden kann — ein Gas, das bis

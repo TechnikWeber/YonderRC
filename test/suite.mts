@@ -1108,6 +1108,9 @@ async function main() {
   // for — a keyboard default left that screen empty until someone found the editor.
   ok('car defaults to touch', buildProfile('car').inputMethod === 'touch');
   ok('and both axes land on the on-screen pad', buildProfile('car').bindings.filter((b) => b.source === 'virtual' && b.element.startsWith('joy:L')).length === 2);
+  // The boat too — same reason, but its ratcheted throttle stays on its own stick.
+  ok('boat defaults to touch', buildProfile('boat').inputMethod === 'touch');
+  ok('boat keeps rudder and throttle on separate sticks', new Set(buildProfile('boat').bindings.filter((b) => b.source === 'virtual').map((b) => b.element.slice(0, 5))).size === 2);
   ok('funcFromLabel maps steering→rudder', funcFromLabel('Steering') === 'rudder');
   // Detents follow the CHANNEL, not the stick axis, across a mode + method change.
   const pMode1 = applyStickMode(buildProfile('plane'), 1); // throttle→rightY, elevator→leftY

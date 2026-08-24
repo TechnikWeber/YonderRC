@@ -156,7 +156,11 @@ const TEMPLATES: Record<VehicleType, VehicleTemplate> = {
       { channel: 5, label: 'Horn', mode: 'momentary' },
     ],
     defaultDetents: { ...CENTER, rightY: 'free' },
-    defaultInputMethod: 'keyboard',
+    // Touch for the same reason as the car: the first connection to a new vehicle is a
+    // phone on its hotspot. Mode 1 keeps rudder and throttle on separate sticks — a
+    // boat's throttle is ratcheted (rightY is 'free'), so one thumb per job is the
+    // better fit here, unlike the car's single-stick layout.
+    defaultInputMethod: 'touch',
     defaultStickMode: 1,
   },
   plane: {
