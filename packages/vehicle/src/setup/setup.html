@@ -444,9 +444,16 @@
           </label>
           <label>Min. satellites (good fix)<input id="gpsMinSats" type="number" placeholder="6" /></label>
         </div>
-        <div id="gps-serial" class="grid2" style="display:none">
-          <label>Serial device<input id="gpsDevice" placeholder="/dev/ttyAMA0" /></label>
-          <label>Baud<input id="gpsBaud" type="number" placeholder="9600" /></label>
+        <div id="gps-serial" style="display:none">
+          <div class="grid2">
+            <label>Serial device<input id="gpsDevice" placeholder="/dev/serial0" /></label>
+            <label>Baud<input id="gpsBaud" type="number" placeholder="9600" /></label>
+          </div>
+          <div class="msg" id="serial-msg">Checking the serial port…</div>
+          <div class="btns">
+            <button class="btn" id="serial-fix" style="display:none" onclick="run(this, () => freeSerial())">Free the serial port for GPS</button>
+            <button class="btn" id="serial-reboot" style="display:none" onclick="run(this, () => rebootNow())">Reboot now</button>
+          </div>
         </div>
         <label class="chk"><input type="checkbox" id="gpsAutoHome" checked /> Auto-set home on first good fix (session)</label>
         <div class="btns">
@@ -454,7 +461,7 @@
           <button class="btn" onclick="run(this, () => gpsHome('set'))">Set home now</button>
           <button class="btn" onclick="run(this, () => gpsHome('clear'))">Clear home</button>
         </div>
-        <p class="msg">Common receivers: Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880 — most speak NMEA at 9600 baud over UART (use /dev/ttyAMA0 or /dev/serial0). USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
+        <p class="msg">Common receivers: Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880 — most speak NMEA at 9600 baud over UART. Wire <b>GPS TX → pin 10</b>, <b>GPS RX → pin 8</b>, GND to pin 6, and use <b>/dev/serial0</b>. USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
         <div id="gps-status"></div>
         <div class="msg" id="gps-msg"></div>
       </section>
@@ -672,7 +679,9 @@
       }
       // ---- GPS ----
       function renderGps() {
-        $('gps-serial').style.display = $('gpsSource').value === 'serial-nmea' ? 'grid' : 'none';
+        const serial = $('gpsSource').value === 'serial-nmea';
+        $('gps-serial').style.display = serial ? '' : 'none';
+        if (serial) void loadSerial();
       }
       async function loadGps() {
         try {
@@ -684,10 +693,53 @@
           $('gpsMinSats').value = c.minSats ?? 6;
           $('gpsAutoHome').checked = c.autoHome !== false;
           renderGps();
-          renderGpsStatus(r.status, c.home);
+          renderGpsStatus(r.status, c.home, r.link);
+          void loadSerial();
         } catch {}
       }
-      function renderGpsStatus(s, home) {
+      /**
+       * Is the header UART usable at all? Raspberry Pi OS hands it to a login console
+       * by default, and a console talking over the receiver looks exactly like bad
+       * wiring — so say it here, before anyone reaches for a soldering iron.
+       */
+      async function loadSerial() {
+        if ($('gpsSource').value !== 'serial-nmea') return;
+        try {
+          const r = await getJSON('/api/serial');
+          $('serial-msg').textContent = r.message || '';
+          $('serial-msg').style.color = r.configured && r.configured.ready ? '' : 'var(--idle)';
+          $('serial-fix').style.display = r.available && !(r.configured && r.configured.ready) ? '' : 'none';
+          $('serial-reboot').style.display = r.rebootRequired ? '' : 'none';
+        } catch { $('serial-msg').textContent = ''; }
+      }
+      async function freeSerial() {
+        const r = await post('/api/serial', {});
+        $('serial-msg').textContent = r.message || '';
+        await loadSerial();
+      }
+      async function rebootNow() {
+        if (!confirm('Reboot the vehicle now?')) return;
+        try { await post('/api/reboot', {}); } catch {}
+        $('serial-msg').textContent = 'Rebooting — the vehicle drops the connection, which is expected.';
+      }
+      /**
+       * Bytes and sentences arriving, shown separately from the fix. A receiver wired
+       * up indoors will never see enough sky, so "no fix" proves nothing — but
+       * sentences arriving prove the cable, the baud rate and a free port.
+       */
+      function renderGpsLink(link) {
+        if (!link) return '';
+        const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
+        if (!link.bytes) {
+          return row('receiver', `nothing received on ${link.device} @ ${link.baud} baud — check TX↔RX (they cross), the baud rate, and that the port is free`, 'warn');
+        }
+        const age = link.lastAgeMs == null ? '' : ` · last ${(link.lastAgeMs / 1000).toFixed(1)} s ago`;
+        let html = row('receiver', `${link.sentences} NMEA sentences${age}`, link.lastAgeMs != null && link.lastAgeMs < 5000 ? 'go' : 'warn');
+        if (link.inView != null) html += row('satellites in view', `${link.inView}${link.inView === 0 ? ' — indoors this is normal; the link itself is fine' : ''}`);
+        if (link.last) html += row('last sentence', `<span class="mono">${link.last.replace(/[<>&]/g, '')}</span>`);
+        return html;
+      }
+      function renderGpsStatus(s, home, link) {
         if (!s || s.source === 'off') { $('gps-status').innerHTML = ''; return; }
         const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
         let html = row('fix', s.hasFix ? `${s.fixType.toUpperCase()} · ${s.satellites ?? '?'} sats` : 'no fix', s.hasFix ? 'go' : 'warn');
@@ -696,7 +748,7 @@
         if (s.speedMs != null) html += row('speed', `${(s.speedMs * 3.6).toFixed(1)} km/h`);
         const h = home || (s.home);
         if (h) html += row('home', `${h.lat.toFixed(6)}, ${h.lon.toFixed(6)}`, 'go');
-        $('gps-status').innerHTML = html;
+        $('gps-status').innerHTML = html + renderGpsLink(link);
       }
       async function saveGps() {
         const body = {
@@ -1623,7 +1675,7 @@
       refresh();
       setInterval(refresh, 3000);
       // Poll GPS status while a source is active (fix/sats/home change over time).
-      setInterval(async () => { if ($('gpsSource').value !== 'off') { try { const r = await getJSON('/api/gps'); renderGpsStatus(r.status, r.config && r.config.home); } catch {} } }, 2000);
+      setInterval(async () => { if ($('gpsSource').value !== 'off') { try { const r = await getJSON('/api/gps'); renderGpsStatus(r.status, r.config && r.config.home, r.link); } catch {} } }, 2000);
     </script>
   </body>
 </html>

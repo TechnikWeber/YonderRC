@@ -589,7 +589,19 @@ export async function handleSetup(
 
   // --- GPS ---
   if (url === '/api/gps' && method === 'GET') {
-    json(res, 200, { config: ctx.config.gps, status: ctx.gps.message });
+    // `link` is the bring-up view: bytes and sentences arriving, independent of
+    // whether they add up to a fix. Indoors that is the only signal there is.
+    json(res, 200, { config: ctx.config.gps, status: ctx.gps.message, link: ctx.gps.linkStats() });
+    return true;
+  }
+
+  // ---- serial port (freeing the header UART for a wired GPS) ----
+  if (url === '/api/serial' && method === 'GET') {
+    json(res, 200, await ctx.system.serialPort());
+    return true;
+  }
+  if (url === '/api/serial' && method === 'POST') {
+    json(res, 200, await ctx.system.freeSerialPort());
     return true;
   }
   if (url === '/api/gps' && method === 'POST') {

@@ -282,6 +282,19 @@ export interface CameraModuleStatus {
   message: string | null;
 }
 
+/** Whether the header UART is usable for a wired GPS receiver — see system/serial.ts. */
+export interface SerialPortStatus {
+  /** False on anything without a Raspberry Pi boot partition (dev machine, container). */
+  available: boolean;
+  /** What the boot files ask for (takes effect on the next boot). */
+  configured: { consoleOn: boolean; uartOn: boolean; ready: boolean };
+  /** What the running system actually has: /proc/cmdline and the device node. */
+  running: { consoleOn: boolean; device: string | null };
+  /** Configured free, but this boot still has the console on it. */
+  rebootRequired: boolean;
+  message: string;
+}
+
 export interface SystemManager {
   readonly kind: string;
   status(): Promise<SystemStatus>;
@@ -344,6 +357,10 @@ export interface SystemManager {
   cameraModule(): Promise<CameraModuleStatus>;
   /** Select a camera module; takes effect on the next boot. */
   setCameraModule(id: string, customOverlay?: string | null): Promise<ActionResult & { rebootRequired: boolean }>;
+  /** Is the header UART free for a GPS receiver (enable_uart, no login console)? */
+  serialPort(): Promise<SerialPortStatus>;
+  /** Free the header UART for GPS: enable_uart=1, drop the serial console + getty. */
+  freeSerialPort(): Promise<ActionResult & { rebootRequired: boolean }>;
   reboot(): Promise<ActionResult>;
   /**
    * Power the vehicle down. Unlike a reboot this is one-way: nothing brings it back

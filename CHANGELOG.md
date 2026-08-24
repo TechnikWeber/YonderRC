@@ -3,6 +3,48 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.61.0
+**English**
+- **A wired GPS no longer needs a terminal.** Raspberry Pi OS pins a login console to the
+  very UART a GPS receiver wants, and `install.sh` only ever enabled the hardware — so
+  every wired receiver shared its line with kernel messages and delivered shredded
+  sentences, which is indistinguishable from bad wiring. Setup › GPS now checks both
+  conditions and offers **Free the serial port for GPS**: it writes `enable_uart=1`, drops
+  the console token from cmdline.txt (backups as `*.yonderrc-bak`), stops the getty and
+  says a reboot is due. Pure text handling in `system/serial.ts`, unit-tested — cmdline.txt
+  decides whether the Pi boots at all, so it is edited token-wise and never rewritten.
+- The installer does the same on a fresh install (`do_serial_cons 1` plus disabling the
+  getty units), with a fallback message for raspi-config versions that lack the call.
+- **GPS bring-up works indoors now.** The panel counts the NMEA sentences arriving and
+  shows the satellites *in view*, separately from the fix — because a receiver wired up at
+  a desk will never get a fix, and "no fix" then says nothing about the wiring. Sentences
+  ticking up with 0 satellites in view means the cable, the baud rate and the port are
+  right. `GET /api/gps` carries it as `link`.
+- Serial device default is **/dev/serial0** everywhere now: the alias always points at the
+  UART that is actually on the header, whichever one the firmware mapped there.
+
+**Deutsch**
+- **Ein verkabeltes GPS braucht kein Terminal mehr.** Raspberry Pi OS legt eine
+  Login-Konsole auf genau den UART, den ein GPS-Empfänger will, und `install.sh` schaltete
+  bisher nur die Hardware frei — jeder verkabelte Empfänger teilte sich also seine Leitung
+  mit Kernel-Meldungen und lieferte zerhackte Sätze, ununterscheidbar von einem
+  Verdrahtungsfehler. Setup › GPS prüft jetzt beide Bedingungen und bietet **Free the
+  serial port for GPS**: schreibt `enable_uart=1`, entfernt das Konsolen-Token aus
+  cmdline.txt (Backups als `*.yonderrc-bak`), stoppt den Getty und sagt, dass ein Neustart
+  fällig ist. Reine Textverarbeitung in `system/serial.ts`, unit-getestet — cmdline.txt
+  entscheidet, ob der Pi überhaupt bootet, deshalb wird sie tokenweise bearbeitet und nie
+  neu geschrieben.
+- Der Installer macht dasselbe bei einer Neuinstallation (`do_serial_cons 1` plus
+  Abschalten der Getty-Units), mit Hinweis-Fallback für raspi-config-Versionen ohne
+  diesen Aufruf.
+- **Die GPS-Inbetriebnahme funktioniert jetzt auch im Haus.** Das Panel zählt die
+  ankommenden NMEA-Sätze und zeigt die Satelliten *in Sicht*, getrennt vom Fix — denn ein
+  am Schreibtisch verkabelter Empfänger bekommt nie einen Fix, und „kein Fix" sagt dann
+  nichts über die Verdrahtung. Steigende Satzzahlen bei 0 Satelliten in Sicht heißen:
+  Kabel, Baudrate und Port stimmen. `GET /api/gps` liefert das als `link`.
+- Das Standard-Device ist überall **/dev/serial0**: der Alias zeigt immer auf den UART,
+  der tatsächlich am Header liegt, egal welchen die Firmware dorthin gemappt hat.
+
 ## v1.60.2
 **English**
 - **A running PCA9685 made itself unidentifiable.** The driver's init wrote a bare 0x00

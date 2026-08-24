@@ -185,10 +185,25 @@ over UART. Wiring:
 | TX  | GPIO15 / RXD | Pin 10 |
 | RX  | GPIO14 / TXD | Pin 8 |
 
-- Use the Pi's hardware UART (`/dev/ttyAMA0` or `/dev/serial0`; disable the serial
-  console). In Setup › GPS pick **local NMEA (serial)**, device `/dev/ttyAMA0`, 9600.
-  The serial source needs the optional `serialport` package (see 3.3) — without it the
+- **TX and RX cross over** — the receiver's TX goes to the Pi's RX (pin 10) and vice
+  versa. Getting this the wrong way round produces exactly the same symptom as no cable
+  at all: silence.
+- Use the Pi's hardware UART and address it as **`/dev/serial0`** — that alias always
+  points at the UART actually wired to the header, whichever one the firmware mapped
+  there. In Setup › GPS pick **local NMEA (serial)**, device `/dev/serial0`, 9600. The
+  serial source needs the optional `serialport` package (see 3.3) — without it the
   service says so and stays on the previous source.
+- **Raspberry Pi OS hands that same UART to a login console by default**, and a console
+  talking over the receiver shreds its sentences — which looks exactly like bad wiring.
+  Setup › GPS checks both conditions (`enable_uart=1`, no serial console) and offers
+  **Free the serial port for GPS**: it writes the two boot files (backups as
+  `*.yonderrc-bak`), stops the getty and tells you a reboot is due. The installer does
+  the same on a fresh install since v1.61.0 — older installs need the button once.
+- **Bringing it up indoors**, where there will be no fix: the GPS panel counts the NMEA
+  sentences arriving and shows the satellites *in view*. Sentences ticking up with 0
+  satellites in view means the cable, the baud rate and the port are all correct and the
+  receiver simply cannot see the sky. "Nothing received" is the wiring; "no fix" is the
+  roof over your head.
 - **USB GPS dongles** (u-blox VK-172, GlobalSat BU-353): plug in and pick the **gpsd**
   source instead — `gpsd` is installed by the setup script and handles the device.
 - Set the **min. satellites** for a good fix (6 is a good default) and enable

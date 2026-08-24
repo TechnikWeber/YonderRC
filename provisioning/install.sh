@@ -94,6 +94,13 @@ usermod -aG i2c,gpio,dialout "${SUDO_USER:-pi}" || true
 if command -v raspi-config >/dev/null; then
   raspi-config nonint do_i2c 0 || true
   raspi-config nonint do_serial_hw 0 || true
+  # ...and take the LOGIN CONSOLE off that same UART. Enabling the hardware alone was
+  # only half the job: Raspberry Pi OS pins a getty to the header UART by default, so a
+  # wired GPS shares its line with kernel messages and its sentences arrive shredded —
+  # which looks exactly like bad wiring. `do_serial_cons 1` = console off.
+  raspi-config nonint do_serial_cons 1 2>/dev/null ||
+    echo "   (this raspi-config has no do_serial_cons — free the port in Setup > GPS instead)"
+  systemctl disable --now serial-getty@ttyAMA0.service serial-getty@ttyS0.service 2>/dev/null || true
 fi
 
 echo "-- runtime state directory (generated video config lives outside the checkout)"

@@ -18,6 +18,7 @@ import type {
   HotspotConfig,
   CameraModuleStatus,
 } from './SystemManager.js';
+import type { SerialPortStatus } from './SystemManager.js';
 import { HW_DEPS, explainNpmFailure, isHwDep, lastLines, type HwDepName } from './hwDeps.js';
 import { powerState } from './power.js';
 import {
@@ -28,6 +29,7 @@ import {
   validOverlayName,
   bootedStateChanged,
 } from './bootConfig.js';
+import { enableUart, explainSerial, serialState, stripSerialConsole } from './serial.js';
 import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
 import { type HilinkStatus } from './hilink.js';
 import { classifyChanges, describeCheck, type UpdateCheck } from './update.js';
@@ -387,6 +389,40 @@ export class SimSystem implements SystemManager {
   private bootConfig = ['# Simulated Raspberry Pi firmware config', 'camera_auto_detect=1', ''].join('\n');
   /** What the simulated system "booted" with — a simulated reboot catches this up. */
   private bootedConfig = this.bootConfig;
+
+  /**
+   * Simulated boot files, so the serial-port panel is clickable without a Pi. Start
+   * from the Raspberry Pi OS default: UART off, login console on the port — the state
+   * every wired GPS actually runs into.
+   */
+  private cmdline = 'console=serial0,115200 console=tty1 root=PARTUUID=deadbeef-02 rootfstype=ext4 fsck.repair=yes rootwait';
+  private serialBootConfig = 'dtparam=audio=on\n';
+  private serialBooted = { console: true, uart: false };
+
+  async serialPort(): Promise<SerialPortStatus> {
+    const configured = serialState(this.cmdline, this.serialBootConfig);
+    const rebootRequired = configured.ready && (this.serialBooted.console || !this.serialBooted.uart);
+    return {
+      available: true,
+      configured,
+      running: { consoleOn: this.serialBooted.console, device: this.serialBooted.uart ? '/dev/serial0' : null },
+      rebootRequired,
+      message: rebootRequired
+        ? 'Configured — reboot to apply: this boot still has the serial console on the port.'
+        : explainSerial(configured),
+    };
+  }
+
+  async freeSerialPort(): Promise<ActionResult & { rebootRequired: boolean }> {
+    this.serialBootConfig = enableUart(this.serialBootConfig);
+    this.cmdline = stripSerialConsole(this.cmdline);
+    const after = await this.serialPort();
+    return {
+      ok: true,
+      message: 'Serial port freed for GPS (simulated). Reboot to apply.',
+      rebootRequired: after.rebootRequired,
+    };
+  }
 
   async cameraModule(): Promise<CameraModuleStatus> {
     const state = parseBootConfig(this.bootConfig);

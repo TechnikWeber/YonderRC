@@ -1,6 +1,6 @@
 import type { GpsConfig, GpsFix, GpsHome, GpsMessage } from '@yonderrc/protocol';
 import { emptyFix } from '@yonderrc/protocol';
-import { parseNmea } from './nmea.js';
+import { parseNmea, satellitesInView } from './nmea.js';
 
 /**
  * Owns the GPS: one selectable SOURCE (sim / local NMEA receiver / gpsd / — later —
@@ -12,6 +12,29 @@ interface GpsSource {
   readonly kind: string;
   start(onFix: (f: GpsFix) => void): Promise<void>;
   stop(): Promise<void>;
+  /** Raw link health, for bring-up. Only the sources that own a device provide it. */
+  stats?(): GpsLinkStats;
+}
+
+/**
+ * What is arriving on the wire, independent of whether it adds up to a fix.
+ *
+ * A GPS is usually wired up indoors, where it will never see enough sky — and then
+ * "no fix" says nothing about whether the wiring is right. Sentences counted here
+ * separate "nothing is connected / TX and RX swapped / wrong baud rate" from "the
+ * receiver is talking to us and simply cannot see satellites yet".
+ */
+export interface GpsLinkStats {
+  device: string | null;
+  baud: number | null;
+  bytes: number;
+  sentences: number;
+  /** ms since the last byte arrived; null if nothing ever did. */
+  lastAgeMs: number | null;
+  /** The most recent complete sentence, verbatim. */
+  last: string | null;
+  /** Satellites in view (GSV) — visible long before a fix is. */
+  inView: number | null;
 }
 
 /** Synthetic receiver: sats ramp up, then a slow circular track — for dev. */
@@ -53,7 +76,19 @@ class SerialNmeaSource implements GpsSource {
   private port: any = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private buf = '';
+  private stat = { bytes: 0, sentences: 0, lastAt: 0, last: null as string | null, inView: null as number | null };
   constructor(private device: string, private baud: number) {}
+  stats(): GpsLinkStats {
+    return {
+      device: this.device,
+      baud: this.baud,
+      bytes: this.stat.bytes,
+      sentences: this.stat.sentences,
+      lastAgeMs: this.stat.lastAt ? Date.now() - this.stat.lastAt : null,
+      last: this.stat.last,
+      inView: this.stat.inView,
+    };
+  }
   async start(onFix: (f: GpsFix) => void): Promise<void> {
     const modName = 'serialport';
     const mod = await import(modName).catch(() => {
@@ -61,9 +96,22 @@ class SerialNmeaSource implements GpsSource {
     });
     this.port = new mod.SerialPort({ path: this.device, baudRate: this.baud, autoOpen: true });
     this.port.on('error', (e: Error) => console.warn(`[gps] serial error: ${e.message}`));
-    this.port.on('data', (d: Buffer) => { this.buf += d.toString('ascii'); if (this.buf.length > 8192) this.buf = this.buf.slice(-4096); });
+    this.port.on('data', (d: Buffer) => {
+      this.stat.bytes += d.length;
+      this.stat.lastAt = Date.now();
+      this.buf += d.toString('ascii');
+      if (this.buf.length > 8192) this.buf = this.buf.slice(-4096);
+    });
     // Parse the rolling buffer once a second (NMEA is ~1 Hz anyway).
-    this.timer = setInterval(() => { if (this.buf) { onFix(parseNmea(this.buf, 'serial-nmea')); this.buf = ''; } }, 1000);
+    this.timer = setInterval(() => {
+      if (!this.buf) return;
+      const complete = this.buf.split(/\r?\n/).filter((l) => l.trim().startsWith('$'));
+      this.stat.sentences += complete.length;
+      if (complete.length) this.stat.last = complete[complete.length - 1].trim();
+      this.stat.inView = satellitesInView(this.buf) ?? this.stat.inView;
+      onFix(parseNmea(this.buf, 'serial-nmea'));
+      this.buf = '';
+    }, 1000);
   }
   async stop(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
@@ -175,6 +223,11 @@ export class GpsService {
     this.sessionHome = null;
     this.latest = emptyFix(cfg.source);
     await this.start();
+  }
+
+  /** What is arriving on the wire (serial sources only) — null for the others. */
+  linkStats(): GpsLinkStats | null {
+    return this.source?.stats?.() ?? null;
   }
 
   /** Save the current position as home (persisted by the caller). Returns it, or null. */

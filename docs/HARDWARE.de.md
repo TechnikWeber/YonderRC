@@ -189,10 +189,25 @@ Gängige Empfänger, die am Pi problemlos laufen: **Adafruit Ultimate GPS** (MTK
 | TX  | GPIO15 / RXD | Pin 10 |
 | RX  | GPIO14 / TXD | Pin 8 |
 
-- Den Hardware-UART des Pi nutzen (`/dev/ttyAMA0` bzw. `/dev/serial0`; Serial-Console
-  deaktivieren). Unter Setup › GPS **local NMEA (serial)** wählen, Device `/dev/ttyAMA0`, 9600.
-  Die serielle Quelle braucht das optionale Paket `serialport` (siehe 3.3) — fehlt es,
-  meldet der Dienst das und bleibt auf der bisherigen Quelle.
+- **TX und RX kreuzen sich** — das TX des Empfängers geht an das RX des Pi (Pin 10) und
+  umgekehrt. Verkehrt herum ist das Symptom exakt dasselbe wie bei gar keinem Kabel:
+  Stille.
+- Den Hardware-UART des Pi nutzen und ihn als **`/dev/serial0`** ansprechen — dieser
+  Alias zeigt immer auf den UART, der wirklich am Header liegt, egal welchen die Firmware
+  dorthin gemappt hat. Unter Setup › GPS **local NMEA (serial)** wählen, Device
+  `/dev/serial0`, 9600. Die serielle Quelle braucht das optionale Paket `serialport`
+  (siehe 3.3) — fehlt es, meldet der Dienst das und bleibt auf der bisherigen Quelle.
+- **Raspberry Pi OS legt genau diesen UART standardmäßig auf eine Login-Konsole**, und
+  eine Konsole, die dem Empfänger dazwischenredet, zerhackt seine Sätze — was exakt wie
+  ein Verdrahtungsfehler aussieht. Setup › GPS prüft beide Bedingungen (`enable_uart=1`,
+  keine Serial-Konsole) und bietet **Free the serial port for GPS** an: schreibt die
+  beiden Boot-Dateien (Backups als `*.yonderrc-bak`), stoppt den Getty und sagt, dass ein
+  Neustart fällig ist. Der Installer macht dasselbe bei einer Neuinstallation seit
+  v1.61.0 — ältere Installationen brauchen den Knopf einmal.
+- **Inbetriebnahme im Haus**, wo es keinen Fix geben wird: das GPS-Panel zählt die
+  ankommenden NMEA-Sätze und zeigt die Satelliten *in Sicht*. Steigende Satzzahlen bei
+  0 Satelliten in Sicht heißt: Kabel, Baudrate und Port stimmen, der Empfänger sieht nur
+  keinen Himmel. „Nothing received" ist die Verdrahtung, „no fix" ist das Dach über dir.
 - **USB-GPS-Dongles** (u-blox VK-172, GlobalSat BU-353): einstecken und stattdessen die
   **gpsd**-Quelle wählen — `gpsd` installiert das Setup-Skript, es übernimmt das Gerät.
 - Die **Mindest-Satelliten** für einen guten Fix setzen (6 ist ein guter Default) und

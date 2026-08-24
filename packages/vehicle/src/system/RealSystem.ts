@@ -23,6 +23,7 @@ import type {
   WifiNetwork,
   HotspotConfig,
   CameraModuleStatus,
+  SerialPortStatus,
 } from './SystemManager.js';
 import { normaliseWireguardConf, parseWifiScan, HOTSPOT_DEFAULTS } from './SystemManager.js';
 import {
@@ -47,6 +48,14 @@ import {
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c, probesFor, i2cTransferArgs, parseI2cTransfer } from './detect.js';
+import {
+  enableUart,
+  explainSerial,
+  serialConsoleOn,
+  serialState,
+  stripSerialConsole,
+  SERIAL_GETTY_UNITS,
+} from './serial.js';
 import type { I2cReads } from './detect.js';
 import { parseTailscaleStatus } from './tailscale.js';
 import {
@@ -976,16 +985,92 @@ export class RealSystem implements SystemManager {
     };
   }
 
-  /** Locate and read the firmware config (Bookworm moved it under /boot/firmware). */
-  private async readBootConfig(): Promise<{ path: string; text: string } | null> {
-    for (const path of ['/boot/firmware/config.txt', '/boot/config.txt']) {
+  /** Locate and read a boot file (Bookworm moved the boot partition to /boot/firmware). */
+  private readBootFile(name: string): { path: string; text: string } | null {
+    for (const dir of ['/boot/firmware', '/boot']) {
       try {
+        const path = `${dir}/${name}`;
         return { path, text: readFileSync(path, 'utf8') };
       } catch {
         // try the next location
       }
     }
     return null;
+  }
+
+  /** Locate and read the firmware config (Bookworm moved it under /boot/firmware). */
+  private async readBootConfig(): Promise<{ path: string; text: string } | null> {
+    return this.readBootFile('config.txt');
+  }
+
+  /**
+   * Is the header UART usable for a GPS receiver? Two sources of truth on purpose:
+   * the boot files say what the NEXT boot will do, /proc/cmdline and the device node
+   * say what THIS boot actually has — and the gap between them is the reboot the
+   * operator still owes.
+   */
+  async serialPort(): Promise<SerialPortStatus> {
+    const cfg = this.readBootFile('config.txt');
+    const cmd = this.readBootFile('cmdline.txt');
+    const runningConsole = serialConsoleOn(readFileSafe('/proc/cmdline'));
+    const device = ['/dev/serial0', '/dev/ttyAMA0', '/dev/ttyS0'].find((d) => existsSync(d)) ?? null;
+    if (!cfg || !cmd) {
+      return {
+        available: false,
+        configured: { consoleOn: runningConsole, uartOn: !!device, ready: !!device && !runningConsole },
+        running: { consoleOn: runningConsole, device },
+        rebootRequired: false,
+        message: 'No Raspberry Pi boot partition here — nothing to configure.',
+      };
+    }
+    const configured = serialState(cmd.text, cfg.text);
+    const rebootRequired = configured.ready && (runningConsole || !device);
+    return {
+      available: true,
+      configured,
+      running: { consoleOn: runningConsole, device },
+      rebootRequired,
+      message: rebootRequired
+        ? 'Configured — reboot to apply: this boot still has the serial console on the port.'
+        : explainSerial(configured),
+    };
+  }
+
+  /**
+   * Free the port: enable_uart=1, drop the console token from cmdline.txt, stop the
+   * getty. Both files are backed up first — cmdline.txt in particular decides whether
+   * the Pi boots at all, so there has to be a way back that doesn't need a card reader.
+   */
+  async freeSerialPort(): Promise<ActionResult & { rebootRequired: boolean }> {
+    const cfg = this.readBootFile('config.txt');
+    const cmd = this.readBootFile('cmdline.txt');
+    if (!cfg || !cmd) {
+      return { ok: false, message: 'No Raspberry Pi boot partition here.', rebootRequired: false };
+    }
+    try {
+      const newCfg = enableUart(cfg.text);
+      const newCmd = stripSerialConsole(cmd.text);
+      if (newCfg !== cfg.text) {
+        writeFileSync(`${cfg.path}.yonderrc-bak`, cfg.text);
+        writeFileSync(cfg.path, newCfg);
+      }
+      if (newCmd !== cmd.text) {
+        writeFileSync(`${cmd.path}.yonderrc-bak`, cmd.text);
+        writeFileSync(cmd.path, newCmd);
+      }
+    } catch (err) {
+      return { ok: false, message: `Could not write the boot files: ${(err as Error).message}`, rebootRequired: false };
+    }
+    // The getty would grab the port again on this boot even after cmdline.txt changed.
+    for (const unit of SERIAL_GETTY_UNITS) await shArgs('systemctl', ['disable', '--now', unit]);
+    const after = await this.serialPort();
+    return {
+      ok: true,
+      message: after.rebootRequired
+        ? 'Serial port freed for GPS. Reboot to apply — the kernel reads cmdline.txt only at boot.'
+        : 'Serial port is free for GPS.',
+      rebootRequired: after.rebootRequired,
+    };
   }
 
   private async bootId(): Promise<string> {

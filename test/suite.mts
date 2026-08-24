@@ -518,6 +518,33 @@ async function main() {
   ok('sim detect finds 0x40', (await sys.detectHardware()).i2c.some((x) => x.address === '0x40'));
   ok('sim detect lists serial', (await sys.detectHardware()).serial.length > 0);
 
+  // ---- serial port: freeing the header UART for a GPS ----
+  // Two conditions, and the non-obvious one is the login console: Raspberry Pi OS
+  // pins a getty to the same UART, which shreds NMEA and looks like bad wiring.
+  const SER = await import('../packages/vehicle/src/system/serial');
+  const piCmdline = 'console=serial0,115200 console=tty1 root=PARTUUID=abc-02 rootfstype=ext4 fsck.repair=yes rootwait';
+  ok('serial console detected', SER.serialConsoleOn(piCmdline) === true);
+  ok('screen console is not a serial console', SER.serialConsoleOn('console=tty1 root=/dev/mmcblk0p2') === false);
+  const strippedCmdline = SER.stripSerialConsole(piCmdline);
+  ok('serial console token removed', SER.serialConsoleOn(strippedCmdline) === false);
+  ok('everything else in cmdline survives', strippedCmdline.trim() === 'console=tty1 root=PARTUUID=abc-02 rootfstype=ext4 fsck.repair=yes rootwait');
+  ok('ttyAMA0 console form also removed', SER.serialConsoleOn(SER.stripSerialConsole('console=ttyAMA0,115200 root=/dev/x')) === false);
+  ok('uart off by default', SER.uartEnabled('dtparam=audio=on\n') === false);
+  ok('uart=0 counts as off', SER.uartEnabled('enable_uart=0\n') === false);
+  const uartCfg = SER.enableUart('dtparam=audio=on\nenable_uart=0\n');
+  ok('uart enabled', SER.uartEnabled(uartCfg) === true);
+  ok('competing line commented, not deleted', uartCfg.includes('# enable_uart=0'));
+  ok('applying twice does not stack', SER.enableUart(uartCfg).split('enable_uart=1').length === 2);
+  const notReady = SER.serialState(piCmdline, 'dtparam=audio=on\n');
+  ok('default Pi state is not GPS-ready', notReady.ready === false && notReady.consoleOn === true && notReady.uartOn === false);
+  ok('explanation names both causes', /enable_uart=1 missing/.test(SER.explainSerial(notReady)) && /login console/.test(SER.explainSerial(notReady)));
+  ok('prepared state is ready', SER.serialState(strippedCmdline, uartCfg).ready === true);
+  const simSerial = await sys.serialPort();
+  ok('sim reports the default Pi trap', simSerial.configured.ready === false);
+  await sys.freeSerialPort();
+  const simFreed = await sys.serialPort();
+  ok('sim can free the port', simFreed.configured.ready === true && simFreed.rebootRequired === true);
+
   // ---- GPS: NMEA parsing + geo (distance/bearing) + sim service + home ----
   const { parseNmea, nmeaChecksumOk } = await import('../packages/vehicle/src/sensors/nmea');
   const { distanceMeters, bearingDeg } = await import('../packages/protocol/src/types/gps');
@@ -526,6 +553,12 @@ async function main() {
   const rmc = '$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A';
   const gsa = '$GPGSA,A,3,04,05,,09,12,,,24,,,,,2.5,1.3,2.1*39';
   ok('nmea checksum ok', nmeaChecksumOk(gga) === true);
+  // Satellites in view exist long before a fix does — the number that tells an
+  // operator wiring up indoors that the receiver is alive.
+  const { satellitesInView } = await import('../packages/vehicle/src/sensors/nmea');
+  const gsv = '$GPGSV,3,1,09,01,05,040,20,03,15,100,18,06,30,220,25,11,45,300,30*7C';
+  ok('satellites in view parsed', satellitesInView(gsv) === 9, `=${satellitesInView(gsv)}`);
+  ok('no GSV → null', satellitesInView(gga) === null);
   ok('nmea checksum bad', nmeaChecksumOk('$GPGGA,123519,4807.038,N*00') === false);
   const nf = parseNmea([gga, rmc, gsa].join('\n'));
   ok('nmea lat parsed', near(nf.lat!, 48.1173, 1e-3), `=${nf.lat}`);

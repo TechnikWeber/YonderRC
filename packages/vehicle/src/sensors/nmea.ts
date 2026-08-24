@@ -47,6 +47,28 @@ export function nmeaChecksumOk(sentence: string): boolean {
 }
 
 /**
+ * Satellites in view from GSV, summed across talkers (GP/GL/GA each send their own).
+ *
+ * This is the number that matters during bring-up: a receiver reports satellites in
+ * *view* long before it has a fix, and indoors it may never get further. Sentences
+ * arriving with 0 in view still prove the wiring; no sentences at all is a different
+ * problem entirely.
+ */
+export function satellitesInView(text: string): number | null {
+  const byTalker = new Map<string, number>();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line.startsWith('$') || !nmeaChecksumOk(line)) continue;
+    const f = line.split('*')[0].split(',');
+    if (f[0].slice(3) !== 'GSV') continue;
+    const n = Number(f[3]);
+    if (Number.isFinite(n)) byTalker.set(f[0].slice(1, 3), n);
+  }
+  if (byTalker.size === 0) return null;
+  return [...byTalker.values()].reduce((a, b) => a + b, 0);
+}
+
+/**
  * Parse a batch of NMEA text into one GpsFix (later sentences fill in fields).
  * Robust to partial/garbage lines. `source` is stamped onto the result.
  */
