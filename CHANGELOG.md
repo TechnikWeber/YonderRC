@@ -3,6 +3,56 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.60.0
+**English**
+- **The I²C scan now asks the chips what they are.** 0x40 is the factory address of the
+  PCA9685 *and* of every INA2xx, so "0x40 — PCA9685 or INA2xx" was the best the setup page
+  could say. It now reads the ID registers (`i2ctransfer`, pure parsing + identification in
+  `system/detect.ts`) and names the part: INA228/229/237/238 and INA226/260/3221 by
+  manufacturer + die id, MCP9808, TMP117, BMP280/BME280 by their chip ids, and the PCA9685
+  — which has no ID register at all — through its all-call address 0x70. A ✓ marks what was
+  read back; everything else stays an honest guess from the address.
+- **Two chips on one address is now called out**, instead of silently returning nonsense
+  to whoever asks first.
+- **The PCA9685's address is editable in the browser.** It used to be `YRC_I2C_ADDR` only —
+  an env var in a systemd unit, i.e. an SSH session on a vehicle that may be reachable only
+  over its own hotspot. It is a persisted setting now, with a field under *Vehicle
+  configuration* and a **Restart vehicle service** button right there, because the driver is
+  built at startup.
+- **Voltage and current channels got their I²C address field**, the one thing the telemetry
+  form was missing: the reader had always defaulted to 0x40 with no way to say otherwise,
+  so a sensor on any other address was simply invisible.
+- **Use these addresses** fills what was detected into the driver and telemetry forms —
+  and saves nothing, so a wrong guess costs one keystroke to correct.
+- Hardware guide: INA on **0x40**, PCA9685 moved to **0x41**, is now the documented pairing,
+  with the INA breakout's logic side (VCC on 3V3, ALE unconnected) as a table, how to read
+  the shunt off the board (`R001` = 0.001 Ω) and what it caps the measurement at.
+
+**Deutsch**
+- **Der I²C-Scan fragt die Chips jetzt, was sie sind.** 0x40 ist die Werksadresse des
+  PCA9685 *und* jedes INA2xx — „0x40 — PCA9685 oder INA2xx" war das Beste, was die
+  Setup-Seite sagen konnte. Sie liest nun die ID-Register (`i2ctransfer`, reine Auswertung
+  und Erkennung in `system/detect.ts`) und benennt das Bauteil: INA228/229/237/238 und
+  INA226/260/3221 über Hersteller + Die-ID, MCP9808, TMP117, BMP280/BME280 über ihre
+  Chip-IDs, und den PCA9685 — der gar kein ID-Register hat — über seine All-Call-Adresse
+  0x70. Ein ✓ markiert, was ausgelesen wurde; alles andere bleibt eine ehrliche Vermutung
+  aus der Adresse.
+- **Zwei Chips auf einer Adresse werden benannt**, statt stillschweigend Unsinn an den zu
+  liefern, der zuerst fragt.
+- **Die Adresse des PCA9685 ist im Browser änderbar.** Bisher ging das nur über
+  `YRC_I2C_ADDR` — eine Env-Variable in einer systemd-Unit, also eine SSH-Sitzung auf einem
+  Fahrzeug, das womöglich nur über den eigenen Hotspot erreichbar ist. Jetzt ist es eine
+  gespeicherte Einstellung mit Feld unter *Vehicle configuration* und einem Button
+  **Restart vehicle service** daneben, denn der Treiber wird beim Start gebaut.
+- **Spannungs- und Stromkanäle haben ihr I²C-Adressfeld bekommen** — das eine, das dem
+  Telemetrie-Formular fehlte: der Reader nahm immer 0x40 und man konnte ihm nichts anderes
+  sagen, ein Sensor auf einer anderen Adresse war damit schlicht unsichtbar.
+- **Use these addresses** trägt das Erkannte in die Treiber- und Telemetrieformulare ein —
+  und speichert nichts, eine falsche Vermutung kostet also einen Tastendruck.
+- Hardware-Leitfaden: INA auf **0x40**, PCA9685 auf **0x41** ist jetzt die dokumentierte
+  Paarung, dazu die Logikseite des INA-Breakouts als Tabelle (VCC an 3V3, ALE offen), wie
+  man den Shunt vom Board abliest (`R001` = 0,001 Ω) und was er als Messbereich vorgibt.
+
 ## v1.59.0
 **English**
 - **Fresh screenshots.** The four in the READMEs were from v1.20.4 and v1.3x — old enough

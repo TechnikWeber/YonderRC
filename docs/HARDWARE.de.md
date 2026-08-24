@@ -82,7 +82,15 @@ unter **40,96 mV**, den Shunt-Bereich auf ±40,96 mV stellen — 4× feinere Auf
 | V+ (Servopower) | **nicht** vom Pi! | eigener BEC 5–6 V |
 
 - **V+** ist die Servo-/ESC-Versorgung und kommt vom BEC, **nicht** vom Pi.
-- Standard-I2C-Adresse **0x40**. Mehrere Boards: Adress-Lötbrücken A0–A5.
+- Standard-I2C-Adresse **0x40** — das ist zugleich die Standardadresse jedes INA2xx.
+  **Empfohlen: den Stromsensor auf 0x40 lassen und den PCA9685 auf 0x41 verschieben**
+  (Lötbrücke **A0** schließen), dann unter Setup › *Vehicle configuration* ›
+  **PCA9685 I²C address** `0x41` eintragen und den Vehicle-Dienst neu starten. Warum
+  der PCA weicht: seine Adresse lässt sich vom Browser aus setzen, die eines Sensors
+  gehört zu seinem Telemetriekanal.
+- Der PCA9685 antwortet zusätzlich auf **0x70**, seiner *All-Call*-Adresse. Das ist
+  kein zweiter Chip — und weil der PCA9685 kein ID-Register hat, ist genau das der
+  Weg, auf dem **Detect hardware** ihn von einem INA2xx auf derselben Adresse trennt.
 - Servos/ESC stecken auf den Kanal-Ausgängen 0–15 (Signal/+/−). YonderRCs
   Kanäle 1–16 in der App entsprechen den PCA9685-Kanälen 0–15.
 
@@ -90,13 +98,32 @@ unter **40,96 mV**, den Shunt-Bereich auf ±40,96 mV stellen — 4× feinere Auf
 
 *(Verkabelung identisch für INA226/237/238 — nur der Eintrag im Setup ändert sich.)*
 
-- SDA/SCL an **denselben** I2C-Bus wie der PCA9685 (parallel), Adresse abweichend
-  (INA2xx Standard **0x40** — kollidiert mit PCA9685! **Adresse über die A0/A1-Pins bzw.
-  Lötbrücken auf z. B. 0x41 setzen**, oder PCA9685 auf 0x41 legen; Hauptsache
-  verschieden).
+Ein Breakout hat **zwei Seiten**: der kleine Pinheader führt die I²C-Logik, der
+Messstrom läuft über die separaten Klemmen — niemals über den Header.
+
+| INA228-Board | Raspberry Pi (BCM) | Pin |
+|---|---|---|
+| VCC | **3V3** | Pin 1 |
+| GND | GND | Pin 6 |
+| SDA | GPIO2 / SDA1 | Pin 3 |
+| SCL | GPIO3 / SCL1 | Pin 5 |
+| ALE / ALERT | — | unbeschaltet lassen |
+
+- **VCC an 3V3, nicht an 5 V**, außer das Board hat einen Pegelwandler
+  (Adafruit-/STEMMA-Boards ja, die einfachen CJMCU-Platinen nicht). Ohne ihn liegen die
+  Pull-ups des Boards an VCC und würden SDA/SCL auf 5 V ziehen — die GPIOs des Pi
+  vertragen nur 3,3 V.
+- **ALE** ist der programmierbare Alert-Ausgang. YonderRC pollt mit `sampleHz` und
+  liest ihn nie, er bleibt also offen.
+- SDA/SCL an **denselben** I2C-Bus wie der PCA9685 (parallel). **Empfohlen: den INA auf
+  seiner Standardadresse 0x40 lassen** und den PCA9685 auf 0x41 verschieben (siehe 2.1)
+  — auf diese Paarung sind die Defaults ausgelegt. Muss stattdessen der Sensor weichen,
+  hat jeder Spannungs-/Stromkanal in Setup › *Telemetry* ein Adressfeld.
 - Der Sensor sitzt **hochseitig** in der Plus-Leitung des Akkus: Akku(+) → `VIN+`,
-  Last (ESC/BEC) → `VIN−`. Der **Shunt** bestimmt den Messbereich (z. B. 0,002 Ω für
-  hohe Ströme, 0,001 Ω für sehr hohe). Den Shunt-Wert trägst du später im Setup ein.
+  Last (ESC/BEC) → `VIN−`. Der **Shunt** bestimmt den Messbereich. Den Wert vom Board
+  ablesen statt raten: `R001` = 0,001 Ω, `R002` = 0,002 Ω, `R015` = 0,015 Ω. Er begrenzt
+  auch, was der Chip überhaupt sehen kann — **I_max = 163,84 mV / R_Shunt**, also endet
+  0,015 Ω bei knapp 10 A, während 0,001 Ω 160 A abdeckt. Diesen Wert trägst du im Setup ein.
 - **VBUS** misst gegen die Masse des Sensors — ein INA228 liefert Pack-Spannung
   **und** Strom, ohne zusätzlichen Spannungsteiler.
 - **GND** des Sensors mit dem gemeinsamen Massepunkt verbinden.
@@ -416,10 +443,17 @@ sudo bash provisioning/install.sh
 
 0. **Detect hardware** (unter *Vehicle configuration*) scannt den I²C-Bus, `mmcli` und
    die Kamera-Geräte und schlägt Treiber/Sensoren vor — ein guter Startpunkt, bevor du
-   etwas von Hand einträgst.
+   etwas von Hand einträgst. Chips mit ID-Register werden **ausgelesen**, nicht geraten:
+   eine mit ✓ markierte Zeile nennt das tatsächliche Bauteil (INA228, MCP9808, BME280 …),
+   und der PCA9685 wird über seine All-Call-Adresse erkannt. **Use these addresses**
+   trägt sie dann in die Treiber- und Telemetrieformulare ein — gespeichert wird nichts,
+   bis du dort auf Save drückst.
 1. **Vehicle:** Name setzen, **Output driver = `pca9685`** (Drohne: `sbus`; ohne
    Zusatzboard: `gpio-pwm`, Pinbelegung in 2.8),
-   Throttle-Kanal prüfen. Die Checkbox *Auto-disarm on reconnect* ist hier nur ein
+   Throttle-Kanal prüfen. Bei `pca9685` erscheint ein Feld **I²C address** — auf 0x40
+   lassen, außer dort sitzt bereits ein Stromsensor; dann den PCA auf 0x41 verschieben
+   (siehe 2.1). Der Treiber wird beim Start gebaut, deshalb bietet die Seite nach dem
+   Speichern einen Button **Restart vehicle service** an. Die Checkbox *Auto-disarm on reconnect* ist hier nur ein
    **Fallback** — sobald sich eine Bodenstation verbindet, pusht sie den zum Modelltyp
    passenden Wert (Auto/Boot an, Flugzeug/Drohne aus).
 2. **CSI camera module:** auswählen, welcher Sensor am Kameraport sitzt. Automatisch
@@ -472,8 +506,10 @@ sudo bash provisioning/install.sh
    > Modell ist `manual` auf 0 Dioptrien (unendlich) meist besser als `continuous`, das
    > bei jedem Szenenwechsel neu sucht.
 4. **Telemetry:** Source **`real`**, Strom-Sensor **`ina228`** (oder `ina226`/`ina237`/
-   `ina238`), `Shunt Ω` eintragen (z. B. 0.002) und beim INA228/237/238 zusätzlich
-   **Max current A** plus Shunt-Bereich. Einen Spannungskanal derselben Art anlegen
+   `ina238`), `Shunt Ω` eintragen (den Wert vom Board, z. B. `R001` = 0.001) und beim
+   INA228/237/238 zusätzlich **Max current A** plus Shunt-Bereich. Das Feld **I²C
+   address** daneben bleibt für den Standard 0x40 leer — nur ausfüllen, wenn der Sensor
+   woanders sitzt. Einen Spannungskanal derselben Art anlegen
    („Spannung 1") — der INA liefert beides. Batteriekapazität (mAh) angeben, Anzeige
    verbraucht/Rest wählen, festlegen, was die **Akku-%** speist (Coulomb-Counting,
    Spannungskurve oder *clamp* = der niedrigere von beiden), und **Charge counter** auf
@@ -843,6 +879,7 @@ aber: das Netz *ist* die Sicherheitsgrenze.
 | Symptom | Prüfen |
 |---|---|
 | Kein I2C-Gerät | `sudo i2cdetect -y 1` — erscheinen 0x40/0x41? Verkabelung/Adressen. |
+| Sensor und Treiber beide auf 0x40 | Zwei Chips auf einer Adresse liefern Müll, keinen Fehler. *Detect hardware* sagt es dir; PCA9685 auf 0x41 verschieben (2.1). |
 | Servos zittern | Gemeinsame Masse? BEC stark genug? PCA9685 V+ versorgt? |
 | OSD zeigt „SIM" trotz Sensor | `i2c-bus` installiert? Adresse im Setup korrekt? Sensor auf dem Bus sichtbar? |
 | Kein Video | Läuft `go2rtc`? `systemctl status go2rtc`. Kamera erkannt? |

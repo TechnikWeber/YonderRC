@@ -333,8 +333,11 @@ curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisio
 ```
 
 Das klont das Repo nach `/opt/yonderrc` und startet den Installer. Danach
-`http://<pi-ip>:8080/setup` öffnen und **Detect hardware** drücken — es schlägt
-Treiber/Sensoren anhand des I²C-Bus vor. Das nötige native Treibermodul (`i2c-bus`,
+`http://<pi-ip>:8080/setup` öffnen und **Detect hardware** drücken: es scannt den I²C-Bus
+und **liest das ID-Register jedes Chips**, benennt also das tatsächliche Bauteil (INA228,
+MCP9808, BME280 — und den PCA9685 über seine All-Call-Adresse), statt aus einer Adresse
+zu raten, die sich mehrere Geräte teilen. Ein Knopf trägt diese Adressen in die
+Treiber- und Telemetrieformulare ein. Das nötige native Treibermodul (`i2c-bus`,
 `pigpio`, `serialport`) installiert dieselbe Seite, ganz ohne SSH. Lieber manuell? Dann
 die Schritte unten.
 

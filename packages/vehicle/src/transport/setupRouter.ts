@@ -229,6 +229,9 @@ export async function handleSetup(
       apn: c.lte.apn,
       disarmOnReconnect: c.disarmOnReconnect,
       systemKind: c.systemKind,
+      // The RUNNING driver's bus/address — a saved change only shows up here after
+      // the restart, which is what makes "restart required" honest.
+      pca9685: { bus: c.driverOptions.pca9685?.bus ?? 1, address: c.driverOptions.pca9685?.address ?? 0x40 },
       // Never return the secret itself — only whether one is required.
       authRequired: !!c.apiSecret,
     });
@@ -239,6 +242,16 @@ export async function handleSetup(
     const patch = (await readBody(req)) as PersistentConfig;
     // Normalise an empty secret to null (= OFF) so clearing it is unambiguous.
     if (patch.apiSecret !== undefined) patch.apiSecret = patch.apiSecret || null;
+    // The driver is built once at startup, so its kind/bus/address can only change
+    // with a restart. Say so precisely instead of leaving the operator to guess —
+    // and deliberately do NOT touch ctx.config.driverOptions here: it describes what
+    // is actually driving the servos right now.
+    const running = ctx.config.driverOptions.pca9685 ?? {};
+    const restartRequired =
+      (patch.driver !== undefined && patch.driver !== ctx.config.driver) ||
+      (patch.pca9685 !== undefined &&
+        ((patch.pca9685.address !== undefined && patch.pca9685.address !== running.address) ||
+          (patch.pca9685.bus !== undefined && patch.pca9685.bus !== running.bus)));
     const saved = savePersisted(ctx.config.configPath, patch);
     if (typeof patch.disarmOnReconnect === 'boolean') {
       ctx.config.disarmOnReconnect = patch.disarmOnReconnect;
@@ -249,7 +262,14 @@ export async function handleSetup(
     ctx.onConfigSaved?.(patch);
     // Don't echo the secret back in `saved`.
     const { apiSecret: _omit, ...safeSaved } = saved;
-    json(res, 200, { ok: true, saved: safeSaved, note: 'Saved. Some changes apply after a restart.' });
+    json(res, 200, {
+      ok: true,
+      saved: safeSaved,
+      restartRequired,
+      note: restartRequired
+        ? 'Saved. The output driver only changes on restart.'
+        : 'Saved. Some changes apply after a restart.',
+    });
     return true;
   }
 

@@ -81,7 +81,15 @@ stays under **40.96 mV**, switch the shunt range to ±40.96 mV for 4× the resol
 | V+ (servo power) | **not** from the Pi! | its own BEC 5–6 V |
 
 - **V+** is the servo/ESC supply and comes from the BEC, **not** from the Pi.
-- Default I2C address **0x40**. For multiple boards: address solder bridges A0–A5.
+- Default I2C address **0x40** — which is also the default of every INA2xx.
+  **Recommended: leave the current sensor on 0x40 and move the PCA9685 to 0x41**
+  (close solder bridge **A0**), then enter `0x41` under Setup › *Vehicle
+  configuration* › **PCA9685 I²C address** and restart the vehicle service. The PCA
+  is the one that moves because the servo driver can be told any address from the
+  browser, while a sensor's address belongs to its telemetry channel.
+- The PCA9685 additionally answers on **0x70**, its *all-call* address. That is not a
+  second chip — and since the PCA9685 has no ID register, it is exactly how
+  **Detect hardware** tells it apart from an INA2xx on the same address.
 - Servos/ESC plug into channel outputs 0–15 (signal/+/−). YonderRC's channels 1–16
   in the app map to PCA9685 channels 0–15.
 
@@ -89,13 +97,31 @@ stays under **40.96 mV**, switch the shunt range to ±40.96 mV for 4× the resol
 
 *(Wiring is identical for the INA226/237/238 — only the setup entry changes.)*
 
-- SDA/SCL on the **same** I2C bus as the PCA9685 (in parallel), with a different
-  address (the INA2xx default is **0x40** — that collides with the PCA9685! **Set the
-  address via the A0/A1 pins/solder bridges to e.g. 0x41**, or move the PCA9685 to 0x41;
-  the point is they must differ).
+A breakout has **two sides**: the small header carries the I²C logic, the load current
+runs over the separate terminals — never over the header.
+
+| INA228 board | Raspberry Pi (BCM) | Pin |
+|---|---|---|
+| VCC | **3V3** | Pin 1 |
+| GND | GND | Pin 6 |
+| SDA | GPIO2 / SDA1 | Pin 3 |
+| SCL | GPIO3 / SCL1 | Pin 5 |
+| ALE / ALERT | — | leave unconnected |
+
+- **VCC on 3V3, not on 5 V**, unless the board carries a level shifter (Adafruit/STEMMA
+  boards do, the plain CJMCU-style ones do not). Without one, the board's pull-ups sit
+  at VCC and would drive SDA/SCL to 5 V — the Pi's GPIOs are 3.3 V only.
+- **ALE** is the programmable alert output. YonderRC polls at `sampleHz` and never
+  reads it, so it stays open.
+- SDA/SCL on the **same** I2C bus as the PCA9685 (in parallel). **Recommended: keep the
+  INA on its default 0x40** and move the PCA9685 to 0x41 (see 2.1) — that is the pairing
+  the defaults are built around. If you have to move the sensor instead, its address is
+  a field on every voltage/current channel in Setup › *Telemetry*.
 - The sensor sits **high-side** in the battery's positive lead: battery(+) → `VIN+`,
-  load (ESC/BEC) → `VIN−`. The **shunt** sets the measurement range (e.g. 0.002 Ω for
-  high currents, 0.001 Ω for very high). You enter the shunt value later in the setup.
+  load (ESC/BEC) → `VIN−`. The **shunt** sets the measurement range. Read the value off
+  the board rather than picking one: `R001` = 0.001 Ω, `R002` = 0.002 Ω, `R015` =
+  0.015 Ω. It also caps what the chip can see — **I_max = 163.84 mV / R_shunt**, so
+  0.015 Ω tops out near 10 A while 0.001 Ω covers 160 A. You enter this value in the setup.
 - **VBUS** measures against the sensor's ground — one INA228 delivers pack voltage
   **and** current, no extra divider.
 - Connect the sensor's **GND** to the common ground point.
@@ -405,9 +431,15 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 
 0. **Detect hardware** (in *Vehicle configuration*) scans the I²C bus, `mmcli` and the
    camera devices and suggests a driver/sensors — a good starting point before you fill
-   anything in by hand.
+   anything in by hand. Chips that carry an ID register are **read out**, not guessed:
+   a row marked ✓ names the actual part (INA228, MCP9808, BME280 …), and the PCA9685 is
+   recognised through its all-call address. **Use these addresses** then fills them into
+   the driver and telemetry forms — nothing is saved until you press Save there.
 1. **Vehicle:** set the name, **Output driver = `pca9685`** (drone: `sbus`; without an
-   extra board: `gpio-pwm`, pin map in 2.8), check the throttle channel. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
+   extra board: `gpio-pwm`, pin map in 2.8), check the throttle channel. With `pca9685`
+   an **I²C address** field appears — leave it at 0x40 unless a current sensor already
+   sits there, in which case move the PCA to 0x41 (see 2.1). The driver is built at
+   startup, so the page offers a **Restart vehicle service** button after saving it. The *Auto-disarm on reconnect* checkbox here is only a **fallback**
    — as soon as a ground station connects, it pushes the setting that matches the model
    type (car/boat on, plane/drone off).
 2. **CSI camera module:** pick which sensor sits on the camera port. Only the official
@@ -457,8 +489,10 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
    > **Focus** mode in Setup › Cameras. On a moving model prefer `manual` at 0 dioptres
    > (infinity) — `continuous` hunts whenever the scene changes.
 4. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
-   `ina238`), enter `Shunt Ω` (e.g. 0.002) and, for the INA228/237/238, **Max current A**
-   plus the shunt range. Add a voltage channel of the same kind ("Voltage 1") — the INA
+   `ina238`), enter `Shunt Ω` (the value printed on the board, e.g. `R001` = 0.001) and,
+   for the INA228/237/238, **Max current A** plus the shunt range. The **I²C address**
+   field next to it stays empty for the default 0x40 — fill it in only if the sensor
+   sits elsewhere. Add a voltage channel of the same kind ("Voltage 1") — the INA
    provides both. Enter the battery capacity (mAh), choose consumed/remaining display,
    pick what drives the **battery %** (coulomb counting, the voltage curve, or *clamp* =
    the lower of the two), and leave **Charge counter** on `auto`: with an INA228 that
@@ -806,6 +840,7 @@ boundary:
 | Symptom | Check |
 |---|---|
 | No I2C device | `sudo i2cdetect -y 1` — do 0x40/0x41 appear? Wiring/addresses. |
+| Sensor and driver both on 0x40 | Two chips answering at one address return junk, not an error. *Detect hardware* says so; move the PCA9685 to 0x41 (2.1). |
 | Servos jitter | Common ground? BEC strong enough? Is PCA9685 V+ powered? |
 | OSD shows "SIM" despite a sensor | Is `i2c-bus` installed? Address correct in the setup? Is the sensor visible on the bus? |
 | No video | Is `go2rtc` running? `systemctl status go2rtc`. Camera detected? |

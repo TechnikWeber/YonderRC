@@ -11,7 +11,9 @@ import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 let pass = 0;
 let fail = 0;
@@ -453,6 +455,57 @@ async function main() {
   const sugg = DET.suggestI2c(addrs);
   ok('i2c suggest PCA9685 @0x40', sugg[0].address === '0x40' && /PCA9685/.test(sugg[0].hint));
   ok('i2c suggest ADS @0x48', sugg[2].hint.includes('ADS'));
+  ok('i2c address-only guess is not confirmed', sugg[0].confirmed === false && sugg[0].kind === null);
+
+  // ---- I²C chip identification (ID registers, not just addresses) ----
+  // The collision that actually happens on a vehicle: PCA9685 and every INA2xx both
+  // ship on 0x40, so the address alone can never answer "which one is this?".
+  const probes = DET.probesFor(0x40);
+  ok('probes cover both INA register maps', probes.some((p) => p.key === 'inaDieA' && p.reg === 0x3f) && probes.some((p) => p.key === 'inaDieB' && p.reg === 0xff));
+  ok('probes include PCA9685 MODE1', probes.some((p) => p.key === 'mode1' && p.reg === 0x00 && p.bytes === 1));
+  ok('probes for a BMP address', DET.probesFor(0x76).some((p) => p.reg === 0xd0));
+  ok('no probes for an unknown address', DET.probesFor(0x36).length === 0);
+  ok('i2ctransfer args', DET.i2cTransferArgs(1, { key: 'x', address: 0x40, reg: 0x3f, bytes: 2 }).join(' ') === '-y 1 w1@0x40 0x3f r2');
+  ok('i2ctransfer output → word', DET.parseI2cTransfer('0x22 0x81') === 0x2281);
+  ok('i2ctransfer output → byte', DET.parseI2cTransfer('0x58') === 0x58);
+  ok('i2ctransfer error → null', DET.parseI2cTransfer('Error: Read failed') === null);
+  // Real INA228: manufacturer "TI", DIE_ID 0x228 with revision 1 in the low nibble.
+  const ina228 = DET.identifyI2c(0x40, { inaManufA: DET.TI_MANUFACTURER, inaDieA: 0x2281 }, true);
+  ok('INA228 identified on 0x40', ina228.kind === 'ina228' && ina228.confirmed === true && ina228.device === 'INA228');
+  ok('INA228 revision shown', ina228.hint.includes('rev 1'));
+  const ina226 = DET.identifyI2c(0x41, { inaManufB: DET.TI_MANUFACTURER, inaDieB: 0x2260 }, false);
+  ok('INA226 identified via the old register map', ina226.kind === 'ina226' && ina226.confirmed === true);
+  // The PCA9685 has no ID register at all — its all-call address gives it away.
+  const pca = DET.identifyI2c(0x41, { inaManufA: 0xffff, inaManufB: 0xffff, mode1: 0x11 }, true);
+  ok('PCA9685 identified via all-call', pca.kind === 'pca9685' && pca.confirmed === true);
+  const pcaNoAllCall = DET.identifyI2c(0x41, { mode1: 0x11 }, false);
+  ok('no all-call → no PCA9685 claim', pcaNoAllCall.kind === null && pcaNoAllCall.confirmed === false);
+  ok('0x70 stays the all-call address', DET.identifyI2c(0x70, {}, true).kind === null && /all-call/.test(DET.identifyI2c(0x70, {}, true).hint));
+  ok('BME280 by chip id', DET.identifyI2c(0x76, { bmpChipId: 0x60 }, false).kind === 'bme280');
+  ok('MCP9808 by manufacturer+device', DET.identifyI2c(0x18, { mcpManuf: 0x0054, mcpDevice: 0x0400 }, false).kind === 'mcp9808');
+  ok('TMP117 by device id', DET.identifyI2c(0x48, { tmp117Id: 0x0117 }, false).kind === 'tmp117');
+  const mixed = DET.suggestI2c([0x40, 0x41, 0x70], new Map([
+    [0x40, { inaManufA: DET.TI_MANUFACTURER, inaDieA: 0x2281 }],
+    [0x41, { mode1: 0x11 }],
+  ]));
+  ok('scan separates INA from PCA9685', mixed[0].kind === 'ina228' && mixed[1].kind === 'pca9685' && mixed[2].kind === null);
+
+  // ---- the PCA9685 address must be settable from the setup UI ----
+  // It used to be env-only, so resolving the 0x40 collision meant editing a systemd
+  // unit over SSH — impossible on a vehicle reachable only over its own hotspot.
+  const { loadConfig } = await import('../packages/vehicle/src/config');
+  const cfgPath = join(tmpdir(), `yonderrc-cfg-test-${process.pid}.json`);
+  const envCfg = process.env.YRC_CONFIG;
+  const envAddr = process.env.YRC_I2C_ADDR;
+  process.env.YRC_CONFIG = cfgPath;
+  process.env.YRC_I2C_ADDR = '0x40';
+  writeFileSync(cfgPath, JSON.stringify({ pca9685: { address: 0x41, bus: 1 } }));
+  ok('persisted PCA9685 address beats the env default', loadConfig().driverOptions.pca9685?.address === 0x41);
+  writeFileSync(cfgPath, JSON.stringify({}));
+  ok('env address still applies when nothing is persisted', loadConfig().driverOptions.pca9685?.address === 0x40);
+  rmSync(cfgPath, { force: true });
+  if (envCfg === undefined) delete process.env.YRC_CONFIG; else process.env.YRC_CONFIG = envCfg;
+  if (envAddr === undefined) delete process.env.YRC_I2C_ADDR; else process.env.YRC_I2C_ADDR = envAddr;
   ok('sim detect finds 0x40', (await sys.detectHardware()).i2c.some((x) => x.address === '0x40'));
   ok('sim detect lists serial', (await sys.detectHardware()).serial.length > 0);
 

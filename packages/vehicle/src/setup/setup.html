@@ -293,7 +293,7 @@
         <label>Name<input id="vehicleName" /></label>
         <div class="grid2">
           <label>Output driver
-            <select id="driver">
+            <select id="driver" onchange="renderDriver()">
               <option value="sim">sim</option>
               <option value="pca9685">pca9685</option>
               <option value="gpio-pwm">gpio-pwm</option>
@@ -302,6 +302,11 @@
           </label>
           <label>Watchdog (ms)<input id="watchdogTimeoutMs" type="number" /></label>
         </div>
+        <div class="grid2" id="pca-row" style="display:none">
+          <label>PCA9685 I²C address (hex)<input id="pcaAddr" placeholder="0x40" /></label>
+          <label>PCA9685 I²C bus<input id="pcaBus" type="number" placeholder="1" /></label>
+        </div>
+        <p class="msg" id="pca-msg" style="display:none">The PCA9685 ships on <b>0x40</b> — and so does every INA2xx current sensor, which can only live at the address you give it under Telemetry. With both on the bus, move the PCA: close solder bridge <b>A0</b> on its board (→ 0x41) and enter that here. It answers on <b>0x70</b> as well; that is its all-call address, not a second chip. Changing this needs a restart of the vehicle service.</p>
         <div class="eyebrow2" style="margin-top:12px">Native driver modules</div>
         <div id="hwdeps"><div class="msg">Reading module status…</div></div>
         <p class="msg">Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>. Note that installing one <b>builds all three</b>: they are optional dependencies of the same package and npm always reifies them together — harmless, nothing uses a module unless you select that driver.</p>
@@ -316,6 +321,7 @@
         <div class="btns">
           <button class="btn primary" onclick="run(this, () => saveConfig())">Save</button>
           <button class="btn" onclick="run(this, () => detectHw())">Detect hardware</button>
+          <button class="btn" id="cfg-restart" style="display:none" onclick="run(this, () => restartService())">Restart vehicle service</button>
         </div>
         <div class="msg" id="cfg-msg"></div>
         <div id="detect-out"></div>
@@ -629,10 +635,27 @@
         $('ground-link').style.display = available ? 'inline-block' : 'none';
       }
 
+      /** The address/bus row only makes sense for the one driver that has an address. */
+      function renderDriver() {
+        const isPca = $('driver').value === 'pca9685';
+        $('pca-row').style.display = isPca ? 'grid' : 'none';
+        $('pca-msg').style.display = isPca ? 'block' : 'none';
+      }
+      /** "0x41" and a bare "41" both mean 0x41; empty → undefined (keep the default). */
+      function hexAddr(val) {
+        const raw = String(val ?? '').trim();
+        if (!raw) return undefined;
+        const n = /^0x/i.test(raw) ? Number(raw) : parseInt(raw, 16);
+        return Number.isFinite(n) ? n : undefined;
+      }
+      const hexStr = (n) => (n == null ? '' : '0x' + Number(n).toString(16));
       async function loadConfig() {
         const c = await getJSON('/api/config');
         $('vehicleName').value = c.vehicleName || '';
         $('driver').value = c.driver || 'sim';
+        $('pcaAddr').value = hexStr(c.pca9685 && c.pca9685.address);
+        $('pcaBus').value = (c.pca9685 && c.pca9685.bus) ?? 1;
+        renderDriver();
         $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 300;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
@@ -743,11 +766,45 @@
         setTimeout(() => { loadHwDeps(); refresh(); }, 6000);
       }
 
+      let lastDetect = null;
+      /**
+       * Fill the detected addresses into the forms — never save them. The probe reads
+       * ID registers, so it is usually right; "usually" is exactly why the operator
+       * still sees every value in an editable field and presses Save themselves.
+       */
+      function applyDetected() {
+        const list = (lastDetect && lastDetect.i2c) || [];
+        const done = [];
+        const pca = list.find((x) => x.kind === 'pca9685');
+        if (pca) {
+          $('pcaAddr').value = pca.address;
+          done.push(`PCA9685 → ${pca.address}` + ($('driver').value === 'pca9685' ? '' : ' (driver is not set to pca9685 — left alone)'));
+        }
+        const inas = list.filter((x) => x.kind && x.kind.indexOf('ina') === 0);
+        if (inas.length === 1) {
+          const ina = inas[0];
+          const fill = (ch) => {
+            if (ch.kind !== 'sim' && !C_I2C.includes(ch.kind)) return false;
+            ch.kind = ina.kind;
+            ch.address = hexAddr(ina.address);
+            return true;
+          };
+          let n = 0;
+          for (const ch of [...volts, ...currs]) if (fill(ch)) n++;
+          if (n) { renderVolts(); renderCurrs(); done.push(`${n} telemetry channel(s) → ${ina.device} @ ${ina.address}`); }
+        } else if (inas.length > 1) {
+          done.push('more than one INA found — set those addresses by hand');
+        }
+        $('detect-msg').textContent = done.length
+          ? `Filled in: ${done.join(' · ')}. Nothing is saved yet — press Save in each panel.`
+          : 'Nothing to fill in — no chip was identified by its ID register.';
+      }
       async function detectHw() {
         $('detect-out').innerHTML = '<div class="msg">Probing hardware…</div>';
         try {
           const d = await getJSON('/api/detect');
-          const i2c = (d.i2c || []).map((x) => `<div class="row"><span class="k">${x.address}</span><span class="v">${x.hint}</span></div>`).join('') || '<div class="msg">no I²C devices</div>';
+          lastDetect = d;
+          const i2c = (d.i2c || []).map((x) => `<div class="row"><span class="k">${x.address}</span><span class="v">${x.confirmed ? '✓ ' : ''}${x.hint}</span></div>`).join('') || '<div class="msg">no I²C devices</div>';
           const cams = (d.cameras || []).length ? (d.cameras).map((c) => `<div class="row"><span class="k">camera</span><span class="v">${c}</span></div>`).join('') : '';
           const serial = (d.serial || []).map((s) => `<div class="row"><span class="k">serial (GPS?)</span><span class="v">${s}</span></div>`).join('');
           const modem = `<div class="row"><span class="k">LTE modem</span><span class="v ${d.modemPresent ? 'go' : 'warn'}">${d.modemPresent ? 'present' : 'not found'}</span></div>`;
@@ -757,7 +814,13 @@
           const needI2c = (d.i2c || []).length && !hwDepInstalled('i2c-bus')
             ? '<div class="msg" style="color:var(--idle)">⚠ <b class="mono">i2c-bus</b> is not installed — the <b>pca9685</b> driver and the INA/ADS sensors would fall back to <b>sim</b>. Install it under “Native driver modules” above.</div>'
             : '';
-          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${serial}${modem}${notes}${needI2c}<div class="msg">Suggestions only — set the driver/sensors above accordingly, then Save.</div>`;
+          // ✓ = read back from the chip's own ID register; the rest is a guess from
+          // the address, which cannot separate a PCA9685 from an INA2xx on 0x40.
+          const canApply = (d.i2c || []).some((x) => x.confirmed && x.kind);
+          const applyBtn = canApply
+            ? '<div class="btns"><button class="btn tiny" onclick="applyDetected()">Use these addresses</button></div>'
+            : '';
+          $('detect-out').innerHTML = `<div class="eyebrow2" style="margin-top:8px">Detected</div>${i2c}${cams}${serial}${modem}${notes}${needI2c}${applyBtn}<div class="msg" id="detect-msg">✓ = identified from the chip's ID register. Unmarked rows are guesses from the address alone — set the driver/sensors above accordingly, then Save.</div>`;
         } catch {
           $('detect-out').innerHTML = '<div class="msg">Detection failed.</div>';
         }
@@ -830,9 +893,13 @@
           throttleChannels: $('throttleChannels').value.split(',').map((s) => Number(s.trim()) - 1).filter((n) => Number.isInteger(n) && n >= 0),
           videoBaseUrl: $('videoBaseUrl').value.trim() || null,
           disarmOnReconnect: $('disarmOnReconnect').checked,
+          pca9685: { address: hexAddr($('pcaAddr').value) ?? 0x40, bus: Number($('pcaBus').value) || 1 },
         };
         const r = await post('/api/config', patch);
         $('cfg-msg').textContent = r.note || 'Saved.';
+        // The driver is built at startup, so offer the restart right where the
+        // change was made instead of sending the operator to a terminal.
+        $('cfg-restart').style.display = r.restartRequired ? '' : 'none';
       }
 
       async function lteConnect() {
@@ -1262,6 +1329,13 @@
       const C_KINDS = ['sim', 'ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238', 'acs712', 'acs758'];
       // These three need a calibration write, so they get the extra fields below.
       const CAL_KINDS = ['ina228', 'ina237', 'ina238'];
+      // Kinds that sit on I²C and therefore have an address the operator may have to
+      // change — the INA's factory 0x40 collides with the PCA9685's.
+      const C_I2C = ['ina219', 'ina226', 'ina260', 'ina3221', 'ina228', 'ina237', 'ina238'];
+      const V_I2C = [...C_I2C, 'ads1115', 'ads1015'];
+      const addrPlaceholder = (k) => (k === 'ads1115' || k === 'ads1015' ? '0x48' : '0x40');
+      const addrField = (kind, addr, fn) =>
+        `<label>I²C address (hex)<input value="${hexStr(addr)}" placeholder="${addrPlaceholder(kind)} (default)" oninput="${fn}(this.value)" /></label>`;
       // Low range picked but the shunt voltage doesn't fit in it → the current clips.
       const cOverrange = (c) => !!c.lowShuntRange && c.maxCurrentA * c.shuntOhms * 1000 > 40.96;
       const T_KINDS = [
@@ -1292,11 +1366,11 @@
         $('volt-list').innerHTML = volts.map((v, i) => `
           <div class="item"><div class="grid3">
             <label>Label<input value="${v.label || ''}" oninput="vSet(${i},'label',this.value)" /></label>
-            <label>Sensor<select onchange="vSet(${i},'kind',this.value)">
+            <label>Sensor<select onchange="vSet(${i},'kind',this.value); renderVolts()">
               ${V_KINDS.map((k) => `<option value="${k}" ${v.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
             </select></label>
             <label>Channel<input type="number" value="${v.channel ?? 0}" oninput="vSet(${i},'channel',+this.value)" /></label>
-          </div>${primaryRow(volts, i, 'vPrimary')}<div class="btns"><button class="btn tiny" onclick="run(this, () => vDel(${i}))">Remove</button></div></div>`).join('');
+          </div>${V_I2C.includes(v.kind) ? addrField(v.kind, v.address, `vSetAddr(${i}, `) : ''}${primaryRow(volts, i, 'vPrimary')}<div class="btns"><button class="btn tiny" onclick="run(this, () => vDel(${i}))">Remove</button></div></div>`).join('');
       }
       function renderCurrs() {
         $('curr-list').innerHTML = currs.map((c, i) => `
@@ -1306,7 +1380,7 @@
               ${C_KINDS.map((k) => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${k}</option>`).join('')}
             </select></label>
             <label>Shunt Ω<input type="number" step="0.0001" value="${c.shuntOhms ?? ''}" placeholder="0.001" oninput="cSet(${i},'shuntOhms',+this.value)" /></label>
-          </div>${CAL_KINDS.includes(c.kind) ? `<div class="grid2">
+          </div>${C_I2C.includes(c.kind) ? addrField(c.kind, c.address, `cSetAddr(${i}, `) : ''}${CAL_KINDS.includes(c.kind) ? `<div class="grid2">
             <label>Max current A<input type="number" step="1" value="${c.maxCurrentA ?? ''}" placeholder="50" oninput="cSet(${i},'maxCurrentA',+this.value)" /></label>
             <label>Shunt range<select onchange="cSet(${i},'lowShuntRange',this.value==='low'); renderCurrs()">
               <option value="high" ${c.lowShuntRange ? '' : 'selected'}>±163.84 mV (default)</option>
@@ -1364,11 +1438,12 @@
       function vSet(i, k, val) { volts[i][k] = val; }
       function cSet(i, k, val) { currs[i][k] = val; }
       function tSet(i, k, val) { temps[i][k] = val; }
-      // The field is labelled hex: "0x48" and a bare "48" both mean 0x48.
+      // The fields are labelled hex: "0x48" and a bare "48" both mean 0x48. Empty
+      // clears the field, and the vehicle falls back to the chip's default address.
+      function vSetAddr(i, val) { volts[i].address = hexAddr(val); }
+      function cSetAddr(i, val) { currs[i].address = hexAddr(val); }
       function tSetAddr(i, val) {
-        const raw = String(val).trim();
-        const n = /^0x/i.test(raw) ? Number(raw) : parseInt(raw, 16);
-        temps[i].address = Number.isFinite(n) ? n : undefined;
+        temps[i].address = hexAddr(val);
       }
       function tSetNtc(i, val) {
         const [r25, beta] = String(val).split('/').map((x) => Number(x.trim()));

@@ -46,7 +46,8 @@ import {
 } from './wifi.js';
 import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.js';
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
-import { parseI2cAddresses, suggestI2c } from './detect.js';
+import { parseI2cAddresses, suggestI2c, probesFor, i2cTransferArgs, parseI2cTransfer } from './detect.js';
+import type { I2cReads } from './detect.js';
 import { parseTailscaleStatus } from './tailscale.js';
 import {
   classifyChanges,
@@ -740,8 +741,33 @@ export class RealSystem implements SystemManager {
     if (power.message) notes.push(power.message);
     const i2cOut = await sh('i2cdetect -y 1');
     if (!i2cOut.ok) notes.push('i2cdetect failed — is i2c-tools installed and I²C enabled?');
-    const i2c = suggestI2c(parseI2cAddresses(i2cOut.out));
+    const addresses = parseI2cAddresses(i2cOut.out);
+    // Ask each chip what it is. 0x40 is the factory default of the PCA9685 AND of
+    // every INA2xx, so the address alone can't tell them apart — but their ID
+    // registers can, and that is the difference between a suggestion and an answer.
+    const reads = new Map<number, I2cReads>();
+    const canProbe = (await sh('command -v i2ctransfer')).out.trim().length > 0;
+    if (addresses.length && !canProbe) {
+      notes.push('i2ctransfer not found — install i2c-tools to identify the chips, not just their addresses.');
+    }
+    if (canProbe) {
+      for (const address of addresses) {
+        const r: I2cReads = {};
+        for (const probe of probesFor(address)) {
+          const out = await shArgs('i2ctransfer', i2cTransferArgs(1, probe));
+          r[probe.key] = out.ok ? parseI2cTransfer(out.out) : null;
+        }
+        reads.set(address, r);
+      }
+    }
+    const i2c = suggestI2c(addresses, reads);
     if (i2cOut.ok && i2c.length === 0) notes.push('No I²C devices found on bus 1 — check wiring/power.');
+    // The one collision that actually bites: two chips fighting over 0x40.
+    const ina = i2c.find((d) => d.kind?.startsWith('ina'));
+    const pca = i2c.find((d) => d.kind === 'pca9685');
+    if (ina && pca && ina.address === pca.address) {
+      notes.push(`Two devices answer at ${ina.address} — move the PCA9685 to 0x41 (solder bridge A0) and set that address under "Output driver".`);
+    }
 
     const modemPresent = /Modem\/\d+/.test((await sh('mmcli -L')).out);
     if (!modemPresent) notes.push('No LTE modem detected (mmcli -L).');

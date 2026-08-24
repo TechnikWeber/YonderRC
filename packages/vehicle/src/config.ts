@@ -118,6 +118,14 @@ export interface PersistentConfig {
    * turn a configured vehicle back into a simulator.
    */
   hardwareDeps?: HwDepName[];
+  /**
+   * PCA9685 bus/address, editable in the setup UI. Its factory default 0x40 is also
+   * the default of every INA2xx, and the telemetry reader has no address of its own
+   * to fall back to — so when the two collide, the PCA9685 is the one that moves.
+   * That must be possible from a browser: a vehicle reachable only over its own
+   * hotspot can't be fixed by editing a systemd unit over SSH.
+   */
+  pca9685?: { bus?: number; address?: number };
 }
 
 function num(name: string, fallback: number): number {
@@ -213,16 +221,18 @@ export function loadConfig(): VehicleConfig {
     h264Encoder: 'libx264',
     rpicamBin: 'rpicam-vid',
 
-    // Env-only fields.
+    // Env-only fields (except the PCA9685 address/bus below, which the setup UI edits).
     host: process.env.YRC_HOST ?? '0.0.0.0',
     port: num('YRC_PORT', 8080),
     simLogEveryMs: num('YRC_SIM_LOG_MS', 0),
     systemKind: (process.env.YRC_SYSTEM as SystemKind) ?? 'sim',
     configPath,
     driverOptions: {
+      // Persisted (setup UI) wins over env, same rule as every other field above.
       pca9685: {
-        bus: num('YRC_I2C_BUS', 1),
-        address: process.env.YRC_I2C_ADDR ? Number(process.env.YRC_I2C_ADDR) : 0x40,
+        bus: p.pca9685?.bus ?? num('YRC_I2C_BUS', 1),
+        address:
+          p.pca9685?.address ?? (process.env.YRC_I2C_ADDR ? Number(process.env.YRC_I2C_ADDR) : 0x40),
         freqHz: num('YRC_PWM_FREQ', 50),
       },
       gpioPwm: process.env.YRC_GPIO_PINS

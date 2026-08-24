@@ -273,9 +273,13 @@ export class SimSystem implements SystemManager {
 
   async detectHardware() {
     return {
+      // Mirrors what the real probe returns on a correctly addressed vehicle: the
+      // INA on 0x40 (the only address the telemetry reader defaults to) and the
+      // PCA9685 moved out of its way onto 0x41.
       i2c: [
-        { address: '0x40', hint: 'PCA9685 servo/ESC driver — or INA2xx current sensor (219/226/228/237/238)' },
-        { address: '0x41', hint: 'INA2xx current sensor (219/226/228/237/238/3221)' },
+        { address: '0x40', hint: 'INA228 rev 1 — identified from its ID register', device: 'INA228', kind: 'ina228', confirmed: true },
+        { address: '0x41', hint: 'PCA9685 servo/ESC driver — identified via its all-call address (0x70)', device: 'PCA9685', kind: 'pca9685', confirmed: true },
+        { address: '0x70', hint: 'PCA9685 all-call address — answers in addition to its own address', device: null, kind: null, confirmed: false },
       ],
       modemPresent: this.lte.present,
       cameras: ['/dev/video0 (simulated)'],
