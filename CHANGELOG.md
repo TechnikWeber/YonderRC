@@ -3,6 +3,32 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.60.2
+**English**
+- **A running PCA9685 made itself unidentifiable.** The driver's init wrote a bare 0x00
+  to MODE1, which also clears the ALLCALL bit — so the chip stopped answering on 0x70,
+  and 0x70 is the only signature it has (no ID register). *Detect hardware* named it
+  before the driver started and showed a blank "unknown device" afterwards, on the very
+  vehicle where it was working. The driver now keeps all-call enabled, which is the
+  chip's own reset default.
+- **And a fallback for chips whose all-call was cleared by something else**: MODE2's
+  reserved bits plus a valid PRE_SCALE identify a PCA9685 well enough to name it, and
+  the guess says which PWM frequency it is running at. Explicitly unconfirmed — it is a
+  family resemblance, not an ID.
+
+**Deutsch**
+- **Ein laufender PCA9685 machte sich selbst unidentifizierbar.** Der Init des Treibers
+  schrieb ein blankes 0x00 in MODE1, was auch das ALLCALL-Bit löscht — der Chip
+  antwortete danach nicht mehr auf 0x70, und 0x70 ist die einzige Signatur, die er hat
+  (kein ID-Register). *Detect hardware* benannte ihn vor dem Start des Treibers und
+  zeigte danach ein leeres „unknown device", ausgerechnet auf dem Fahrzeug, auf dem er
+  lief. Der Treiber lässt All-Call jetzt eingeschaltet — das ist ohnehin die
+  Reset-Vorgabe des Chips.
+- **Dazu ein Rückfallweg für Chips, deren All-Call etwas anderes gelöscht hat**: die
+  reservierten Bits in MODE2 plus ein gültiger PRE_SCALE reichen, um einen PCA9685 zu
+  benennen, und die Vermutung sagt gleich dazu, mit welcher PWM-Frequenz er läuft.
+  Ausdrücklich unbestätigt — das ist eine Familienähnlichkeit, kein Ausweis.
+
 ## v1.60.1
 **English**
 - **The setup form showed the running driver, not the saved one.** `GET /api/config`

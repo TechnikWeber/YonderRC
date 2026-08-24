@@ -478,8 +478,17 @@ async function main() {
   // The PCA9685 has no ID register at all — its all-call address gives it away.
   const pca = DET.identifyI2c(0x41, { inaManufA: 0xffff, inaManufB: 0xffff, mode1: 0x11 }, true);
   ok('PCA9685 identified via all-call', pca.kind === 'pca9685' && pca.confirmed === true);
+  // A driver that cleared ALLCALL takes the confirmation away — the register
+  // signature still points at a PCA9685, but only as an explicit guess.
+  const pcaQuiet = DET.identifyI2c(0x41, { mode1: 0xa0, mode2: 0x04, prescale: 121 }, false);
+  ok('all-call off → PCA9685 only as a guess', pcaQuiet.kind === 'pca9685' && pcaQuiet.confirmed === false);
+  ok('guess names the PWM frequency', pcaQuiet.hint.includes('50 Hz'));
+  ok('prescale → 50 Hz', DET.pwmFrequency(121) === 50);
   const pcaNoAllCall = DET.identifyI2c(0x41, { mode1: 0x11 }, false);
-  ok('no all-call → no PCA9685 claim', pcaNoAllCall.kind === null && pcaNoAllCall.confirmed === false);
+  ok('no all-call and no signature → no PCA9685 claim', pcaNoAllCall.kind === null && pcaNoAllCall.confirmed === false);
+  // An ADS1x15 answers those same reads with its config MSB — must not pass as a PCA.
+  const adsLike = DET.identifyI2c(0x48, { mode1: 0x85, mode2: 0x85, prescale: 0x80 }, false);
+  ok('ADS1x15 is not mistaken for a PCA9685', adsLike.kind === null);
   ok('0x70 stays the all-call address', DET.identifyI2c(0x70, {}, true).kind === null && /all-call/.test(DET.identifyI2c(0x70, {}, true).hint));
   ok('BME280 by chip id', DET.identifyI2c(0x76, { bmpChipId: 0x60 }, false).kind === 'bme280');
   ok('MCP9808 by manufacturer+device', DET.identifyI2c(0x18, { mcpManuf: 0x0054, mcpDevice: 0x0400 }, false).kind === 'mcp9808');

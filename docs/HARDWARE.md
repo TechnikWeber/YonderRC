@@ -89,7 +89,9 @@ stays under **40.96 mV**, switch the shunt range to ±40.96 mV for 4× the resol
   browser, while a sensor's address belongs to its telemetry channel.
 - The PCA9685 additionally answers on **0x70**, its *all-call* address. That is not a
   second chip — and since the PCA9685 has no ID register, it is exactly how
-  **Detect hardware** tells it apart from an INA2xx on the same address.
+  **Detect hardware** tells it apart from an INA2xx on the same address. YonderRC's
+  driver deliberately leaves all-call enabled (many drivers clear it during init) so
+  the chip stays identifiable while it is running.
 - Servos/ESC plug into channel outputs 0–15 (signal/+/−). YonderRC's channels 1–16
   in the app map to PCA9685 channels 0–15.
 

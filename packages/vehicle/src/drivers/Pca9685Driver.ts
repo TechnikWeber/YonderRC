@@ -2,6 +2,7 @@ import { CHANNEL_COUNT, neutralChannels } from '@yonderrc/protocol';
 import type { OutputDriver } from './OutputDriver.js';
 import {
   MODE1_AI,
+  MODE1_ALLCALL,
   MODE1_RESTART,
   MODE1_SLEEP,
   MODE2_OUTDRV,
@@ -64,7 +65,7 @@ export class Pca9685Driver implements OutputDriver {
     await this.writeReg(PCA9685_PRESCALE, prescale);
     await this.writeReg(PCA9685_MODE1, oldMode);
     await sleep(5);
-    await this.writeReg(PCA9685_MODE1, oldMode | MODE1_RESTART | MODE1_AI);
+    await this.writeReg(PCA9685_MODE1, oldMode | MODE1_RESTART | MODE1_AI | MODE1_ALLCALL);
     await this.writeReg(PCA9685_MODE2, MODE2_OUTDRV);
 
     console.log(

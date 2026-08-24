@@ -91,6 +91,8 @@ unter **40,96 mV**, den Shunt-Bereich auf ±40,96 mV stellen — 4× feinere Auf
 - Der PCA9685 antwortet zusätzlich auf **0x70**, seiner *All-Call*-Adresse. Das ist
   kein zweiter Chip — und weil der PCA9685 kein ID-Register hat, ist genau das der
   Weg, auf dem **Detect hardware** ihn von einem INA2xx auf derselben Adresse trennt.
+  YonderRCs Treiber lässt All-Call deshalb bewusst eingeschaltet (viele Treiber löschen
+  es beim Init), damit der Chip auch im laufenden Betrieb erkennbar bleibt.
 - Servos/ESC stecken auf den Kanal-Ausgängen 0–15 (Signal/+/−). YonderRCs
   Kanäle 1–16 in der App entsprechen den PCA9685-Kanälen 0–15.
 

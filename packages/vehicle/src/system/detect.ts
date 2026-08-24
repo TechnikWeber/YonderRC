@@ -69,6 +69,8 @@ export function probesFor(address: number): I2cProbe[] {
     at('inaManufB', 0xfe, 2); // INA226/260/3221
     at('inaDieB', 0xff, 2);
     at('mode1', 0x00, 1); // PCA9685 MODE1 — its ALLCALL bit
+    at('mode2', 0x01, 1); // PCA9685 MODE2 — its top three bits always read 0
+    at('prescale', 0xfe, 1); // PCA9685 PRE_SCALE — the PWM frequency it is set to
   }
   if (address >= 0x48 && address <= 0x4b) at('tmp117Id', 0x0f, 2);
   if (address >= 0x18 && address <= 0x1f) {
@@ -164,7 +166,35 @@ export function identifyI2c(address: number, reads: I2cReads, allCall = false): 
       confirmed: true,
     };
   }
+  // All-call switched off (some drivers clear it): fall back to the register
+  // signature — MODE2's top three bits read 0 and PRE_SCALE holds a valid divider.
+  // That is a family resemblance, not an ID, so it stays an unconfirmed guess.
+  if (looksLikePca9685(reads)) {
+    return {
+      address: hex,
+      hint: `probably a PCA9685 — MODE2/PRE_SCALE look like one (${pwmFrequency(reads.prescale as number)} Hz), but its all-call address is off, so this cannot be confirmed`,
+      device: 'PCA9685',
+      kind: 'pca9685',
+      confirmed: false,
+    };
+  }
   return { address: hex, hint: hintFor(address), device: null, kind: null, confirmed: false };
+}
+
+/** PWM frequency a PRE_SCALE value produces on the PCA9685's 25 MHz internal clock. */
+export function pwmFrequency(prescale: number): number {
+  return Math.round(25e6 / (4096 * (prescale + 1)));
+}
+
+/**
+ * A PCA9685 whose all-call bit was cleared. MODE2 bits 7:5 are reserved and read 0,
+ * and PRE_SCALE below 3 is not a legal divider — enough to tell it from an ADS1x15 or
+ * an INA (whose registers are 16 bit and answer differently), not enough to be sure.
+ */
+function looksLikePca9685(reads: I2cReads): boolean {
+  const { mode1, mode2, prescale } = reads;
+  if (mode1 == null || mode2 == null || prescale == null) return false;
+  return (mode2 & 0xe0) === 0 && prescale >= 3 && prescale <= 0xff;
 }
 
 /**

@@ -14,6 +14,13 @@ export const PCA9685_LED0_ON_L = 0x06;
 export const MODE1_SLEEP = 0x10;
 export const MODE1_AI = 0x20; // auto-increment
 export const MODE1_RESTART = 0x80;
+/**
+ * All-call: the chip additionally answers on 0x70. It is the reset default, and
+ * writing a bare 0x00 to MODE1 during init clears it — which costs the PCA9685 the
+ * only signature it has. It carries no ID register, so "Detect hardware" could name
+ * it before the driver started and not afterwards. Keep it on.
+ */
+export const MODE1_ALLCALL = 0x01;
 export const MODE2_OUTDRV = 0x04;
 
 const OSC_CLOCK_HZ = 25_000_000; // internal oscillator
