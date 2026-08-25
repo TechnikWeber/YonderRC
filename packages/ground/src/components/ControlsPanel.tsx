@@ -113,66 +113,71 @@ export function ControlsPanel({
 
   return (
     <section className="panel controls-panel">
-      <div className="eyebrow">Safety</div>
-      <label className="opt big">
-        <input type="checkbox" checked={preArm} onChange={(e) => onPreArm(e.target.checked)} />
-        Pre-arm check — refuse to arm unless throttle is at its rest position
-      </label>
-      <p className="note">Uses each throttle channel's detent: centre for reverse-capable cars and drones, idle (min) for planes/boats. Prevents a lurch on arming.</p>
+      {/* Closed by default: three settings you set once per model and then leave
+          alone, sitting on top of the six groups below. The heading stays the
+          eyebrow the other groups use, so the panel keeps its rhythm. */}
+      <details className="group">
+        <summary className="eyebrow">Safety</summary>
+        <label className="opt big">
+          <input type="checkbox" checked={preArm} onChange={(e) => onPreArm(e.target.checked)} />
+          Pre-arm check — refuse to arm unless throttle is at its rest position
+        </label>
+        <p className="note">Uses each throttle channel's detent: centre for reverse-capable cars and drones, idle (min) for planes/boats. Prevents a lurch on arming.</p>
 
-      <label className="opt big">
-        <input type="checkbox" checked={hold.enabled} onChange={(e) => onHold({ ...hold, enabled: e.target.checked })} />
-        Hold to arm — the arm button only acts after being held
-      </label>
-      <label className="batt-th hold-row">
-        <span>Hold time</span>
-        <input
-          type="number"
-          step={0.5}
-          min={HOLD_MIN_S}
-          max={HOLD_MAX_S}
-          value={hold.seconds}
-          disabled={!hold.enabled}
-          onChange={(e) => onHold({ ...hold, seconds: clampHoldSeconds(Number(e.target.value)) })}
-        />
-        <span className="unit">s</span>
-      </label>
-      <Hint summary="It applies to disarming too, and to a bound key or button">
-        The mis-touch that cuts the motors is the disarm, not the arm — and a bumped controller is
-        just as capable of it as a thumb, so a key or button bound to <b>Arm / disarm</b> below is
-        held as well. Switched off, both toggle on a plain press again. {HOLD_MIN_S}–{HOLD_MAX_S} s;
-        panic-disarm stays instant either way.
-      </Hint>
+        <label className="opt big">
+          <input type="checkbox" checked={hold.enabled} onChange={(e) => onHold({ ...hold, enabled: e.target.checked })} />
+          Hold to arm — the arm button only acts after being held
+        </label>
+        <label className="batt-th hold-row">
+          <span>Hold time</span>
+          <input
+            type="number"
+            step={0.5}
+            min={HOLD_MIN_S}
+            max={HOLD_MAX_S}
+            value={hold.seconds}
+            disabled={!hold.enabled}
+            onChange={(e) => onHold({ ...hold, seconds: clampHoldSeconds(Number(e.target.value)) })}
+          />
+          <span className="unit">s</span>
+        </label>
+        <Hint summary="It applies to disarming too, and to a bound key or button">
+          The mis-touch that cuts the motors is the disarm, not the arm — and a bumped controller is
+          just as capable of it as a thumb, so a key or button bound to <b>Arm / disarm</b> below is
+          held as well. Switched off, both toggle on a plain press again. {HOLD_MIN_S}–{HOLD_MAX_S} s;
+          panic-disarm stays instant either way.
+        </Hint>
 
-      <label className="opt big">
-        <input
-          type="checkbox"
-          checked={buttonHold.enabled}
-          onChange={(e) => onButtonHold({ ...buttonHold, enabled: e.target.checked })}
-        />
-        Hold the other buttons too — a short press is ignored
-      </label>
-      <label className="batt-th hold-row">
-        <span>Button hold</span>
-        <input
-          type="number"
-          step={0.05}
-          min={BUTTON_HOLD_MIN_S}
-          max={BUTTON_HOLD_MAX_S}
-          value={buttonHold.seconds}
-          disabled={!buttonHold.enabled}
-          onChange={(e) => onButtonHold({ ...buttonHold, seconds: clampButtonHoldSeconds(Number(e.target.value)) })}
-        />
-        <span className="unit">s</span>
-      </label>
-      <Hint summary="Only the buttons that change something lasting">
-        A much shorter filter than the arm hold, for <b>toggle channels</b>, the <b>speed limiter</b>
-        and the <b>trims</b> — on the screen and on a controller alike. Deliberately <b>not</b>
-        applied to <b>momentary channels</b> (a horn has to sound the instant you press it),
-        <b> hold-ramp channels</b> (holding is already the gesture), or the <b>sticks</b> — steering
-        and throttle are never delayed. Arm keeps its own longer hold, panic-disarm stays instant.
-        {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
-      </Hint>
+        <label className="opt big">
+          <input
+            type="checkbox"
+            checked={buttonHold.enabled}
+            onChange={(e) => onButtonHold({ ...buttonHold, enabled: e.target.checked })}
+          />
+          Hold the other buttons too — a short press is ignored
+        </label>
+        <label className="batt-th hold-row">
+          <span>Button hold</span>
+          <input
+            type="number"
+            step={0.05}
+            min={BUTTON_HOLD_MIN_S}
+            max={BUTTON_HOLD_MAX_S}
+            value={buttonHold.seconds}
+            disabled={!buttonHold.enabled}
+            onChange={(e) => onButtonHold({ ...buttonHold, seconds: clampButtonHoldSeconds(Number(e.target.value)) })}
+          />
+          <span className="unit">s</span>
+        </label>
+        <Hint summary="Only the buttons that change something lasting">
+          A much shorter filter than the arm hold, for <b>toggle channels</b>, the <b>speed limiter</b>
+          and the <b>trims</b> — on the screen and on a controller alike. Deliberately <b>not</b>
+          applied to <b>momentary channels</b> (a horn has to sound the instant you press it),
+          <b> hold-ramp channels</b> (holding is already the gesture), or the <b>sticks</b> — steering
+          and throttle are never delayed. Arm keeps its own longer hold, panic-disarm stays instant.
+          {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
+        </Hint>
+      </details>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Return-home budget</div>
       <label className="opt big">

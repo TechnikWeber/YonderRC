@@ -457,6 +457,30 @@ summary,
  * closed until asked for. The summary carries the takeaway, so nothing is hidden that
  * you need at a glance.
  */
+/*
+ * A settings group that folds away. The summary IS the eyebrow the open groups use,
+ * plus a chevron, so a collapsed group reads as the same heading and the panel keeps
+ * its rhythm — nothing looks broken next to the groups that stay open.
+ */
+details.group > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+details.group > summary::-webkit-details-marker { display: none; }
+details.group > summary::before {
+  content: '›';
+  color: var(--accent);
+  font-weight: 700;
+  display: inline-block;
+  transition: transform 0.12s;
+}
+details.group[open] > summary::before { transform: rotate(90deg); }
+details.group > summary:hover { color: var(--text); }
+
 details.hint {
   margin-top: 8px;
 }

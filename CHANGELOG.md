@@ -3,6 +3,20 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.65.1
+**English**
+- **Setup › Safety starts collapsed** in the ground app. Three settings you pick once per
+  model sat on top of the six groups below them; folded away, the whole Controls panel
+  fits on one screen. The heading stays the eyebrow the other groups use, so nothing
+  looks out of place — it is the same heading, now with a chevron.
+
+**Deutsch**
+- **Setup › Safety startet eingeklappt** in der Ground-App. Drei Einstellungen, die man
+  einmal pro Modell wählt, standen über den sechs Gruppen darunter; zugeklappt passt das
+  ganze Controls-Panel auf einen Bildschirm. Die Überschrift bleibt dieselbe wie bei den
+  anderen Gruppen, es wirkt also nichts fehl am Platz — gleiche Überschrift, jetzt mit
+  einem Pfeil.
+
 ## v1.65.0
 **English**
 - **Light is now the default.** Dark is still one click away in Setup › Design, and both

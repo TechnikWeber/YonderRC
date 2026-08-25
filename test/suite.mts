@@ -1525,6 +1525,17 @@ async function main() {
     ok('and a Design tab to pick it', /data-tab="design"/.test(setup) && /data-theme-pick="light"/.test(setup));
   }
 
+  // ---- the ground's Setup is folded, not a wall ----
+  // Same shape as the vehicle's setup page: the long explanations sit behind a one-line
+  // summary, and the Safety group — settings you set once per model — starts closed.
+  {
+    const cp = readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8');
+    ok('the long notes are collapsed', (cp.match(/<Hint summary=/g) ?? []).length >= 8);
+    const group = /<details className="group"([^>]*)>/.exec(cp);
+    ok('Safety is a group', !!group && cp.includes('<summary className="eyebrow">Safety</summary>'));
+    ok('and it starts closed', !!group && !/\bopen\b/.test(group[1]));
+  }
+
   // ---- the setup page's tabs ----
   // Fourteen panels in one column were unfindable, so each panel now declares the tab
   // it belongs to. Three ways that can rot silently: a panel with no tab (invisible on
