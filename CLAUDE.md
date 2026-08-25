@@ -90,6 +90,16 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   (`yonderrc.osdHidden.v1`, keyed by `readingKey`).
 - **Telemetry config hot-applies** (`vehicle` POST `/api/telemetry` →
   `TelemetryService.reconfigure`). Battery % needs a capacity set there.
+- **The setup page is tabbed** (v1.63.0): every `<section class="panel">` in
+  `vehicle/src/setup/setup.html` declares a `data-tab` (overview / network / remote /
+  sensors / camera / gps) and `showTab` shows one group at a time, keyed off the URL hash.
+  A new panel without a `data-tab` is invisible on every tab — the test suite checks the
+  panels, the buttons and the switcher's own list against each other. **Hidden panels stay
+  in the DOM** (`hidden`, not removed): handlers read fields across groups. Long
+  explanations belong in `<details class="hint">` with the one-line takeaway as the
+  `<summary>`, not in an always-open `<p class="msg">`. `body` must keep `overflow-x: clip`
+  rather than `hidden` — `hidden` makes it a scroll container and the sticky tab bar has
+  nothing to stick to.
 - go2rtc config path is **absolute**, never a bare relative path (that caused an ENOENT
   crash historically). On a Pi it is **`/var/lib/yonderrc/go2rtc.yaml`** since v1.45.0
   (`YRC_GO2RTC_CONFIG` in `yonderrc-vehicle.service`, same path in `go2rtc.service`);
