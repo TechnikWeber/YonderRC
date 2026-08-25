@@ -12,6 +12,7 @@ import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { CSI_MODULES, moduleById, reconcileCameras } from '../system/bootConfig.js';
 import { secretOk, readSecretFromReq, originAllowed, originOf, secFetchSiteOf } from './auth.js';
+import { explainHealth } from '../system/health.js';
 import { groundAppAvailable } from './staticServer.js';
 import {
   HOTSPOT_DEFAULTS,
@@ -134,6 +135,17 @@ export async function handleSetup(
     // groundApp tells the setup page whether linking to "/" leads anywhere: the
     // control app is only there if it was built on this vehicle.
     json(res, 200, { ...(await ctx.system.status()), groundApp: groundAppAvailable(), version: ctx.config.version });
+    return true;
+  }
+
+  /**
+   * Temperature, load, uptime, card space and the clock — on their own endpoint, and
+   * polled far more slowly than the status: none of it moves fast, and each reading
+   * costs a file or a process on a box that is also driving servos.
+   */
+  if (url === '/api/health' && method === 'GET') {
+    const health = await ctx.system.health();
+    json(res, 200, { health, message: explainHealth(health) });
     return true;
   }
 

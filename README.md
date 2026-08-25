@@ -260,6 +260,15 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   a sagging supply, because those want different things.
 - **Shut down the vehicle from the page.** Pulling power from a Pi mid-write is how an SD
   card stops being readable. Refused while armed.
+- **What the Pi says about itself**, on the overview: SoC **temperature**, **load**,
+  **uptime** and **free card space**. Each one explains a failure that otherwise reads as
+  a bug in this software — a hull in the sun clamps the clock and video and control get
+  worse together, a load spike is the honest cause of round-trip jitter, a full card
+  cannot take an update.
+- **The clock, where it actually matters**: a Pi has no battery-backed clock, so with no
+  network at boot it starts in the past and `git pull` fails with a **certificate error
+  that never mentions the time**. The update panel says so, and only when the clock is
+  wrong.
 - **Factory reset** for both the vehicle and the ground app.
 **Measured in the field** (2026-08-21, one afternoon, one carrier, one location — not a
 benchmark): a Pi 4 on a **Huawei E3372h-320** with its internal antenna, controlled from a

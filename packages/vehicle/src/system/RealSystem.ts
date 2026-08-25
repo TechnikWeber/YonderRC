@@ -49,6 +49,15 @@ import { parseModemId, parseModemInfo, parseSimId, lteStateLabel } from './lte.j
 import { parseWifiSignalDbm, dbmToQualityPct } from './signal.js';
 import { parseI2cAddresses, suggestI2c, probesFor, i2cTransferArgs, parseI2cTransfer } from './detect.js';
 import {
+  parseCpuTemp,
+  parseDf,
+  parseLoad,
+  parseTimedatectl,
+  parseTimesyncServer,
+  parseUptime,
+  type VehicleHealth,
+} from './health.js';
+import {
   enableUart,
   explainSerial,
   serialConsoleOn,
@@ -228,6 +237,35 @@ export class RealSystem implements SystemManager {
    * Ask the firmware about the 5 V rail. Not a Pi, or no vcgencmd? Then there is nothing
    * to report — an unknown state, not a healthy one.
    */
+  /**
+   * One pass over the cheap files plus two timedatectl calls. Read on the setup page's
+   * slow poll, never in the control path — a `cat` is cheap but not free, and this box
+   * is also driving servos.
+   */
+  async health(): Promise<VehicleHealth> {
+    const [temp, uptime, load, df, td, ts] = await Promise.all([
+      sh('cat /sys/class/thermal/thermal_zone0/temp'),
+      sh('cat /proc/uptime'),
+      sh('cat /proc/loadavg'),
+      sh('df -m /'),
+      sh('timedatectl show'),
+      sh('timedatectl timesync-status'),
+    ]);
+    const disk = parseDf(df.ok ? df.out : '');
+    const clock = parseTimedatectl(td.ok ? td.out : '');
+    return {
+      cpuTempC: temp.ok ? parseCpuTemp(temp.out) : null,
+      load1: load.ok ? parseLoad(load.out) : null,
+      uptimeS: uptime.ok ? parseUptime(uptime.out) : null,
+      diskFreeMb: disk.freeMb,
+      diskUsedPercent: disk.usedPercent,
+      clockSynced: clock.synced,
+      ntpEnabled: clock.ntpEnabled,
+      timeServer: ts.ok ? parseTimesyncServer(ts.out) : null,
+      nowIso: new Date().toISOString(),
+    };
+  }
+
   private async powerState(): Promise<PowerState> {
     const out = await sh('vcgencmd get_throttled');
     return powerState(out.ok ? parseThrottled(out.out) : null);

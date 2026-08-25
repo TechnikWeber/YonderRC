@@ -207,6 +207,7 @@
         <div class="eyebrow">System status</div>
         <div id="status"><div class="row"><span class="k">loading…</span></div></div>
         <div id="status-devices"></div>
+        <div id="status-health"></div>
       </section>
 
       <section class="panel" data-tab="overview">
@@ -226,6 +227,7 @@
 
       <section class="panel" data-tab="overview">
         <div class="eyebrow">Software update</div>
+        <div class="msg" id="upd-clock" style="display:none"></div>
         <div id="upd-status"><div class="msg">Press <b>Check for updates</b> — that only looks, it changes nothing.</div></div>
         <div class="btns">
           <button class="btn" onclick="run(this, () => checkUpdate())">Check for updates</button>
@@ -927,6 +929,63 @@
         });
         $('status-devices').innerHTML = html;
       }
+      /**
+       * What the Pi says about itself. Slow poll: none of it moves fast, and every
+       * reading costs a file or a process on a box that is also driving servos.
+       *
+       * The clock is deliberately NOT a row here. It matters for exactly one thing —
+       * `git pull` over HTTPS fails on a Pi that booted in 1970, with a certificate
+       * error that names neither the cause nor the fix — so it is reported next to the
+       * update button, and only when there is something wrong with it.
+       */
+      let healthNow = null;
+      function renderHealth(h, message) {
+        healthNow = h;
+        if (!h) { $('status-health').innerHTML = ''; return; }
+        const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
+        const temp = h.cpuTempC == null ? null
+          : row('temperature', `${h.cpuTempC} °C`, h.cpuTempC >= 75 ? 'bad' : h.cpuTempC >= 65 ? 'warn' : '');
+        const load = h.load1 == null ? null : row('load', h.load1.toFixed(2), h.load1 >= 3 ? 'warn' : '');
+        const up = h.uptimeS == null ? null : row('uptime', fmtUptime(h.uptimeS));
+        const disk = h.diskFreeMb == null ? null
+          : row('card free', `${h.diskFreeMb >= 1024 ? (h.diskFreeMb / 1024).toFixed(1) + ' GB' : h.diskFreeMb + ' MB'}${h.diskUsedPercent != null ? ` · ${h.diskUsedPercent}% used` : ''}`,
+              h.diskFreeMb < 500 ? 'bad' : '');
+        const rows = [temp, load, up, disk].filter(Boolean).join('');
+        $('status-health').innerHTML = rows
+          ? '<div class="sep"></div>' + rows + (message ? `<div class="msg" style="color:var(--idle)">${esc(message)}</div>` : '')
+          : '';
+        renderClock(h);
+      }
+      function fmtUptime(s) {
+        const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+        return d ? `${d} d ${h} h` : h ? `${h} h ${m} min` : `${m} min`;
+      }
+      /**
+       * Only speaks up when the clock is a problem. The comparison that means something
+       * is against the browser's own clock: "the vehicle thinks it is 1970" is instantly
+       * readable, where "NTPSynchronized=no" is not.
+       */
+      function renderClock(h) {
+        const el = $('upd-clock');
+        if (!h || !h.nowIso) { el.style.display = 'none'; return; }
+        const driftS = Math.round((Date.now() - new Date(h.nowIso).getTime()) / 1000);
+        const off = Math.abs(driftS) > 120;
+        if (h.clockSynced !== false && !off) { el.style.display = 'none'; return; }
+        el.style.display = '';
+        el.style.color = 'var(--idle)';
+        const when = new Date(h.nowIso).toLocaleString();
+        el.innerHTML = `⚠ The vehicle's clock says <b>${esc(when)}</b>` +
+          (off ? ` — ${Math.abs(driftS) > 172800 ? Math.round(Math.abs(driftS) / 86400) + ' days' : Math.round(Math.abs(driftS) / 60) + ' minutes'} ${driftS > 0 ? 'behind' : 'ahead of'} yours.` : '.') +
+          ' A Pi has no battery-backed clock, so it boots in the past until it reaches a network. ' +
+          '<b>An update will fail</b> with a certificate error that says nothing about the time — give it internet first, and this fixes itself.';
+      }
+      async function refreshHealth() {
+        try {
+          const r = await getJSON('/api/health');
+          renderHealth(r.health, r.message);
+        } catch {}
+      }
+
       /** Live values for the overview — only worth asking for when telemetry is on. */
       async function refreshTelLive() {
         if (!telCfgNow || telCfgNow.enabled === false || telCfgNow.source === 'off') { telLiveNow = null; return; }
@@ -2009,6 +2068,8 @@
       loadGps();
       refresh();
       setInterval(refresh, 3000);
+      refreshHealth();
+      setInterval(refreshHealth, 30000);
       // Poll GPS status while a source is active (fix/sats/home change over time).
       setInterval(async () => {
         if ($('gpsSource').value === 'off') return;

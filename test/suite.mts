@@ -1548,6 +1548,40 @@ async function main() {
       cp.indexOf('warn-note') > cp.lastIndexOf('</details>', cp.indexOf('warn-note')));
   }
 
+  // ---- what the Pi says about itself ----
+  // Ported from YonderGate, trimmed to what a vehicle can act on. Each reading exists
+  // because it explains a failure that otherwise looks like a bug in this software.
+  {
+    const H = await import('../packages/vehicle/src/system/health');
+    ok('millidegrees become degrees', H.parseCpuTemp('54321\n') === 54.3);
+    ok('a missing sensor is null, not zero', H.parseCpuTemp('') === null);
+    ok('uptime is the first field of /proc/uptime', H.parseUptime('123456.78 98765.43') === 123457);
+    ok('load is the 1-minute figure', H.parseLoad('0.42 0.31 0.28 1/123 4567') === 0.42);
+    const df = H.parseDf('Filesystem 1M-blocks Used Available Use% Mounted on\n/dev/root 30000 19000 9800 66% /');
+    ok('df gives free MB and percent', df.freeMb === 9800 && df.usedPercent === 66);
+    ok('df with no data line is null', H.parseDf('').freeMb === null);
+    const td = H.parseTimedatectl('NTP=yes\nNTPSynchronized=no\nTimezone=Europe/Berlin');
+    ok('the clock state is read as three values, not two', td.ntpEnabled === true && td.synced === false);
+    ok('an unreadable timedatectl says "unknown", not "fine"', H.parseTimedatectl('').synced === null);
+    ok('the time server is named', H.parseTimesyncServer('Server: 162.159.200.1 (time.cloudflare.com)') === '162.159.200.1');
+
+    // The explanation must lead with what to act on first, and stay silent when there
+    // is nothing to say — a warning that is always on is not a warning.
+    const ok0 = { ...H.HEALTH_UNKNOWN, cpuTempC: 48, load1: 0.2, uptimeS: 3600, diskFreeMb: 8000, clockSynced: true };
+    ok('a healthy box says nothing', H.explainHealth(ok0) === null);
+    ok('heat is named first, with what it does', /clamps its clock/.test(H.explainHealth({ ...ok0, cpuTempC: 81 }) ?? ''));
+    ok('a full card is named before the clock',
+      /MB left/.test(H.explainHealth({ ...ok0, diskFreeMb: 100, clockSynced: false }) ?? ''));
+    // The clock's whole point on a vehicle: it is what breaks the update, with an error
+    // that points nowhere near the time.
+    ok('the clock explains the certificate error', /certificate error/.test(H.explainHealth({ ...ok0, clockSynced: false }) ?? ''));
+    ok('load is mentioned last, as an explanation for jitter',
+      /jitter/.test(H.explainHealth({ ...ok0, load1: 4 }) ?? ''));
+    ok('uptime reads like a person wrote it',
+      H.formatUptime(400000) === '4 d 15 h' && H.formatUptime(3900) === '1 h 5 min' && H.formatUptime(120) === '2 min');
+    ok('and an unknown uptime is a dash', H.formatUptime(null) === '—');
+  }
+
   // ---- the setup page's tabs ----
   // Fourteen panels in one column were unfindable, so each panel now declares the tab
   // it belongs to. Three ways that can rot silently: a panel with no tab (invisible on

@@ -3,6 +3,50 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.66.0
+**English**
+- **The vehicle reports its own condition**, ported from YonderGate and trimmed to what a
+  vehicle can act on: SoC **temperature**, **load**, **uptime** and **free card space**,
+  on the overview under the system status. Each is there because it explains a failure
+  that otherwise reads as a bug in this software — the Pi encodes H.264 in a sealed hull,
+  and from 80 °C the firmware clamps its clock, so video and control get worse *together*;
+  the control loop shares the CPU, so a load spike is the honest cause of round-trip
+  jitter; a full card cannot take an update.
+- **The clock is reported where it actually breaks something.** A Pi has no
+  battery-backed clock: with no network at boot it starts in the past, and `git pull` then
+  fails with a **certificate error that never mentions the time**. That line now sits
+  above *Check for updates*, with the vehicle's own clock compared against yours — and it
+  only appears when there is something wrong with it. No DS3231 and no NTP-server editor:
+  the vehicle only needs the time when it already has internet, and then NTP just works.
+- Readings live on `/api/health` at a 30 s poll, not on the 3 s status — each one costs a
+  file or a process on a box that is also driving servos.
+- **Fixed while porting: an unreadable sensor read as a healthy one.** `Number('')` is 0,
+  not NaN, so an empty temperature file came back as 0 °C, an empty loadavg as an idle
+  0.00, and an empty uptime as a box that booted this instant. Fixed in both projects.
+
+**Deutsch**
+- **Das Fahrzeug meldet seinen eigenen Zustand**, portiert aus YonderGate und auf das
+  gekürzt, womit ein Fahrzeug etwas anfangen kann: SoC-**Temperatur**, **Last**,
+  **Laufzeit** und **freier Platz auf der Karte**, in der Übersicht unter dem
+  Systemstatus. Jeder Wert steht dort, weil er einen Fehler erklärt, der sonst wie ein Bug
+  in dieser Software aussieht — der Pi encodiert H.264 in einem geschlossenen Rumpf, und
+  ab 80 °C drosselt die Firmware den Takt, Video und Steuerung werden also *gemeinsam*
+  schlechter; die Steuerschleife teilt sich die CPU, eine Lastspitze ist damit die
+  ehrliche Ursache für Zittern in der Umlaufzeit; eine volle Karte nimmt kein Update an.
+- **Die Uhr steht dort, wo sie tatsächlich etwas kaputt macht.** Ein Pi hat keine
+  gepufferte Uhr: ohne Netz beim Start läuft er in der Vergangenheit los, und `git pull`
+  scheitert dann an einem **Zertifikatsfehler, der die Zeit mit keinem Wort erwähnt**.
+  Diese Zeile steht jetzt über *Check for updates*, mit der Uhr des Fahrzeugs im Vergleich
+  zu deiner — und sie erscheint nur, wenn etwas mit ihr nicht stimmt. Kein DS3231 und kein
+  NTP-Server-Editor: Zeit braucht das Fahrzeug nur, wenn es ohnehin Internet hat, und dann
+  funktioniert NTP von selbst.
+- Die Werte liegen auf `/api/health` mit 30-s-Abfrage, nicht im 3-s-Status — jede Messung
+  kostet eine Datei oder einen Prozess auf einer Box, die nebenbei Servos treibt.
+- **Beim Portieren behoben: ein unlesbarer Sensor las sich wie ein gesunder.**
+  `Number('')` ist 0, nicht NaN — eine leere Temperaturdatei kam also als 0 °C zurück, ein
+  leerer loadavg als entspannte 0,00 und eine leere Laufzeit als gerade gebootete Box. In
+  beiden Projekten behoben.
+
 ## v1.65.3
 **English**
 - **Fixed: current and mAh were near-invisible in the OSD under the light theme.** The

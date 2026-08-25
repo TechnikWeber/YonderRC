@@ -279,6 +279,15 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
 - **Das Fahrzeug von der Seite aus herunterfahren.** Einem Pi mitten im Schreibvorgang den
   Strom zu nehmen ist der Weg, auf dem eine SD-Karte unlesbar wird. Abgelehnt, solange
   scharfgeschaltet.
+- **Was der Pi über sich selbst sagt**, in der Übersicht: SoC-**Temperatur**, **Last**,
+  **Laufzeit** und **freier Platz auf der Karte**. Jeder Wert erklärt einen Fehler, der
+  sonst wie ein Bug in dieser Software aussieht — ein Rumpf in der Sonne lässt den Takt
+  drosseln, und Video und Steuerung werden gemeinsam schlechter; eine Lastspitze ist die
+  ehrliche Ursache für Zittern in der Umlaufzeit; eine volle Karte nimmt kein Update an.
+- **Die Uhr, dort wo sie zählt**: ein Pi hat keine gepufferte Uhr, startet ohne Netz also
+  in der Vergangenheit — und `git pull` scheitert dann an einem **Zertifikatsfehler, der
+  die Zeit mit keinem Wort erwähnt**. Das Update-Panel sagt es, und nur dann, wenn die Uhr
+  falsch ist.
 - **Werksreset** für Fahrzeug und Boden-App.
 **Im Feld gemessen** (21.08.2026, ein Nachmittag, ein Netz, ein Ort — kein Benchmark):
 Pi 4 mit **Huawei E3372h-320** und dessen interner Antenne, gesteuert von einem

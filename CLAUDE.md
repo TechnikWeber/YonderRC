@@ -106,6 +106,15 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   mouse wheel cannot scroll a horizontal box and the last tab became unreachable. `body` must keep `overflow-x: clip`
   rather than `hidden` — `hidden` makes it a scroll container and the sticky tab bar has
   nothing to stick to.
+- **`system/health.ts`** (v1.66.0, ported from YonderGate) carries temperature, load,
+  uptime, card space and the clock, on `/api/health` — polled at 30 s, deliberately NOT
+  part of the 3 s status: every reading costs a file or a process on a box that is also
+  driving servos. `Number('')` is 0, so every parser checks for an empty read first — an
+  unreadable sensor must be *unknown*, not a healthy 0 °C. The **clock** is reported next
+  to the update button rather than as a status row: it matters for exactly one thing, a
+  `git pull` that fails with a certificate error naming neither the cause nor the fix.
+  There is deliberately **no DS3231 and no NTP-server editor** here — the vehicle only
+  needs the time when it already has internet, and then NTP just works.
 - **The theme belongs to the vehicle** (v1.64.0): `config.theme` ('light' default since v1.65.0 | 'dark'),
   edited in Setup › Design, sent to the ground as its own `theme` WS message right after
   the welcome and re-broadcast to every connected client when it changes. The ground has

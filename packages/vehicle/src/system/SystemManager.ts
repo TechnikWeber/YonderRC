@@ -1,6 +1,7 @@
 import type { LinkSignal } from '@yonderrc/protocol';
 import type { PowerState } from './power.js';
 import type { I2cSuggestion } from './detect.js';
+import type { VehicleHealth } from './health.js';
 import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
 import type { HilinkStatus } from './hilink.js';
@@ -313,6 +314,12 @@ export interface SystemManager {
   linkSignal(): Promise<LinkSignal>;
   /** Probe attached hardware (I²C devices, modem, cameras) to suggest a config. */
   detectHardware(): Promise<DetectResult>;
+  /**
+   * Temperature, load, uptime, card space and the clock. Read on its own cadence
+   * rather than with the 3 s status: none of it changes fast, and each reading costs
+   * a file or a process.
+   */
+  health(): Promise<VehicleHealth>;
   /** Nearby WiFi networks (triggers a rescan). */
   wifiScan(): Promise<WifiNetwork[]>;
   /**

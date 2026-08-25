@@ -1,3 +1,4 @@
+import type { VehicleHealth } from './health.js';
 import { hostname } from 'node:os';
 import type {
   ActionResult,
@@ -271,6 +272,21 @@ export class SimSystem implements SystemManager {
       return { kind: 'lte' as const, quality: this.lte.signal, label: `LTE ${this.lte.signal}%` };
     }
     return { kind: 'wifi' as const, quality: 82, label: 'WiFi −52 dBm' };
+  }
+
+  /** A warm, idle, freshly-booted Pi with a clock that has been set. */
+  async health(): Promise<VehicleHealth> {
+    return {
+      cpuTempC: 52.4,
+      load1: 0.31,
+      uptimeS: 4 * 3600 + 12 * 60,
+      diskFreeMb: 9800,
+      diskUsedPercent: 38,
+      clockSynced: true,
+      ntpEnabled: true,
+      timeServer: '162.159.200.1 (time.cloudflare.com)',
+      nowIso: new Date().toISOString(),
+    };
   }
 
   async detectHardware() {
