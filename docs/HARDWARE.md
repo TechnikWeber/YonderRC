@@ -479,6 +479,14 @@ sudo bash provisioning/install.sh
 From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`**
 (or `http://<pi-ip>:8080/setup`).
 
+The page is split into six tabs — **Overview · Network · Remote access · Sensors &
+outputs · Camera · GPS**. *Overview* is the one screen that answers "is everything
+there?": system status, the uplink, and one line each for sensors, GPS and cameras,
+each of which jumps to its tab. Every tab is a URL (`…/setup#gps`), so a step below can
+be linked. The panel names used throughout this guide (*Vehicle configuration*,
+*Telemetry*, *WiFi* …) are unchanged; they now live under the tab that owns them.
+Long explanations are collapsed behind a one-line summary — click it to read the rest.
+
 0. **Detect hardware** (in *Vehicle configuration*) scans the I²C bus, `mmcli` and the
    camera devices and suggests a driver/sensors — a good starting point before you fill
    anything in by hand. Chips that carry an ID register are **read out**, not guessed:

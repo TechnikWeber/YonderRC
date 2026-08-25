@@ -3,6 +3,40 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.63.0
+**English**
+- **The setup page is six tabs instead of one long column.** Fourteen panels stacked on
+  top of each other meant everything was on screen at once and nothing was findable:
+  **Overview · Network · Remote access · Sensors & outputs · Camera · GPS**. Each tab is
+  a URL (`…/setup#gps`), so a step in the hardware guide can be linked to the panel it
+  talks about, and the hash survives the reload after a service restart.
+- **Overview answers "is everything there?" on one screen.** Next to the system status it
+  now carries one line each for **sensors** (source, channel counts, the live reading and
+  consumed mAh), **GPS** (source, fix, and the sentence count that proves a receiver
+  indoors, where there will never be a fix) and **cameras** (how many, and what each one
+  is). Every one of those lines jumps to its own tab. The firmware's **5 V rail** verdict
+  appears there too — silently while it is healthy.
+- **The long explanations are collapsed.** Twenty paragraphs that used to sit open under
+  their fields are now one-line summaries you can unfold: the takeaway stays visible, the
+  detail is a click away. Nothing was deleted.
+
+**Deutsch**
+- **Die Setup-Seite hat sechs Reiter statt einer langen Spalte.** Vierzehn Panels
+  untereinander hießen: alles gleichzeitig auf dem Schirm und nichts auffindbar.
+  **Overview · Network · Remote access · Sensors & outputs · Camera · GPS**. Jeder Reiter
+  ist eine URL (`…/setup#gps`) — ein Schritt in der Hardware-Anleitung lässt sich also auf
+  das Panel verlinken, um das es geht, und der Reiter überlebt den Reload nach einem
+  Neustart des Dienstes.
+- **Overview beantwortet „ist alles da?" auf einem Schirm.** Neben dem Systemstatus steht
+  dort jetzt je eine Zeile für **Sensorik** (Quelle, Kanalzahl, aktueller Messwert,
+  verbrauchte mAh), **GPS** (Quelle, Fix und die Sentence-Zahl, die einen Empfänger auch
+  drinnen belegt, wo es nie einen Fix geben wird) und **Kameras** (wie viele, und welche).
+  Jede dieser Zeilen springt in ihren Reiter. Das Urteil der Firmware über die **5-V-
+  Schiene** steht ebenfalls dort — stillschweigend, solange sie gesund ist.
+- **Die langen Erklärungen sind eingeklappt.** Zwanzig Absätze, die bisher offen unter
+  ihren Feldern standen, sind jetzt einzeilige Zusammenfassungen zum Aufklappen: die
+  Kernaussage bleibt sichtbar, das Detail ist einen Klick entfernt. Gelöscht wurde nichts.
+
 ## v1.62.2
 **English**
 - **The demo boat goes single-stick as well** (mode 2): rudder and throttle under one

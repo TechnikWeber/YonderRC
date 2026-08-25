@@ -1475,6 +1475,26 @@ async function main() {
     ok('the same sections in both hardware guides', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
   }
 
+  // ---- the setup page's tabs ----
+  // Fourteen panels in one column were unfindable, so each panel now declares the tab
+  // it belongs to. Three ways that can rot silently: a panel with no tab (invisible on
+  // every tab), a tab name only the panel knows (a button that shows nothing), and a
+  // button the switcher's own list doesn't contain (a dead tab).
+  {
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    const panels = [...html.matchAll(/<section class="panel"([^>]*)>/g)].map((m) => m[1]);
+    const tabsOf = panels.map((a) => /data-tab="([a-z]+)"/.exec(a)?.[1] ?? null);
+    const buttons = [...html.matchAll(/<button class="tab"[^>]*data-for="([a-z]+)"/g)].map((m) => m[1]);
+    const listed = /const TABS = \[([^\]]*)\]/.exec(html)?.[1] ?? '';
+    const inList = [...listed.matchAll(/'([a-z]+)'/g)].map((m) => m[1]);
+    ok('every setup panel names a tab', tabsOf.length > 0 && tabsOf.every((t) => t !== null), `${tabsOf.filter((t) => !t).length} without`);
+    ok('every panel tab has a button', tabsOf.every((t) => t !== null && buttons.includes(t)));
+    ok('every tab button has a panel', buttons.length > 0 && buttons.every((b) => tabsOf.includes(b)));
+    ok('the switcher knows exactly those tabs', inList.join(',') === buttons.join(','), `${inList} vs ${buttons}`);
+    // The overview is what a fresh page shows; losing it would land nobody anywhere.
+    ok('the overview carries the system status', /data-tab="overview"[\s\S]{0,200}id="status"/.test(html));
+  }
+
   // ---- one version, three places ----
   // The banner, the setup header and the update check all show it; a hardcoded copy
   // in the service was one more thing to forget on release day.

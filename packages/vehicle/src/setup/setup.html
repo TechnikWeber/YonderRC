@@ -65,7 +65,13 @@
        * and took the whole page with it. min-width:0 lets them shrink, and the wrap
        * rules break the string instead of the layout.
        */
-      html, body { max-width: 100%; overflow-x: hidden; }
+      html { max-width: 100%; overflow-x: hidden; }
+      /* clip, not hidden: overflow-x:hidden makes body a scroll container of its own, and
+         the sticky tab bar inside it then has nothing to stick to — the viewport is what
+         scrolls, so the bar scrolled away with the page. clip contains the same overflow
+         without creating that container; the rule on html still catches a browser too old
+         for clip. */
+      body { max-width: 100%; overflow-x: clip; }
       .row .k, .row .v { min-width: 0; overflow-wrap: anywhere; }
       .msg, .log, .mono, .item { overflow-wrap: anywhere; }
       @media (max-width: 520px) {
@@ -89,6 +95,44 @@
       /* WiFi scan results: one full-width row per network, signal right-aligned. */
       .wifi-row { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; margin-bottom: 6px; font-weight: 500; }
       .wifi-sig { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+      /*
+       * Tabs. The page had grown to fourteen panels stacked in one column — everything
+       * was on screen at once and nothing was findable. The panels themselves are
+       * untouched; each carries a data-tab and only one group is displayed at a time.
+       * Hidden panels stay in the DOM: half the JS reads fields across groups (the
+       * camera snapshot needs the video base URL, saving reads inputs from its own
+       * panel), so removing them would break those reads.
+       */
+      .tabs {
+        display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+        position: sticky; top: 0; z-index: 5; padding: 8px 0;
+        background: var(--bg); margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab {
+        appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+        font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+        padding: 8px 14px; border-radius: 999px; cursor: pointer;
+      }
+      .tab[aria-selected="true"] { border-color: var(--accent); color: var(--accent); background: var(--panel-2); }
+      .panel[hidden] { display: none; }
+      /*
+       * Collapsible explanation. Every one of these was a paragraph that sat open under
+       * its fields; together they were most of the page's height. The summary carries
+       * the one line worth reading at a glance, the body the rest.
+       */
+      .hint { margin-top: 8px; }
+      .hint > summary {
+        cursor: pointer; list-style: none; font-size: 12.5px; color: var(--muted);
+        display: flex; gap: 6px; align-items: baseline; padding: 2px 0;
+      }
+      .hint > summary::-webkit-details-marker { display: none; }
+      .hint > summary::before { content: '›'; color: var(--accent); font-weight: 700; transition: transform .12s; display: inline-block; }
+      .hint[open] > summary::before { transform: rotate(90deg); }
+      .hint > summary:hover { color: var(--text); }
+      .hint p { font-size: 13px; color: var(--muted); margin: 6px 0 0 14px; }
+      /* Status rows that lead somewhere: the overview names a subsystem, the tab has it. */
+      .jump { color: var(--accent); cursor: pointer; }
     </style>
   </head>
   <body>
@@ -100,12 +144,77 @@
         <a class="btn tiny" id="ground-link" href="/" style="display:none">Control ↗</a>
       </div>
 
-      <section class="panel">
+      <nav class="tabs" role="tablist">
+        <button class="tab" role="tab" data-for="overview" onclick="showTab('overview')">Overview</button>
+        <button class="tab" role="tab" data-for="network" onclick="showTab('network')">Network</button>
+        <button class="tab" role="tab" data-for="remote" onclick="showTab('remote')">Remote access</button>
+        <button class="tab" role="tab" data-for="sensors" onclick="showTab('sensors')">Sensors &amp; outputs</button>
+        <button class="tab" role="tab" data-for="camera" onclick="showTab('camera')">Camera</button>
+        <button class="tab" role="tab" data-for="gps" onclick="showTab('gps')">GPS</button>
+      </nav>
+
+      <section class="panel" data-tab="overview">
         <div class="eyebrow">System status</div>
         <div id="status"><div class="row"><span class="k">loading…</span></div></div>
+        <div id="status-devices"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-tab="overview">
+        <div class="eyebrow">Hardware test — WHEELS UP / PROPS OFF</div>
+        <div class="grid2">
+          <label>Channel to sweep<input id="testCh" type="number" placeholder="1" /></label>
+          <div style="display:flex;align-items:flex-end"><button class="btn" onclick="run(this, () => sweepChannel())">Sweep (min→max→center)</button></div>
+        </div>
+        <div class="btns">
+          <button class="btn" onclick="run(this, () => readSensors())">Read sensors now</button>
+          <button class="btn" onclick="run(this, () => snapCameras())">Snapshot cameras</button>
+        </div>
+        <div class="msg" id="test-msg"></div>
+        <div id="test-sensors"></div>
+        <div id="test-cams" class="grid2"></div>
+      </section>
+
+      <section class="panel" data-tab="overview">
+        <div class="eyebrow">Software update</div>
+        <div id="upd-status"><div class="msg">Press <b>Check for updates</b> — that only looks, it changes nothing.</div></div>
+        <div class="btns">
+          <button class="btn" onclick="run(this, () => checkUpdate())">Check for updates</button>
+          <button class="btn primary" id="upd-apply" style="display:none" onclick="run(this, () => applyUpdate())">Update &amp; restart</button>
+        </div>
+        <div class="eyebrow2" style="margin-top:12px">Update source</div>
+        <div class="grid2">
+          <label>Remote or URL<input id="updSource" placeholder="origin" /></label>
+          <label>Branch<input id="updBranch" placeholder="main" /></label>
+        </div>
+        <div class="btns"><button class="btn" onclick="run(this, () => saveUpdateSource())">Save source</button></div>
+        <details class="hint">
+          <summary>Point it at a fork or a branch to test your own build</summary>
+          <p>Defaults to this vehicle's own <span class="mono">origin</span> / <span class="mono">main</span>. Point it at a fork or a branch by entering a git remote name or a full URL (e.g. <span class="mono">https://github.com/you/YonderRC.git</span>) — useful for testing your own build on the vehicle.</p>
+        </details>
+        <details class="hint">
+          <summary>What “Update &amp; restart” does</summary>
+          <p>Does what an SSH session would: <span class="mono">git pull --ff-only</span>, installs changed dependencies, rebuilds the control app when it changed, then restarts the vehicle service — so you can update from a field with nothing but this page. The vehicle needs <b>internet</b> for it. If a step fails, it stops there and keeps running the version you have.</p>
+        </details>
+        <div class="msg" id="upd-msg"></div>
+        <div class="log" id="upd-log" style="display:none"></div>
+      </section>
+
+      <section class="panel" data-tab="overview">
+        <div class="eyebrow">System</div>
+        <div class="btns">
+          <button class="btn bad" onclick="run(this, () => reboot())">Reboot vehicle</button>
+          <button class="btn bad" onclick="run(this, () => shutdown())">Shut down vehicle</button>
+          <button class="btn bad" onclick="run(this, () => factoryReset())">Factory reset</button>
+        </div>
+        <details class="hint">
+          <summary>Shut down parks the SD card — only a power cycle brings it back</summary>
+          <p>It is the safe way to end a session, instead of pulling the plug mid-write. Do it when you can reach the vehicle. Refused while armed.</p>
+        </details>
+        <p class="msg">Factory reset clears all saved vehicle settings (incl. the API secret) — restart to apply defaults.</p>
+        <div class="msg" id="sys-msg"></div>
+      </section>
+
+      <section class="panel" data-tab="network">
         <div class="eyebrow">LTE</div>
         <div class="msg" id="lte-hilink-note" style="display:none;color:var(--idle)"></div>
         <div class="btns" id="lte-toggle" style="display:none;margin-bottom:10px">
@@ -132,7 +241,10 @@
           <button class="btn primary" onclick="run(this, () => lteConnect())">Connect</button>
           <button class="btn" onclick="run(this, () => post('/api/lte/disconnect'))">Disconnect</button>
         </div>
-        <p class="msg">Most data SIMs need only the APN. Add a PIN if your SIM is locked, and username/password only if your carrier requires APN auth. PIN/password are stored on the vehicle and never shown again.</p>
+        <details class="hint">
+          <summary>Most data SIMs need only the APN</summary>
+          <p>Add a PIN if your SIM is locked, and username/password only if your carrier requires APN auth. PIN and password are stored on the vehicle and never shown again.</p>
+        </details>
         <div class="msg" id="lte-msg"></div>
 
         <div class="eyebrow2" style="margin-top:12px">SIM PIN management</div>
@@ -143,7 +255,10 @@
         <div class="btns">
           <button class="btn" onclick="run(this, () => changePin())">Change / remove PIN</button>
         </div>
-        <p class="msg">Changes the PIN on the SIM itself. Leave "New PIN" empty to <b>remove</b> the PIN lock (no PIN). This is separate from the stored PIN above (used only to auto-unlock at connect).</p>
+        <details class="hint">
+          <summary>This changes the PIN on the SIM itself</summary>
+          <p>Leave "New PIN" empty to <b>remove</b> the PIN lock. Separate from the stored PIN above, which is only used to auto-unlock at connect.</p>
+        </details>
         <div class="msg" id="pin-msg"></div>
 
         <div class="btns" style="margin-top:8px"><button class="btn" onclick="run(this, () => lteDiag())">Diagnostics (detect modem)</button></div>
@@ -151,9 +266,12 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-tab="network">
         <div class="eyebrow">LTE stick (HiLink)</div>
-        <p class="msg">Huawei sticks like the <b>E3372h-320</b> are their own little router: they dial by themselves and never appear in ModemManager, so the LTE panel above stays empty for them. This reads the stick's own API instead. The interface is found through the <b>routing table</b>, so a LAN on another <span class="mono">eth</span> can't be mistaken for it.</p>
+        <details class="hint">
+          <summary>Why a HiLink stick needs its own panel</summary>
+          <p>Huawei sticks like the <b>E3372h-320</b> are their own little router: they dial by themselves and never appear in ModemManager, so the LTE panel above stays empty for them. This reads the stick's own API instead. The interface is found through the <b>routing table</b>, so a LAN on another <span class="mono">eth</span> can't be mistaken for it.</p>
+        </details>
         <div id="hilink-status"><div class="msg">Reading…</div></div>
         <div class="grid2">
           <label>Stick address<input id="hilinkHost" placeholder="192.168.8.1" /></label>
@@ -164,11 +282,14 @@
           <button class="btn" onclick="run(this, () => loadHilink())">Refresh</button>
           <a class="btn" id="hilink-open" href="#" target="_blank" rel="noopener" style="display:none">Open the stick's UI ↗</a>
         </div>
-        <p class="msg">The stick's own network (192.168.8.0/24) is reachable only from the Pi. With a port set, the vehicle passes the stick's configuration page through, so you can open it from the hotspot, the LAN or the VPN instead of putting a keyboard on the vehicle — <b>APN, SIM PIN and network mode live in the stick</b>. If an API secret is set, open it once as <span class="mono">…:PORT/?secret=YOUR_SECRET</span>; the vehicle then remembers it in a cookie. Leave the port empty to keep the stick's admin page off the network.</p>
+        <details class="hint">
+          <summary>What the port does — the stick's own page, reachable from here</summary>
+          <p>The stick's own network (192.168.8.0/24) is reachable only from the Pi. With a port set, the vehicle passes the stick's configuration page through, so you can open it from the hotspot, the LAN or the VPN instead of putting a keyboard on the vehicle — <b>APN, SIM PIN and network mode live in the stick</b>. If an API secret is set, open it once as <span class="mono">…:PORT/?secret=YOUR_SECRET</span>; the vehicle then remembers it in a cookie. Leave the port empty to keep the stick's admin page off the network.</p>
+        </details>
         <div class="msg" id="hilink-msg"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-tab="network">
         <div class="eyebrow">WiFi</div>
         <div id="wifi-status" class="msg">…</div>
 
@@ -205,7 +326,10 @@
         <div class="btns">
           <button class="btn primary" onclick="run(this, () => connectWifi())">Connect</button>
         </div>
-        <p class="msg">The Pi has one radio: joining a network <b>closes the setup hotspot</b>, so this page will stop responding. Rejoin your own WiFi and open <span class="mono">http://yonderrc.local:8080/setup</span>. If the password is wrong, the vehicle brings the hotspot back up.</p>
+        <details class="hint">
+          <summary>Joining a network closes the setup hotspot</summary>
+          <p>The Pi has one radio, so this page will stop responding. Rejoin your own WiFi and open <span class="mono">http://yonderrc.local:8080/setup</span>. If the password is wrong, the vehicle brings the hotspot back up.</p>
+        </details>
         <div class="msg" id="wifi-msg"></div>
 
         <div class="eyebrow2" style="margin-top:12px">Setup hotspot</div>
@@ -225,11 +349,30 @@
           <button class="btn" onclick="run(this, () => saveHotspot({ start: true }))">Save &amp; start now</button>
           <button class="btn" onclick="run(this, () => saveHotspot({ stop: true }))">Stop hotspot</button>
         </div>
-        <p class="msg">The hotspot is <b>open by default</b> so the captive portal can put this page in front of you with nothing to type — set a password (min. 8 characters) once the vehicle leaves the bench, and an <b>API secret</b> above if the network isn't yours. Since v1.41.0 it runs in <b>always</b>: it comes up whenever the WiFi radio is free, next to Ethernet or LTE, so you can always reach the vehicle. It can never run while the Pi is <i>joined</i> to a WiFi network — one radio can't do both.</p>
+        <details class="hint">
+          <summary>Open by default, and it runs whenever the WiFi radio is free</summary>
+          <p>The hotspot is <b>open by default</b> so the captive portal can put this page in front of you with nothing to type — set a password (min. 8 characters) once the vehicle leaves the bench, and an <b>API secret</b> above if the network isn't yours. Since v1.41.0 it runs in <b>always</b>: it comes up whenever the WiFi radio is free, next to Ethernet or LTE, so you can always reach the vehicle. It can never run while the Pi is <i>joined</i> to a WiFi network — one radio can't do both.</p>
+        </details>
         <div class="msg" id="ap-msg"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-tab="network">
+        <div class="eyebrow">Security (optional)</div>
+        <details class="hint">
+          <summary>Off by default — first connect and setup need nothing</summary>
+          <p>When set, saving settings here and the control link both require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted.</p>
+        </details>
+        <label>API secret<input id="apiSecret" type="password" placeholder="leave empty = off" autocomplete="new-password" /></label>
+        <div class="btns">
+          <button class="btn" onclick="run(this, () => generateSecret())">Generate</button>
+          <button class="btn primary" onclick="run(this, () => applySecret())">Apply secret</button>
+          <button class="btn" onclick="run(this, () => clearSecret())">Disable</button>
+        </div>
+        <p class="msg" id="sec-gen"></p>
+        <div class="msg" id="sec-msg"></div>
+      </section>
+
+      <section class="panel" data-tab="remote">
         <div class="eyebrow">Remote access (reach the vehicle over LTE / behind CGNAT)</div>
         <label>Method
           <select id="remoteKind" onchange="renderRemote()">
@@ -277,7 +420,10 @@
               <label>Keepalive (s)<input id="wgKeepalive" type="number" min="0" max="65535" placeholder="25" /></label>
               <label>Listen port (optional)<input id="wgListenPort" type="number" min="1" max="65535" placeholder="let WireGuard pick" /></label>
             </div>
-            <p class="msg">Keepalive 25 is not optional dressing on a box like this: behind carrier NAT the tunnel works until the first idle minute and then quietly stops carrying anything inbound. Leave the secret fields blank to keep the ones already stored — they are never sent back to this page.</p>
+            <details class="hint">
+              <summary>Keepalive 25 is not optional behind carrier NAT</summary>
+              <p>Keepalive 25 is not optional dressing on a box like this: behind carrier NAT the tunnel works until the first idle minute and then quietly stops carrying anything inbound. Leave the secret fields blank to keep the ones already stored — they are never sent back to this page.</p>
+            </details>
             <p class="msg" id="wg-fields-warn" style="display:none"></p>
           </div>
         </div>
@@ -288,7 +434,7 @@
         <div class="msg" id="ts-msg"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-tab="sensors">
         <div class="eyebrow">Vehicle configuration</div>
         <label>Name<input id="vehicleName" /></label>
         <div class="grid2">
@@ -306,10 +452,16 @@
           <label>PCA9685 I²C address (hex)<input id="pcaAddr" placeholder="0x41 (recommended)" /></label>
           <label>PCA9685 I²C bus<input id="pcaBus" type="number" placeholder="1" /></label>
         </div>
-        <p class="msg" id="pca-msg" style="display:none">The PCA9685 ships on <b>0x40</b> — and so does every INA2xx current sensor, which can only live at the address you give it under Telemetry. With both on the bus, move the PCA: close solder bridge <b>A0</b> on its board (→ 0x41) and enter that here. It answers on <b>0x70</b> as well; that is its all-call address, not a second chip. Changing this needs a restart of the vehicle service.</p>
+        <details class="hint" id="pca-msg" style="display:none">
+          <summary>The PCA9685 and every INA2xx ship on 0x40 — move the PCA to 0x41</summary>
+          <p>The PCA9685 ships on <b>0x40</b> — and so does every INA2xx current sensor, which can only live at the address you give it under Telemetry. With both on the bus, move the PCA: close solder bridge <b>A0</b> on its board (→ 0x41) and enter that here. It answers on <b>0x70</b> as well; that is its all-call address, not a second chip. Changing this needs a restart of the vehicle service.</p>
+        </details>
         <div class="eyebrow2" style="margin-top:12px">Native driver modules</div>
         <div id="hwdeps"><div class="msg">Reading module status…</div></div>
-        <p class="msg">Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>. Note that installing one <b>builds all three</b>: they are optional dependencies of the same package and npm always reifies them together — harmless, nothing uses a module unless you select that driver.</p>
+        <details class="hint">
+          <summary>Installed from here — the vehicle needs internet, and it takes a minute</summary>
+          <p>Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>. Note that installing one <b>builds all three</b>: they are optional dependencies of the same package and npm always reifies them together — harmless, nothing uses a module unless you select that driver.</p>
+        </details>
         <div class="msg" id="hw-msg"></div>
         <div class="log" id="hw-out" style="display:none"></div>
 
@@ -327,50 +479,7 @@
         <div id="detect-out"></div>
       </section>
 
-      <section class="panel">
-        <div class="eyebrow">Security (optional)</div>
-        <p class="msg">Optional shared secret. When set, saving settings here and the control link both require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted. <b>Off by default</b>, so first-time connect and setup need nothing.</p>
-        <label>API secret<input id="apiSecret" type="password" placeholder="leave empty = off" autocomplete="new-password" /></label>
-        <div class="btns">
-          <button class="btn" onclick="run(this, () => generateSecret())">Generate</button>
-          <button class="btn primary" onclick="run(this, () => applySecret())">Apply secret</button>
-          <button class="btn" onclick="run(this, () => clearSecret())">Disable</button>
-        </div>
-        <p class="msg" id="sec-gen"></p>
-        <div class="msg" id="sec-msg"></div>
-      </section>
-
-      <section class="panel">
-        <div class="eyebrow">CSI camera module</div>
-        <p class="msg">
-          Which sensor sits on the Pi's camera port. Only the official Raspberry Pi cameras are
-          found automatically; an Arducam needs an explicit device-tree overlay, which lives in
-          the firmware config and is therefore only read at boot. Picking one here writes that
-          for you — no SSH — and tells you when a reboot is due.
-        </p>
-        <div class="grid2">
-          <label>Module<select id="csi-module" onchange="onCsiModuleChange()"></select></label>
-          <label id="csi-custom-wrap" style="display:none">Overlay name<input id="csi-overlay" placeholder="e.g. imx296" /></label>
-        </div>
-        <div class="msg" id="csi-note"></div>
-        <div class="btns">
-          <button class="btn primary" onclick="run(this, () => saveCsiModule())">Select module</button>
-          <button class="btn" onclick="run(this, () => rebootForModule())">Reboot now</button>
-        </div>
-        <div class="msg" id="csi-msg"></div>
-      </section>
-
-      <section class="panel">
-        <div class="eyebrow">Cameras</div>
-        <div id="cam-list"></div>
-        <div class="btns">
-          <button class="btn" onclick="run(this, () => addCamera())">+ Add camera</button>
-          <button class="btn primary" onclick="run(this, () => saveCameras())">Save &amp; apply</button>
-        </div>
-        <div class="msg" id="cam-msg"></div>
-      </section>
-
-      <section class="panel">
+      <section class="panel" data-tab="sensors">
         <div class="eyebrow">Telemetry (voltage / current / battery)</div>
         <div class="grid2">
           <label>Source
@@ -388,12 +497,21 @@
         <div class="eyebrow2">Current channels</div>
         <div id="curr-list"></div>
         <div class="btns"><button class="btn" onclick="run(this, () => addCurr())">+ Current</button></div>
-        <p class="msg"><b>Reference build</b> (docs/HARDWARE.md): an <b>INA228</b> breakout on <b class="mono">0x40</b> with an <b class="mono">R002</b> shunt — pick <i>ina228</i> and the shunt, max current and range are filled in with those values. The chip supplies voltage <i>and</i> current, so add one channel of each with the same kind and address. Read the shunt off your own board (<span class="mono">R001</span> = 0.001 Ω, <span class="mono">R002</span> = 0.002 Ω) and correct the figure against a reference meter — that field is the calibration factor.</p>
-        <p class="msg">The channel marked <b>primary</b> drives the battery %, the mAh/Wh counting, the low-battery warning and the blackbox columns. With one channel of a kind there is nothing to choose; with several, mark the one that measures the pack.</p>
+        <details class="hint">
+          <summary>Reference build: an INA228 on 0x40 with an R002 shunt</summary>
+          <p><b>Reference build</b> (docs/HARDWARE.md): an <b>INA228</b> breakout on <b class="mono">0x40</b> with an <b class="mono">R002</b> shunt — pick <i>ina228</i> and the shunt, max current and range are filled in with those values. The chip supplies voltage <i>and</i> current, so add one channel of each with the same kind and address. Read the shunt off your own board (<span class="mono">R001</span> = 0.001 Ω, <span class="mono">R002</span> = 0.002 Ω) and correct the figure against a reference meter — that field is the calibration factor.</p>
+        </details>
+        <details class="hint">
+          <summary>What “primary” decides</summary>
+          <p>The channel marked <b>primary</b> drives the battery %, the mAh/Wh counting, the low-battery warning and the blackbox columns. With one channel of a kind there is nothing to choose; with several, mark the one that measures the pack.</p>
+        </details>
         <div class="eyebrow2">Temperature channels</div>
         <div id="temp-list"></div>
         <div class="btns"><button class="btn" onclick="run(this, () => addTemp())">+ Temperature</button></div>
-        <p class="msg">Optional. Shown in the OSD below voltage/current; each value can be hidden per ground device under FPV › ⚙ › <i>Sensor values</i>. Give short labels (<code>T1</code>, <code>Motor</code>, <code>ESC</code>) — they are only shown once a kind has more than one channel.</p>
+        <details class="hint">
+          <summary>Optional — shown in the OSD below voltage and current</summary>
+          <p>Optional. Shown in the OSD below voltage/current; each value can be hidden per ground device under FPV › ⚙ › <i>Sensor values</i>. Give short labels (<code>T1</code>, <code>Motor</code>, <code>ESC</code>) — they are only shown once a kind has more than one channel.</p>
+        </details>
         <div class="grid2">
           <label>Battery capacity (mAh)<input id="capacity" type="number" placeholder="e.g. 2200" /></label>
           <label>Capacity display
@@ -411,7 +529,10 @@
             <option value="pi">pi — integrate the sampled current here</option>
           </select>
         </label>
-        <p class="msg">The <b>INA228</b> integrates charge and energy in hardware at ADC rate, so the mAh no longer depend on the polling rate or on samples this loop missed. Every other sensor (incl. INA237/238) is integrated on the Pi — "sensor" then falls back to "pi".</p>
+        <details class="hint">
+          <summary>Only the INA228 counts charge in hardware</summary>
+          <p>The <b>INA228</b> integrates charge and energy in hardware at ADC rate, so the mAh no longer depend on the polling rate or on samples this loop missed. Every other sensor (incl. INA237/238) is integrated on the Pi — "sensor" then falls back to "pi".</p>
+        </details>
         <div class="grid2">
           <label>Full pack voltage (V, optional)<input id="voltageFullV" type="number" step="0.1" placeholder="e.g. 16.8" /></label>
           <label>Empty pack voltage (V, optional)<input id="voltageEmptyV" type="number" step="0.1" placeholder="e.g. 13.2" /></label>
@@ -423,7 +544,10 @@
             <option value="voltage">voltage — from the full/empty curve</option>
           </select>
         </label>
-        <p class="msg">"voltage"/"clamp" need the full &amp; empty voltage above. mAh (consumed/remaining) is unaffected — this only changes what the % gauge uses.</p>
+        <details class="hint">
+          <summary>This only changes the % gauge, never the mAh</summary>
+          <p>"voltage"/"clamp" need the full &amp; empty voltage above. mAh (consumed/remaining) is unaffected — this only changes what the % gauge uses.</p>
+        </details>
         <div class="btns">
           <button class="btn primary" onclick="run(this, () => saveTelemetry())">Save</button>
           <button class="btn" onclick="run(this, () => resetCapacity())">Reset mAh</button>
@@ -431,7 +555,35 @@
         <div class="msg" id="tel-msg"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-tab="camera">
+        <div class="eyebrow">CSI camera module</div>
+        <details class="hint">
+          <summary>Only official Pi cameras are found automatically</summary>
+          <p>Which sensor sits on the Pi's camera port. Only the official Raspberry Pi cameras are found automatically; an Arducam needs an explicit device-tree overlay, which lives in the firmware config and is therefore only read at boot. Picking one here writes that for you — no SSH — and tells you when a reboot is due.</p>
+        </details>
+        <div class="grid2">
+          <label>Module<select id="csi-module" onchange="onCsiModuleChange()"></select></label>
+          <label id="csi-custom-wrap" style="display:none">Overlay name<input id="csi-overlay" placeholder="e.g. imx296" /></label>
+        </div>
+        <div class="msg" id="csi-note"></div>
+        <div class="btns">
+          <button class="btn primary" onclick="run(this, () => saveCsiModule())">Select module</button>
+          <button class="btn" onclick="run(this, () => rebootForModule())">Reboot now</button>
+        </div>
+        <div class="msg" id="csi-msg"></div>
+      </section>
+
+      <section class="panel" data-tab="camera">
+        <div class="eyebrow">Cameras</div>
+        <div id="cam-list"></div>
+        <div class="btns">
+          <button class="btn" onclick="run(this, () => addCamera())">+ Add camera</button>
+          <button class="btn primary" onclick="run(this, () => saveCameras())">Save &amp; apply</button>
+        </div>
+        <div class="msg" id="cam-msg"></div>
+      </section>
+
+      <section class="panel" data-tab="gps">
         <div class="eyebrow">GPS</div>
         <div class="grid2">
           <label>Source
@@ -463,59 +615,12 @@
           <button class="btn" onclick="run(this, () => gpsHome('set'))">Set home now</button>
           <button class="btn" onclick="run(this, () => gpsHome('clear'))">Clear home</button>
         </div>
-        <p class="msg">Reference receiver: <b>Adafruit Ultimate GPS v3</b> (MTK3339, NMEA at 9600 baud) — u-blox NEO-6/7/8/M9 and BN-880 behave the same. Wire <b>GPS TX → pin 10</b>, <b>GPS RX → pin 8</b>, GND to pin 6, and use <b>/dev/serial0</b>. USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
+        <details class="hint">
+          <summary>Reference receiver and wiring</summary>
+          <p>Reference receiver: <b>Adafruit Ultimate GPS v3</b> (MTK3339, NMEA at 9600 baud) — u-blox NEO-6/7/8/M9 and BN-880 behave the same. Wire <b>GPS TX → pin 10</b>, <b>GPS RX → pin 8</b>, GND to pin 6, and use <b>/dev/serial0</b>. USB dongles are easiest via <b>gpsd</b>. Manual home is saved; auto-home lasts for the session (takeoff point).</p>
+        </details>
         <div id="gps-status"></div>
         <div class="msg" id="gps-msg"></div>
-      </section>
-
-      <section class="panel">
-        <div class="eyebrow">Hardware test — WHEELS UP / PROPS OFF</div>
-        <div class="grid2">
-          <label>Channel to sweep<input id="testCh" type="number" placeholder="1" /></label>
-          <div style="display:flex;align-items:flex-end"><button class="btn" onclick="run(this, () => sweepChannel())">Sweep (min→max→center)</button></div>
-        </div>
-        <div class="btns">
-          <button class="btn" onclick="run(this, () => readSensors())">Read sensors now</button>
-          <button class="btn" onclick="run(this, () => snapCameras())">Snapshot cameras</button>
-        </div>
-        <div class="msg" id="test-msg"></div>
-        <div id="test-sensors"></div>
-        <div id="test-cams" class="grid2"></div>
-      </section>
-
-      <section class="panel">
-        <div class="eyebrow">Software update</div>
-        <div id="upd-status"><div class="msg">Press <b>Check for updates</b> — that only looks, it changes nothing.</div></div>
-        <div class="btns">
-          <button class="btn" onclick="run(this, () => checkUpdate())">Check for updates</button>
-          <button class="btn primary" id="upd-apply" style="display:none" onclick="run(this, () => applyUpdate())">Update &amp; restart</button>
-        </div>
-        <div class="eyebrow2" style="margin-top:12px">Update source</div>
-        <div class="grid2">
-          <label>Remote or URL<input id="updSource" placeholder="origin" /></label>
-          <label>Branch<input id="updBranch" placeholder="main" /></label>
-        </div>
-        <div class="btns"><button class="btn" onclick="run(this, () => saveUpdateSource())">Save source</button></div>
-        <p class="msg">Defaults to this vehicle's own <span class="mono">origin</span> / <span class="mono">main</span>. Point it at a fork or a branch by entering a git remote name or a full URL (e.g. <span class="mono">https://github.com/you/YonderRC.git</span>) — useful for testing your own build on the vehicle.</p>
-        <p class="msg">Does what an SSH session would: <span class="mono">git pull --ff-only</span>, installs changed dependencies, rebuilds the control app when it changed, then restarts the vehicle service — so you can update from a field with nothing but this page. The vehicle needs <b>internet</b> for it. If a step fails, it stops there and keeps running the version you have.</p>
-        <div class="msg" id="upd-msg"></div>
-        <div class="log" id="upd-log" style="display:none"></div>
-      </section>
-
-      <section class="panel">
-        <div class="eyebrow">System</div>
-        <div class="btns">
-          <button class="btn bad" onclick="run(this, () => reboot())">Reboot vehicle</button>
-          <button class="btn bad" onclick="run(this, () => shutdown())">Shut down vehicle</button>
-          <button class="btn bad" onclick="run(this, () => factoryReset())">Factory reset</button>
-        </div>
-        <p class="msg">
-          <b>Shut down</b> parks the SD card and powers the Pi off — the safe way to end a
-          session, instead of pulling the plug mid-write. Nothing brings it back but a
-          power cycle, so do it when you can reach the vehicle. Refused while armed.
-        </p>
-        <p class="msg">Factory reset clears all saved vehicle settings (incl. the API secret) — restart to apply defaults.</p>
-        <div class="msg" id="sys-msg"></div>
       </section>
 
       <div class="foot">YonderRC setup · configure headless, then connect from the ground app</div>
@@ -532,6 +637,25 @@
        * NetworkManager ends up in a half-built state. The button is disabled and
        * labelled for the whole call, and restored even if the handler throws.
        */
+
+      // ---- tabs ----
+      /**
+       * One group of panels at a time. The hash makes a tab linkable and survives the
+       * reload after a restart, so "open the GPS page" is a URL and not a click path.
+       * Unknown or empty hash → Overview.
+       */
+      const TABS = ['overview', 'network', 'remote', 'sensors', 'camera', 'gps'];
+      function showTab(id, opts) {
+        const tab = TABS.includes(id) ? id : 'overview';
+        document.querySelectorAll('.panel[data-tab]').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
+        document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.for === tab)));
+        // replaceState, not location.hash: setting the hash scrolls the page to whatever
+        // matches it, and there is nothing to scroll to here.
+        history.replaceState(null, '', '#' + tab);
+        if (!(opts && opts.keepScroll)) window.scrollTo(0, 0);
+      }
+      window.addEventListener('hashchange', () => showTab(location.hash.slice(1), { keepScroll: true }));
+
       async function run(btn, fn) {
         if (!btn || btn.disabled) return;
         const label = btn.textContent;
@@ -615,6 +739,9 @@
         $('status').innerHTML =
           row('hostname', s.hostname) +
           row('mode', s.kind === 'real' ? 'real (Pi)' : 'sim', s.kind === 'real' ? 'go' : 'warn') +
+          // The firmware's own verdict on the 5 V rail. Silent while it is healthy —
+          // a sagging supply is the one fault that looks like every other fault.
+          (s.power && s.power.message ? row('power', esc(s.power.message), s.power.underVoltageNow ? 'bad' : 'warn') : '') +
           sep +
           row('LTE', lte.present ? (lte.connected ? 'connected' : (lte.state || 'idle')) : 'no modem', lte.connected ? 'go' : (lte.pinRequired ? 'bad' : (lte.present ? 'warn' : 'bad'))) +
           (lte.pinRequired ? row('· ⚠', 'SIM PIN required — enter it below', 'bad') : '') +
@@ -639,7 +766,68 @@
         }
       }
 
-      async function refresh() { try { renderStatus(await getJSON('/api/system')); } catch {} }
+      async function refresh() {
+        try { renderStatus(await getJSON('/api/system')); } catch {}
+        await refreshTelLive();
+        renderDevices();
+      }
+
+      /**
+       * The overview's second half: one line per subsystem, so the first tab answers
+       * "is everything there?" without walking the other five. The data is the same
+       * the panels already fetch — cached here as it arrives rather than re-polled.
+       */
+      let telCfgNow = null;
+      let telLiveNow = null;
+      let gpsNow = null;
+      function devRow(k, v, cls, tab) {
+        const key = tab ? `<span class="k jump" onclick="showTab('${tab}')">${k} ›</span>` : `<span class="k">${k}</span>`;
+        return `<div class="row">${key}<span class="v ${cls || ''}">${v}</span></div>`;
+      }
+      function telSummary() {
+        if (!telCfgNow) return { text: '…', cls: '' };
+        if (telCfgNow.enabled === false || telCfgNow.source === 'off') return { text: 'off', cls: '' };
+        const n = (a) => (a || []).length;
+        const counts = `${n(telCfgNow.voltages)} U · ${n(telCfgNow.currents)} I · ${n(telCfgNow.temperatures)} T`;
+        if (telLiveNow && telLiveNow.ok === false) return { text: `${telCfgNow.source} · no data · ${counts}`, cls: 'bad' };
+        return { text: `${telCfgNow.source} · ${counts}`, cls: telCfgNow.source === 'real' ? 'go' : 'warn' };
+      }
+      function renderDevices() {
+        const sep = '<div class="sep"></div>';
+        const tel = telSummary();
+        let html = sep + devRow('Sensors', tel.text, tel.cls, 'sensors');
+        const live = telLiveNow;
+        if (live && live.ok !== false) {
+          const one = (x) => `${esc(x.label)} ${x.value}`;
+          const vals = [...(live.voltages || []).map((x) => one(x) + ' V'), ...(live.currents || []).map((x) => one(x) + ' A'),
+            ...(live.temperatures || []).map((x) => one(x) + ' °C')].join(' · ');
+          if (vals) html += devRow('· reading', vals);
+          if (live.mah != null) html += devRow('· consumed', `${Math.round(live.mah)} mAh${live.batteryPercent != null ? ' · ' + live.batteryPercent + '%' : ''}`);
+        }
+        html += sep;
+        const g = gpsNow && gpsNow.status;
+        const gc = (gpsNow && gpsNow.config) || {};
+        if (!g || g.source === 'off' || gc.source === 'off') {
+          html += devRow('GPS', 'off', '', 'gps');
+        } else {
+          html += devRow('GPS', `${gc.source || g.source} · ${g.hasFix ? `${String(g.fixType).toUpperCase()} · ${g.satellites ?? '?'} sats` : 'no fix'}`, g.hasFix ? 'go' : 'warn', 'gps');
+          // Indoors there will never be a fix, so the line that proves the wiring is
+          // the sentence count — the same reason the GPS panel shows it separately.
+          const link = gpsNow.link;
+          if (link) html += devRow('· receiver', link.bytes ? `${link.sentences} sentences${link.inView != null ? ' · ' + link.inView + ' in view' : ''}` : 'nothing received', link.bytes ? '' : 'bad');
+        }
+        html += sep;
+        html += devRow('Cameras', cams.length ? `${cams.length} configured` : 'none', cams.length ? 'go' : 'warn', 'camera');
+        cams.forEach((c) => {
+          html += devRow(`· ${esc(c.name)}`, `${esc(c.type)}${c.width ? ` · ${c.width}×${c.height}${c.fps ? '@' + c.fps : ''}` : ''}`);
+        });
+        $('status-devices').innerHTML = html;
+      }
+      /** Live values for the overview — only worth asking for when telemetry is on. */
+      async function refreshTelLive() {
+        if (!telCfgNow || telCfgNow.enabled === false || telCfgNow.source === 'off') { telLiveNow = null; return; }
+        try { telLiveNow = await getJSON('/api/telemetry/live'); } catch { telLiveNow = null; }
+      }
       function renderGroundLink(available) {
         $('ground-link').style.display = available ? 'inline-block' : 'none';
       }
@@ -696,6 +884,8 @@
           $('gpsAutoHome').checked = c.autoHome !== false;
           renderGps();
           renderGpsStatus(r.status, c.home, r.link);
+          gpsNow = r;
+          renderDevices();
           void loadSerial();
         } catch {}
       }
@@ -1390,6 +1580,7 @@
         const r = await getJSON('/api/cameras');
         cams = r.cameras || [];
         renderCams();
+        renderDevices();
         await loadCsiModule();
       }
       async function saveCameras() {
@@ -1570,6 +1761,8 @@
         currs = t.currents || [];
         temps = t.temperatures || [];
         renderVolts(); renderCurrs(); renderTemps();
+        telCfgNow = t;
+        renderDevices();
       }
       async function saveTelemetry() {
         const src = $('telSource').value;
@@ -1699,6 +1892,7 @@
         ).join('') : '<div class="msg">Add a camera first.</div>';
       }
 
+      showTab(location.hash.slice(1), { keepScroll: true });
       loadConfig();
       loadHwDeps();
       loadLte();
@@ -1711,7 +1905,15 @@
       refresh();
       setInterval(refresh, 3000);
       // Poll GPS status while a source is active (fix/sats/home change over time).
-      setInterval(async () => { if ($('gpsSource').value !== 'off') { try { const r = await getJSON('/api/gps'); renderGpsStatus(r.status, r.config && r.config.home, r.link); } catch {} } }, 2000);
+      setInterval(async () => {
+        if ($('gpsSource').value === 'off') return;
+        try {
+          const r = await getJSON('/api/gps');
+          renderGpsStatus(r.status, r.config && r.config.home, r.link);
+          gpsNow = r;
+          renderDevices();
+        } catch {}
+      }, 2000);
     </script>
   </body>
 </html>
