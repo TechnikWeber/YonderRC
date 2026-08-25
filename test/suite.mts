@@ -1531,9 +1531,17 @@ async function main() {
   {
     const cp = readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8');
     ok('the long notes are collapsed', (cp.match(/<Hint summary=/g) ?? []).length >= 8);
-    const group = /<details className="group"([^>]*)>/.exec(cp);
-    ok('Safety is a group', !!group && cp.includes('<summary className="eyebrow">Safety</summary>'));
-    ok('and it starts closed', !!group && !/\bopen\b/.test(group[1]));
+    const groups = [...cp.matchAll(/<details className="group"([^>]*)>/g)];
+    const heads = [...cp.matchAll(/<summary className="eyebrow">([A-Za-z- ]+)/g)].map((m) => m[1].trim());
+    ok('every settings group folds', groups.length === 8, `${groups.length} groups`);
+    ok('and every one of them starts closed', groups.every((g) => !/\bopen\b/.test(g[1])));
+    ok('the groups are the ones we expect', heads.join(',') ===
+      'Safety,Return-home budget,Stick feedback,Voice callouts,Auto-disarm on reconnect,Action bindings,Low-battery warning,Blackbox logging', heads.join(','));
+    // A warning you have to unfold is not a warning: the two forced-auto-disarm notes
+    // live outside the group they belong to, and must stay there.
+    ok('the forced-auto-disarm warnings stay outside the fold',
+      cp.indexOf('warn-note') > cp.indexOf('<summary className="eyebrow">Auto-disarm on reconnect') &&
+      cp.indexOf('warn-note') > cp.lastIndexOf('</details>', cp.indexOf('warn-note')));
   }
 
   // ---- the setup page's tabs ----

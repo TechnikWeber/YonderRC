@@ -179,186 +179,196 @@ export function ControlsPanel({
         </Hint>
       </details>
 
-      <div className="eyebrow" style={{ marginTop: 14 }}>Return-home budget</div>
-      <label className="opt big">
-        <input
-          type="checkbox"
-          checked={budget.enabled}
-          onChange={(e) => onBudget({ ...budget, enabled: e.target.checked })}
-        />
-        Work out how much further you can go and still get home
-      </label>
-      <label className="batt-th hold-row">
-        <span>Reserve</span>
-        <input
-          type="number"
-          step={10}
-          min={RESERVE_MIN_PCT}
-          max={RESERVE_MAX_PCT}
-          value={budget.reservePct}
-          disabled={!budget.enabled}
-          onChange={(e) => onBudget({ ...budget, reservePct: clampReservePct(Number(e.target.value)) })}
-        />
-        <span className="unit">%</span>
-      </label>
-      {/* The OSD stays silent when an input is missing — that has to be the
-          behaviour, since most vehicles have no current sensor and no GPS. So the
-          reason belongs here, where someone who switched it on comes looking. */}
-      {budget.enabled && budgetLive.missing && (
-        <div className="info-line idle">
-          Nothing to show yet: <b>{budgetLive.missing}</b>.
-        </div>
-      )}
-      {budget.enabled && !budgetLive.missing && budgetLive.mahPerKm != null && (
-        <div className="info-line go">
-          Measuring <b>{Math.round(budgetLive.mahPerKm)} mAh/km</b>
-          <span className="info-sub"> — {budgetLive.status === 'now' ? 'turn back now' : `${Math.round(budgetLive.furtherM ?? 0)} m of outbound range left`}.</span>
-        </div>
-      )}
-      <Hint summary={'A percentage doesn\'t answer "can I still get home?"'}>
-        30% is plenty at 50 m and not enough at 800 m. This measures what the vehicle actually
-        consumes per km and turns it into the number that <i>is</i> a decision: how much further you
-        may go. The <b>reserve</b> is a margin on the <b>trip home</b>, not a percentage of the pack:
-        at <b>50%</b> you turn around while the pack still holds <b>1.5×</b> what getting home costs,
-        so you arrive with half that cost to spare. It therefore scales with how far out you are —
-        small at 100 m, large at 2 km, which is where a misjudged consumption rate gets expensive. It
-        covers <b>estimation error</b> (headwind on the way back, a detour, a hill, a pack that sags
-        at the end); it is not a deep-discharge limit — that's the low-battery warning below. Shown
-        in the <b>full OSD</b> only, but the <b>turn-back warning</b> appears in the compact OSD too
-        and is spoken if callouts are on. <b>Needs a battery capacity set on the vehicle, a current
-        sensor and a GPS home point</b> — without any of them it simply shows nothing, which is the
-        normal case for a vehicle that is just a servo driver.
-      </Hint>
-
-      <div className="eyebrow" style={{ marginTop: 14 }}>Stick feedback</div>
-      <label className="opt big">
-        <input
-          type="checkbox"
-          checked={haptics.enabled}
-          onChange={(e) => onHaptics({ ...haptics, enabled: e.target.checked })}
-        />
-        Signal the centre and the rim of the on-screen stick
-      </label>
-      <label className="opt">
-        <input
-          type="checkbox"
-          checked={haptics.click}
-          disabled={!haptics.enabled}
-          onChange={(e) => onHaptics({ ...haptics, click: e.target.checked })}
-        />
-        Click (works everywhere, including iPhone)
-      </label>
-      <label className="opt">
-        <input
-          type="checkbox"
-          checked={haptics.vibrate}
-          disabled={!haptics.enabled || !vibrationAvailable()}
-          onChange={(e) => onHaptics({ ...haptics, vibrate: e.target.checked })}
-        />
-        Vibration {vibrationAvailable() ? '' : '— not available in this browser'}
-      </label>
-      <label className="opt">
-        <input
-          type="checkbox"
-          checked={haptics.gamepad}
-          disabled={!haptics.enabled}
-          onChange={(e) => onHaptics({ ...haptics, gamepad: e.target.checked })}
-        />
-        Rumble a connected gamepad
-      </label>
-      <div className="log-row">
-        <button className="btn tiny" disabled={!haptics.enabled} onClick={() => playHaptic('center', haptics)}>
-          Test centre
-        </button>
-        <button className="btn tiny" disabled={!haptics.enabled} onClick={() => playHaptic('edge', haptics)}>
-          Test rim
-        </button>
-      </div>
-      <Hint summary="On FPV your thumb has no edge to feel for">
-        This marks the two positions that matter: back at <b>centre</b>, and hard against the
-        <b> rim</b>. Each fires once per crossing — holding the stick at the stop stays quiet.
-        {' '}
-        {vibrationAvailable()
-          ? <>Vibration is available here.</>
-          : <><b>An iPhone cannot vibrate from a web page</b> — Safari has no Vibration API, and no
-            setting changes that. The click is the feedback that does work on iOS; turn the phone's
-            silent switch off to hear it.</>}
-      </Hint>
-
-      <div className="eyebrow" style={{ marginTop: 14 }}>Voice callouts</div>
-      <label className="opt big">
-        <input
-          type="checkbox"
-          checked={speech.enabled}
-          disabled={!speechAvailable()}
-          onChange={(e) => onSpeech({ ...speech, enabled: e.target.checked })}
-        />
-        Speak state changes out loud
-      </label>
-      <div className="log-row">
-        <label className="batt-th">
-          <span>Rate</span>
+      <details className="group">
+        <summary className="eyebrow">Return-home budget</summary>
+        <label className="opt big">
+          <input
+            type="checkbox"
+            checked={budget.enabled}
+            onChange={(e) => onBudget({ ...budget, enabled: e.target.checked })}
+          />
+          Work out how much further you can go and still get home
+        </label>
+        <label className="batt-th hold-row">
+          <span>Reserve</span>
           <input
             type="number"
-            step={0.1}
-            min={0.5}
-            max={2}
-            value={speech.rate}
-            disabled={!speech.enabled || !speechAvailable()}
-            onChange={(e) => onSpeech({ ...speech, rate: Number(e.target.value) })}
+            step={10}
+            min={RESERVE_MIN_PCT}
+            max={RESERVE_MAX_PCT}
+            value={budget.reservePct}
+            disabled={!budget.enabled}
+            onChange={(e) => onBudget({ ...budget, reservePct: clampReservePct(Number(e.target.value)) })}
           />
-          <span className="unit">×</span>
+          <span className="unit">%</span>
         </label>
-        <button
-          className="btn tiny"
-          disabled={!speech.enabled || !speechAvailable()}
-          onClick={() => speak({ text: 'Battery low, 25 percent', urgent: false }, speech)}
-        >
-          Test
-        </button>
-      </div>
-      {speechAvailable() ? (
-        <Hint summary="A beep says that something happened, a voice says what">
-          Spoken: <b>failsafe</b>, <b>armed / disarmed</b>, <b>low battery</b> (repeated every 30 s
-          while it stays low), <b>turn back now</b> if the return-home budget is on, plus two separate
-          pairs for the link — <b>lost / restored</b> (it exists) and <b>weak / good</b> (how well it
-          works). Both wait a couple of seconds first: the WebSocket reconnects a second after any
-          drop, so a WiFi roam would otherwise be announced as an outage, and a voice that cries wolf
-          is one you stop listening to. That costs nothing in safety — <b>failsafe is announced
-          immediately</b>, and the vehicle enters it 300 ms after the frames stop. Deliberately
-          nothing else: a chatty voice gets muted, and then the ones that matter are gone too. Uses
-          the browser's built-in voice — no network. On iOS it stays silent until you have tapped the
-          page once.
+        {/* The OSD stays silent when an input is missing — that has to be the
+            behaviour, since most vehicles have no current sensor and no GPS. So the
+            reason belongs here, where someone who switched it on comes looking. */}
+        {budget.enabled && budgetLive.missing && (
+          <div className="info-line idle">
+            Nothing to show yet: <b>{budgetLive.missing}</b>.
+          </div>
+        )}
+        {budget.enabled && !budgetLive.missing && budgetLive.mahPerKm != null && (
+          <div className="info-line go">
+            Measuring <b>{Math.round(budgetLive.mahPerKm)} mAh/km</b>
+            <span className="info-sub"> — {budgetLive.status === 'now' ? 'turn back now' : `${Math.round(budgetLive.furtherM ?? 0)} m of outbound range left`}.</span>
+          </div>
+        )}
+        <Hint summary={'A percentage doesn\'t answer "can I still get home?"'}>
+          30% is plenty at 50 m and not enough at 800 m. This measures what the vehicle actually
+          consumes per km and turns it into the number that <i>is</i> a decision: how much further you
+          may go. The <b>reserve</b> is a margin on the <b>trip home</b>, not a percentage of the pack:
+          at <b>50%</b> you turn around while the pack still holds <b>1.5×</b> what getting home costs,
+          so you arrive with half that cost to spare. It therefore scales with how far out you are —
+          small at 100 m, large at 2 km, which is where a misjudged consumption rate gets expensive. It
+          covers <b>estimation error</b> (headwind on the way back, a detour, a hill, a pack that sags
+          at the end); it is not a deep-discharge limit — that's the low-battery warning below. Shown
+          in the <b>full OSD</b> only, but the <b>turn-back warning</b> appears in the compact OSD too
+          and is spoken if callouts are on. <b>Needs a battery capacity set on the vehicle, a current
+          sensor and a GPS home point</b> — without any of them it simply shows nothing, which is the
+          normal case for a vehicle that is just a servo driver.
         </Hint>
-      ) : (
-        <p className="note">This browser has no speech engine, so callouts are unavailable here.</p>
-      )}
+      </details>
 
-      <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>
-        Auto-disarm on reconnect: <b>{autoDisarm ? 'ON' : 'OFF'}</b>
-        <span className="info-sub"> — pushed to the vehicle on connect and whenever you change it here.</span>
-      </div>
-      <div className="radios">
-        {([
-          ['auto', `Auto (${vehicleType} → ${typeDefault ? 'on' : 'off'})`],
-          ['on', 'Always on'],
-          ['off', 'Always off'],
-        ] as [AutoDisarmMode, string][]).map(([val, label]) => (
-          <label key={val} className={`radio${autoDisarmMode === val ? ' on' : ''}`}>
+      <details className="group">
+        <summary className="eyebrow">Stick feedback</summary>
+        <label className="opt big">
+          <input
+            type="checkbox"
+            checked={haptics.enabled}
+            onChange={(e) => onHaptics({ ...haptics, enabled: e.target.checked })}
+          />
+          Signal the centre and the rim of the on-screen stick
+        </label>
+        <label className="opt">
+          <input
+            type="checkbox"
+            checked={haptics.click}
+            disabled={!haptics.enabled}
+            onChange={(e) => onHaptics({ ...haptics, click: e.target.checked })}
+          />
+          Click (works everywhere, including iPhone)
+        </label>
+        <label className="opt">
+          <input
+            type="checkbox"
+            checked={haptics.vibrate}
+            disabled={!haptics.enabled || !vibrationAvailable()}
+            onChange={(e) => onHaptics({ ...haptics, vibrate: e.target.checked })}
+          />
+          Vibration {vibrationAvailable() ? '' : '— not available in this browser'}
+        </label>
+        <label className="opt">
+          <input
+            type="checkbox"
+            checked={haptics.gamepad}
+            disabled={!haptics.enabled}
+            onChange={(e) => onHaptics({ ...haptics, gamepad: e.target.checked })}
+          />
+          Rumble a connected gamepad
+        </label>
+        <div className="log-row">
+          <button className="btn tiny" disabled={!haptics.enabled} onClick={() => playHaptic('center', haptics)}>
+            Test centre
+          </button>
+          <button className="btn tiny" disabled={!haptics.enabled} onClick={() => playHaptic('edge', haptics)}>
+            Test rim
+          </button>
+        </div>
+        <Hint summary="On FPV your thumb has no edge to feel for">
+          This marks the two positions that matter: back at <b>centre</b>, and hard against the
+          <b> rim</b>. Each fires once per crossing — holding the stick at the stop stays quiet.
+          {' '}
+          {vibrationAvailable()
+            ? <>Vibration is available here.</>
+            : <><b>An iPhone cannot vibrate from a web page</b> — Safari has no Vibration API, and no
+              setting changes that. The click is the feedback that does work on iOS; turn the phone's
+              silent switch off to hear it.</>}
+        </Hint>
+      </details>
+
+      <details className="group">
+        <summary className="eyebrow">Voice callouts</summary>
+        <label className="opt big">
+          <input
+            type="checkbox"
+            checked={speech.enabled}
+            disabled={!speechAvailable()}
+            onChange={(e) => onSpeech({ ...speech, enabled: e.target.checked })}
+          />
+          Speak state changes out loud
+        </label>
+        <div className="log-row">
+          <label className="batt-th">
+            <span>Rate</span>
             <input
-              type="radio"
-              name="autodisarm"
-              checked={autoDisarmMode === val}
-              onChange={() => onAutoDisarmMode(val)}
+              type="number"
+              step={0.1}
+              min={0.5}
+              max={2}
+              value={speech.rate}
+              disabled={!speech.enabled || !speechAvailable()}
+              onChange={(e) => onSpeech({ ...speech, rate: Number(e.target.value) })}
             />
-            {label}
+            <span className="unit">×</span>
           </label>
-        ))}
-      </div>
-      <Hint summary="Auto follows the vehicle type">
-        On for car/boat (stopping is always safe), off for plane/drone, so a brief link drop can't cut
-        an aircraft's motors in flight. Override it only when the type doesn't describe your setup.
-      </Hint>
+          <button
+            className="btn tiny"
+            disabled={!speech.enabled || !speechAvailable()}
+            onClick={() => speak({ text: 'Battery low, 25 percent', urgent: false }, speech)}
+          >
+            Test
+          </button>
+        </div>
+        {speechAvailable() ? (
+          <Hint summary="A beep says that something happened, a voice says what">
+            Spoken: <b>failsafe</b>, <b>armed / disarmed</b>, <b>low battery</b> (repeated every 30 s
+            while it stays low), <b>turn back now</b> if the return-home budget is on, plus two separate
+            pairs for the link — <b>lost / restored</b> (it exists) and <b>weak / good</b> (how well it
+            works). Both wait a couple of seconds first: the WebSocket reconnects a second after any
+            drop, so a WiFi roam would otherwise be announced as an outage, and a voice that cries wolf
+            is one you stop listening to. That costs nothing in safety — <b>failsafe is announced
+            immediately</b>, and the vehicle enters it 300 ms after the frames stop. Deliberately
+            nothing else: a chatty voice gets muted, and then the ones that matter are gone too. Uses
+            the browser's built-in voice — no network. On iOS it stays silent until you have tapped the
+            page once.
+          </Hint>
+        ) : (
+          <p className="note">This browser has no speech engine, so callouts are unavailable here.</p>
+        )}
+      </details>
+
+      {/* The two ⚠ notes below stay OUTSIDE the fold: a warning you have to
+          open is not a warning. */}
+      <details className="group">
+        <summary className="eyebrow">Auto-disarm on reconnect{' '}
+          <span className={`group-badge ${autoDisarm ? 'go' : 'idle'}`}>{autoDisarm ? 'ON' : 'OFF'}</span>
+        </summary>
+        <div className="radios">
+          {([
+            ['auto', `Auto (${vehicleType} → ${typeDefault ? 'on' : 'off'})`],
+            ['on', 'Always on'],
+            ['off', 'Always off'],
+          ] as [AutoDisarmMode, string][]).map(([val, label]) => (
+            <label key={val} className={`radio${autoDisarmMode === val ? ' on' : ''}`}>
+              <input
+                type="radio"
+                name="autodisarm"
+                checked={autoDisarmMode === val}
+                onChange={() => onAutoDisarmMode(val)}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <Hint summary="Auto follows the vehicle type">
+          On for car/boat (stopping is always safe), off for plane/drone, so a brief link drop can't cut
+          an aircraft's motors in flight. Override it only when the type doesn't describe your setup.
+          Whatever you pick is pushed to the vehicle on connect and whenever you change it here.
+        </Hint>
+      </details>
       {autoDisarmMode === 'on' && !typeDefault && (
         <p className="note warn-note">
           ⚠ Forced ON for a <b>{vehicleType}</b>: every reconnect will disarm — in the air that means
@@ -372,110 +382,117 @@ export function ControlsPanel({
         </p>
       )}
 
-      <div className="eyebrow" style={{ marginTop: 14 }}>Action bindings</div>
-      <Hint summary="Panic-disarm ships unbound, and why">
-        Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over
-        the reliable link — <b>no hold, no confirmation</b>: a stray key cuts the motors, and on an
-        aircraft that is a crash. Bind it to something you can't hit by accident, and if you fly with
-        a controller, bind it there — a keyboard key is no use with both hands on the sticks.
-      </Hint>
-      <div className="actions-grid">
-        <div className="actions-head"><span>Action</span><span>Key</span><span>Button</span></div>
-        {ORDER.map((id) => (
-          <div className="action-row" key={id}>
-            <span className="action-name">{ACTION_LABELS[id]}</span>
-            <div className="learn-cell">
-              <input
-                value={bindings[id].key ?? ''}
-                placeholder="—"
-                onChange={(e) => set(id, { key: e.target.value ? e.target.value.toLowerCase().slice(-1) : null })}
-              />
-              <button className="btn tiny" onClick={() => setLearn({ id, what: 'key' })}>
-                {learn?.id === id && learn.what === 'key' ? 'Press…' : 'Learn'}
-              </button>
+      <details className="group">
+        <summary className="eyebrow">Action bindings</summary>
+        <Hint summary="Panic-disarm ships unbound, and why">
+          Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over
+          the reliable link — <b>no hold, no confirmation</b>: a stray key cuts the motors, and on an
+          aircraft that is a crash. Bind it to something you can't hit by accident, and if you fly with
+          a controller, bind it there — a keyboard key is no use with both hands on the sticks.
+        </Hint>
+        <div className="actions-grid">
+          <div className="actions-head"><span>Action</span><span>Key</span><span>Button</span></div>
+          {ORDER.map((id) => (
+            <div className="action-row" key={id}>
+              <span className="action-name">{ACTION_LABELS[id]}</span>
+              <div className="learn-cell">
+                <input
+                  value={bindings[id].key ?? ''}
+                  placeholder="—"
+                  onChange={(e) => set(id, { key: e.target.value ? e.target.value.toLowerCase().slice(-1) : null })}
+                />
+                <button className="btn tiny" onClick={() => setLearn({ id, what: 'key' })}>
+                  {learn?.id === id && learn.what === 'key' ? 'Press…' : 'Learn'}
+                </button>
+              </div>
+              <div className="learn-cell">
+                <input
+                  type="number"
+                  value={bindings[id].button ?? ''}
+                  placeholder="—"
+                  onChange={(e) => set(id, { button: e.target.value === '' ? null : Number(e.target.value) })}
+                />
+                <button className="btn tiny" onClick={() => setLearn({ id, what: 'button' })}>
+                  {learn?.id === id && learn.what === 'button' ? 'Press…' : 'Learn'}
+                </button>
+              </div>
             </div>
-            <div className="learn-cell">
-              <input
-                type="number"
-                value={bindings[id].button ?? ''}
-                placeholder="—"
-                onChange={(e) => set(id, { button: e.target.value === '' ? null : Number(e.target.value) })}
-              />
-              <button className="btn tiny" onClick={() => setLearn({ id, what: 'button' })}>
-                {learn?.id === id && learn.what === 'button' ? 'Press…' : 'Learn'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </details>
 
-      <div className="eyebrow" style={{ marginTop: 14 }}>Low-battery warning</div>
-      <div className="batt-mode">
-        {(['auto', 'on', 'off'] as const).map((m) => (
-          <label key={m} className={`radio${battery.mode === m ? ' on' : ''}`}>
-            <input type="radio" name="battmode" checked={battery.mode === m} onChange={() => setBat({ mode: m })} />
-            {m === 'auto' ? 'auto (real sensor)' : m}
+      <details className="group">
+        <summary className="eyebrow">Low-battery warning</summary>
+        <div className="batt-mode">
+          {(['auto', 'on', 'off'] as const).map((m) => (
+            <label key={m} className={`radio${battery.mode === m ? ' on' : ''}`}>
+              <input type="radio" name="battmode" checked={battery.mode === m} onChange={() => setBat({ mode: m })} />
+              {m === 'auto' ? 'auto (real sensor)' : m}
+            </label>
+          ))}
+        </div>
+        <div className="batt-thresholds">
+          <label className="batt-th">
+            <input type="checkbox" checked={battery.usePct} onChange={(e) => setBat({ usePct: e.target.checked })} />
+            <span>Percent ≤</span>
+            <input type="number" value={battery.pctThreshold} onChange={(e) => setBat({ pctThreshold: Number(e.target.value) })} />
+            <span className="unit">%</span>
           </label>
-        ))}
-      </div>
-      <div className="batt-thresholds">
-        <label className="batt-th">
-          <input type="checkbox" checked={battery.usePct} onChange={(e) => setBat({ usePct: e.target.checked })} />
-          <span>Percent ≤</span>
-          <input type="number" value={battery.pctThreshold} onChange={(e) => setBat({ pctThreshold: Number(e.target.value) })} />
-          <span className="unit">%</span>
-        </label>
-        <label className="batt-th">
-          <input type="checkbox" checked={battery.useVolt} onChange={(e) => setBat({ useVolt: e.target.checked })} />
-          <span>Voltage ≤</span>
-          <input type="number" step={0.1} value={battery.voltThreshold} onChange={(e) => setBat({ voltThreshold: Number(e.target.value) })} />
-          <span className="unit">V</span>
-        </label>
-        <label className="batt-th">
-          <input type="checkbox" checked={battery.useMah} onChange={(e) => setBat({ useMah: e.target.checked })} />
-          <span>Consumed ≥</span>
-          <input type="number" step={50} value={battery.mahThreshold} onChange={(e) => setBat({ mahThreshold: Number(e.target.value) })} />
-          <span className="unit">mAh</span>
-        </label>
-      </div>
-      <div className="batt-alerts">
-        <label className="opt"><input type="checkbox" checked={battery.osdBlink} onChange={(e) => setBat({ osdBlink: e.target.checked })} /> OSD blink</label>
-        <label className="opt"><input type="checkbox" checked={battery.rumble} onChange={(e) => setBat({ rumble: e.target.checked })} /> Rumble</label>
-        <label className="opt"><input type="checkbox" checked={battery.sound} onChange={(e) => setBat({ sound: e.target.checked })} /> Sound</label>
-      </div>
-      <Hint summary="What each threshold needs">
-        Auto only warns when a real sensor delivers data. Percent needs a battery capacity set on the
-        vehicle (Setup › Telemetry). Voltage is a pack value — set it for your cell count
-        (e.g. 3S ≈ 10.5 V). "Consumed" warns after using that many mAh — handy without a capacity
-        set. Alerts repeat every ~3 s while low.
-      </Hint>
+          <label className="batt-th">
+            <input type="checkbox" checked={battery.useVolt} onChange={(e) => setBat({ useVolt: e.target.checked })} />
+            <span>Voltage ≤</span>
+            <input type="number" step={0.1} value={battery.voltThreshold} onChange={(e) => setBat({ voltThreshold: Number(e.target.value) })} />
+            <span className="unit">V</span>
+          </label>
+          <label className="batt-th">
+            <input type="checkbox" checked={battery.useMah} onChange={(e) => setBat({ useMah: e.target.checked })} />
+            <span>Consumed ≥</span>
+            <input type="number" step={50} value={battery.mahThreshold} onChange={(e) => setBat({ mahThreshold: Number(e.target.value) })} />
+            <span className="unit">mAh</span>
+          </label>
+        </div>
+        <div className="batt-alerts">
+          <label className="opt"><input type="checkbox" checked={battery.osdBlink} onChange={(e) => setBat({ osdBlink: e.target.checked })} /> OSD blink</label>
+          <label className="opt"><input type="checkbox" checked={battery.rumble} onChange={(e) => setBat({ rumble: e.target.checked })} /> Rumble</label>
+          <label className="opt"><input type="checkbox" checked={battery.sound} onChange={(e) => setBat({ sound: e.target.checked })} /> Sound</label>
+        </div>
+        <Hint summary="What each threshold needs">
+          Auto only warns when a real sensor delivers data. Percent needs a battery capacity set on the
+          vehicle (Setup › Telemetry). Voltage is a pack value — set it for your cell count
+          (e.g. 3S ≈ 10.5 V). "Consumed" warns after using that many mAh — handy without a capacity
+          set. Alerts repeat every ~3 s while low.
+        </Hint>
+      </details>
 
-      <div className="eyebrow" style={{ marginTop: 14 }}>Blackbox logging</div>
-      <label className="opt big">
-        <input type="checkbox" checked={logging} onChange={(e) => onLogging(e.target.checked)} />
-        Record telemetry, link stats and GPS track to a downloadable log
-      </label>
-      <div className="log-row">
-        <span className="log-status">
-          {logging ? `● recording · ${logRows} rows${logFixes ? ` · ${logFixes} fixes` : ''}` : 'off'}
-        </span>
-        <button className="btn tiny" onClick={onDownloadLog} disabled={logRows === 0}>Download CSV</button>
-        <button className="btn tiny" onClick={onDownloadGpx} disabled={logFixes === 0} title={logFixes === 0 ? 'No GPS fix recorded yet' : `${logFixes} track points`}>Download GPX</button>
-        <button className="btn tiny" onClick={onClearLog} disabled={logRows === 0}>Clear</button>
-      </div>
-      <Hint summary="What lands in the CSV and the GPX">
-        Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs
-        stay in this browser tab until you download or clear them. The CSV holds link/video stats,
-        <b> position</b> (<span className="mono">lat</span>, <span className="mono">lon</span>,{' '}
-        <span className="mono">alt_m</span>, <span className="mono">sats</span>,{' '}
-        <span className="mono">speed_ms</span>) plus <b>every telemetry channel</b> the vehicle
-        reports, one column per channel (<span className="mono">Pack_V</span>,{' '}
-        <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>);{' '}
-        <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary
-        channel. Because position and telemetry share a row, you can colour the track by voltage or
-        RTT in QGIS or kepler.gl. <b>GPX</b> is the plain track for Google Earth, gpx.studio or any
-        mapping tool — it needs a GPS fix (Setup › GPS).
-      </Hint>
+      <details className="group">
+        <summary className="eyebrow">Blackbox logging {logging && <span className="group-badge go">recording</span>}</summary>
+        <label className="opt big">
+          <input type="checkbox" checked={logging} onChange={(e) => onLogging(e.target.checked)} />
+          Record telemetry, link stats and GPS track to a downloadable log
+        </label>
+        <div className="log-row">
+          <span className="log-status">
+            {logging ? `● recording · ${logRows} rows${logFixes ? ` · ${logFixes} fixes` : ''}` : 'off'}
+          </span>
+          <button className="btn tiny" onClick={onDownloadLog} disabled={logRows === 0}>Download CSV</button>
+          <button className="btn tiny" onClick={onDownloadGpx} disabled={logFixes === 0} title={logFixes === 0 ? 'No GPS fix recorded yet' : `${logFixes} track points`}>Download GPX</button>
+          <button className="btn tiny" onClick={onClearLog} disabled={logRows === 0}>Clear</button>
+        </div>
+        <Hint summary="What lands in the CSV and the GPX">
+          Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs
+          stay in this browser tab until you download or clear them. The CSV holds link/video stats,
+          <b> position</b> (<span className="mono">lat</span>, <span className="mono">lon</span>,{' '}
+          <span className="mono">alt_m</span>, <span className="mono">sats</span>,{' '}
+          <span className="mono">speed_ms</span>) plus <b>every telemetry channel</b> the vehicle
+          reports, one column per channel (<span className="mono">Pack_V</span>,{' '}
+          <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>);{' '}
+          <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary
+          channel. Because position and telemetry share a row, you can colour the track by voltage or
+          RTT in QGIS or kepler.gl. <b>GPX</b> is the plain track for Google Earth, gpx.studio or any
+          mapping tool — it needs a GPS fix (Setup › GPS).
+        </Hint>
+      </details>
+
     </section>
   );
 }

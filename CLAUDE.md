@@ -98,7 +98,10 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   in the DOM** (`hidden`, not removed): handlers read fields across groups. Long
   explanations belong in `<details class="hint">` with the one-line takeaway as the
   `<summary>`, not in an always-open `<p class="msg">` — the ground app has the same
-  pattern in `components/Hint.tsx` (`<p class="note">` stays the short one-liner).
+  pattern in `components/Hint.tsx` (`<p class="note">` stays the short one-liner), and
+  every settings group in `ControlsPanel` is a `<details class="group">` that starts
+  closed — with the two forced-auto-disarm ⚠ notes deliberately *outside* their group,
+  since a warning you have to unfold is not a warning (the suite checks both).
   The tab strip **wraps**; only under 520px is it a single scrolling row, because a
   mouse wheel cannot scroll a horizontal box and the last tab became unreachable. `body` must keep `overflow-x: clip`
   rather than `hidden` — `hidden` makes it a scroll container and the sticky tab bar has

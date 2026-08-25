@@ -3,6 +3,27 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.65.2
+**English**
+- **All eight groups of Setup › Controls now start folded**, not just Safety: return-home
+  budget, stick feedback, voice callouts, auto-disarm, action bindings, low-battery
+  warning and blackbox logging, each with its explanation. The panel is eight headings
+  instead of six screens; the *Ground app* panel below it is unchanged.
+- **Folding never hides state or a warning.** *Auto-disarm on reconnect* carries its
+  ON/OFF as a badge in the heading, blackbox logging shows *recording* there while it
+  runs, and the two ⚠ notes about a forced auto-disarm sit outside their group — a
+  warning you have to unfold is not a warning.
+
+**Deutsch**
+- **Alle acht Gruppen unter Setup › Controls starten jetzt zugeklappt**, nicht nur Safety:
+  Heimkehr-Budget, Stick-Feedback, Sprachansagen, Auto-Disarm, Aktions-Belegung,
+  Akku-Warnung und Blackbox-Logging, jeweils samt Erklärung. Das Panel sind acht
+  Überschriften statt sechs Bildschirmen; das Panel *Ground app* darunter bleibt, wie es war.
+- **Zuklappen versteckt weder Zustand noch Warnung.** *Auto-disarm on reconnect* trägt sein
+  ON/OFF als Abzeichen in der Überschrift, das Blackbox-Logging zeigt dort *recording*,
+  solange es läuft, und die beiden ⚠-Hinweise zum erzwungenen Auto-Disarm stehen außerhalb
+  ihrer Gruppe — eine Warnung, die man aufklappen muss, ist keine.
+
 ## v1.65.1
 **English**
 - **Setup › Safety starts collapsed** in the ground app. Three settings you pick once per

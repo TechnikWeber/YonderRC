@@ -462,6 +462,23 @@ summary,
  * plus a chevron, so a collapsed group reads as the same heading and the panel keeps
  * its rhythm — nothing looks broken next to the groups that stay open.
  */
+details.group {
+  margin-top: 12px;
+}
+/* State that must stay readable while the group is folded — whether reconnects disarm,
+   whether the blackbox is running. Same shape as the trims' badge. */
+.group-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 0 5px;
+}
+.group-badge.go { color: var(--arm); }
+.group-badge.idle { color: var(--idle); }
 details.group > summary {
   cursor: pointer;
   list-style: none;
