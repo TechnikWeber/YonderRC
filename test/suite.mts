@@ -1515,6 +1515,10 @@ async function main() {
     const css = readFileSync('packages/ground/src/styles.css', 'utf8');
     ok('the ground has a light palette', /:root\[data-theme='light'\]\s*\{[^}]*--bg:/.test(css));
     ok('the video stage keeps the dark one', /:root\[data-theme='light'\] \.video-stage\s*\{[^}]*--danger:/.test(css));
+    // …and it must SET a colour, not inherit one: inheritance passes the computed value,
+    // so an OSD span with no class of its own would arrive carrying the page's ink and
+    // land dark-on-dark over video the moment the page went light.
+    ok('and states its own text colour', /\.video-stage \{[^}]*color: var\(--text\);/s.test(css));
     // --bad/--go were used in eight places and defined nowhere: an unresolvable var()
     // is invalid at computed-value time, so the NO-DATA badge lost its background and
     // .osd-warn inherited its colour instead of turning red.

@@ -3,6 +3,29 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.65.3
+**English**
+- **Fixed: current and mAh were near-invisible in the OSD under the light theme.** The
+  video stage keeps the dark palette in both themes, but it only ever re-declared the
+  tokens — and CSS inheritance passes the **computed** colour down, not the `var()` that
+  produced it. The OSD spans that carry no class of their own (current, mAh) therefore
+  arrived with the page's ink, which the light theme had turned dark, and landed
+  dark-on-dark over the video; voltage and temperature were fine only because they
+  hardcode their colour. The stage now states its text colour instead of inheriting one.
+  Nothing changes in the dark theme, where the two colours were identical.
+- README screenshots retaken with the fix in them.
+
+**Deutsch**
+- **Behoben: Strom und mAh waren im OSD unter dem hellen Theme kaum zu sehen.** Die
+  Video-Fläche behält in beiden Themes die dunkle Palette — aber sie hat die Tokens nur
+  neu deklariert, und CSS-Vererbung reicht die **berechnete** Farbe weiter, nicht das
+  `var()`, aus dem sie entstand. Die OSD-Spans ohne eigene Klasse (Strom, mAh) kamen
+  deshalb mit der Tinte der Seite an, die im hellen Theme dunkel ist, und lagen dunkel
+  auf dunkel über dem Video; Spannung und Temperatur sahen nur deshalb richtig aus, weil
+  sie ihre Farbe fest verdrahten. Die Fläche setzt ihre Textfarbe jetzt selbst, statt sie
+  zu erben. Im dunklen Theme ändert sich nichts — dort waren beide Farben identisch.
+- README-Screenshots mit dem Fix darin neu aufgenommen.
+
 ## v1.65.2
 **English**
 - **All eight groups of Setup › Controls now start folded**, not just Safety: return-home

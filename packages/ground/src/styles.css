@@ -1023,6 +1023,15 @@ details.hint > p {
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
+  /*
+   * The stage states its text colour instead of inheriting one. CSS inheritance passes
+   * the COMPUTED colour down, not the var() that produced it, so the OSD spans that
+   * carry no class of their own (current, mAh) arrived with the page's ink — and once
+   * the page turned light, dark ink landed on a dark translucent block over video while
+   * the neighbouring V and °C, which hardcode #dfe7ee, stayed readable. Re-declaring the
+   * tokens for the stage below could never fix that on its own.
+   */
+  color: var(--text);
 }
 .video-stage video {
   width: 100%;
