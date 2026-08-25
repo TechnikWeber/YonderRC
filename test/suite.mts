@@ -1475,6 +1475,52 @@ async function main() {
     ok('the same sections in both hardware guides', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
   }
 
+  // ---- one theme, both halves ----
+  // The vehicle owns the look: the setup page and the ground app are one product, and a
+  // per-device toggle is how the two ends end up disagreeing with nobody able to say
+  // which is right. So the ground has no switch — only a cache of the last answer.
+  {
+    const TH = await import('../packages/ground/src/lib/theme');
+    const store = new Map<string, string>();
+    const fake = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    };
+    ok('dark until the vehicle says otherwise', TH.cachedTheme(fake) === 'dark');
+    TH.rememberTheme(fake, 'light');
+    ok('the last answer is remembered', TH.cachedTheme(fake) === 'light');
+    store.set(TH.THEME_KEY, 'neon');
+    ok('a junk value falls back to dark', TH.cachedTheme(fake) === 'dark');
+    // Storage can throw outright (private mode), not just come back empty.
+    ok('unreadable storage is not fatal', TH.cachedTheme({ getItem: () => { throw new Error('denied'); } }) === 'dark');
+    ok('only the two are themes', TH.isTheme('light') && TH.isTheme('dark') && !TH.isTheme('auto') && !TH.isTheme(null));
+
+    const cfgPath2 = join(tmpdir(), `yonderrc-theme-test-${process.pid}.json`);
+    const envCfg2 = process.env.YRC_CONFIG;
+    process.env.YRC_CONFIG = cfgPath2;
+    writeFileSync(cfgPath2, JSON.stringify({}));
+    ok('dark is the vehicle default', loadConfig().theme === 'dark');
+    writeFileSync(cfgPath2, JSON.stringify({ theme: 'light' }));
+    ok('and the saved choice survives a restart', loadConfig().theme === 'light');
+    rmSync(cfgPath2, { force: true });
+    if (envCfg2 === undefined) delete process.env.YRC_CONFIG; else process.env.YRC_CONFIG = envCfg2;
+
+    // Every colour the two pages use is a token; a hardcoded hex outside the palette
+    // blocks would simply not switch. The ground's video stage is the one deliberate
+    // exception (it keeps the dark palette over the picture) and is commented as such.
+    const css = readFileSync('packages/ground/src/styles.css', 'utf8');
+    ok('the ground has a light palette', /:root\[data-theme='light'\]\s*\{[^}]*--bg:/.test(css));
+    ok('the video stage keeps the dark one', /:root\[data-theme='light'\] \.video-stage\s*\{[^}]*--danger:/.test(css));
+    // --bad/--go were used in eight places and defined nowhere: an unresolvable var()
+    // is invalid at computed-value time, so the NO-DATA badge lost its background and
+    // .osd-warn inherited its colour instead of turning red.
+    ok('every token the CSS uses is defined', [...css.matchAll(/var\((--[a-z0-9-]+)/g)].every((m) => css.includes(`${m[1]}:`)));
+
+    const setup = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('the setup page has a light palette', /:root\[data-theme='light'\]/.test(setup));
+    ok('and a Design tab to pick it', /data-tab="design"/.test(setup) && /data-theme-pick="light"/.test(setup));
+  }
+
   // ---- the setup page's tabs ----
   // Fourteen panels in one column were unfindable, so each panel now declares the tab
   // it belongs to. Three ways that can rot silently: a panel with no tab (invisible on

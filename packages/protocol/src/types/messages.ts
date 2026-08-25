@@ -81,9 +81,28 @@ export interface SetConfigMessage {
 export type ServerMessage =
   | WelcomeMessage
   | StatusMessage
+  | ThemeMessage
   | RtcSignalMessage
   | import('./telemetry').TelemetryMessage
   | import('./gps').GpsMessage;
+
+/**
+ * Which of the two palettes to paint in. There are exactly two, and the vehicle owns
+ * the choice: the setup page and the ground app are one product, and one of them
+ * being dark while the other is light is a bug you cannot fix from the vehicle.
+ */
+export type UiTheme = 'dark' | 'light';
+
+/**
+ * Vehicle → Ground: the theme to use. Sent right after the welcome, and again to
+ * every connected ground when it is changed in the setup page — so switching does
+ * not wait for a reconnect. A ground that does not know this message ignores it and
+ * stays dark, which is the default anyway.
+ */
+export interface ThemeMessage {
+  type: 'theme';
+  theme: UiTheme;
+}
 
 export interface WelcomeMessage {
   type: 'welcome';

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
-import type { TelemetryConfig, CameraCfg, GpsConfig } from '@yonderrc/protocol';
+import type { TelemetryConfig, CameraCfg, GpsConfig, UiTheme } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';
@@ -59,6 +59,13 @@ export interface VehicleConfig {
   gps: GpsConfig;
   /** Cameras (graphical); generates go2rtc.yaml. */
   cameras: CameraCfg[];
+  /**
+   * Which palette the setup page and the ground app paint themselves in. The vehicle
+   * owns it so the two halves of the product can never disagree, and so it can be
+   * changed from the one page that is always reachable — including from a phone on
+   * the vehicle's own hotspot, with no ground app built.
+   */
+  theme: UiTheme;
   /** Path of the generated go2rtc config. */
   go2rtcConfigPath: string;
   /** Detected Pi camera binary (rpicam-vid / libcamera-vid, set at startup). */
@@ -126,6 +133,8 @@ export interface PersistentConfig {
    * hotspot can't be fixed by editing a systemd unit over SSH.
    */
   pca9685?: { bus?: number; address?: number };
+  /** 'dark' (default) or 'light' — applied to the setup page and pushed to the ground. */
+  theme?: UiTheme;
 }
 
 function num(name: string, fallback: number): number {
@@ -216,6 +225,7 @@ export function loadConfig(): VehicleConfig {
     // the header, while ttyAMA0 is the Bluetooth UART on a Pi 3/4/5 (see system/serial.ts).
     gps: p.gps ?? { source: 'off', device: '/dev/serial0', baud: 9600, autoHome: true, minSats: 6, home: null },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
+    theme: p.theme ?? 'dark',
     go2rtcConfigPath:
       process.env.YRC_GO2RTC_CONFIG ??
       fileURLToPath(new URL('../../../docker/go2rtc.yaml', import.meta.url)),

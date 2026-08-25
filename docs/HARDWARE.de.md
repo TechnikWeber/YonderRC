@@ -491,10 +491,14 @@ sudo bash provisioning/install.sh
 Öffne vom Laptop/Handy im selben WLAN: **`http://yonderrc.local:8080/setup`**
 (oder `http://<pi-ip>:8080/setup`).
 
-Die Seite ist in sechs Reiter geteilt — **Overview · Network · Remote access · Sensors &
-outputs · Camera · GPS**. *Overview* ist der eine Bildschirm, der „ist alles da?"
-beantwortet: Systemstatus, Uplink und je eine Zeile für Sensorik, GPS und Kameras, von
-der aus man in den zugehörigen Reiter springt. Jeder Reiter ist eine URL
+Die Seite ist in sieben Reiter geteilt — **Overview · Network · Remote access · Sensors &
+outputs · Camera · GPS · Design**. *Overview* ist der eine Bildschirm, der „ist alles
+da?" beantwortet: Systemstatus, Uplink und je eine Zeile für Sensorik, GPS und Kameras,
+von der aus man in den zugehörigen Reiter springt. *Design* wählt das Aussehen —
+**dunkel** (Standard, und das, was man neben Live-Video will) oder **hell** für die
+helle Werkbank; das Fahrzeug speichert die Wahl und schiebt sie an die Ground-App, beide
+Hälften sehen also immer gleich aus. Das Video-Overlay bleibt in beiden hell auf dunkel,
+weil es auf dem Bild liegt. Jeder Reiter ist eine URL
 (`…/setup#gps`), ein Schritt weiter unten lässt sich also verlinken. Die in dieser
 Anleitung genannten Panel-Namen (*Vehicle configuration*, *Telemetry*, *WiFi* …) sind
 unverändert; sie liegen jetzt im jeweils zuständigen Reiter. Lange Erklärungen sind

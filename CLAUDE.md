@@ -100,6 +100,15 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   `<summary>`, not in an always-open `<p class="msg">`. `body` must keep `overflow-x: clip`
   rather than `hidden` — `hidden` makes it a scroll container and the sticky tab bar has
   nothing to stick to.
+- **The theme belongs to the vehicle** (v1.64.0): `config.theme` ('dark' default | 'light'),
+  edited in Setup › Design, sent to the ground as its own `theme` WS message right after
+  the welcome and re-broadcast to every connected client when it changes. The ground has
+  **no switch of its own** — `ground/src/lib/theme.ts` only caches the last answer so a
+  cold start does not flash the wrong palette. Both stylesheets carry the whole palette as
+  tokens under `:root[data-theme='light']`; a hardcoded colour outside those blocks simply
+  will not switch. The **`.video-stage` keeps the dark tokens in both themes** — the OSD is
+  drawn on the picture, not on the page. The suite fails if a `var(--x)` in the ground CSS
+  has no definition (that bug had `--bad`/`--go` undefined for months).
 - go2rtc config path is **absolute**, never a bare relative path (that caused an ENOENT
   crash historically). On a Pi it is **`/var/lib/yonderrc/go2rtc.yaml`** since v1.45.0
   (`YRC_GO2RTC_CONFIG` in `yonderrc-vehicle.service`, same path in `go2rtc.service`);

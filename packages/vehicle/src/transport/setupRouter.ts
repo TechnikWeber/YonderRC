@@ -245,6 +245,7 @@ export async function handleSetup(
         (persisted.driver !== undefined && persisted.driver !== c.driver) ||
         (persisted.pca9685?.address !== undefined && persisted.pca9685.address !== running.address) ||
         (persisted.pca9685?.bus !== undefined && persisted.pca9685.bus !== running.bus),
+      theme: persisted.theme ?? c.theme,
       // Never return the secret itself — only whether one is required.
       authRequired: !!c.apiSecret,
     });
@@ -272,6 +273,9 @@ export async function handleSetup(
     }
     // Apply the secret live so the gate takes effect immediately (no restart).
     if (patch.apiSecret !== undefined) ctx.config.apiSecret = patch.apiSecret;
+    // The theme is pure presentation — it applies live, here and on every connected
+    // ground (wsServer pushes it in onConfigSaved). Nothing about it needs a restart.
+    if (patch.theme) ctx.config.theme = patch.theme;
     ctx.onConfigSaved?.(patch);
     // Don't echo the secret back in `saved`.
     const { apiSecret: _omit, ...safeSaved } = saved;

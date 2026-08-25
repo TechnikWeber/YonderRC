@@ -3,6 +3,43 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.64.0
+**English**
+- **A light theme, chosen on the vehicle.** Setup › **Design** offers exactly two looks —
+  dark (the default, and what you want next to live video) and light for a bright bench.
+  The choice lives on the vehicle and is pushed down the control link, so the setup page
+  and the ground app can never disagree, and switching repaints a **connected** control
+  app within a second instead of waiting for its next reconnect. The ground app has no
+  switch of its own on purpose; it caches the last answer so a cold start does not flash
+  the wrong one.
+- **The video overlay stays light-on-dark in both.** The OSD is drawn on the picture, not
+  on the page: the light theme's deeper inks are chosen for contrast against white and
+  would sit at 3:1 over video, with the FAILSAFE badge the first thing to go. The video
+  stage keeps the dark palette as its own island.
+- **Fixed: `--bad` and `--go` were used in eight places and defined nowhere.** An
+  unresolvable `var()` is invalid at computed-value time, so the "NO SENSOR" badge had no
+  background, the REC badge and toast lost theirs, and `.osd-warn` inherited its colour
+  instead of turning red. Found while building the second palette; the test suite now
+  fails if any token the stylesheet uses is undefined.
+
+**Deutsch**
+- **Ein helles Design, gewählt am Fahrzeug.** Setup › **Design** bietet genau zwei
+  Looks — dunkel (Standard, und das, was man neben Live-Video will) und hell für die
+  helle Werkbank. Die Wahl liegt am Fahrzeug und wird über die Steuerverbindung
+  geschoben: Setup-Seite und Ground-App können also nie auseinanderlaufen, und ein
+  **verbundenes** Steuergerät färbt sich innerhalb einer Sekunde um, statt auf die
+  nächste Neuverbindung zu warten. Die Ground-App hat bewusst keinen eigenen Schalter;
+  sie merkt sich nur die letzte Antwort, damit ein Kaltstart nicht kurz falsch aussieht.
+- **Das Video-Overlay bleibt in beiden hell auf dunkel.** Das OSD liegt auf dem Bild,
+  nicht auf der Seite: die dunkleren Farben des hellen Themes sind für Kontrast gegen
+  Weiß gewählt und lägen über Video bei 3:1 — das FAILSAFE-Abzeichen wäre das erste, was
+  verschwindet. Die Video-Fläche behält deshalb die dunkle Palette als eigene Insel.
+- **Behoben: `--bad` und `--go` wurden an acht Stellen benutzt und nirgends definiert.**
+  Ein nicht auflösbares `var()` ist „invalid at computed-value time", also hatte das
+  „NO SENSOR"-Abzeichen keinen Hintergrund, REC-Badge und -Toast verloren ihren, und
+  `.osd-warn` erbte seine Farbe, statt rot zu werden. Beim Bau der zweiten Palette
+  gefunden; die Testsuite schlägt jetzt fehl, wenn ein benutztes Token undefiniert ist.
+
 ## v1.63.0
 **English**
 - **The setup page is six tabs instead of one long column.** Fourteen panels stacked on

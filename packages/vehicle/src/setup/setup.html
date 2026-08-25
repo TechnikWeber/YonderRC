@@ -4,13 +4,37 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>YonderRC — Setup</title>
+    <script>
+      // Before the first paint, or the page flashes dark on its way to light. The
+      // vehicle is still the authority — this is only last session's answer, and
+      // loadConfig() overwrites it a moment later.
+      try {
+        var t = localStorage.getItem('yonderrc.theme.v1');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
     <style>
       :root {
         --bg: #0b0f14; --panel: #121821; --panel-2: #0f141b; --line: #1e2833;
         --line-b: #2b3947; --text: #c7d1dc; --muted: #6b7986; --accent: #35d0c3;
         --go: #46d17f; --idle: #f2b74a; --bad: #ff5d5d;
+        color-scheme: dark;
         --mono: ui-monospace, Menlo, Consolas, monospace;
         --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      /*
+       * The second palette. Two, and no "follow the system" third: the vehicle owns the
+       * choice (Setup › Design, persisted as `theme`) and pushes the same one to the
+       * ground app, so the two halves of the product can never disagree. Nothing else on
+       * this page names a colour — that is why a whole second look is eleven lines.
+       * Contrast against the light panel: text 16:1, muted 6.2:1, the four state colours
+       * 5.2–5.9:1, all above the dark theme's own muted grey.
+       */
+      :root[data-theme='light'] {
+        --bg: #eef2f6; --panel: #ffffff; --panel-2: #f4f7fa; --line: #dde5ec;
+        --line-b: #c2ceda; --text: #16202a; --muted: #56636f; --accent: #0b7a70;
+        --go: #147a41; --idle: #8a5a00; --bad: #c0322c;
+        color-scheme: light;
       }
       * { box-sizing: border-box; }
       body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
@@ -133,6 +157,16 @@
       .hint p { font-size: 13px; color: var(--muted); margin: 6px 0 0 14px; }
       /* Status rows that lead somewhere: the overview names a subsystem, the tab has it. */
       .jump { color: var(--accent); cursor: pointer; }
+      /* Design picker: the swatches are literal hex — they are a picture of a palette,
+         not part of the one in force, and must keep showing the other one. */
+      .theme-card {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+        border: 1px solid var(--line-b); background: var(--panel-2); color: var(--text);
+        font: inherit; font-weight: 600; padding: 12px; border-radius: 10px; cursor: pointer;
+      }
+      .theme-card[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
+      .theme-swatch { display: inline-flex; gap: 4px; padding: 5px; border-radius: 7px; }
+      .theme-swatch i { width: 15px; height: 15px; border-radius: 4px; display: block; }
     </style>
   </head>
   <body>
@@ -151,6 +185,7 @@
         <button class="tab" role="tab" data-for="sensors" onclick="showTab('sensors')">Sensors &amp; outputs</button>
         <button class="tab" role="tab" data-for="camera" onclick="showTab('camera')">Camera</button>
         <button class="tab" role="tab" data-for="gps" onclick="showTab('gps')">GPS</button>
+        <button class="tab" role="tab" data-for="design" onclick="showTab('design')">Design</button>
       </nav>
 
       <section class="panel" data-tab="overview">
@@ -623,6 +658,28 @@
         <div class="msg" id="gps-msg"></div>
       </section>
 
+      <section class="panel" data-tab="design">
+        <div class="eyebrow">Design</div>
+        <button class="theme-card" data-theme-pick="dark" aria-pressed="true" onclick="pickTheme('dark')">
+          <span>Dark</span>
+          <span class="theme-swatch" style="background:#0b0f14">
+            <i style="background:#121821"></i><i style="background:#35d0c3"></i><i style="background:#c7d1dc"></i><i style="background:#f2b74a"></i>
+          </span>
+        </button>
+        <div style="height:10px"></div>
+        <button class="theme-card" data-theme-pick="light" aria-pressed="false" onclick="pickTheme('light')">
+          <span>Light</span>
+          <span class="theme-swatch" style="background:#eef2f6">
+            <i style="background:#ffffff"></i><i style="background:#0b7a70"></i><i style="background:#16202a"></i><i style="background:#8a5a00"></i>
+          </span>
+        </button>
+        <details class="hint">
+          <summary>One choice for both halves — this page and the control app</summary>
+          <p>The vehicle stores it and pushes it to every connected ground app, so switching here repaints the control app within a second; one that is not connected picks it up the next time it is. Dark is the default and the one to fly with — it is what sits next to live video at night. Light is for a bright bench or direct sun. The video overlay (OSD) stays light-on-dark in both, because it is drawn over the picture and has to stay readable there.</p>
+        </details>
+        <div class="msg" id="theme-msg"></div>
+      </section>
+
       <div class="foot">YonderRC setup · configure headless, then connect from the ground app</div>
     </div>
 
@@ -644,7 +701,7 @@
        * reload after a restart, so "open the GPS page" is a URL and not a click path.
        * Unknown or empty hash → Overview.
        */
-      const TABS = ['overview', 'network', 'remote', 'sensors', 'camera', 'gps'];
+      const TABS = ['overview', 'network', 'remote', 'sensors', 'camera', 'gps', 'design'];
       function showTab(id, opts) {
         const tab = TABS.includes(id) ? id : 'overview';
         document.querySelectorAll('.panel[data-tab]').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
@@ -652,9 +709,41 @@
         // replaceState, not location.hash: setting the hash scrolls the page to whatever
         // matches it, and there is nothing to scroll to here.
         history.replaceState(null, '', '#' + tab);
+        // The strip scrolls sideways on a phone; a tab opened from the URL would
+        // otherwise be selected somewhere off the right edge.
+        document.querySelector(`.tab[data-for="${tab}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         if (!(opts && opts.keepScroll)) window.scrollTo(0, 0);
       }
       window.addEventListener('hashchange', () => showTab(location.hash.slice(1), { keepScroll: true }));
+
+
+      // ---- design ----
+      /**
+       * Two palettes, no third "follow the system" option: the vehicle decides for both
+       * halves of the product. Applied here immediately, remembered locally so the next
+       * load does not flash the other one, and pushed by the vehicle to every connected
+       * ground app so a switch does not wait for a reconnect.
+       */
+      let theme = 'dark';
+      function applyTheme(t) {
+        theme = t === 'light' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+        try { localStorage.setItem('yonderrc.theme.v1', theme); } catch {}
+        document.querySelectorAll('[data-theme-pick]').forEach((b) => {
+          b.setAttribute('aria-pressed', String(b.dataset.themePick === theme));
+        });
+      }
+      async function pickTheme(t) {
+        const before = theme;
+        applyTheme(t); // show the answer while the vehicle is still being told
+        const r = await post('/api/config', { theme: t });
+        if (r && r.ok === false) {
+          applyTheme(before);
+          $('theme-msg').textContent = r.message || 'Not saved — the vehicle refused it.';
+          return;
+        }
+        $('theme-msg').textContent = 'Saved. A connected control app repaints within a second.';
+      }
 
       async function run(btn, fn) {
         if (!btn || btn.disabled) return;
@@ -865,6 +954,7 @@
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
+        applyTheme(c.theme || 'dark');
         updateSecState(!!c.authRequired);
       }
       // ---- GPS ----

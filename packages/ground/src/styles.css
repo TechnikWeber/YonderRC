@@ -16,6 +16,67 @@
   --danger: #ff5d5d; /* failsafe / link lost */
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Aliases. The OSD, the REC badge and the recording button were written against
+     --bad/--go, which nothing defined: an unresolvable var() is invalid at
+     computed-value time, so those elements silently lost their colour — the "NO DATA"
+     badge had no background and .osd-warn inherited its text colour instead of turning
+     red. Defining them here fixes both themes at once. */
+  --bad: var(--danger);
+  --go: var(--arm);
+  color-scheme: dark;
+}
+
+/*
+ * The light palette. Two looks, no third "follow the system" option, and no switch on
+ * this side at all: the VEHICLE decides (Setup › Design) and pushes the choice down the
+ * control link — the setup page and this app are one product, and a per-device toggle is
+ * how the two ends end up disagreeing. Only the tokens change here; the handful of rules
+ * below are the places that name a colour outside the palette and are not drawn on top of
+ * video. Contrast on the light panel: text 16:1, muted 6.2:1, the state colours 5.2–5.9:1.
+ */
+:root[data-theme='light'] {
+  --bg: #eef2f6;
+  --panel: #ffffff;
+  --panel-2: #f4f7fa;
+  --line: #dde5ec;
+  --line-bright: #c2ceda;
+  --text: #16202a;
+  --muted: #56636f;
+  --accent: #0b7a70;
+  --arm: #147a41;
+  --idle: #8a5a00;
+  --danger: #c0322c;
+  color-scheme: light;
+}
+/* White on the light theme's deeper green/teal reads at 5.4:1 and 5.2:1; the dark inks
+   these two carry in the dark theme sit at 3.2:1 on them, which is not a label. */
+:root[data-theme='light'] .arm-btn.armed { color: #ffffff; }
+:root[data-theme='light'] .seg.on { color: #ffffff; }
+/* A white focus ring is invisible on a white panel. */
+:root[data-theme='light'] .arm-btn:focus-visible { outline-color: #16202a; }
+/* The stick's dish is lit from above in both themes — dark hollow, light dome. */
+:root[data-theme='light'] .joy-base {
+  background: radial-gradient(circle at 50% 40%, #ffffff, #dde5ec);
+}
+:root[data-theme='light'] .arm-btn.armed .arm-fill { background: rgba(255, 255, 255, 0.34); }
+:root[data-theme='light'] .arm-btn.armed.holding { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6); }
+:root[data-theme='light'] .btn.tiny.danger { border-color: #e3b6b3; color: #a82b25; }
+:root[data-theme='light'] .btn.tiny.danger:hover { background: #fbecea; }
+/*
+ * The video stage keeps the DARK palette in both themes — it is its own little island.
+ * Everything drawn there sits on the picture, not on the page: the OSD badges are
+ * coloured text on a dark translucent block, so the light theme's deeper inks (chosen
+ * for contrast against white) would land at 3:1 on video and the FAILSAFE badge would
+ * be the first thing to go. Re-declaring the tokens inside the stage is enough — the
+ * OSD names no colour of its own beyond these.
+ */
+:root[data-theme='light'] .video-stage {
+  --text: #c7d1dc;
+  --muted: #6b7986;
+  --accent: #35d0c3;
+  --arm: #46d17f;
+  --idle: #f2b74a;
+  --danger: #ff5d5d;
 }
 
 * {

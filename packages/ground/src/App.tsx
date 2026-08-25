@@ -49,6 +49,7 @@ import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleL
 import { nudgeTrim, clearTrim } from './lib/trim';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
 import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, throttleChannelsOf, type AutoDisarmMode } from './lib/templates';
+import { applyTheme, rememberTheme } from './lib/theme';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -176,6 +177,11 @@ export function App() {
         setTelemetry(m);
       },
       onGps: setGps,
+      // The vehicle owns the look of both halves — there is no switch on this side.
+      onTheme: (t) => {
+        applyTheme(document, t);
+        rememberTheme(localStorage, t);
+      },
       onControlPath: setControlPath,
       onAuthFail: () => {
         setAuthMsg('Vehicle rejected the secret — check the API secret and Connect again.');
@@ -664,7 +670,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.63.0</span>
+        <span className="ver">ground · v1.64.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>

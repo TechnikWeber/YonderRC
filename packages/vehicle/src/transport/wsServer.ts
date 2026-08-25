@@ -6,6 +6,8 @@ import {
   type ClientMessage,
   type RtcSignalMessage,
   type WelcomeMessage,
+  type ThemeMessage,
+  type UiTheme,
 } from '@yonderrc/protocol';
 import type { VehicleCore } from '../core/VehicleCore.js';
 import type { VehicleConfig } from '../config.js';
@@ -61,7 +63,13 @@ export function startWsServer(
     applyCameras: (cams) =>
       applyCameras(cams, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder, config.rpicamBin),
     applyHilink,
-    onConfigSaved: (patch) => console.log('[setup] config saved:', Object.keys(patch).join(', ')),
+    onConfigSaved: (patch) => {
+      console.log('[setup] config saved:', Object.keys(patch).join(', '));
+      // The one setting that must reach a ground that is already flying: switching the
+      // theme in the setup page has to repaint the control app, not wait for its next
+      // reconnect. Everything else here is read at connect time or needs a restart.
+      if (patch.theme) broadcastTheme(patch.theme);
+    },
   };
   const http = createServer((req, res) => {
     void handleSetup(req, res, setupCtx).then((handled) => {
@@ -69,6 +77,10 @@ export function startWsServer(
     });
   });
   const wss = new WebSocketServer({ server: http });
+  const broadcastTheme = (theme: UiTheme) => {
+    const msg = JSON.stringify({ type: 'theme', theme } satisfies ThemeMessage);
+    for (const client of wss.clients) if (client.readyState === client.OPEN) client.send(msg);
+  };
 
   // Uplink signal (LTE/WiFi) refreshed slowly and attached to every status frame,
   // so the ground OSD can show one "link health" number. Reading shells out, so a
@@ -163,6 +175,10 @@ export function startWsServer(
       videoQuality,
     };
     ws.send(JSON.stringify(welcome));
+    // Separate from the welcome on purpose: the welcome describes what this vehicle can
+    // do, and it is sent once. The theme is the one thing that can change under a live
+    // session, so it travels as its own message and is simply re-sent when it does.
+    ws.send(JSON.stringify({ type: 'theme', theme: config.theme } satisfies ThemeMessage));
 
     const statusTimer = setInterval(() => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ ...core.status(), link: currentLink, power: currentPower }));

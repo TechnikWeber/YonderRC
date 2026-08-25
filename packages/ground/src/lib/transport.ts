@@ -7,6 +7,7 @@ import {
   type TelemetryMessage,
   type GpsMessage,
   type WelcomeMessage,
+  type UiTheme,
 } from '@yonderrc/protocol';
 
 export type LinkState = 'disconnected' | 'connecting' | 'connected';
@@ -18,6 +19,8 @@ export interface LinkCallbacks {
   onStatus?: (msg: StatusMessage) => void;
   onTelemetry?: (msg: TelemetryMessage) => void;
   onGps?: (msg: GpsMessage) => void;
+  /** The palette the vehicle wants both halves of the product to wear. */
+  onTheme?: (theme: UiTheme) => void;
   onControlPath?: (path: ControlPath) => void;
   /** The vehicle rejected the shared secret (WS close 4001). */
   onAuthFail?: () => void;
@@ -151,6 +154,8 @@ export class LinkClient {
         this.cbs.onTelemetry?.(msg);
       } else if (msg.type === 'gps') {
         this.cbs.onGps?.(msg);
+      } else if (msg.type === 'theme') {
+        this.cbs.onTheme?.(msg.theme);
       } else if (msg.type === 'rtc') {
         void this.onSignal(msg);
       }
