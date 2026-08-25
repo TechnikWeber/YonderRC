@@ -11,6 +11,7 @@ import {
   clampReservePct, RESERVE_MAX_PCT, RESERVE_MIN_PCT,
   type ReturnBudgetCfg, type ReturnBudgetResult,
 } from '../lib/returnBudget';
+import { Hint } from './Hint';
 
 const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'next-camera', 'record-toggle', 'snapshot'];
 
@@ -136,12 +137,12 @@ export function ControlsPanel({
         />
         <span className="unit">s</span>
       </label>
-      <p className="note">
-        Applies to arming <b>and</b> disarming — the mis-touch that cuts the motors is the second
-        one — and to a key or controller button bound to <b>Arm / disarm</b> below, since a bumped
-        controller is just as capable of it. Switched off, both toggle on a plain press again.
-        {HOLD_MIN_S}–{HOLD_MAX_S} s; panic-disarm stays instant either way.
-      </p>
+      <Hint summary="It applies to disarming too, and to a bound key or button">
+        The mis-touch that cuts the motors is the disarm, not the arm — and a bumped controller is
+        just as capable of it as a thumb, so a key or button bound to <b>Arm / disarm</b> below is
+        held as well. Switched off, both toggle on a plain press again. {HOLD_MIN_S}–{HOLD_MAX_S} s;
+        panic-disarm stays instant either way.
+      </Hint>
 
       <label className="opt big">
         <input
@@ -164,14 +165,14 @@ export function ControlsPanel({
         />
         <span className="unit">s</span>
       </label>
-      <p className="note">
-        A much shorter filter than the arm hold, for the buttons that change something <b>lasting</b>:
-        <b> toggle channels</b>, the <b>speed limiter</b> and the <b>trims</b> — on the screen and on a
-        controller alike. Deliberately <b>not</b> applied to <b>momentary channels</b> (a horn has to
-        sound the instant you press it), <b>hold-ramp channels</b> (holding is already the gesture),
-        or the <b>sticks</b> — steering and throttle are never delayed. Arm keeps its own longer hold,
-        panic-disarm stays instant. {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
-      </p>
+      <Hint summary="Only the buttons that change something lasting">
+        A much shorter filter than the arm hold, for <b>toggle channels</b>, the <b>speed limiter</b>
+        and the <b>trims</b> — on the screen and on a controller alike. Deliberately <b>not</b>
+        applied to <b>momentary channels</b> (a horn has to sound the instant you press it),
+        <b> hold-ramp channels</b> (holding is already the gesture), or the <b>sticks</b> — steering
+        and throttle are never delayed. Arm keeps its own longer hold, panic-disarm stays instant.
+        {BUTTON_HOLD_MIN_S}–{BUTTON_HOLD_MAX_S} s.
+      </Hint>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Return-home budget</div>
       <label className="opt big">
@@ -209,23 +210,20 @@ export function ControlsPanel({
           <span className="info-sub"> — {budgetLive.status === 'now' ? 'turn back now' : `${Math.round(budgetLive.furtherM ?? 0)} m of outbound range left`}.</span>
         </div>
       )}
-      <p className="note">
-        A percentage doesn't answer "can I still get home?" — 30% is plenty at 50 m and
-        not enough at 800 m. This measures what the vehicle actually consumes per km and
-        turns it into the number that <i>is</i> a decision: how much further you may go.
-        The <b>reserve</b> is a margin on the <b>trip home</b>, not a percentage of the
-        pack: at <b>50%</b> you turn around while the pack still holds <b>1.5×</b> what
-        getting home costs, so you arrive with half that cost to spare. It therefore
-        scales with how far out you are — small at 100 m, large at 2 km, which is where a
-        misjudged consumption rate gets expensive. It covers <b>estimation error</b>
-        (headwind on the way back, a detour, a hill, a pack that sags at the end); it is
-        not a deep-discharge limit — that's the low-battery warning below.
-        Shown in the <b>full OSD</b> only, but the <b>turn-back warning</b> appears in the
-        compact OSD too and is spoken if callouts are on. <b>Needs a battery capacity set
-        on the vehicle, a current sensor and a GPS home point</b> — without any of them it
-        simply shows nothing, which is the normal case for a vehicle that is just a
-        servo driver.
-      </p>
+      <Hint summary={'A percentage doesn\'t answer "can I still get home?"'}>
+        30% is plenty at 50 m and not enough at 800 m. This measures what the vehicle actually
+        consumes per km and turns it into the number that <i>is</i> a decision: how much further you
+        may go. The <b>reserve</b> is a margin on the <b>trip home</b>, not a percentage of the pack:
+        at <b>50%</b> you turn around while the pack still holds <b>1.5×</b> what getting home costs,
+        so you arrive with half that cost to spare. It therefore scales with how far out you are —
+        small at 100 m, large at 2 km, which is where a misjudged consumption rate gets expensive. It
+        covers <b>estimation error</b> (headwind on the way back, a detour, a hill, a pack that sags
+        at the end); it is not a deep-discharge limit — that's the low-battery warning below. Shown
+        in the <b>full OSD</b> only, but the <b>turn-back warning</b> appears in the compact OSD too
+        and is spoken if callouts are on. <b>Needs a battery capacity set on the vehicle, a current
+        sensor and a GPS home point</b> — without any of them it simply shows nothing, which is the
+        normal case for a vehicle that is just a servo driver.
+      </Hint>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Stick feedback</div>
       <label className="opt big">
@@ -271,17 +269,16 @@ export function ControlsPanel({
           Test rim
         </button>
       </div>
-      <p className="note">
-        On FPV your thumb has no edge to feel for. This marks the two positions that matter:
-        back at <b>centre</b>, and hard against the <b>rim</b>. Each fires once per crossing —
-        holding the stick at the stop stays quiet.
+      <Hint summary="On FPV your thumb has no edge to feel for">
+        This marks the two positions that matter: back at <b>centre</b>, and hard against the
+        <b> rim</b>. Each fires once per crossing — holding the stick at the stop stays quiet.
         {' '}
         {vibrationAvailable()
           ? <>Vibration is available here.</>
           : <><b>An iPhone cannot vibrate from a web page</b> — Safari has no Vibration API, and no
             setting changes that. The click is the feedback that does work on iOS; turn the phone's
             silent switch off to hear it.</>}
-      </p>
+      </Hint>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Voice callouts</div>
       <label className="opt big">
@@ -315,22 +312,22 @@ export function ControlsPanel({
           Test
         </button>
       </div>
-      <p className="note">
-        {speechAvailable()
-          ? <>On FPV you watch the picture, not the OSD — a beep says <i>that</i> something happened,
-            a voice says <i>what</i>. Spoken: <b>failsafe</b>, <b>armed / disarmed</b>,
-            <b> low battery</b> (repeated every 30 s while it stays low), <b>turn back now</b> if the
-            return-home budget is on, plus two separate pairs for the link —
-            <b> lost / restored</b> (it exists) and <b>weak / good</b> (how well it works).
-            Both wait a couple of seconds first: the WebSocket reconnects a second after any drop, so
-            a WiFi roam would otherwise be announced as an outage, and a voice that cries wolf is one
-            you stop listening to. That costs nothing in safety — <b>failsafe is announced
-            immediately</b>, and the vehicle enters it 300 ms after the frames stop.
-            Deliberately nothing else: a chatty voice gets muted, and then the ones that matter are
-            gone too. Uses the browser's built-in voice — no network. On iOS it stays silent until
-            you have tapped the page once.</>
-          : <>This browser has no speech engine, so callouts are unavailable here.</>}
-      </p>
+      {speechAvailable() ? (
+        <Hint summary="A beep says that something happened, a voice says what">
+          Spoken: <b>failsafe</b>, <b>armed / disarmed</b>, <b>low battery</b> (repeated every 30 s
+          while it stays low), <b>turn back now</b> if the return-home budget is on, plus two separate
+          pairs for the link — <b>lost / restored</b> (it exists) and <b>weak / good</b> (how well it
+          works). Both wait a couple of seconds first: the WebSocket reconnects a second after any
+          drop, so a WiFi roam would otherwise be announced as an outage, and a voice that cries wolf
+          is one you stop listening to. That costs nothing in safety — <b>failsafe is announced
+          immediately</b>, and the vehicle enters it 300 ms after the frames stop. Deliberately
+          nothing else: a chatty voice gets muted, and then the ones that matter are gone too. Uses
+          the browser's built-in voice — no network. On iOS it stays silent until you have tapped the
+          page once.
+        </Hint>
+      ) : (
+        <p className="note">This browser has no speech engine, so callouts are unavailable here.</p>
+      )}
 
       <div className={`info-line ${autoDisarm ? 'go' : 'idle'}`}>
         Auto-disarm on reconnect: <b>{autoDisarm ? 'ON' : 'OFF'}</b>
@@ -353,11 +350,10 @@ export function ControlsPanel({
           </label>
         ))}
       </div>
-      <p className="note">
-        <b>Auto</b> follows the vehicle type — on for car/boat (stopping is always safe), off for
-        plane/drone, so a brief link drop can't cut an aircraft's motors in flight. Override it only
-        when the type doesn't describe your setup.
-      </p>
+      <Hint summary="Auto follows the vehicle type">
+        On for car/boat (stopping is always safe), off for plane/drone, so a brief link drop can't cut
+        an aircraft's motors in flight. Override it only when the type doesn't describe your setup.
+      </Hint>
       {autoDisarmMode === 'on' && !typeDefault && (
         <p className="note warn-note">
           ⚠ Forced ON for a <b>{vehicleType}</b>: every reconnect will disarm — in the air that means
@@ -372,7 +368,12 @@ export function ControlsPanel({
       )}
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Action bindings</div>
-      <p className="note">Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over the reliable link — <b>no hold, no confirmation</b>, which is why it ships <b>unbound</b>: a stray key cuts the motors, and on an aircraft that is a crash. Bind it to something you can't hit by accident, and if you fly with a controller, bind it there — a keyboard key is no use with both hands on the sticks.</p>
+      <Hint summary="Panic-disarm ships unbound, and why">
+        Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over
+        the reliable link — <b>no hold, no confirmation</b>: a stray key cuts the motors, and on an
+        aircraft that is a crash. Bind it to something you can't hit by accident, and if you fly with
+        a controller, bind it there — a keyboard key is no use with both hands on the sticks.
+      </Hint>
       <div className="actions-grid">
         <div className="actions-head"><span>Action</span><span>Key</span><span>Button</span></div>
         {ORDER.map((id) => (
@@ -437,7 +438,12 @@ export function ControlsPanel({
         <label className="opt"><input type="checkbox" checked={battery.rumble} onChange={(e) => setBat({ rumble: e.target.checked })} /> Rumble</label>
         <label className="opt"><input type="checkbox" checked={battery.sound} onChange={(e) => setBat({ sound: e.target.checked })} /> Sound</label>
       </div>
-      <p className="note">Auto only warns when a real sensor delivers data. Percent needs a battery capacity set on the vehicle (Setup › Telemetry). Voltage is a pack value — set it for your cell count (e.g. 3S ≈ 10.5 V). "Consumed" warns after using that many mAh — handy without a capacity set. Alerts repeat every ~3 s while low.</p>
+      <Hint summary="What each threshold needs">
+        Auto only warns when a real sensor delivers data. Percent needs a battery capacity set on the
+        vehicle (Setup › Telemetry). Voltage is a pack value — set it for your cell count
+        (e.g. 3S ≈ 10.5 V). "Consumed" warns after using that many mAh — handy without a capacity
+        set. Alerts repeat every ~3 s while low.
+      </Hint>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Blackbox logging</div>
       <label className="opt big">
@@ -452,7 +458,19 @@ export function ControlsPanel({
         <button className="btn tiny" onClick={onDownloadGpx} disabled={logFixes === 0} title={logFixes === 0 ? 'No GPS fix recorded yet' : `${logFixes} track points`}>Download GPX</button>
         <button className="btn tiny" onClick={onClearLog} disabled={logRows === 0}>Clear</button>
       </div>
-      <p className="note">Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs stay in this browser tab until you download or clear them. The CSV holds link/video stats, <b>position</b> (<span className="mono">lat</span>, <span className="mono">lon</span>, <span className="mono">alt_m</span>, <span className="mono">sats</span>, <span className="mono">speed_ms</span>) plus <b>every telemetry channel</b> the vehicle reports, one column per channel (<span className="mono">Pack_V</span>, <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>); <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary channel. Because position and telemetry share a row, you can colour the track by voltage or RTT in QGIS or kepler.gl. <b>GPX</b> is the plain track for Google Earth, gpx.studio or any mapping tool — it needs a GPS fix (Setup › GPS).</p>
+      <Hint summary="What lands in the CSV and the GPX">
+        Off by default — it only samples (2×/s) while enabled, so it adds no overhead otherwise. Logs
+        stay in this browser tab until you download or clear them. The CSV holds link/video stats,
+        <b> position</b> (<span className="mono">lat</span>, <span className="mono">lon</span>,{' '}
+        <span className="mono">alt_m</span>, <span className="mono">sats</span>,{' '}
+        <span className="mono">speed_ms</span>) plus <b>every telemetry channel</b> the vehicle
+        reports, one column per channel (<span className="mono">Pack_V</span>,{' '}
+        <span className="mono">I1_A</span>, <span className="mono">Motor_C</span>);{' '}
+        <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary
+        channel. Because position and telemetry share a row, you can colour the track by voltage or
+        RTT in QGIS or kepler.gl. <b>GPX</b> is the plain track for Google Earth, gpx.studio or any
+        mapping tool — it needs a GPS fix (Setup › GPS).
+      </Hint>
     </section>
   );
 }

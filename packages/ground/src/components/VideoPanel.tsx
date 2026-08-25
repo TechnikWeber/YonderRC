@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Hint } from './Hint';
 import {
   CHANNEL_MIN_US,
   CHANNEL_MAX_US,
@@ -869,11 +870,10 @@ export function VideoPanel({
           {telemetry && (telemetry.voltages.length + telemetry.currents.length + (telemetry.temperatures?.length ?? 0) > 0) && (
             <>
               <div className="eyebrow2" style={{ marginTop: 10 }}>Sensor values</div>
-              <p className="note">
-                Every channel the vehicle reports. Uncheck what you don't want over the picture — the
-                label is shown as soon as a kind has more than one channel. Add or rename channels in
-                the vehicle's Setup › Telemetry.
-              </p>
+              <Hint summary="Every channel the vehicle reports">
+                Uncheck what you don't want over the picture — the label is shown as soon as a kind
+                has more than one channel. Add or rename channels in the vehicle's Setup › Telemetry.
+              </Hint>
               <div className="osd-fields">
                 {([
                   ['v', 'V', telemetry.voltages],
@@ -909,7 +909,10 @@ export function VideoPanel({
           <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Record, snapshot and next-camera keys/buttons live in <b>Setup › Controls</b>.</p>
 
           <div className="eyebrow2" style={{ marginTop: 10 }}>Auto quality thresholds</div>
-          <p className="note">Used when quality is set to <b>Auto</b>. Step down if loss/latency exceed the "down" limits for the hold time; step up only when both are below the "up" limits for the (longer) up-hold.</p>
+          <Hint summary={'Used when quality is set to "Auto"'}>
+            Step down if loss/latency exceed the "down" limits for the hold time; step up only when
+            both are below the "up" limits for the (longer) up-hold.
+          </Hint>
           <div className="rec-grid">
             <label className="rec-field">Loss down %<input type="number" value={autoCfg.lossDownPct} onChange={(e) => saveAutoCfg({ lossDownPct: Number(e.target.value) })} /></label>
             <label className="rec-field">Latency down ms<input type="number" value={autoCfg.latDownMs} onChange={(e) => saveAutoCfg({ latDownMs: Number(e.target.value) })} /></label>

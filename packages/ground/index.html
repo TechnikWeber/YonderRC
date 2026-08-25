@@ -6,8 +6,21 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
     />
-    <meta name="theme-color" content="#0b0f14" />
+    <meta name="theme-color" content="#eef2f6" />
     <title>YonderRC — Ground Station</title>
+    <script>
+      /* Before the first paint. The vehicle owns the theme and sends it over the control
+         link, which is seconds away at best; this is only the last answer this browser
+         saw, so the app does not start in the wrong palette and flip. Light is the
+         default — the dark palette is what plain :root carries, so the attribute has to
+         be stamped either way. Kept in sync with lib/theme.ts (same key, same default). */
+      try {
+        var t = localStorage.getItem('yonderrc.theme.v1');
+        document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

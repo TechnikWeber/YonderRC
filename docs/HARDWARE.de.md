@@ -495,9 +495,9 @@ Die Seite ist in sieben Reiter geteilt — **Overview · Network · Remote acces
 outputs · Camera · GPS · Design**. *Overview* ist der eine Bildschirm, der „ist alles
 da?" beantwortet: Systemstatus, Uplink und je eine Zeile für Sensorik, GPS und Kameras,
 von der aus man in den zugehörigen Reiter springt. *Design* wählt das Aussehen —
-**dunkel** (Standard, und das, was man neben Live-Video will) oder **hell** für die
-helle Werkbank; das Fahrzeug speichert die Wahl und schiebt sie an die Ground-App, beide
-Hälften sehen also immer gleich aus. Das Video-Overlay bleibt in beiden hell auf dunkel,
+**hell** (Standard: Werkbank bei Tageslicht, Handy in der Sonne) oder **dunkel**, das,
+womit man nachts fährt; das Fahrzeug speichert die Wahl und schiebt sie an die
+Ground-App, beide Hälften sehen also immer gleich aus. Das Video-Overlay bleibt in beiden hell auf dunkel,
 weil es auf dem Bild liegt. Jeder Reiter ist eine URL
 (`…/setup#gps`), ein Schritt weiter unten lässt sich also verlinken. Die in dieser
 Anleitung genannten Panel-Namen (*Vehicle configuration*, *Telemetry*, *WiFi* …) sind

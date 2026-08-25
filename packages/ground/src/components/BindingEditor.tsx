@@ -17,6 +17,7 @@ import {
 import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { CurveEditor } from './CurveEditor';
 import type { InputManager } from '../lib/input/inputManager';
+import { Hint } from './Hint';
 
 const METHODS: InputMethod[] = ['keyboard', 'gamepad', 'touch'];
 const DETENTS: Detent[] = ['center', 'low', 'free'];
@@ -233,12 +234,11 @@ export function BindingEditor({
             />
           </label>
         </div>
-        <p className="note">
-          A <b>batch write</b>: changing a value here stamps it into <i>every</i> channel below, and
-          each channel can be adjusted individually afterwards — this is not a cap that keeps
-          applying. Typical is 1000–2000 µs (absolute limit 500–2500). ESC calibration uses the
-          throttle channel's own values, not these.
-        </p>
+        <Hint summary="A batch write, not a cap that keeps applying">
+          Changing a value here stamps it into <i>every</i> channel below; each channel can be
+          adjusted individually afterwards. Typical is 1000–2000 µs (absolute limit 500–2500). ESC
+          calibration uses the throttle channel's own values, not these.
+        </Hint>
       </div>
 
       {showDetents && presentAxes.length > 0 && (
@@ -342,7 +342,7 @@ export function BindingEditor({
                       </label>
                     ))}
                   </div>
-                  <p className="note">
+                  <Hint summary="How the steps scale around the rest position">
                     Switched while driving with the three buttons under the sticks (and a bindable
                     controller button). The command is scaled around this channel's rest position:
                     with <b>rest {REST_LABEL[b.detent ?? 'center']}</b> that means{' '}
@@ -350,7 +350,7 @@ export function BindingEditor({
                       ? 'forward and reverse are capped equally'
                       : 'idle stays exactly at minimum and only the upper half is capped'}.
                     Endpoints, failsafe, the disarmed value and the pre-arm check are untouched.
-                  </p>
+                  </Hint>
                 </>
               )}
             </details>

@@ -8,10 +8,14 @@
       // Before the first paint, or the page flashes dark on its way to light. The
       // vehicle is still the authority — this is only last session's answer, and
       // loadConfig() overwrites it a moment later.
+      // Light is the default; the dark palette is what plain :root carries, so the
+      // attribute has to be stamped either way.
       try {
         var t = localStorage.getItem('yonderrc.theme.v1');
-        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
-      } catch (e) {}
+        document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
     </script>
     <style>
       :root {
@@ -23,7 +27,8 @@
         --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       }
       /*
-       * The second palette. Two, and no "follow the system" third: the vehicle owns the
+       * The light palette — the default since v1.65.0. Two looks, and no "follow the
+       * system" third: the vehicle owns the
        * choice (Setup › Design, persisted as `theme`) and pushes the same one to the
        * ground app, so the two halves of the product can never disagree. Nothing else on
        * this page names a colour — that is why a whole second look is eleven lines.
@@ -127,12 +132,22 @@
        * camera snapshot needs the video base URL, saving reads inputs from its own
        * panel), so removing them would break those reads.
        */
+      /*
+       * The strip WRAPS by default. It used to be a single scrolling row everywhere,
+       * which is fine under a thumb and a trap under a mouse: seven tabs are wider than
+       * the 640px column, a mouse wheel does not scroll a horizontal box, and the last
+       * tab was simply unreachable on a PC. Only the phone, where the swipe works and
+       * vertical space is the scarce one, keeps the single row.
+       */
       .tabs {
-        display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+        display: flex; flex-wrap: wrap; gap: 6px;
         position: sticky; top: 0; z-index: 5; padding: 8px 0;
         background: var(--bg); margin: 0 -16px; padding-left: 16px; padding-right: 16px;
       }
-      .tabs::-webkit-scrollbar { display: none; }
+      @media (max-width: 520px) {
+        .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+        .tabs::-webkit-scrollbar { display: none; }
+      }
       .tab {
         appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--muted);
         font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
@@ -660,14 +675,14 @@
 
       <section class="panel" data-tab="design">
         <div class="eyebrow">Design</div>
-        <button class="theme-card" data-theme-pick="dark" aria-pressed="true" onclick="pickTheme('dark')">
+        <button class="theme-card" data-theme-pick="dark" aria-pressed="false" onclick="pickTheme('dark')">
           <span>Dark</span>
           <span class="theme-swatch" style="background:#0b0f14">
             <i style="background:#121821"></i><i style="background:#35d0c3"></i><i style="background:#c7d1dc"></i><i style="background:#f2b74a"></i>
           </span>
         </button>
         <div style="height:10px"></div>
-        <button class="theme-card" data-theme-pick="light" aria-pressed="false" onclick="pickTheme('light')">
+        <button class="theme-card" data-theme-pick="light" aria-pressed="true" onclick="pickTheme('light')">
           <span>Light</span>
           <span class="theme-swatch" style="background:#eef2f6">
             <i style="background:#ffffff"></i><i style="background:#0b7a70"></i><i style="background:#16202a"></i><i style="background:#8a5a00"></i>
@@ -675,7 +690,7 @@
         </button>
         <details class="hint">
           <summary>One choice for both halves — this page and the control app</summary>
-          <p>The vehicle stores it and pushes it to every connected ground app, so switching here repaints the control app within a second; one that is not connected picks it up the next time it is. Dark is the default and the one to fly with — it is what sits next to live video at night. Light is for a bright bench or direct sun. The video overlay (OSD) stays light-on-dark in both, because it is drawn over the picture and has to stay readable there.</p>
+          <p>The vehicle stores it and pushes it to every connected ground app, so switching here repaints the control app within a second; one that is not connected picks it up the next time it is. <b>Light is the default</b> — the daylight bench, a phone in the sun. Dark is the one to fly with at night, where the page sits next to live video. The video overlay (OSD) stays light-on-dark in both, because it is drawn over the picture and has to stay readable there.</p>
         </details>
         <div class="msg" id="theme-msg"></div>
       </section>
@@ -724,9 +739,9 @@
        * load does not flash the other one, and pushed by the vehicle to every connected
        * ground app so a switch does not wait for a reconnect.
        */
-      let theme = 'dark';
+      let theme = 'light';
       function applyTheme(t) {
-        theme = t === 'light' ? 'light' : 'dark';
+        theme = t === 'dark' ? 'dark' : 'light';
         document.documentElement.dataset.theme = theme;
         try { localStorage.setItem('yonderrc.theme.v1', theme); } catch {}
         document.querySelectorAll('[data-theme-pick]').forEach((b) => {
@@ -954,7 +969,7 @@
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
-        applyTheme(c.theme || 'dark');
+        applyTheme(c.theme || 'light');
         updateSecState(!!c.authRequired);
       }
       // ---- GPS ----

@@ -11,7 +11,7 @@ import type { UiTheme } from '@yonderrc/protocol';
  * its way to light — a cache, never the authority.
  */
 export const THEME_KEY = 'yonderrc.theme.v1';
-export const DEFAULT_THEME: UiTheme = 'dark';
+export const DEFAULT_THEME: UiTheme = 'light';
 
 export function isTheme(v: unknown): v is UiTheme {
   return v === 'dark' || v === 'light';
@@ -35,7 +35,7 @@ export function cachedTheme(storage: Pick<Storage, 'getItem'>): UiTheme {
 export function applyTheme(doc: Document, theme: UiTheme): void {
   doc.documentElement.dataset.theme = theme;
   const meta = doc.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'light' ? '#eef2f6' : '#0b0f14');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b0f14' : '#eef2f6');
 }
 
 export function rememberTheme(storage: Pick<Storage, 'setItem'>, theme: UiTheme): void {

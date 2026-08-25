@@ -482,9 +482,10 @@ From a laptop/phone on the same Wi-Fi open: **`http://yonderrc.local:8080/setup`
 The page is split into seven tabs — **Overview · Network · Remote access · Sensors &
 outputs · Camera · GPS · Design**. *Overview* is the one screen that answers "is
 everything there?": system status, the uplink, and one line each for sensors, GPS and
-cameras, each of which jumps to its tab. *Design* picks the look — **dark** (default,
-and what you want next to live video) or **light** for a bright bench; the vehicle
-stores the choice and pushes it to the ground app, so both halves always match. The
+cameras, each of which jumps to its tab. *Design* picks the look — **light** (the
+default: a bench in daylight, a phone in the sun) or **dark**, which is the one to fly
+with at night; the vehicle stores the choice and pushes it to the ground app, so both
+halves always match. The
 video overlay stays light-on-dark in both, because it is drawn on the picture. Every tab is a URL (`…/setup#gps`), so a step below can
 be linked. The panel names used throughout this guide (*Vehicle configuration*,
 *Telemetry*, *WiFi* …) are unchanged; they now live under the tab that owns them.

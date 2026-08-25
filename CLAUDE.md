@@ -97,10 +97,13 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   panels, the buttons and the switcher's own list against each other. **Hidden panels stay
   in the DOM** (`hidden`, not removed): handlers read fields across groups. Long
   explanations belong in `<details class="hint">` with the one-line takeaway as the
-  `<summary>`, not in an always-open `<p class="msg">`. `body` must keep `overflow-x: clip`
+  `<summary>`, not in an always-open `<p class="msg">` — the ground app has the same
+  pattern in `components/Hint.tsx` (`<p class="note">` stays the short one-liner).
+  The tab strip **wraps**; only under 520px is it a single scrolling row, because a
+  mouse wheel cannot scroll a horizontal box and the last tab became unreachable. `body` must keep `overflow-x: clip`
   rather than `hidden` — `hidden` makes it a scroll container and the sticky tab bar has
   nothing to stick to.
-- **The theme belongs to the vehicle** (v1.64.0): `config.theme` ('dark' default | 'light'),
+- **The theme belongs to the vehicle** (v1.64.0): `config.theme` ('light' default since v1.65.0 | 'dark'),
   edited in Setup › Design, sent to the ground as its own `theme` WS message right after
   the welcome and re-broadcast to every connected client when it changes. The ground has
   **no switch of its own** — `ground/src/lib/theme.ts` only caches the last answer so a

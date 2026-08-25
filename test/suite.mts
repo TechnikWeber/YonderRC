@@ -1486,22 +1486,26 @@ async function main() {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
     };
-    ok('dark until the vehicle says otherwise', TH.cachedTheme(fake) === 'dark');
-    TH.rememberTheme(fake, 'light');
-    ok('the last answer is remembered', TH.cachedTheme(fake) === 'light');
+    ok('light until the vehicle says otherwise', TH.cachedTheme(fake) === 'light');
+    TH.rememberTheme(fake, 'dark');
+    ok('the last answer is remembered', TH.cachedTheme(fake) === 'dark');
     store.set(TH.THEME_KEY, 'neon');
-    ok('a junk value falls back to dark', TH.cachedTheme(fake) === 'dark');
+    ok('a junk value falls back to the default', TH.cachedTheme(fake) === TH.DEFAULT_THEME);
     // Storage can throw outright (private mode), not just come back empty.
-    ok('unreadable storage is not fatal', TH.cachedTheme({ getItem: () => { throw new Error('denied'); } }) === 'dark');
+    ok('unreadable storage is not fatal', TH.cachedTheme({ getItem: () => { throw new Error('denied'); } }) === 'light');
     ok('only the two are themes', TH.isTheme('light') && TH.isTheme('dark') && !TH.isTheme('auto') && !TH.isTheme(null));
 
     const cfgPath2 = join(tmpdir(), `yonderrc-theme-test-${process.pid}.json`);
     const envCfg2 = process.env.YRC_CONFIG;
     process.env.YRC_CONFIG = cfgPath2;
     writeFileSync(cfgPath2, JSON.stringify({}));
-    ok('dark is the vehicle default', loadConfig().theme === 'dark');
-    writeFileSync(cfgPath2, JSON.stringify({ theme: 'light' }));
-    ok('and the saved choice survives a restart', loadConfig().theme === 'light');
+    const vehicleDefault = loadConfig().theme;
+    ok('light is the vehicle default', vehicleDefault === 'light');
+    // Both ends must agree on what "nothing chosen yet" looks like, or a fresh browser
+    // paints one thing while the vehicle believes the other.
+    ok('and the ground app defaults to the same', TH.DEFAULT_THEME === vehicleDefault);
+    writeFileSync(cfgPath2, JSON.stringify({ theme: 'dark' }));
+    ok('the saved choice survives a restart', loadConfig().theme === 'dark');
     rmSync(cfgPath2, { force: true });
     if (envCfg2 === undefined) delete process.env.YRC_CONFIG; else process.env.YRC_CONFIG = envCfg2;
 

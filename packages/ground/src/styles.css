@@ -451,6 +451,41 @@ summary,
   margin-top: 10px;
   line-height: 1.5;
 }
+/*
+ * The same collapsible explanation the vehicle's setup page uses. A <p class="hint">
+ * stays the plain one-liner it always was; a <details class="hint"> is the long one,
+ * closed until asked for. The summary carries the takeaway, so nothing is hidden that
+ * you need at a glance.
+ */
+details.hint {
+  margin-top: 8px;
+}
+details.hint > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+details.hint > summary::-webkit-details-marker { display: none; }
+details.hint > summary::before {
+  content: '›';
+  color: var(--accent);
+  font-weight: 700;
+  display: inline-block;
+  transition: transform 0.12s;
+}
+details.hint[open] > summary::before { transform: rotate(90deg); }
+details.hint > summary:hover { color: var(--text); }
+details.hint > p {
+  margin: 6px 0 0 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
 .hint kbd {
   font-family: var(--mono);
   background: var(--panel-2);

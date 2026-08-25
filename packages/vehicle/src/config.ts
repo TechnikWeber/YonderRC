@@ -133,7 +133,7 @@ export interface PersistentConfig {
    * hotspot can't be fixed by editing a systemd unit over SSH.
    */
   pca9685?: { bus?: number; address?: number };
-  /** 'dark' (default) or 'light' — applied to the setup page and pushed to the ground. */
+  /** 'light' (default) or 'dark' — applied to the setup page and pushed to the ground. */
   theme?: UiTheme;
 }
 
@@ -225,7 +225,7 @@ export function loadConfig(): VehicleConfig {
     // the header, while ttyAMA0 is the Bluetooth UART on a Pi 3/4/5 (see system/serial.ts).
     gps: p.gps ?? { source: 'off', device: '/dev/serial0', baud: 9600, autoHome: true, minSats: 6, home: null },
     cameras: p.cameras ?? [{ name: 'test', type: 'sim', width: 1280, height: 720, fps: 25 }],
-    theme: p.theme ?? 'dark',
+    theme: p.theme ?? 'light',
     go2rtcConfigPath:
       process.env.YRC_GO2RTC_CONFIG ??
       fileURLToPath(new URL('../../../docker/go2rtc.yaml', import.meta.url)),

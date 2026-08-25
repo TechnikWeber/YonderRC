@@ -3,6 +3,38 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.65.0
+**English**
+- **Light is now the default.** Dark is still one click away in Setup › Design, and both
+  the setup page and the ground app stamp the choice before their first paint, so nothing
+  flashes the wrong palette on the way.
+- **The tab strip wraps instead of scrolling.** Seven tabs are wider than the 640 px
+  column, and a mouse wheel does not scroll a horizontal box — on a PC the **Design** tab
+  was simply unreachable. It now wraps to a second row; only under 520 px, where a swipe
+  works and vertical space is the scarce one, does it stay a single scrolling row.
+- **The ground app's Setup got the same collapsible hints as the vehicle's.** Eleven long
+  explanations — the endpoints batch write, both hold times, the return-home budget, stick
+  feedback, voice callouts, auto-disarm, action bindings, the low-battery thresholds,
+  blackbox logging, the curve editor and the OSD sensor list — are now a one-line summary
+  you can unfold. The takeaway stays visible, the reasoning is a click away, and the short
+  one-liners were left alone.
+
+**Deutsch**
+- **Hell ist jetzt Standard.** Dunkel bleibt einen Klick entfernt unter Setup › Design, und
+  Setup-Seite wie Ground-App setzen die Wahl noch vor dem ersten Rendern — es blitzt also
+  nichts in der falschen Palette auf.
+- **Die Reiterleiste bricht um, statt zu scrollen.** Sieben Reiter sind breiter als die
+  640-px-Spalte, und ein Mausrad scrollt keine horizontale Box — am PC war der Reiter
+  **Design** schlicht nicht erreichbar. Jetzt bricht die Leiste in eine zweite Zeile um;
+  nur unter 520 px, wo das Wischen funktioniert und die Höhe knapp ist, bleibt es eine
+  scrollende Zeile.
+- **Das Setup der Ground-App hat dieselben ausklappbaren Hinweise wie das Fahrzeug.** Elf
+  lange Erklärungen — Endpoint-Sammelschreibung, beide Haltezeiten, das Heimkehr-Budget,
+  Stick-Feedback, Sprachansagen, Auto-Disarm, Aktions-Belegung, die Akku-Schwellen, das
+  Blackbox-Logging, der Kurven-Editor und die OSD-Sensorliste — sind jetzt einzeilige
+  Zusammenfassungen zum Aufklappen. Die Kernaussage bleibt sichtbar, die Begründung ist
+  einen Klick entfernt, und die kurzen Einzeiler blieben, wie sie waren.
+
 ## v1.64.0
 **English**
 - **A light theme, chosen on the vehicle.** Setup › **Design** offers exactly two looks —

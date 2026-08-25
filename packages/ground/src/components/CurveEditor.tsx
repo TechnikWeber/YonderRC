@@ -7,6 +7,7 @@ import {
   type ChannelCurve,
   type CurveSize,
 } from '@yonderrc/protocol';
+import { Hint } from './Hint';
 
 /**
  * Per-channel response curve. Off by default — a channel with no curve behaves
@@ -127,12 +128,11 @@ export function CurveEditor({
               </button>
             </div>
           </div>
-          <p className="note">
-            X is the stick, Y is the channel — the curve is applied <b>before</b> expo, so both can be
-            used together. The two end points are fixed at ±100% so full travel stays reachable;
-            limit the travel with <span className="mono">min/max µs</span> instead. Applies to this
-            channel only.
-          </p>
+          <Hint summary="X is the stick, Y is the channel">
+            The curve is applied <b>before</b> expo, so both can be used together. The two end points
+            are fixed at ±100% so full travel stays reachable; limit the travel with{' '}
+            <span className="mono">min/max µs</span> instead. Applies to this channel only.
+          </Hint>
         </>
       )}
     </div>
