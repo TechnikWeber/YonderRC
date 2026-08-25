@@ -11,16 +11,17 @@ Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Au
 auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.de.md`](docs/HARDWARE.de.md).
 
-![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png?v=4)
+![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Spannung/Strom/mAh unten rechts, Link-Gesundheitszahl oben Mitte](docs/screenshots/Overview_OSD.png?v=5)
 
-*Bodenstation im Fahrbetrieb: latenzarmes FPV mit vollem OSD — GPS-Fix + **Home-Kompass,
-Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
-**Link-Signal** + Steuer-/Video-Latenz, Bitrate, FPS und Loss (unten rechts; normalerweise
-steht dort nur eine Gesundheitszahl, die Werte kommen von selbst, sobald der Link nicht
-mehr gut ist). Ein **Setup ↗**-Shortcut öffnet die Setup-Seite des Fahrzeugs. Das
-**Aussehen wird am Fahrzeug gewählt** (Setup › Design) und an die Boden-App geschoben —
-hier hell, für Nachtflüge dunkel; das OSD bleibt in beiden hell auf dunkel, weil es auf
-dem Bild liegt.*
+*Bodenstation im Fahrbetrieb, genau wie ausgeliefert: latenzarmes FPV mit vollem OSD —
+GPS-Fix + **Home-Kompass, Distanz, Odometer und Speed** (oben links), Akku-Balken (oben
+rechts), Spannung/Strom/mAh (unten rechts) und die **Link-Gesundheit als eine Zahl**
+(oben Mitte). Die Werte dahinter — Steuer- und Video-Latenz, Bitrate, FPS, Loss —
+erscheinen von selbst, sobald der Link nicht mehr gut ist, oder dauerhaft über FPV › ⚙.
+Ein **Setup ↗**-Shortcut öffnet die Setup-Seite des Fahrzeugs. Das **Aussehen wird am
+Fahrzeug gewählt** (Setup › Design) und an die Boden-App geschoben — hell als Standard,
+für Nachtflüge dunkel; das OSD bleibt in beiden hell auf dunkel, weil es auf dem Bild
+liegt.*
 
 ---
 
@@ -73,7 +74,7 @@ Reihe und die Größe, die damit möglich ist; Modus 4 verteilt beides auf zwei.
 <details>
 <summary><b>Mobile Ansicht — hier klicken</b></summary>
 
-![YonderRC am Handy: FPV mit kompaktem OSD, umgebrochene Tool-Buttons, Arm-Button und Touch-Joysticks](docs/screenshots/Mobile_FPV.jpeg?v=2)
+![YonderRC am Handy: FPV mit kompaktem OSD, umgebrochene Tool-Buttons, Arm-Button und Touch-Joysticks](docs/screenshots/Mobile_FPV.jpeg?v=5)
 
 *Dieselbe App in Handy-Breite (390 px): FPV mit kompaktem OSD (GPS, Home-Kompass,
 Odometer und Speed links, Akku-Balken rechts, Telemetrie in einer Zeile), die
@@ -111,7 +112,7 @@ FPV-Buttons in einer zweiten Reihe und darunter der Arm-Button mit dem Touch-Sti
   Steuer-Link und die Setup-API es — erster Verbindungsaufbau bleibt schnell, bei
   Bedarf abschließbar.
 
-![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=4)
+![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=5)
 
 *Kanal-Monitor: zeigt die **echte** Fahrzeug-Ausgabe in µs inklusive Failsafe und
 Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
@@ -229,7 +230,7 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Das **API-Secret** lässt sich per Klick erzeugen. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
   verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
-  ![Setup-Seite des Fahrzeugs, Reiter Overview: Reiterleiste oben, darunter der System-Status — Modus, LTE-Modem und Betreiber, Fernzugriff, WiFi sowie je eine Zeile für Sensorik, GPS und Kameras — danach Hardware-Test, Software-Update und die System-Buttons](docs/screenshots/VehicleConfig_Setup.png?v=4)
+  ![Setup-Seite des Fahrzeugs, Reiter Overview: Reiterleiste oben, darunter der System-Status — Modus, LTE-Modem und Betreiber, Fernzugriff, WiFi sowie je eine Zeile für Sensorik, GPS und Kameras — danach Hardware-Test, Software-Update und die System-Buttons](docs/screenshots/VehicleConfig_Setup.png?v=5)
 
   *Setup-Seite direkt vom Fahrzeug, in Reiter geteilt — **Overview · Network · Remote
   access · Sensors & outputs · Camera · GPS · Design**, jeder davon eine URL

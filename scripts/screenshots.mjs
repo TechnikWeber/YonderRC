@@ -4,8 +4,8 @@
  * They went stale three releases in a row — the app had turned light, the setup page
  * had grown tabs, and the README still showed a dark v1.58 — so this is the recipe,
  * not a one-off: start the sim, put the vehicle into a photogenic state, drive a
- * headless Chrome over CDP and capture at deviceScaleFactor 2 (1300x860 CSS →
- * 2600x1720, which is what the existing PNGs are).
+ * headless Chrome over CDP and capture at deviceScaleFactor 1.5 (1300x860 CSS →
+ * 1950x1290), then shrink what can be shrunk — see DSF and `optimise` below.
  *
  * Run it with the dev stack up:
  *     npm run dev        # vehicle :8080 + ground :5173
@@ -23,7 +23,17 @@ import { fileURLToPath } from 'node:url';
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'docs', 'screenshots');
 const GROUND = process.env.YRC_GROUND_URL ?? 'http://localhost:5173/';
 const VEHICLE = process.env.YRC_VEHICLE_URL ?? 'http://localhost:8080';
-const PORT = 9333;
+// A random port per run, because a fixed one silently reuses a chrome left behind by a
+// failed run — with ITS profile, so the shots come out carrying the last run's
+// localStorage. That cost an afternoon: the hero shot kept showing a setting that had
+// been removed from the script.
+const PORT = 9000 + Math.floor(Math.random() * 900);
+/**
+ * Render scale. 2 was three times what GitHub ever displays (it lays a README image out
+ * at ~900 px), so the five files came to 1.2 MB for no visible gain. 1.5 still has more
+ * pixels than a retina reader can use and is a third of the weight.
+ */
+const DSF = 1.5;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- the vehicle's state is half the picture ----
@@ -76,7 +86,7 @@ const send = (method, params = {}, sessionId) =>
  * One shot. `prep` is a list of JS expressions (numbers are pauses) run in the page;
  * `clip` returns a plain viewport-relative getBoundingClientRect to crop to.
  */
-async function shot({ url, out, width = 1300, height = 860, dsf = 2, mobile = false, prep = [], settle = 1500, clip = null }) {
+async function shot({ url, out, width = 1300, height = 860, dsf = DSF, mobile = false, prep = [], settle = 1500, clip = null }) {
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
   await send('Page.enable', {}, sessionId);
@@ -123,21 +133,23 @@ async function shot({ url, out, width = 1300, height = 860, dsf = 2, mobile = fa
 }
 
 const CONNECT = `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Connect')?.click(), 'ok'`;
-// The link NUMBERS are off by default (a single health score replaced them in v1.37).
-// The README caption describes them, so force them on for the hero shot.
-const LINK_ON = `localStorage.setItem('yonderrc.osdFields.v1', JSON.stringify({ link: true })), 'ok'`;
-const RELOAD = `location.reload(), 'ok'`;
 const panelWith = (needle, extra = '') => `(() => {
   const el = [...document.querySelectorAll('.panel')].find((p) => ${needle});
   const r = el.getBoundingClientRect();
   ${extra || 'return { x: r.x - 10, y: r.y - 10, width: r.width + 20, height: r.height + 20 };'}
 })()`;
 
+process.on('exit', () => chrome.kill());
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { chrome.kill(); process.exit(1); });
+process.on('uncaughtException', (e) => { chrome.kill(); console.error(e.message); process.exit(1); });
+
 console.log('priming the vehicle…');
 await primeVehicle();
 console.log('capturing…');
 
-await shot({ url: GROUND, out: 'Overview_OSD.png', prep: [LINK_ON, RELOAD, 3000, CONNECT, 15000], settle: 2000 });
+// Nothing is forced on for the camera: this is the OSD as it ships, down to the single
+// link health score (the numbers behind it appear by themselves once the link degrades).
+await shot({ url: GROUND, out: 'Overview_OSD.png', prep: [CONNECT, 15000], settle: 2000 });
 
 await shot({
   url: GROUND, out: 'TouchInputs_and_Status.png', width: 1080, height: 1500,
@@ -169,10 +181,37 @@ await shot({
 });
 
 // The phone view is an emulated 390px viewport, not a device photo — the caption in
-// both READMEs says so. Written as PNG; convert it to the .jpeg the README points at:
-//     magick docs/screenshots/Mobile_FPV.png -quality 88 docs/screenshots/Mobile_FPV.jpeg
-await shot({ url: GROUND, out: 'Mobile_FPV.png', width: 390, height: 844, dsf: 3, mobile: true, prep: [CONNECT, 14000], settle: 2000 });
+// both READMEs says so. Captured as PNG; optimise() turns it into the .jpeg they link.
+await shot({ url: GROUND, out: 'Mobile_FPV.png', width: 390, height: 844, dsf: 2, mobile: true, prep: [CONNECT, 14000], settle: 2000 });
 
 ws.close();
 chrome.kill();
+await optimise();
 console.log('done — check the diff before committing, the sim numbers change every run');
+
+/**
+ * Squeeze the files. The three flat-UI shots are a few dozen colours pretending to be
+ * truecolour, so a 256-colour palette is invisible and roughly halves them; the two
+ * that carry the video test pattern keep their full palette, and the phone one becomes
+ * the .jpeg the READMEs point at (photographic content, and it is the biggest file).
+ */
+async function optimise() {
+  const run = (args) => new Promise((res) => {
+    const p = spawn('magick', args, { stdio: 'ignore' });
+    p.on('close', (code) => res(code === 0));
+    p.on('error', () => res(false));
+  });
+  const at = (f) => join(OUT, f);
+  if (!(await run(['-version']))) {
+    console.warn('  ! ImageMagick not found — files left as captured, and Mobile_FPV is still a .png');
+    return;
+  }
+  for (const f of ['TouchInputs_and_Status.png', 'ChannelOutput_Monitor.png', 'VehicleConfig_Setup.png']) {
+    await run([at(f), '-strip', '-colors', '256', '-define', 'png:compression-level=9', at(f)]);
+  }
+  await run([at('Overview_OSD.png'), '-strip', '-define', 'png:compression-level=9', at('Overview_OSD.png')]);
+  await run([at('Mobile_FPV.png'), '-strip', '-quality', '85', at('Mobile_FPV.jpeg')]);
+  await run(['-version']); // (magick has no rm; the stray .png goes below)
+  const { rmSync } = await import('node:fs');
+  rmSync(at('Mobile_FPV.png'), { force: true });
+}

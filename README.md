@@ -11,15 +11,16 @@ Everything runs **in a simulator — with no hardware at all**. For the real bui
 the Pi (parts list, wiring, step by step from Wi-Fi → LTE) see
 [`docs/HARDWARE.md`](docs/HARDWARE.md).
 
-![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, link signal and stats bottom right](docs/screenshots/Overview_OSD.png?v=4)
+![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, voltage/current/mAh bottom right, link health score top centre](docs/screenshots/Overview_OSD.png?v=5)
 
-*Ground station while driving: low-latency FPV with a full OSD — GPS fix + **home
-compass, distance, odometer and speed** (top left), battery bar (top right), and the
-**link signal** + control/video latency, bitrate, FPS and loss (bottom right; normally a
-single health score, with the numbers appearing by themselves the moment the link stops
-being good). A **Setup ↗** shortcut opens the vehicle's setup page. The **look is set on
-the vehicle** (Setup › Design) and pushed to the ground app — light here, dark for night
-flying; the OSD stays light-on-dark either way, because it is drawn on the picture.*
+*Ground station while driving, exactly as it ships: low-latency FPV with a full OSD —
+GPS fix + **home compass, distance, odometer and speed** (top left), battery bar (top
+right), voltage/current/mAh (bottom right), and **link health as one score** (top
+centre). The numbers behind that score — control and video latency, bitrate, FPS, loss —
+appear by themselves the moment the link stops being good, or permanently under
+FPV › ⚙. A **Setup ↗** shortcut opens the vehicle's setup page. The **look is set on the
+vehicle** (Setup › Design) and pushed to the ground app — light by default, dark for
+night flying; the OSD stays light-on-dark either way, because it is drawn on the picture.*
 
 ---
 
@@ -67,7 +68,7 @@ that comes with it; mode 4 splits them across two.*
 <details>
 <summary><b>Mobile view — click to expand</b></summary>
 
-![YonderRC on a phone: FPV with the compact OSD, wrapped tool buttons, arm button and touch joysticks](docs/screenshots/Mobile_FPV.jpeg?v=2)
+![YonderRC on a phone: FPV with the compact OSD, wrapped tool buttons, arm button and touch joysticks](docs/screenshots/Mobile_FPV.jpeg?v=5)
 
 *The same app at phone size (390 px): FPV with the compact OSD (GPS, home compass,
 odometer and speed left, battery bar right, telemetry in one line), the FPV tools
@@ -103,7 +104,7 @@ wrapped onto a second row, and below it the arm button with the touch stick.*
 - **Optional shared secret** (off by default): when set, the control link and the
   setup API require it — quick to connect the first time, lockable when you want it.
 
-![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png?v=4)
+![Channel monitor: the actual µs output per channel, throttle "HELD SAFE · DISARMED"](docs/screenshots/ChannelOutput_Monitor.png?v=5)
 
 *Channel monitor: shows the **real** vehicle output in µs including failsafe and
 disarm — the throttle channel is visibly held safe while disarmed.*
@@ -215,7 +216,7 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   The **API secret** can be generated with one click. The ground app has a **"Setup ↗" shortcut** that opens it for the connected
   vehicle (works over LAN, the Pi's AP, or a VPN address).
 
-  ![Vehicle setup page, Overview tab: tabs across the top, then system status — mode, LTE modem and operator, remote access, Wi-Fi, and one line each for sensors, GPS and cameras — followed by the hardware test, the software update and the system buttons](docs/screenshots/VehicleConfig_Setup.png?v=4)
+  ![Vehicle setup page, Overview tab: tabs across the top, then system status — mode, LTE modem and operator, remote access, Wi-Fi, and one line each for sensors, GPS and cameras — followed by the hardware test, the software update and the system buttons](docs/screenshots/VehicleConfig_Setup.png?v=5)
 
   *Setup page served by the vehicle, split into tabs — **Overview · Network · Remote
   access · Sensors & outputs · Camera · GPS · Design**, each one a URL (`…/setup#gps`).
