@@ -11,12 +11,16 @@ Alles ist **im Simulator lauffähig — ganz ohne Hardware**. Für den echten Au
 auf dem Pi (Teileliste, Verkabelung, Schritt für Schritt WLAN → LTE) siehe
 [`docs/HARDWARE.de.md`](docs/HARDWARE.de.md).
 
-![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png?v=3)
+![Bodenstation im Fahrbetrieb: FPV-Video mit vollem OSD — GPS-Fix und Home-Kompass mit Distanz, Odometer und Speed oben links, Akku-Balken oben rechts, Link-Signal und Stats unten rechts](docs/screenshots/Overview_OSD.png?v=4)
 
 *Bodenstation im Fahrbetrieb: latenzarmes FPV mit vollem OSD — GPS-Fix + **Home-Kompass,
 Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
-**Link-Signal** + Steuer-/Video-Latenz, Bitrate, FPS und Loss (unten rechts). Ein
-**Setup ↗**-Shortcut öffnet die Setup-Seite des Fahrzeugs.*
+**Link-Signal** + Steuer-/Video-Latenz, Bitrate, FPS und Loss (unten rechts; normalerweise
+steht dort nur eine Gesundheitszahl, die Werte kommen von selbst, sobald der Link nicht
+mehr gut ist). Ein **Setup ↗**-Shortcut öffnet die Setup-Seite des Fahrzeugs. Das
+**Aussehen wird am Fahrzeug gewählt** (Setup › Design) und an die Boden-App geschoben —
+hier hell, für Nachtflüge dunkel; das OSD bleibt in beiden hell auf dunkel, weil es auf
+dem Bild liegt.*
 
 ---
 
@@ -47,7 +51,7 @@ Distanz, Odometer und Speed** (oben links), Akku-Balken (oben rechts) sowie das
   exakten Leerlauf und wird nur nach oben begrenzt. Endpunkte, Failsafe, Disarm-Wert und
   Pre-Arm-Check bleiben unangetastet.
 
-![Touch-Steuerung: ein großer Lenk-/Gas-Stick, Halten-zum-Armen-Button, Lights- und Horn-Buttons, Speed-Limiter, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=4)
+![Touch-Steuerung: ein großer Lenk-/Gas-Stick, Halten-zum-Armen-Button, Lights- und Horn-Buttons, Speed-Limiter, WebRTC-Steuerschalter und Status-Leiste](docs/screenshots/TouchInputs_and_Status.png?v=5)
 
 *Touch-Steuerung, der **Halten-zum-Armen**-Button, der **Speed-Limiter**, der optionale
 **WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Session-Zeit,
@@ -69,12 +73,11 @@ Reihe und die Größe, die damit möglich ist; Modus 4 verteilt beides auf zwei.
 <details>
 <summary><b>Mobile Ansicht — hier klicken</b></summary>
 
-![YonderRC am Handy: FPV mit kompaktem OSD, umgebrochene Tool-Buttons, Arm-Button und Touch-Joysticks](docs/screenshots/Mobile_FPV.jpeg?v=1)
+![YonderRC am Handy: FPV mit kompaktem OSD, umgebrochene Tool-Buttons, Arm-Button und Touch-Joysticks](docs/screenshots/Mobile_FPV.jpeg?v=2)
 
-*Dieselbe App auf einem iPhone: FPV mit kompaktem OSD (GPS, Home-Kompass, Odometer
-und Speed links, Akku-Balken rechts, Link/Latenz in einer Zeile), die FPV-Buttons in
-einer zweiten Reihe und darunter der Arm-Button mit Touch-Joysticks und belegbaren
-Buttons.*
+*Dieselbe App in Handy-Breite (390 px): FPV mit kompaktem OSD (GPS, Home-Kompass,
+Odometer und Speed links, Akku-Balken rechts, Telemetrie in einer Zeile), die
+FPV-Buttons in einer zweiten Reihe und darunter der Arm-Button mit dem Touch-Stick.*
 
 </details>
 
@@ -108,7 +111,7 @@ Buttons.*
   Steuer-Link und die Setup-API es — erster Verbindungsaufbau bleibt schnell, bei
   Bedarf abschließbar.
 
-![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=3)
+![Kanal-Monitor: tatsächliche µs-Ausgabe je Kanal, Throttle „HELD SAFE · DISARMED“](docs/screenshots/ChannelOutput_Monitor.png?v=4)
 
 *Kanal-Monitor: zeigt die **echte** Fahrzeug-Ausgabe in µs inklusive Failsafe und
 Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
@@ -226,11 +229,15 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Das **API-Secret** lässt sich per Klick erzeugen. Die Boden-App hat einen **„Setup ↗"-Shortcut**, der sie für das
   verbundene Fahrzeug öffnet (im LAN, über den AP des Pi oder eine VPN-Adresse).
 
-  ![Setup-Seite des Fahrzeugs: System-Status (LTE-Modem, Betreiber, Tailscale, WiFi) und der LTE-Bereich mit APN, SIM-PIN, APN-Auth und Netzmodus](docs/screenshots/VehicleConfig_Setup.png?v=3)
+  ![Setup-Seite des Fahrzeugs, Reiter Overview: Reiterleiste oben, darunter der System-Status — Modus, LTE-Modem und Betreiber, Fernzugriff, WiFi sowie je eine Zeile für Sensorik, GPS und Kameras — danach Hardware-Test, Software-Update und die System-Buttons](docs/screenshots/VehicleConfig_Setup.png?v=4)
 
-  *Setup-Seite direkt vom Fahrzeug: System-Status (Modus, LTE-Modem/Betreiber,
-  Fernzugriff, WiFi) und der robuste **LTE**-Bereich — APN, SIM-PIN, APN-Benutzer/Passwort
-  und Netzmodus. Bedienbar vom Handy ohne Bildschirm.*
+  *Setup-Seite direkt vom Fahrzeug, in Reiter geteilt — **Overview · Network · Remote
+  access · Sensors & outputs · Camera · GPS · Design**, jeder davon eine URL
+  (`…/setup#gps`). *Overview* beantwortet „ist alles da?" auf einem Schirm: Modus,
+  LTE-Modem/Betreiber, Fernzugriff und WiFi, dazu je eine Zeile für **Sensorik** (Quelle,
+  Kanäle, aktueller Messwert, verbrauchte mAh), **GPS** (Fix und Satelliten) und
+  **Kameras** — jede springt in ihren Reiter. Lange Erklärungen liegen eingeklappt hinter
+  einer Zeile. Bedienbar vom Handy ohne Bildschirm.*
 - **Fernzugriff, eine Methode wählen**: **Tailscale** oder **ZeroTier** (Zero-Config-
   Mesh-VPNs) oder **WireGuard** — entweder die von deinem eigenen Server oder einer
   **FritzBox** exportierte **`.conf` hochladen**, oder die Werte **von Hand eintragen**

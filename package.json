@@ -19,6 +19,7 @@
     "build": "npm run build -w @yonderrc/ground",
     "build:desktop": "npm run build -w @yonderrc/desktop",
     "dev:video": "bash scripts/dev-video.sh",
+    "screenshots": "node scripts/screenshots.mjs",
     "test": "tsx test/suite.mts"
   },
   "devDependencies": {

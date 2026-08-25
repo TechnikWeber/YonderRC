@@ -229,8 +229,11 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   make a receiver verifiable **indoors**, where there will never be a fix.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
-- Screenshots: `Mobile_FPV.jpeg` is a real phone screenshot and still shows the
-  pre-v1.22 arm button — retake it on a phone when convenient.
+- Screenshots: `scripts/screenshots.mjs` regenerates every image in `docs/screenshots`
+  (headless Chrome over CDP at deviceScaleFactor 2; needs `npm run dev` **and**
+  `npm run dev:video` running). Retake them whenever the UI changes visibly — they had
+  gone three releases stale before v1.65.2. `Mobile_FPV` is an emulated 390 px viewport,
+  not a device photo, and both READMEs say so; a real phone screenshot is still welcome.
 
 Done in the v1.16.2–v1.18.0 review/feature pass: arm-over-WS, no-shell-injection, camera
 name/device hardening, INA voltage, per-channel detents, optional shared secret,
