@@ -3,6 +3,24 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.68.3
+Documentation only — no code changes.
+
+**English**
+- **README and hardware guide cut down**, both languages: README −41 %, hardware guide
+  −30 % by word count. Feature lists are bullets now, prose only where it earns its place.
+  Tables, wiring, pin maps and commands are untouched — that is the part people come for.
+- The project was getting hard to enter for a beginner. Every fact is still there; the
+  paragraphs around it are not.
+
+**Deutsch**
+- **README und Hardware-Guide gekürzt**, beide Sprachen: README −41 %, Hardware-Guide
+  −30 % nach Wortzahl. Feature-Listen sind jetzt Stichpunkte, Fließtext nur noch da, wo er
+  etwas bringt. Tabellen, Verkabelung, Pinbelegungen und Befehle bleiben unangetastet —
+  deswegen kommt man ja her.
+- Für Einsteiger war das Projekt zu überladen geworden. Jeder Fakt steht noch drin, die
+  Absätze drumherum nicht mehr.
+
 ## v1.68.2
 **English**
 - **An unset allowance now falls back to the LTE stick's own limit.** With `Measured by:
