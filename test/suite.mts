@@ -1600,6 +1600,22 @@ async function main() {
     ok('the switcher knows exactly those tabs', inList.join(',') === buttons.join(','), `${inList} vs ${buttons}`);
     // The overview is what a fresh page shows; losing it would land nobody anywhere.
     ok('the overview carries the system status', /data-tab="overview"[\s\S]{0,200}id="status"/.test(html));
+
+    // ---- which charge counter is actually running ----
+    // `chargeSource: 'auto'` states a wish, not an outcome: it degrades to Pi
+    // integration whenever the primary current channel is not an INA228, and the mAh
+    // keep coming either way — only their accuracy changes. The resolved answer
+    // (`chargeFrom` from /api/telemetry/live) has to be on the page, or the degrade is
+    // invisible. It used to live in an OSD tooltip and a startup log line, i.e. nowhere
+    // a phone can reach.
+    ok('the resolved charge counter has a place on the page', /id="charge-live"/.test(html));
+    ok('and something fills it', /function renderChargeLive\(\)/.test(html) && /live\.chargeFrom === 'sensor'/.test(html));
+    ok('it is refreshed on the poll, not only on load', /renderDevices\(\);\s*\n\s*renderChargeLive\(\);/.test(html));
+    // "off" and "not counting" must not read as "counting on the Pi" — that would be a
+    // wrong answer rather than a missing one.
+    ok('telemetry off and counting off are their own answers',
+      /Telemetry is off/.test(html) && /Coulomb counting is off/.test(html));
+    ok('the overview names the counter too', /devRow\('· counter'/.test(html));
   }
 
   // ---- one version, three places ----

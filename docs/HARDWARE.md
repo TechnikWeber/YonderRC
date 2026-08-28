@@ -184,6 +184,14 @@ Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB
 - **Give the Pi a real supply**: 5.1 V / 3 A with a short, thick cable. A camera plus an
   LTE stick on a phone charger is already over the edge, and it will be under-voltage at
   idle before you have driven anywhere.
+- **How much that actually is — measured, not estimated.** A Pi 4B with a CSI camera
+  (OV5647), a HiLink LTE stick, a PCA9685 and a wired GPS, everything up and streaming
+  but **the motor not turning**, draws **0.7–1.0 A at 7.2 V** on the pack side (≈ 5–7 W,
+  read off the INA228 on the reference vehicle). Behind a 5 V regulator that is **1.4–2 A
+  before a single servo moves**. So "5 V / 3 A" is not generous, it is the floor: the
+  headroom you have left is what the servos and the receiver electronics get. A 5 A
+  buck-boost module fed from the pack held `vcgencmd get_throttled` at `0x0` on the same
+  vehicle that used to report under-voltage from a smaller supply.
 - The vehicle checks this itself and shows **⚠ POWER** in the OSD while the rail is below
   spec (and tells a thermal clamp apart from it) — the reading comes from the firmware, so
   it is the same verdict `vcgencmd get_throttled` gives. `0x0` is a healthy rail.

@@ -186,6 +186,14 @@ Fahrakku ──► BEC 5V/3A ──► Pi (5V/GND, z. B. GPIO Pin 2/6 oder USB-C
 - **Dem Pi ein ordentliches Netzteil geben**: 5,1 V / 3 A mit kurzem, dickem Kabel. Kamera
   plus LTE-Stick an einem Handy-Netzteil ist schon darüber und liegt im Leerlauf in
   Unterspannung, bevor du überhaupt gefahren bist.
+- **Wie viel das konkret ist — gemessen, nicht geschätzt.** Ein Pi 4B mit CSI-Kamera
+  (OV5647), HiLink-LTE-Stick, PCA9685 und verkabeltem GPS, alles hochgefahren und
+  streamend, aber **ohne drehenden Motor**, zieht akkuseitig **0,7–1,0 A bei 7,2 V**
+  (≈ 5–7 W, am INA228 des Referenzfahrzeugs abgelesen). Hinter einem 5-V-Regler sind das
+  **1,4–2 A, bevor sich ein einziger Servo bewegt**. „5 V / 3 A" ist also nicht großzügig,
+  sondern die Untergrenze: was übrig bleibt, ist das, was Servos und Empfangselektronik
+  bekommen. Ein 5-A-Buck-Boost-Modul direkt am Akku hielt `vcgencmd get_throttled` bei
+  `0x0` — auf demselben Fahrzeug, das mit kleinerer Versorgung Unterspannung meldete.
 - Das Fahrzeug prüft das selbst und zeigt **⚠ POWER** im OSD, solange die Schiene unter
   Spezifikation liegt (und unterscheidet eine thermische Drosselung davon) — der Wert kommt
   aus der Firmware, es ist also dasselbe Urteil wie `vcgencmd get_throttled`. `0x0` heißt

@@ -3,6 +3,35 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.66.1
+**English**
+- **The setup page now says which charge counter is actually running.** `Charge counter:
+  auto` states a wish, not an outcome — it degrades to Pi integration whenever the primary
+  current channel is not an INA228 (wrong kind, wrong address, a chip that never answered),
+  and the mAh keep coming either way. Only their accuracy changes, silently. Setup ›
+  Sensors now shows the resolved answer under the selector, and the overview carries a
+  `· counter` row next to the consumed mAh. Until now this lived in an OSD tooltip and a
+  startup log line — neither of which a phone can reach.
+- **Documented what the electronics really draw at idle**, measured on the reference
+  vehicle rather than estimated: a Pi 4B with a CSI camera, a HiLink LTE stick, a PCA9685
+  and a wired GPS pulls **0.7–1.0 A at 7.2 V with the motor stopped** — 1.4–2 A behind a
+  5 V regulator, before a single servo moves. "5 V / 3 A" is the floor, not headroom.
+
+**Deutsch**
+- **Die Setup-Seite sagt jetzt, welcher Ladungszähler tatsächlich läuft.** `Charge
+  counter: auto` beschreibt einen Wunsch, kein Ergebnis — es fällt still auf die
+  Pi-Integration zurück, sobald der primäre Stromkanal kein INA228 ist (falscher Typ,
+  falsche Adresse, ein Chip, der nie geantwortet hat), und die mAh laufen in beiden Fällen
+  weiter. Nur ihre Genauigkeit ändert sich. Setup › Sensors zeigt die aufgelöste Antwort
+  jetzt unter der Auswahl, die Übersicht eine Zeile `· counter` neben den verbrauchten
+  mAh. Bisher stand das in einem OSD-Tooltip und einer Startlog-Zeile — an beides kommt
+  ein Handy nicht heran.
+- **Dokumentiert, was die Elektronik im Leerlauf wirklich zieht**, am Referenzfahrzeug
+  gemessen statt geschätzt: ein Pi 4B mit CSI-Kamera, HiLink-LTE-Stick, PCA9685 und
+  verkabeltem GPS zieht bei stehendem Motor **0,7–1,0 A bei 7,2 V** — hinter einem
+  5-V-Regler 1,4–2 A, bevor sich ein einziger Servo bewegt. „5 V / 3 A" ist die
+  Untergrenze, nicht die Reserve.
+
 ## v1.66.0
 **English**
 - **The vehicle reports its own condition**, ported from YonderGate and trimmed to what a

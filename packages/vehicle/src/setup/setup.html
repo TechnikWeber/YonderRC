@@ -581,6 +581,7 @@
             <option value="pi">pi — integrate the sampled current here</option>
           </select>
         </label>
+        <div id="charge-live" class="msg"></div>
         <details class="hint">
           <summary>Only the INA228 counts charge in hardware</summary>
           <p>The <b>INA228</b> integrates charge and energy in hardware at ADC rate, so the mAh no longer depend on the polling rate or on samples this loop missed. Every other sensor (incl. INA237/238) is integrated on the Pi — "sensor" then falls back to "pi".</p>
@@ -876,6 +877,28 @@
         try { renderStatus(await getJSON('/api/system')); } catch {}
         await refreshTelLive();
         renderDevices();
+        renderChargeLive();
+      }
+
+      /**
+       * Which counter is ACTUALLY running — the select above only states the wish.
+       * "auto" silently degrades to Pi integration whenever the primary current
+       * channel is not an INA228 (a wrong kind, a wrong address, a chip that never
+       * answered), and both cases look identical in the mAh reading: the numbers keep
+       * coming, they are just only as good as the poll rate from then on. That is the
+       * one thing this line exists to make visible.
+       */
+      function renderChargeLive() {
+        const el = $('charge-live');
+        if (!el) return;
+        const cfg = telCfgNow, live = telLiveNow;
+        if (!cfg || cfg.enabled === false || cfg.source === 'off') { el.innerHTML = 'Telemetry is off — nothing is counted.'; return; }
+        if (!cfg.countCapacity) { el.innerHTML = 'Coulomb counting is off — no mAh/Wh are accumulated.'; return; }
+        if (!live || live.ok === false) { el.innerHTML = '<b class="v bad">No sensor data</b> — cannot tell which counter is running.'; return; }
+        const consumed = live.mah != null ? ` · ${Math.round(live.mah)} mAh${live.wh != null ? ' · ' + live.wh + ' Wh' : ''} so far` : '';
+        el.innerHTML = live.chargeFrom === 'sensor'
+          ? `Counting now: <b class="v go">the sensor's own counter</b> — INA228 CHARGE/ENERGY registers${consumed}`
+          : `Counting now: <b class="v warn">integrated on the Pi</b> — from the ${cfg.sampleHz || 10} Hz samples${consumed}`;
       }
 
       /**
@@ -908,7 +931,11 @@
           const vals = [...(live.voltages || []).map((x) => one(x) + ' V'), ...(live.currents || []).map((x) => one(x) + ' A'),
             ...(live.temperatures || []).map((x) => one(x) + ' °C')].join(' · ');
           if (vals) html += devRow('· reading', vals);
+          // Naming the counter here too: the overview is the tab people actually leave
+          // open, and "auto" degrading to Pi integration is invisible in the mAh alone.
           if (live.mah != null) html += devRow('· consumed', `${Math.round(live.mah)} mAh${live.batteryPercent != null ? ' · ' + live.batteryPercent + '%' : ''}`);
+          if (live.chargeFrom) html += devRow('· counter', live.chargeFrom === 'sensor' ? 'INA228 (in hardware)' : 'integrated on the Pi',
+            live.chargeFrom === 'sensor' ? 'go' : 'warn', 'sensors');
         }
         html += sep;
         const g = gpsNow && gpsNow.status;
@@ -1927,6 +1954,7 @@
         renderVolts(); renderCurrs(); renderTemps();
         telCfgNow = t;
         renderDevices();
+        renderChargeLive();
       }
       async function saveTelemetry() {
         const src = $('telSource').value;
@@ -1947,6 +1975,12 @@
         };
         const r = await post('/api/telemetry', body);
         $('tel-msg').textContent = r.note || 'Saved.';
+        // The save hot-applies, so the counter can have changed sides right now —
+        // show the new answer instead of the pre-save one for the next 3 seconds.
+        telCfgNow = body;
+        await refreshTelLive();
+        renderDevices();
+        renderChargeLive();
       }
       async function resetCapacity() {
         const r = await post('/api/telemetry/reset');

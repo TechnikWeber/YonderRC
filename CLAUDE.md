@@ -85,7 +85,12 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   superseded attempt can't attach a dead stream. Keep that invariant.
 - **Telemetry channels**: voltages/currents/temperatures are lists; the one flagged
   `primary` (else index 0, see `protocol/telemetry.ts` `primaryIndex`) drives battery %,
-  mAh/Wh, the low-battery warning and the blackbox. The OSD prefixes a channel's label
+  mAh/Wh, the low-battery warning and the blackbox. **`chargeSource: 'auto'` states a wish,
+  not an outcome** — `resolveChargeSource` degrades to Pi integration whenever the primary
+  current channel is not an INA228, and the mAh keep coming either way, only less accurate.
+  The resolved `chargeFrom` therefore has to stay visible: Setup › Sensors (`renderChargeLive`)
+  and the overview's `· counter` row, since v1.66.1. Verified live on the reference Pi
+  (2026-08-28): the hardware counter tracked the polled current to 0.6 % over 151 s. The OSD prefixes a channel's label
   only when its kind has >1 channel, and each value can be hidden per browser
   (`yonderrc.osdHidden.v1`, keyed by `readingKey`).
 - **Telemetry config hot-applies** (`vehicle` POST `/api/telemetry` →
