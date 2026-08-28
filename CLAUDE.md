@@ -80,6 +80,15 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   unbound** (panic fires instantly with no hold — an accidental press is a crash);
   storage is `yonderrc.actions.v2`, and `migrateActions` drops a stored panic binding
   that is exactly the pre-v1.30 `escape` default while keeping deliberate choices.
+- **Link gaps** (`ground/src/lib/linkQuality.ts`, v1.67.0): a watchdog trip is invisible —
+  `VehicleCore.resolveOutput()` drops every channel to failsafe after `watchdogTimeoutMs`,
+  the status goes out at 20 Hz and the bars snap back unread; the 2 Hz blackbox misses it.
+  `foldLinkQuality` counts failsafe **rising edges** (not ticks — a held failsafe is one
+  episode) and keeps the worst `lastFrameAgeMs`, reset per connection in `onWelcome`.
+  `lastFrameAgeMs === -1` means the vehicle has accepted no frame at all — every connection
+  opens in that state, so it must never count as a dropout. Measured 2026-08-28 on an
+  indoor LTE/hotspot link: 13 gaps >300 ms per minute at 0 % packet loss — jitter, not
+  latency, is what trips the watchdog.
 - **Video** (`ground/src/components/VideoPanel.tsx`): self-healing WHEP player. The
   watchdog uses **refs, not stale state**; a fresh connect bumps `genRef` so a
   superseded attempt can't attach a dead stream. Keep that invariant.

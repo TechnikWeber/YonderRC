@@ -34,6 +34,7 @@ import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWar
 import { beep } from './lib/beep';
 import { logToCsv, logToGpx, downloadText, sensorSnapshot, gpsSnapshot, fixCount, LOG_CAP, type LogRow } from './lib/logger';
 import { loadHoldCfg, saveHoldCfg, holdMsFor, type HoldCfg } from './lib/hold';
+import { LINK_QUALITY_ZERO, foldLinkQuality, describeLinkQuality } from './lib/linkQuality';
 import { loadButtonHoldCfg, saveButtonHoldCfg, buttonHoldMsFor, type ButtonHoldCfg } from './lib/buttonHold';
 import {
   loadSpeechCfg, saveSpeechCfg, announcementsFor, batteryRepeat, linkVoice, speak, primeSpeech,
@@ -90,6 +91,8 @@ export function App() {
   const [authMsg, setAuthMsg] = useState<string | null>(null);
   const [welcome, setWelcome] = useState<WelcomeMessage | null>(null);
   const [status, setStatus] = useState<StatusMessage | null>(null);
+  // Watchdog trips are over before they can be read — keep the tally instead.
+  const [linkQuality, setLinkQuality] = useState(LINK_QUALITY_ZERO);
   const [telemetry, setTelemetry] = useState<TelemetryMessage | null>(null);
   const [gps, setGps] = useState<GpsMessage | null>(null);
   const [gamepad, setGamepad] = useState<string | null>(null);
@@ -169,9 +172,16 @@ export function App() {
       onState: setLinkState,
       onWelcome: (w) => {
         setWelcome(w);
+        // One welcome per connection, so this is where a fresh link-quality tally
+        // belongs — carrying the previous session's dropouts over would say nothing
+        // about the link you are on now.
+        setLinkQuality(LINK_QUALITY_ZERO);
         pushConfig(activeRef.current); // vehicle needs failsafe as soon as we connect
       },
-      onStatus: setStatus,
+      onStatus: (s) => {
+        setStatus(s);
+        setLinkQuality((q) => foldLinkQuality(q, s));
+      },
       onTelemetry: (m) => {
         lastTelemetryAt.current = Date.now();
         setTelemetry(m);
@@ -670,7 +680,7 @@ export function App() {
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.66.1</span>
+        <span className="ver">ground · v1.67.0</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -810,6 +820,7 @@ export function App() {
             armed={armed}
             failsafe={failsafe}
             latencyMs={rttDisplay}
+            linkGaps={connected ? describeLinkQuality(linkQuality, welcome?.watchdogTimeoutMs ?? 0) : null}
             gamepad={gamepad}
             gamepadKind={input.gamepadKind}
             sessionSeconds={armed ? sessionSeconds : null}

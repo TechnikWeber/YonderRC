@@ -1326,6 +1326,46 @@ async function main() {
   idleOnSeven[7] = 1000;
   ok('pre-arm passes at idle on the moved throttle', preArmCheck(movedPlane, idleOnSeven).ok);
 
+  // ---- the link gaps nobody can see ----
+  // A watchdog trip lasts one control tick: every channel snaps to failsafe and back
+  // inside 50 ms, the blackbox samples at 2 Hz and misses it, and the operator is left
+  // with "something flickered". Measured on the reference vehicle on 2026-08-28: 13
+  // arrival gaps over 300 ms in 60 seconds on an indoor LTE/hotspot link, i.e. one
+  // invisible failsafe episode every few seconds. This counter is the only record.
+  {
+    const LQ = await import('../packages/ground/src/lib/linkQuality');
+    const fold = (samples: Array<[boolean, number]>) =>
+      samples.reduce((q, [failsafeActive, lastFrameAgeMs]) => LQ.foldLinkQuality(q, { failsafeActive, lastFrameAgeMs }), LQ.LINK_QUALITY_ZERO);
+
+    // Every connection opens in failsafe with age -1: `resetControlLink()` zeroes
+    // `lastFrameAt`, so the vehicle is "link lost" until the first frame lands. That is
+    // a session that has not started, and counting it would stamp a 1 on every connect.
+    ok('a fresh connection is not a dropout', fold([[true, -1], [true, -1], [false, 4]]).dropouts === 0);
+    ok('and -1 is not the worst gap either', fold([[true, -1], [false, 4]]).worstGapMs === 4);
+
+    ok('a healthy link stays at zero', fold([[false, 4], [false, 12], [false, 8]]).dropouts === 0);
+    ok('one trip is one dropout', fold([[false, 4], [true, 340], [false, 6]]).dropouts === 1);
+    // The vehicle reports failsafe on every status frame while it lasts (20 Hz), so
+    // counting ticks instead of edges would turn a single 1-second dropout into 20.
+    ok('a held failsafe is still one episode',
+      fold([[false, 4], [true, 340], [true, 700], [true, 1200], [false, 6]]).dropouts === 1);
+    ok('two separate trips count twice',
+      fold([[false, 4], [true, 340], [false, 6], [true, 380], [false, 5]]).dropouts === 2);
+    ok('the worst gap is kept, not the last one', fold([[false, 4], [true, 426], [false, 6]]).worstGapMs === 426);
+
+    const d = (q: unknown, w = 300) => LQ.describeLinkQuality(q as never, w);
+    ok('nothing seen yet reads as a dash', d(LQ.LINK_QUALITY_ZERO).text === '—' && d(LQ.LINK_QUALITY_ZERO).level === 'none');
+    ok('a clean link says so with its margin', d(fold([[false, 40]])).text === 'clean · 40 ms worst');
+    ok('and is good, not merely silent', d(fold([[false, 40]])).level === 'ok');
+    // The case with no other way of being noticed: nothing has failed, but the link is
+    // spending its margin. 180 of 300 ms is already two thirds gone.
+    ok('a link close to the watchdog warns before it trips', d(fold([[false, 200]])).level === 'near');
+    ok('a dropout outranks the margin', d(fold([[false, 4], [true, 340], [false, 6]])).level === 'bad');
+    ok('and the count leads the text', d(fold([[false, 4], [true, 340], [false, 6]])).text === '1 · 340 ms worst');
+    // A slower watchdog moves the line with it rather than hardcoding 180 ms.
+    ok('the threshold follows the vehicle\'s own watchdog', d(fold([[false, 200]]), 1000).level === 'ok');
+  }
+
   // ---- hold-to-arm timing ----
   const { holdProgress, holdRemainingS, ARM_HOLD_MS, clampHoldSeconds, holdMsFor, HOLD_DEFAULTS, HOLD_MIN_S, HOLD_MAX_S } =
     await import('../packages/ground/src/lib/hold');

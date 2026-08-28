@@ -3,6 +3,46 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.67.0
+**English**
+- **The link gaps you cannot see now leave a mark.** A watchdog trip lasts one control
+  tick: `VehicleCore` drops every channel to failsafe after 300 ms without a frame, the
+  status goes out at 20 Hz, and the bars snap back before anyone can read them — the
+  operator sees "something flickered" and has nothing to point at. The blackbox samples
+  at 2 Hz and misses it too. The status strip now carries **Link gaps**: failsafe
+  episodes since this connection began, plus the longest the vehicle ever waited for a
+  control frame.
+- **It warns before it trips, not only after.** A link peaking at 280 ms against a
+  300 ms watchdog has not failed yet, and that is worth knowing while it is still true —
+  so the cell turns amber once the worst gap passes 60 % of the vehicle's own watchdog
+  timeout, and red once an episode has actually happened. Every connection starts its
+  own tally; the opening moment, when the vehicle has accepted no frame at all and
+  reports failsafe by definition, is deliberately not counted.
+- Measured on the reference vehicle over an indoor LTE/hotspot link: 13 arrival gaps
+  past 300 ms in 60 seconds — one invisible failsafe episode every few seconds, with
+  0 % packet loss and an 88 ms average round-trip. Latency was never the problem; jitter
+  was, and nothing in the app said so.
+
+**Deutsch**
+- **Die Verbindungslücken, die man nicht sehen kann, hinterlassen jetzt eine Spur.** Ein
+  Watchdog-Auslöser dauert einen Steuertakt: `VehicleCore` legt nach 300 ms ohne Frame
+  alle Kanäle auf Failsafe, der Status geht mit 20 Hz raus, und die Balken sind zurück,
+  bevor jemand sie lesen kann — man sieht „da hat was gezappelt" und hat nichts in der
+  Hand. Die Blackbox sampelt mit 2 Hz und verpasst es ebenfalls. Die Statusleiste zeigt
+  jetzt **Link gaps**: Failsafe-Episoden seit Verbindungsbeginn und die längste Zeit, die
+  das Fahrzeug je auf einen Steuerframe gewartet hat.
+- **Sie warnt, bevor es auslöst, nicht erst danach.** Eine Verbindung mit Spitzen von
+  280 ms bei 300 ms Watchdog ist noch nicht ausgefallen — und genau das will man wissen,
+  solange es noch stimmt. Die Zelle wird gelb, sobald die schlechteste Lücke 60 % des
+  fahrzeugeigenen Watchdog-Timeouts überschreitet, und rot, sobald es wirklich passiert
+  ist. Jede Verbindung zählt neu; der Moment des Verbindungsaufbaus, in dem das Fahrzeug
+  noch keinen einzigen Frame angenommen hat und per Definition Failsafe meldet, wird
+  bewusst nicht mitgezählt.
+- Am Referenzfahrzeug über eine Indoor-LTE/Hotspot-Strecke gemessen: 13 Ankunftslücken
+  über 300 ms in 60 Sekunden — alle paar Sekunden eine unsichtbare Failsafe-Episode, bei
+  0 % Paketverlust und 88 ms mittlerer Round-Trip-Zeit. Die Latenz war nie das Problem,
+  der Jitter war es — und nichts in der App hat das gesagt.
+
 ## v1.66.1
 **English**
 - **The setup page now says which charge counter is actually running.** `Charge counter:

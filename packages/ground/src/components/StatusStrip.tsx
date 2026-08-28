@@ -77,6 +77,7 @@ export function StatusStrip({
   armed,
   failsafe,
   latencyMs,
+  linkGaps,
   gamepad,
   gamepadKind,
   telemetrySource,
@@ -89,6 +90,7 @@ export function StatusStrip({
   armed: boolean;
   failsafe: boolean;
   latencyMs: number | null;
+  linkGaps: { text: string; level: 'none' | 'ok' | 'near' | 'bad' } | null;
   gamepad: string | null;
   gamepadKind: 'browser' | 'sdl';
   telemetrySource: 'sim' | 'real' | 'nodata' | null;
@@ -117,6 +119,19 @@ export function StatusStrip({
       <div className="stat">
         <div className="k">Round-trip</div>
         <div className="v">{latencyMs === null ? '—' : `${latencyMs} ms`}</div>
+      </div>
+      {/* A watchdog trip lasts one tick: the bars snap to failsafe and back before it
+          can be read, and the 2 Hz blackbox misses it. This is the only place the
+          episode leaves a mark — plus the worst frame age, which says how much margin
+          is left on a link that has not failed yet. */}
+      <div className="stat">
+        <div className="k">Link gaps</div>
+        <div
+          className={`v ${linkGaps?.level === 'bad' ? 'bad' : linkGaps?.level === 'near' ? 'warn' : linkGaps?.level === 'ok' ? 'good' : ''}`}
+          title="Failsafe episodes since this connection began, and the longest the vehicle ever waited for a control frame. The vehicle drops to failsafe once that wait passes its watchdog timeout."
+        >
+          {linkGaps?.text ?? '—'}
+        </div>
       </div>
       <div className="stat">
         <div className="k">Input</div>
