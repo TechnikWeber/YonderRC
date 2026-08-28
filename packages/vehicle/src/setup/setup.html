@@ -110,6 +110,10 @@
         .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
       }
       .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+      /* `input { width: 100% }` above is meant for text fields, but a checkbox in a row
+         flex container inherits it too and stretches to eat the whole line — which put
+         every tick box on this page somewhere in the middle of its own label. */
+      .chk input[type='checkbox'], .chk input[type='radio'] { width: auto; flex: 0 0 auto; }
       .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 8px; }
       .mono { font-family: var(--mono); font-size: .92em; }
       /* npm / node-gyp log tail — long lines wrap, tall logs scroll inside the box. */
@@ -339,6 +343,37 @@
           <p>The stick's own network (192.168.8.0/24) is reachable only from the Pi. With a port set, the vehicle passes the stick's configuration page through, so you can open it from the hotspot, the LAN or the VPN instead of putting a keyboard on the vehicle — <b>APN, SIM PIN and network mode live in the stick</b>. If an API secret is set, open it once as <span class="mono">…:PORT/?secret=YOUR_SECRET</span>; the vehicle then remembers it in a cookie. Leave the port empty to keep the stick's admin page off the network.</p>
         </details>
         <div class="msg" id="hilink-msg"></div>
+      </section>
+
+      <section class="panel" data-tab="network">
+        <div class="eyebrow">Mobile data budget</div>
+        <div id="data-live" class="msg">…</div>
+        <details class="hint">
+          <summary>A video link empties a data plan quietly — this is the warning</summary>
+          <p>An FPV stream costs roughly <b>0.5–1 GB per hour</b>. Nothing announces that the plan is running out; the first symptom is that the vehicle is gone. Set the plan's allowance here and the OSD shows <span class="mono">⚠ DATA</span> once the configured share is spent — the same idea as the low-voltage warning.</p>
+        </details>
+        <label class="chk"><input type="checkbox" id="dataEnabled" /> Count mobile data</label>
+        <label>Measured by
+          <select id="dataSource">
+            <option value="counted">the vehicle — every metered interface (works with any uplink)</option>
+            <option value="hilink">the LTE stick — its own billing month</option>
+          </select>
+        </label>
+        <details class="hint">
+          <summary>Which of the two to pick</summary>
+          <p><b>The vehicle</b> sums the byte counters of every interface that carries traffic outwards, so it also catches a phone hotspot or a tethered laptop. It deliberately does <b>not</b> count the vehicle's own WiFi hotspot — a ground station connected straight to it pulls the whole video stream for free — and it does not count VPN interfaces (Tailscale, WireGuard, ZeroTier), whose traffic leaves again through the real uplink and would otherwise be counted twice. It resets when you say so.</p>
+          <p><b>The LTE stick</b> reports the month it is already counting in its own flash, so the total survives a reboot or a fresh SD card and follows the billing day set in the stick's web UI. It is blind to every uplink that is not the stick — switch to a phone hotspot and this number simply stops moving.</p>
+        </details>
+        <div class="grid2">
+          <label>Plan allowance (MB)<input id="dataBudget" type="number" placeholder="e.g. 4096 for 4 GB" /></label>
+          <label>Warn at (% of the allowance)<input id="dataWarn" type="number" min="1" max="99" placeholder="80" /></label>
+        </div>
+        <label>Plan resets on day of month (optional)<input id="dataResetDay" type="number" min="1" max="31" placeholder="empty = only when you reset it" /></label>
+        <div class="btns">
+          <button class="btn primary" onclick="run(this, () => saveData())">Save</button>
+          <button class="btn" onclick="run(this, () => resetData())">Reset counter</button>
+        </div>
+        <div class="msg" id="data-msg"></div>
       </section>
 
       <section class="panel" data-tab="network">
@@ -878,6 +913,7 @@
         await refreshTelLive();
         renderDevices();
         renderChargeLive();
+        try { renderDataLive(await getJSON('/api/data')); } catch {}
       }
 
       /**
@@ -1987,6 +2023,73 @@
         $('tel-msg').textContent = r.message || 'Reset.';
       }
 
+      // ---- Mobile data budget ----
+      let dataCfgNow = null;
+      /**
+       * The counter's live answer. It has to name its SOURCE, because "counted here"
+       * and "counted by the stick" measure different things — the stick cannot see a
+       * phone hotspot, and the vehicle's own count starts at whatever the last reset
+       * left. A number without its source invites the wrong conclusion.
+       */
+      function renderDataLive(r) {
+        const el = $('data-live');
+        const cfg = (r && r.config) || dataCfgNow;
+        const u = r && r.usage;
+        if (!cfg || cfg.enabled === false) { el.innerHTML = 'Not counting — mobile data is not being measured.'; return; }
+        if (!u) {
+          el.innerHTML = cfg.source === 'hilink'
+            ? '<b class="v warn">No answer from the stick</b> — no HiLink stick, or its API is unreachable.'
+            : 'Waiting for the first sample…';
+          return;
+        }
+        const by = u.source === 'hilink' ? "the stick's own month counter" : 'counted on the vehicle';
+        const cls = u.level === 'over' ? 'bad' : u.level === 'warn' ? 'warn' : 'go';
+        const since = u.since ? ` · since ${esc(String(u.since).slice(0, 10))}` : '';
+        const pct = u.percent != null ? ` (<b class="v ${cls}">${u.percent}%</b>)` : '';
+        el.innerHTML = `Used: <b class="v ${cls}">${esc(u.label)}</b>${pct} — ${by}${since}`;
+      }
+      /** The stick's own plan, offered as the allowance so nobody retypes it. */
+      function renderDataStick(h) {
+        const opt = $('dataSource').querySelector('option[value="hilink"]');
+        const has = !!(h && h.monthBytes != null);
+        opt.disabled = !has && $('dataSource').value !== 'hilink';
+        opt.textContent = has
+          ? "the LTE stick — its own billing month" + (h.startDay ? ` (resets on the ${h.startDay}.)` : '')
+          : 'the LTE stick — no stick detected';
+        if (has && h.limitBytes && !$('dataBudget').value) {
+          $('dataBudget').placeholder = `the stick says ${Math.round(h.limitBytes / 1048576)} MB`;
+        }
+      }
+      async function loadData() {
+        try {
+          const r = await getJSON('/api/data');
+          dataCfgNow = r.config;
+          $('dataEnabled').checked = r.config.enabled !== false;
+          $('dataSource').value = r.config.source || 'counted';
+          $('dataBudget').value = r.config.budgetMb ?? '';
+          $('dataWarn').value = r.config.warnPercent ?? 80;
+          $('dataResetDay').value = r.config.resetDay ?? '';
+          renderDataStick(r.hilink);
+          renderDataLive(r);
+        } catch {}
+      }
+      async function saveData() {
+        const r = await post('/api/data', {
+          enabled: $('dataEnabled').checked,
+          source: $('dataSource').value,
+          budgetMb: $('dataBudget').value ? Number($('dataBudget').value) : null,
+          warnPercent: Number($('dataWarn').value) || 80,
+          resetDay: $('dataResetDay').value ? Number($('dataResetDay').value) : null,
+        });
+        $('data-msg').textContent = r.message || 'Saved.';
+        await loadData();
+      }
+      async function resetData() {
+        const r = await post('/api/data/reset', {});
+        $('data-msg').textContent = r.message || 'Reset.';
+        await loadData();
+      }
+
       // ---- Software update ----
       // Check first, apply second: in the field you want to see what you are about to
       // change before you change it.
@@ -2100,6 +2203,7 @@
       loadRemote();
       loadWifi();
       loadGps();
+      loadData();
       refresh();
       setInterval(refresh, 3000);
       refreshHealth();

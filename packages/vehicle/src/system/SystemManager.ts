@@ -4,7 +4,7 @@ import type { I2cSuggestion } from './detect.js';
 import type { VehicleHealth } from './health.js';
 import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
-import type { HilinkStatus } from './hilink.js';
+import type { HilinkStatus, HilinkTraffic } from './hilink.js';
 import type { UpdateCheck, UpdateSource } from './update.js';
 
 /** Result of a hardware probe (see detectHardware). */
@@ -337,6 +337,12 @@ export interface SystemManager {
   hilinkStatus(opts?: { force?: boolean }): Promise<HilinkStatus>;
   /** Where the stick lives (IPv4); comes from the persisted config. */
   setHilinkHost(host: string): void;
+  /**
+   * What the HiLink stick says it has used this billing month, or null when there is
+   * no stick. Separate from `hilinkStatus` because it is polled on its own cadence and
+   * a vehicle without a stick must get a clean "not available", not an error.
+   */
+  hilinkTraffic(): Promise<HilinkTraffic | null>;
   /** Radio state: blocked? which regulatory country? what would we suggest? */
   wifiRadio(): Promise<WifiRadioStatus>;
   /** Unblock the radio (and set the WiFi country if one is given/derivable). */

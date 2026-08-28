@@ -3,6 +3,69 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.68.0
+**English**
+- **A mobile-data budget, with the warning that matters.** An FPV link is a video stream
+  and a video stream empties a data plan quietly: there is no symptom until the plan is
+  gone, and the symptom then is that the vehicle is gone. Setup › *Mobile data budget*
+  takes the plan's allowance and the OSD shows **⚠ DATA** once the configured share is
+  spent — the same idea as the low-voltage warning. Reckon with 0.5–1 GB an hour.
+- **Counted across every metered uplink by default**, because the alternative fails in
+  the field: an LTE-only counter goes blind the moment someone tethers to a phone. Two
+  exclusions make the number usable rather than merely large. **VPN interfaces**
+  (Tailscale, WireGuard, ZeroTier) are skipped — their traffic leaves again through the
+  real uplink, so counting both counts every byte twice. **The vehicle's own WiFi
+  hotspot** is skipped too: a ground station connected straight to it pulls the whole
+  video stream for free, some 900 MB an hour that would empty a 4 GB budget in one
+  afternoon on the bench. The same radio in *client* mode is counted.
+- **Or let the LTE stick do it.** A Huawei HiLink stick already counts its own billing
+  month in its own flash, aligned to the reset day set in its web UI — so that total
+  survives a reboot, an SD-card swap and a reinstall. Selectable when a stick answers,
+  greyed out when none does, and the panel offers the limit the stick already holds so
+  nobody retypes it.
+- The counter is written to the config at most every 5 minutes or every 20 MB, which
+  bounds both SD-card wear and what a brownout can lose. It is kept in its own key, so
+  changing the warning threshold cannot wipe the total. Reset by hand, or automatically
+  on the plan's day of the month.
+- **Fixed: every tick box on the setup page was stretched across its own label.**
+  `input { width: 100% }` is right for a text field and wrong for a checkbox, which
+  inherited it inside a row-flex label — measured at 194–477 px instead of 13.
+- The status strip merged **Vehicle** and **Driver** into one cell. They are one fact and
+  both fixed for the life of a connection, and nine cells did not divide by the grid's
+  four columns.
+
+**Deutsch**
+- **Ein Datenvolumen-Budget mit der Warnung, auf die es ankommt.** Eine FPV-Strecke ist
+  ein Videostream, und ein Videostream leert einen Datentarif lautlos: Es gibt kein
+  Symptom, bis das Volumen weg ist — und dann ist das Symptom, dass das Fahrzeug weg ist.
+  Setup › *Mobile data budget* nimmt das Vertragsvolumen, und das OSD zeigt **⚠ DATA**,
+  sobald der eingestellte Anteil verbraucht ist — dieselbe Idee wie die
+  Unterspannungswarnung. Rechne mit 0,5–1 GB pro Stunde.
+- **Standardmäßig über jede kostenpflichtige Verbindung gezählt**, weil die Alternative
+  im Feld versagt: Ein reiner LTE-Zähler ist blind, sobald jemand am Handy-Hotspot hängt.
+  Zwei Ausnahmen machen die Zahl brauchbar statt nur groß. **VPN-Schnittstellen**
+  (Tailscale, WireGuard, ZeroTier) werden übersprungen — ihr Verkehr verlässt das
+  Fahrzeug erneut über die echte Verbindung, beides zu zählen zählt jedes Byte doppelt.
+  **Der eigene WLAN-Hotspot des Fahrzeugs** ebenfalls: Eine direkt daran verbundene
+  Bodenstation zieht den kompletten Videostream kostenlos, rund 900 MB pro Stunde, die
+  ein 4-GB-Budget an einem Nachmittag auf der Werkbank leeren würden. Dasselbe
+  Funkmodul im *Client*-Modus wird gezählt.
+- **Oder der LTE-Stick übernimmt das.** Ein Huawei-HiLink-Stick zählt seinen
+  Abrechnungsmonat ohnehin schon im eigenen Flash, passend zum Rücksetztag aus seiner
+  Weboberfläche — dieser Wert übersteht Neustart, SD-Kartentausch und Neuinstallation.
+  Auswählbar, sobald ein Stick antwortet, sonst ausgegraut; das Panel bietet das Limit
+  an, das im Stick schon eingestellt ist, damit es niemand abtippen muss.
+- Der Zähler wird höchstens alle 5 Minuten oder alle 20 MB gespeichert — das begrenzt
+  sowohl SD-Karten-Verschleiß als auch das, was ein Spannungseinbruch verlieren kann. Er
+  liegt in einem eigenen Schlüssel, damit das Ändern der Warnschwelle den Stand nicht
+  löschen kann. Zurücksetzen von Hand oder automatisch am Tarif-Stichtag.
+- **Behoben: Jede Checkbox der Setup-Seite war über ihr eigenes Label gestreckt.**
+  `input { width: 100% }` ist für ein Textfeld richtig und für eine Checkbox falsch, die
+  es im Row-Flex-Label geerbt hat — gemessen 194–477 px statt 13.
+- Die Statusleiste fasst **Vehicle** und **Driver** zu einer Kachel zusammen. Das ist eine
+  Information, beide für die Dauer einer Verbindung fest — und neun Kacheln gingen nicht
+  in den vier Spalten des Rasters auf.
+
 ## v1.67.0
 **English**
 - **The link gaps you cannot see now leave a mark.** A watchdog trip lasts one control

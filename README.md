@@ -52,7 +52,7 @@ night flying; the OSD stays light-on-dark either way, because it is drawn on the
 
 *Touch control, the **hold-to-arm** button, the **speed limiter**, the optional
 **WebRTC control channel** toggle, and a status strip: link, state, session time,
-round-trip, input method, vehicle/driver, telemetry. A car in stick mode 2 drives from a
+round-trip, **link gaps**, input method, vehicle, telemetry. A car in stick mode 2 drives from a
 **single stick** — steering on X, throttle on Y — so it gets the whole row and the size
 that comes with it; mode 4 splits them across two.*
 
@@ -208,6 +208,18 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   direction back to home** — the essentials for beyond-line-of-sight.
 
 **Operation & setup**
+- **Mobile data budget with a warning.** An FPV stream costs 0.5–1 GB an hour and says
+  nothing about it; the first symptom of an empty plan is that the vehicle is gone. The
+  vehicle counts what it spends across **every metered uplink** — LTE stick, phone
+  hotspot, tethered laptop — and the OSD shows **⚠ DATA** once the configured share of
+  the allowance is gone. It deliberately does not count the vehicle's own hotspot (that
+  traffic is free) or VPN interfaces (they would be counted twice). With a Huawei HiLink
+  stick the **stick's own billing month** can be used instead, which survives a reboot
+  and follows the operator's real reset day.
+- **Link gaps are recorded, not just felt.** A watchdog trip lasts one control tick — the
+  channels snap to failsafe and back before it can be read. The status strip counts the
+  episodes per connection and shows the longest the vehicle ever waited for a frame,
+  amber while the link is merely spending its margin.
 - Graphical **setup page** served by the vehicle itself (`/setup`): driver, cameras,
   telemetry, watchdog, **Wi-Fi**, LTE, remote access, security — from a phone/laptop, no
   screen needed. **Wi-Fi onboarding from the phone**: scan, pick a network, connect —

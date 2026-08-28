@@ -1326,6 +1326,154 @@ async function main() {
   idleOnSeven[7] = 1000;
   ok('pre-arm passes at idle on the moved throttle', preArmCheck(movedPlane, idleOnSeven).ok);
 
+  // ---- the status strip stays a rectangle ----
+  // The grid is four columns wide (two on a phone). Nine cells leaves one stranded on a
+  // row of its own, which is what adding "Link gaps" did until Vehicle and Driver — one
+  // fact, both fixed for the life of a connection — were merged into one cell.
+  {
+    const strip = readFileSync('packages/ground/src/components/StatusStrip.tsx', 'utf8');
+    const cells = (strip.match(/<div className="stat">/g) ?? []).length;
+    ok('the strip divides by the grid', cells === 8 && cells % 4 === 0, `${cells} cells`);
+    ok('and still names the driver', /\{vehicleName \|\| '—'\}\{driver \? ` · \$\{driver\}` : ''\}/.test(strip));
+  }
+
+  // ---- tick boxes are tick-box sized ----
+  // `input { width: 100% }` is right for text fields and wrong for a checkbox, which in
+  // a row-flex label inherited it and stretched across the whole line — every tick box
+  // on the setup page sat somewhere in the middle of its own label (measured: 194-477 px
+  // instead of 13). Five checkboxes and the telemetry "primary" radios were affected.
+  {
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('a checkbox in a .chk label is not stretched',
+      /\.chk input\[type='checkbox'\], \.chk input\[type='radio'\] \{[^}]*width: auto/.test(html));
+  }
+
+  // ---- the data budget has a home in the UI ----
+  {
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('the budget panel exists on the network tab',
+      /<section class="panel" data-tab="network">\s*<div class="eyebrow">Mobile data budget<\/div>/.test(html));
+    ok('it has the four settings that matter',
+      ['dataEnabled', 'dataSource', 'dataBudget', 'dataWarn', 'dataResetDay'].every((id) => html.includes(`id="${id}"`)));
+    // "counted" must be the default in the markup as well as in the config: the option
+    // that works with every uplink is the safe one to fall back on.
+    ok('the vehicle-side count is the first option',
+      html.indexOf('value="counted"') < html.indexOf('value="hilink"'));
+    ok('and the live row names its source', /function renderDataLive/.test(html) && /the stick's own month counter/.test(html));
+  }
+
+  // ---- the data plan nobody notices until it is gone ----
+  // An FPV stream costs ~0.5-1 GB/h and says nothing about it. Everything here is about
+  // producing a number that is honest enough to warn on.
+  {
+    const T = await import('../packages/vehicle/src/system/traffic');
+
+    const PROC = [
+      'Inter-|   Receive                                                |  Transmit',
+      ' face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed',
+      '    lo:  123456     900    0    0    0     0          0         0   123456     900    0    0    0     0       0          0',
+      '  eth1: 1722575572 900000  0    0    0     0          0         0 657320314  400000   0    0    0     0       0          0',
+      ' wlan0:  50000000  40000   0    0    0     0          0         0  10000000   20000   0    0    0     0       0          0',
+      'tailscale0: 900 9 0 0 0 0 0 0 800 8 0 0 0 0 0 0',
+    ].join('\n');
+    const dev = T.parseProcNetDev(PROC);
+    ok('the header rows are not interfaces', dev.every((d) => !d.name.includes('|')));
+    ok('rx is column 0 and tx is column 8',
+      dev.find((d) => d.name === 'eth1')?.rx === 1722575572 && dev.find((d) => d.name === 'eth1')?.tx === 657320314);
+    // A name that runs straight into its numbers ("tailscale0:" with no padding) still
+    // has to parse — splitting on whitespace loses it.
+    ok('a name with no padding still parses', !!dev.find((d) => d.name === 'tailscale0'));
+
+    // A tunnel's bytes leave again through the real uplink; counting both counts twice,
+    // and all three remote-access backends this project offers are tunnels.
+    ok('loopback is not metered', !T.isMeteredIface('lo'));
+    ok('tunnels are not metered (they would double-count)',
+      !T.isMeteredIface('tailscale0') && !T.isMeteredIface('wg0') && !T.isMeteredIface('ztabcdef'));
+    ok('the LTE stick is metered', T.isMeteredIface('eth1'));
+    // The one that would ruin the feature: a ground station on the vehicle's own AP
+    // pulls the whole video stream for free, ~900 MB an hour of traffic that costs
+    // nothing and would empty a 4 GB budget in an afternoon on the bench.
+    ok('the radio is free while it serves the vehicle hotspot',
+      !T.isMeteredIface('wlan0', { wifiMode: 'ap' }));
+    ok('and metered while it is a client on someone else\'s network',
+      T.isMeteredIface('wlan0', { wifiMode: 'client' }));
+
+    // ---- accumulation ----
+    const t0 = T.emptyTrafficState('2026-08-01T00:00:00.000Z');
+    const a = T.foldTraffic(t0, [{ name: 'eth1', rx: 1000, tx: 500 }]);
+    // The counter is an absolute since the interface came up. On a box that has been
+    // running for days, charging it on first sight claims traffic we never measured —
+    // and it made "Reset counter" jump straight back up on the very next sample.
+    ok('the first sight only sets the mark, it charges nothing', a.usedBytes === 0);
+    ok('but the mark is kept', a.lastSeen.eth1.rx === 1000);
+    const b = T.foldTraffic(a, [{ name: 'eth1', rx: 3000, tx: 1500 }]);
+    ok('later samples add the delta, not the total', b.usedBytes === 2000 + 1000);
+    // /proc counters are per-boot and per-device-instance: a reboot, or a USB stick
+    // re-plugged, restarts them at zero. Subtracting the old high value would go
+    // negative; treating the new value as a delta from zero is the honest reading.
+    // A restart IS charged in full: `lastSeen` is persisted across one, so this branch
+    // is the one that sees a rebooted Pi, and those bytes really were used.
+    const c = T.foldTraffic(b, [{ name: 'eth1', rx: 100, tx: 50 }]);
+    ok('a restarted counter adds its whole value, never a negative', c.usedBytes === b.usedBytes + 150);
+    ok('and the total never goes backwards', c.usedBytes > b.usedBytes);
+    // An interface that vanished must not lose its mark, or its traffic is counted
+    // from scratch the moment it returns.
+    const d = T.foldTraffic(c, []);
+    ok('a missing interface keeps its high-water mark', d.lastSeen.eth1.rx === 100 && d.usedBytes === c.usedBytes);
+
+    // ---- billing period ----
+    ok('no reset day means it never rolls on its own',
+      !T.shouldRollPeriod('2026-01-01T00:00:00.000Z', new Date(2026, 7, 28), null));
+    ok('a period started before this month\'s reset day has rolled',
+      T.shouldRollPeriod('2026-07-02T00:00:00.000Z', new Date(2026, 7, 28), 1));
+    ok('a period started after it has not',
+      !T.shouldRollPeriod('2026-08-02T00:00:00.000Z', new Date(2026, 7, 28), 1));
+    // Before the day arrives, the current period is the one that began LAST month.
+    ok('the boundary falls back a month when the day has not come yet',
+      T.periodBoundaryOnOrBefore(new Date(2026, 7, 5), 20).getMonth() === 6);
+    // A plan that resets on the 31st still has to reset in February.
+    ok('the 31st is clamped to the length of the month',
+      T.periodBoundaryOnOrBefore(new Date(2026, 1, 28), 31).getDate() === 28);
+
+    // ---- warning ----
+    const GB = 1024 ** 3;
+    ok('no budget never warns', T.usageLevel(99 * GB, null, 80) === 'ok');
+    ok('below the threshold is quiet', T.usageLevel(3 * GB, 4 * GB, 80) === 'ok');
+    ok('at the threshold it warns', T.usageLevel(3.2 * GB, 4 * GB, 80) === 'warn');
+    ok('past the budget it is over, not merely warning', T.usageLevel(4.1 * GB, 4 * GB, 80) === 'over');
+
+    ok('bytes read like a person wrote them',
+      T.formatBytes(900) === '900 B' && T.formatBytes(5 * 1024 ** 2) === '5.0 MB' && T.formatBytes(2.5 * GB) === '2.50 GB');
+    ok('the label carries the budget when there is one', T.usageLabel(2.5 * GB, 4 * GB) === '2.50 GB / 4.00 GB');
+    ok('and just the usage when there is not', T.usageLabel(2.5 * GB, null) === '2.50 GB');
+
+    // Persist rarely, lose little: 5 s writes would be ~17k SD-card writes a day, and
+    // saving only on shutdown loses everything to the brownout this project warns about.
+    ok('a quiet minute does not write', !T.shouldPersist(1024, 60_000));
+    ok('a big transfer writes early', T.shouldPersist(25 * 1024 ** 2, 1000));
+    ok('and time alone writes eventually', T.shouldPersist(0, 6 * 60_000));
+
+    // ---- the stick's own numbers ----
+    const H = await import('../packages/vehicle/src/system/hilink');
+    const monthXml = '<?xml version="1.0" encoding="UTF-8"?><response>' +
+      '<CurrentMonthDownload>1722575380</CurrentMonthDownload><CurrentMonthUpload>657320266</CurrentMonthUpload>' +
+      '<MonthLastClearTime>2026-08-21</MonthLastClearTime></response>';
+    const m = H.parseMonthStatistics(monthXml);
+    ok('the stick\'s month is down + up', m.monthBytes === 1722575380 + 657320266);
+    ok('and it names the day it was cleared', m.monthSince === '2026-08-21');
+    // A stick that answered with nothing has not said "zero" — it has said nothing, and
+    // reporting 0 GB used would be a wrong answer rather than a missing one.
+    ok('no answer is unknown, not zero', H.parseMonthStatistics('').monthBytes === null);
+    ok('an API error is unknown too',
+      H.parseMonthStatistics('<response><error><code>125002</code></error></response>').monthBytes === null);
+    const sd = H.parseStartDate('<response><StartDay>1</StartDay><DataLimit>3GB</DataLimit><trafficmaxlimit>3221225472</trafficmaxlimit></response>');
+    ok('the enforced byte limit wins over the pretty string', sd.limitBytes === 3221225472 && sd.startDay === 1);
+    ok('and the pretty string is the fallback',
+      H.parseStartDate('<response><StartDay>7</StartDay><DataLimit>500MB</DataLimit></response>').limitBytes === 500 * 1024 ** 2);
+    ok('a bare number means MB, the stick\'s own unit', T.parseDataLimit('500') === 500 * 1024 ** 2);
+    ok('an unset limit is null, not zero', T.parseDataLimit('0') === null && T.parseDataLimit('') === null);
+  }
+
   // ---- the link gaps nobody can see ----
   // A watchdog trip lasts one control tick: every channel snaps to failsafe and back
   // inside 50 ms, the blackbox samples at 2 Hz and misses it, and the operator is left

@@ -32,7 +32,7 @@ import {
 } from './bootConfig.js';
 import { enableUart, explainSerial, serialState, stripSerialConsole } from './serial.js';
 import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
-import { type HilinkStatus } from './hilink.js';
+import { type HilinkStatus, type HilinkTraffic } from './hilink.js';
 import { classifyChanges, describeCheck, type UpdateCheck } from './update.js';
 
 /**
@@ -113,6 +113,19 @@ export class SimSystem implements SystemManager {
 
   /** Kept only so the sim honours the same interface as the real system. */
   setHilinkHost(_host: string): void {}
+  /**
+   * Sim-first: a plausible stick so the 'hilink' source can be exercised and demoed
+   * without one. The numbers drift the way a real month does rather than sitting still.
+   */
+  async hilinkTraffic(): Promise<HilinkTraffic | null> {
+    const since = new Date(Date.now() - 9 * 86400_000).toISOString().slice(0, 10);
+    return {
+      monthBytes: 1_400_000_000 + Math.round((Date.now() / 1000) % 600) * 1_000_000,
+      monthSince: since,
+      limitBytes: 3 * 1024 ** 3,
+      startDay: 1,
+    };
+  }
 
   /** A plausible stick, so the panel and the OSD label can be seen without hardware. */
   async hilinkStatus(_opts: { force?: boolean } = {}): Promise<HilinkStatus> {

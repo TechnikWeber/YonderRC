@@ -82,6 +82,7 @@ import {
 } from './update.js';
 import {
   readHilink,
+  readHilinkTraffic,
   parseRouteDev,
   isIpv4,
   hilinkAsLte,
@@ -89,6 +90,7 @@ import {
   HILINK_ABSENT,
   HILINK_DEFAULT_HOST,
   type HilinkGet,
+  type HilinkTraffic,
   type HilinkStatus,
 } from './hilink.js';
 import { HW_DEPS, errorExcerpt, explainNpmFailure, hwDepInfo, isHwDep, lastLines, npmInstallArgs, type HwDepName } from './hwDeps.js';
@@ -403,6 +405,32 @@ export class RealSystem implements SystemManager {
     const value = await this.readHilinkNow();
     this.hilinkCache = { at: Date.now(), value };
     return value;
+  }
+
+  /**
+   * The stick's own billing-month counters. Reuses the same rule as every other HiLink
+   * read: the stick is found through the ROUTING TABLE, never by interface name.
+   */
+  async hilinkTraffic(): Promise<HilinkTraffic | null> {
+    const get = await this.hilinkGetter();
+    if (!get) return null;
+    return readHilinkTraffic(get);
+  }
+
+  /** One authenticated GET against the stick, or null when there is no route to it. */
+  private async hilinkGetter(): Promise<HilinkGet | null> {
+    const host = this.hilinkHost;
+    if (!isIpv4(host)) return null;
+    const route = await shArgs('ip', ['route', 'get', host]);
+    if (!route.ok || !parseRouteDev(route.out)) return null;
+    return async (path, headers) => {
+      try {
+        const res = await fetch(`http://${host}${path}`, { headers, signal: AbortSignal.timeout(3000) });
+        return { ok: res.ok, status: res.status, text: await res.text(), cookie: res.headers.get('set-cookie') };
+      } catch {
+        return { ok: false, status: 0, text: '', cookie: null };
+      }
+    };
   }
 
   private async readHilinkNow(): Promise<HilinkStatus> {

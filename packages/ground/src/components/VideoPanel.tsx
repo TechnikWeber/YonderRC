@@ -10,6 +10,7 @@ import {
   readingKey,
   type LinkSignal,
   type PowerFlags,
+  type DataUsage,
   type GpsMessage,
   distanceMeters,
   bearingDeg,
@@ -394,6 +395,7 @@ export function VideoPanel({
   linkSignal,
   vehicleQuality,
   power,
+  dataUsage,
   gps,
   odoMeters,
   budget,
@@ -423,6 +425,7 @@ export function VideoPanel({
   vehicleQuality: VideoQuality | null;
   /** The vehicle's verdict on its own supply, or null when not connected. */
   power: PowerFlags | null;
+  dataUsage: DataUsage | null;
   gps: GpsMessage | null;
   /** Trip odometer, metres. Owned by App so the OSD and the energy budget agree. */
   odoMeters: number;
@@ -948,6 +951,7 @@ export function VideoPanel({
         {showOsd && (
           <div className={`osd${compactOsd ? ' compact' : ''}`}>
             {(powerWarn ||
+              (dataUsage && dataUsage.level !== 'ok') ||
               (osdFields.timer && sessionSeconds !== null) ||
               (osdFields.gps && gps && gps.source !== 'off') ||
               (osdFields.homeArrow && gpsHome)) && (
@@ -958,6 +962,17 @@ export function VideoPanel({
                     title={power?.message ?? undefined}
                   >
                     ⚠ {powerWarn.text}
+                  </span>
+                )}
+                {/* The data plan, only once it is running out. Same rule as the
+                    low-voltage badge: while there is plenty left, the number is a
+                    distraction — it belongs in the link block and in Setup. */}
+                {dataUsage && dataUsage.level !== 'ok' && (
+                  <span
+                    className={`osd-badge bad${dataUsage.level === 'over' ? ' blink' : ''}`}
+                    title={`${dataUsage.label} used${dataUsage.since ? ` since ${dataUsage.since.slice(0, 10)}` : ''} — counted ${dataUsage.source === 'hilink' ? 'by the LTE stick' : 'on the vehicle'}`}
+                  >
+                    ⚠ DATA {dataUsage.percent != null ? `${Math.round(dataUsage.percent)}%` : dataUsage.label}
                   </span>
                 )}
                 {osdFields.timer && sessionSeconds !== null && (

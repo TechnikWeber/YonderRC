@@ -42,6 +42,8 @@ export interface VehicleConfig {
   hilink: HilinkSettings;
   /** Where "Software update" pulls from (remote name or URL + branch). */
   update: UpdateSource;
+  /** Mobile-data budget and how it is measured. */
+  dataUsage: DataUsageConfig;
   /**
    * Auto-disarm whenever a new ground connects. Safe for cars (prevents runaway);
    * turn OFF for aircraft, where disarming in flight would cut the motors.
@@ -98,6 +100,45 @@ export interface HilinkSettings {
 export const HILINK_PROXY_PORT = 8081;
 export const HILINK_SETTINGS_DEFAULT: HilinkSettings = { host: HILINK_DEFAULT_HOST, proxyPort: HILINK_PROXY_PORT };
 
+/**
+ * Mobile-data budget. `enabled` off means nothing is counted at all — the counter costs
+ * one small file read every 5 s, but a vehicle on a flat-rate LAN has no use for it.
+ *
+ * `source`: 'counted' sums the metered interfaces on the Pi and works with any uplink
+ * (LTE stick, phone hotspot, tethered anything); 'hilink' reads the stick's own billing
+ * month, which survives reboots but is blind to every uplink that is not the stick.
+ */
+export interface DataUsageConfig {
+  enabled: boolean;
+  source: 'counted' | 'hilink';
+  /** The plan's allowance in MB, or null for "count, but never warn". */
+  budgetMb: number | null;
+  /** Share of the budget that trips the warning. */
+  warnPercent: number;
+  /** Day of month the plan resets, or null for manual resets only. */
+  resetDay: number | null;
+}
+
+export const DATA_USAGE_DEFAULT: DataUsageConfig = {
+  enabled: true,
+  source: 'counted',
+  budgetMb: null,
+  warnPercent: 80,
+  resetDay: null,
+};
+
+/**
+ * The counter's own running state, kept OUT of DataUsageConfig on purpose: the setup UI
+ * round-trips the config object on every save, and a settings form that also carries the
+ * accumulated total would reset the counter every time someone changed the warning
+ * threshold. Written by the vehicle, never by a form.
+ */
+export interface DataUsageState {
+  usedBytes: number;
+  periodStart: string;
+  lastSeen: Record<string, { rx: number; tx: number }>;
+}
+
 /** The subset the setup UI can edit and persist. */
 export interface PersistentConfig {
   vehicleName?: string;
@@ -115,6 +156,9 @@ export interface PersistentConfig {
   hotspot?: HotspotConfig;
   hilink?: HilinkSettings;
   update?: UpdateSource;
+  dataUsage?: DataUsageConfig;
+  /** Accumulated counter state — written by the vehicle, not editable in the UI. */
+  dataUsageState?: DataUsageState;
   telemetry?: TelemetryConfig;
   gps?: GpsConfig;
   cameras?: CameraCfg[];
@@ -209,6 +253,7 @@ export function loadConfig(): VehicleConfig {
     hotspot: p.hotspot ?? { ...HOTSPOT_DEFAULTS },
     hilink: { ...HILINK_SETTINGS_DEFAULT, ...(p.hilink ?? {}) },
     update: { ...UPDATE_SOURCE_DEFAULT, ...(p.update ?? {}) },
+    dataUsage: { ...DATA_USAGE_DEFAULT, ...(p.dataUsage ?? {}) },
     telemetry: p.telemetry ?? {
       enabled: true,
       source: 'sim',

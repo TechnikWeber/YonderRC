@@ -18,6 +18,8 @@ import { startHilinkProxy, type HilinkProxyHandle } from './hilinkProxy.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
+import { TrafficService } from '../system/TrafficService.js';
+import { loadPersisted } from '../config.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { powerBadge } from '../system/power.js';
 import { serveGroundApp } from './staticServer.js';
@@ -54,12 +56,31 @@ export function startWsServer(
   };
   applyHilink();
 
+  /**
+   * How the WiFi radio is being used, cached from the system status poll below (which
+   * happens anyway). The data counter needs it to tell a metered client link from the
+   * vehicle's own hotspot — whose traffic is free and would otherwise empty a data plan
+   * on the bench. Declared here because `setupCtx` and the status frame both want the
+   * service, and both are built before the poll starts.
+   */
+  let currentWifiMode: string = 'unknown';
+  // Same 5 s cadence as the link/power reads: one small file read, for a number that
+  // moves in minutes rather than milliseconds.
+  const traffic = new TrafficService(
+    config.configPath,
+    config.dataUsage,
+    loadPersisted(config.configPath).dataUsageState,
+    { hilinkTraffic: () => system.hilinkTraffic(), wifiMode: () => currentWifiMode },
+  );
+  traffic.start();
+
   const setupCtx: SetupContext = {
     config,
     system,
     telemetry,
     gps,
     core,
+    traffic,
     applyCameras: (cams) =>
       applyCameras(cams, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder, config.rpicamBin),
     applyHilink,
@@ -98,6 +119,7 @@ export function startWsServer(
     system
       .status()
       .then((st) => {
+        currentWifiMode = st.wifi.mode;
         currentPower = {
           underVoltageNow: st.power.underVoltageNow,
           underVoltagePast: st.power.underVoltagePast,
@@ -181,7 +203,8 @@ export function startWsServer(
     ws.send(JSON.stringify({ type: 'theme', theme: config.theme } satisfies ThemeMessage));
 
     const statusTimer = setInterval(() => {
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ ...core.status(), link: currentLink, power: currentPower }));
+      if (ws.readyState === ws.OPEN)
+        ws.send(JSON.stringify({ ...core.status(), link: currentLink, power: currentPower, data: traffic.usage ?? undefined }));
     }, 50);
     // Telemetry at a calmer rate (voltage/current/mAh change slowly).
     const telemetryTimer = setInterval(() => {

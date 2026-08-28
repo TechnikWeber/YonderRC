@@ -6,6 +6,7 @@ import { loadPersisted, savePersisted, resetPersisted } from '../config.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
+import type { TrafficService } from '../system/TrafficService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
@@ -47,6 +48,7 @@ export interface SetupContext {
   telemetry: TelemetryService;
   gps: GpsService;
   core: VehicleCore;
+  traffic: TrafficService;
   applyCameras: (cams: CameraCfg[]) => Promise<void>;
   /** Re-read config.hilink: point the reader at the stick and (re)start its proxy. */
   applyHilink?: () => void;
@@ -576,6 +578,43 @@ export async function handleSetup(
   }
 
   // --- telemetry ---
+  // --- mobile data budget ---
+  if (url === '/api/data' && method === 'GET') {
+    // The stick's own plan travels with the config so the UI can offer it as the budget
+    // and can grey the 'hilink' source out when there is no stick to read.
+    const stick = ctx.traffic.config.source === 'hilink' ? ctx.traffic.hilinkTraffic : await ctx.system.hilinkTraffic();
+    json(res, 200, { config: ctx.traffic.config, usage: ctx.traffic.usage, hilink: stick });
+    return true;
+  }
+  if (url === '/api/data' && method === 'POST') {
+    const body = (await readBody(req)) as PersistentConfig['dataUsage'];
+    if (!body) {
+      json(res, 400, { ok: false, message: 'No settings in the request.' });
+      return true;
+    }
+    const dataUsage = {
+      enabled: body.enabled !== false,
+      source: body.source === 'hilink' ? ('hilink' as const) : ('counted' as const),
+      budgetMb: Number.isFinite(Number(body.budgetMb)) && Number(body.budgetMb) > 0 ? Number(body.budgetMb) : null,
+      warnPercent: Math.min(99, Math.max(1, Math.round(Number(body.warnPercent) || 80))),
+      resetDay:
+        Number.isInteger(Number(body.resetDay)) && Number(body.resetDay) >= 1 && Number(body.resetDay) <= 31
+          ? Number(body.resetDay)
+          : null,
+    };
+    savePersisted(ctx.config.configPath, { dataUsage });
+    ctx.config.dataUsage = dataUsage;
+    ctx.traffic.reconfigure(dataUsage);
+    ctx.onConfigSaved?.({ dataUsage });
+    json(res, 200, { ok: true, message: 'Data budget applied.', config: dataUsage });
+    return true;
+  }
+  if (url === '/api/data/reset' && method === 'POST') {
+    ctx.traffic.reset();
+    json(res, 200, { ok: true, message: 'Data counter reset — a new period starts now.' });
+    return true;
+  }
+
   if (url === '/api/telemetry' && method === 'GET') {
     json(res, 200, ctx.config.telemetry);
     return true;

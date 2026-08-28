@@ -139,13 +139,12 @@ export function StatusStrip({
           {gamepad ? `gamepad · ${gamepadKind}` : 'kbd / touch'}
         </div>
       </div>
+      {/* Name and driver are one fact — which vehicle this is — and both are fixed for
+          the life of a connection. Two cells for that left the strip at nine, and nine
+          does not divide by the grid's four columns. */}
       <div className="stat">
         <div className="k">Vehicle</div>
-        <div className="v">{vehicleName || '—'}</div>
-      </div>
-      <div className="stat">
-        <div className="k">Driver</div>
-        <div className="v">{driver || '—'}</div>
+        <div className="v">{vehicleName || '—'}{driver ? ` · ${driver}` : ''}</div>
       </div>
       <div className="stat">
         <div className="k">Telemetry</div>

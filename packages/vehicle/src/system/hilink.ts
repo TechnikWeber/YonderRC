@@ -18,6 +18,7 @@
  */
 
 import type { LteStatus } from './SystemManager.js';
+import { parseDataLimit } from './traffic.js';
 
 export const HILINK_DEFAULT_HOST = '192.168.8.1';
 
@@ -233,6 +234,86 @@ export async function readHilink(get: HilinkGet, iface: string | null): Promise<
     model: dev.DeviceName || null,
     wanIp: dev.WanIPAddress || s.WanIPAddress || null,
     message: null,
+  };
+}
+
+/**
+ * What the stick itself says it has used this billing month.
+ *
+ * Worth having as an alternative to counting on the Pi for one reason: these counters
+ * live in the stick's own flash, so they survive a reboot, an SD-card swap and a
+ * reinstall, and they are aligned to the billing day the operator already configured in
+ * the stick's web UI. What they cannot see is a phone hotspot — if the vehicle is
+ * online over WiFi instead, this number simply stops moving, which is why it is an
+ * option and not the default.
+ */
+export interface HilinkTraffic {
+  /** Bytes this billing month (down + up), or null if the stick did not answer. */
+  monthBytes: number | null;
+  /** Date the stick last cleared the month counter, e.g. "2026-08-21". */
+  monthSince: string | null;
+  /** The limit configured in the stick's own UI, in bytes, or null when unset. */
+  limitBytes: number | null;
+  /** Day of the month the stick rolls its counter over. */
+  startDay: number | null;
+}
+
+export const HILINK_TRAFFIC_NONE: HilinkTraffic = {
+  monthBytes: null,
+  monthSince: null,
+  limitBytes: null,
+  startDay: null,
+};
+
+export async function readHilinkTraffic(get: HilinkGet): Promise<HilinkTraffic> {
+  let headers: Record<string, string> = {};
+  const ses = await get('/api/webserver/SesTokInfo', {}).catch(() => null);
+  if (ses?.ok) {
+    const v = parseHilinkXml(ses.text);
+    const sid = (v.SesInfo ?? '').trim();
+    const tok = (v.TokInfo ?? '').trim();
+    headers = {
+      ...(sid ? { cookie: sid.startsWith('SessionID=') ? sid : `SessionID=${sid}` } : {}),
+      ...(tok ? { __RequestVerificationToken: tok } : {}),
+    };
+  }
+  const [month, start] = await Promise.all([
+    get('/api/monitoring/month_statistics', headers).catch(() => null),
+    get('/api/monitoring/start_date', headers).catch(() => null),
+  ]);
+  return {
+    ...HILINK_TRAFFIC_NONE,
+    ...parseMonthStatistics(month?.ok ? month.text : ''),
+    ...parseStartDate(start?.ok ? start.text : ''),
+  };
+}
+
+/** `<CurrentMonthDownload>` + `<CurrentMonthUpload>`, in bytes. */
+export function parseMonthStatistics(xml: string): Pick<HilinkTraffic, 'monthBytes' | 'monthSince'> {
+  if (!xml || hilinkError(xml)) return { monthBytes: null, monthSince: null };
+  const v = parseHilinkXml(xml);
+  const down = Number(v.CurrentMonthDownload);
+  const up = Number(v.CurrentMonthUpload);
+  // An absent field parses as NaN, an empty one as 0 — and a stick that answered with
+  // neither has not told us it used nothing, it has told us nothing.
+  if (!Number.isFinite(down) && !Number.isFinite(up)) return { monthBytes: null, monthSince: null };
+  return {
+    monthBytes: (Number.isFinite(down) ? down : 0) + (Number.isFinite(up) ? up : 0),
+    monthSince: (v.MonthLastClearTime ?? '').trim() || null,
+  };
+}
+
+/** The stick's configured plan: `<DataLimit>3GB</DataLimit>` and its reset day. */
+export function parseStartDate(xml: string): Pick<HilinkTraffic, 'limitBytes' | 'startDay'> {
+  if (!xml || hilinkError(xml)) return { limitBytes: null, startDay: null };
+  const v = parseHilinkXml(xml);
+  // `trafficmaxlimit` is already bytes and is what the stick actually enforces; the
+  // human-readable DataLimit ("3GB") is the fallback for firmware that omits it.
+  const raw = Number(v.trafficmaxlimit);
+  const day = Number(v.StartDay);
+  return {
+    limitBytes: Number.isFinite(raw) && raw > 0 ? raw : parseDataLimit(v.DataLimit),
+    startDay: Number.isInteger(day) && day >= 1 && day <= 31 ? day : null,
   };
 }
 

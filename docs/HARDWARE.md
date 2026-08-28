@@ -656,6 +656,40 @@ shows the LTE percentage** just as it does for a ModemManager modem.
   several countries — Germany among them — switched 3G off years ago, so such a stick
   gets no data connection there at all.
 
+### 4.1.2 Mobile data budget
+
+An FPV link is a video stream, and a video stream empties a data plan quietly. There is
+no symptom until the plan runs out, and the symptom then is that the vehicle is gone.
+Reckon with **0.5–1 GB per hour** at the default quality.
+
+**Setup › Mobile data budget** counts what has been spent and puts `⚠ DATA` in the OSD
+once a configured share is gone — the same idea as the low-voltage warning. Two ways to
+measure it:
+
+| Measured by | Sees | Survives a reboot | Use it when |
+| --- | --- | --- | --- |
+| **the vehicle** (default) | every metered interface: LTE stick, phone hotspot, tethered laptop | yes (the total is persisted) | always — it is the one that cannot miss an uplink |
+| **the LTE stick** | only traffic through the stick | yes, in the stick's own flash | the stick is the only uplink and you want the operator's own billing month |
+
+Two things the vehicle-side count deliberately leaves out, because counting them would
+make the number useless:
+
+- **The vehicle's own WiFi hotspot.** A ground station connected straight to the vehicle
+  pulls the full video stream over it and that costs nothing at all — some 900 MB an
+  hour of free traffic that would empty a 4 GB budget in one afternoon on the bench. The
+  same radio in *client* mode (a phone hotspot, a home network) is counted.
+- **VPN interfaces** (Tailscale, WireGuard, ZeroTier). Their traffic is encapsulated and
+  leaves again through the real uplink, so counting both counts every byte twice.
+
+Set **Plan allowance** to the contract figure in MB (4096 for 4 GB), **Warn at** to the
+share that should trip the warning (80 % by default), and optionally the **day of month**
+the plan resets — otherwise the counter only ever restarts when you press *Reset
+counter*. With a HiLink stick the panel offers the limit the stick already has
+configured, so nobody retypes it.
+
+> The counter is written to the config file at most every five minutes or every 20 MB,
+> whichever comes first. That bounds both the SD-card wear and what a brownout can lose.
+
 ### 4.2 Tailscale
 
 1. **Setup › Remote access** → Method **Tailscale** → **Bring up**, with the auth-key

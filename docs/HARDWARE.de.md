@@ -678,6 +678,44 @@ LTE-Prozentzahl** genau wie bei einem ModemManager-Modem.
   Mehrere Länder — Deutschland eingeschlossen — haben 3G vor Jahren abgeschaltet, ein
   solcher Stick bekommt dort gar keine Datenverbindung mehr.
 
+### 4.1.2 Datenvolumen-Budget
+
+Eine FPV-Strecke ist ein Videostream, und ein Videostream leert einen Datentarif
+lautlos. Es gibt kein Symptom, bis das Volumen aufgebraucht ist — und dann ist das
+Symptom, dass das Fahrzeug weg ist. Rechne mit **0,5–1 GB pro Stunde** bei
+Standardqualität.
+
+**Setup › Mobile data budget** zählt den Verbrauch und zeigt `⚠ DATA` im OSD, sobald ein
+eingestellter Anteil verbraucht ist — dieselbe Idee wie die Unterspannungswarnung. Zwei
+Messwege:
+
+| Gemessen von | Sieht | Übersteht Neustart | Nimm es, wenn |
+| --- | --- | --- | --- |
+| **dem Fahrzeug** (Standard) | jede kostenpflichtige Schnittstelle: LTE-Stick, Handy-Hotspot, getethertes Notebook | ja (der Zähler wird gespeichert) | immer — es ist der Weg, der keine Verbindung übersehen kann |
+| **dem LTE-Stick** | nur Verkehr über den Stick | ja, im Flash des Sticks | der Stick die einzige Verbindung ist und du den Abrechnungsmonat des Anbieters willst |
+
+Zwei Dinge lässt die fahrzeugseitige Zählung bewusst weg, weil sie die Zahl sonst
+unbrauchbar machen würden:
+
+- **Den eigenen WLAN-Hotspot des Fahrzeugs.** Eine direkt daran verbundene Bodenstation
+  zieht den kompletten Videostream darüber, und der kostet überhaupt nichts — rund
+  900 MB pro Stunde kostenloser Verkehr, der ein 4-GB-Budget an einem Nachmittag auf der
+  Werkbank leeren würde. Dasselbe Funkmodul im *Client*-Modus (Handy-Hotspot, Heimnetz)
+  wird gezählt.
+- **VPN-Schnittstellen** (Tailscale, WireGuard, ZeroTier). Deren Verkehr ist gekapselt
+  und verlässt das Fahrzeug erneut über die echte Verbindung — beides zu zählen zählt
+  jedes Byte doppelt.
+
+**Plan allowance** ist der Vertragswert in MB (4096 für 4 GB), **Warn at** der Anteil,
+bei dem die Warnung kommen soll (Standard 80 %), und optional der **Tag im Monat**, an
+dem der Tarif zurücksetzt — sonst startet der Zähler nur neu, wenn du *Reset counter*
+drückst. Mit einem HiLink-Stick bietet das Panel das Limit an, das im Stick ohnehin
+schon eingestellt ist, damit es niemand abtippen muss.
+
+> Der Zähler wird höchstens alle fünf Minuten oder alle 20 MB in die Konfiguration
+> geschrieben, je nachdem was zuerst eintritt. Das begrenzt sowohl den SD-Karten-Verschleiß
+> als auch das, was ein Spannungseinbruch verlieren kann.
+
 ### 4.2 Tailscale
 
 1. **Setup › Remote access** → Method **Tailscale** → **Bring up**, Auth-Key-Feld leer

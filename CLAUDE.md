@@ -80,6 +80,21 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   unbound** (panic fires instantly with no hold — an accidental press is a crash);
   storage is `yonderrc.actions.v2`, and `migrateActions` drops a stored panic binding
   that is exactly the pre-v1.30 `escape` default while keeping deliberate choices.
+- **Mobile data budget** (`vehicle/system/traffic.ts` + `TrafficService.ts`, v1.68.0):
+  `/proc/net/dev` byte counters summed over the **metered** interfaces, warned on in the
+  OSD (`⚠ DATA`) against `config.dataUsage.budgetMb`. Three rules that are easy to get
+  wrong: (a) **tunnels are excluded** (`tailscale*`/`wg*`/`zt*`/`tun*`) — their traffic
+  leaves again through the physical interface and counting both counts every byte twice,
+  and all three remote-access backends are tunnels; (b) **wlan0 in AP mode is excluded** —
+  a ground on the vehicle's own hotspot pulls the whole video stream for free, ~900 MB/h
+  that would empty a 4 GB budget on the bench (the WiFi *mode* separates it from a metered
+  client link, the name cannot); (c) **first sight of an interface charges nothing** — the
+  counter is an absolute since the interface came up, and charging it made *Reset counter*
+  jump straight back up. A counter that went DOWN is a reboot/re-plug and is charged in
+  full, because `lastSeen` is persisted. Counter state lives in `dataUsageState`, kept
+  **separate from `dataUsage`** so the settings form cannot wipe it; it is written at most
+  every 5 min or 20 MB. Optional second source: the HiLink stick's own billing month
+  (`readHilinkTraffic`, survives reboots, blind to any uplink that is not the stick).
 - **Link gaps** (`ground/src/lib/linkQuality.ts`, v1.67.0): a watchdog trip is invisible —
   `VehicleCore.resolveOutput()` drops every channel to failsafe after `watchdogTimeoutMs`,
   the status goes out at 20 Hz and the bars snap back unread; the 2 Hz blackbox misses it.

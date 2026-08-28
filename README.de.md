@@ -56,7 +56,7 @@ liegt.*
 
 *Touch-Steuerung, der **Halten-zum-Armen**-Button, der **Speed-Limiter**, der optionale
 **WebRTC-Steuerkanal**-Schalter und eine Status-Leiste: Link, Zustand, Session-Zeit,
-Round-Trip, Eingabemethode, Fahrzeug/Treiber, Telemetrie. Ein Auto in Stick-Modus 2 fährt
+Round-Trip, **Verbindungslücken**, Eingabemethode, Fahrzeug, Telemetrie. Ein Auto in Stick-Modus 2 fährt
 mit einem **einzigen Stick** — Lenkung auf X, Gas auf Y — und bekommt dafür die ganze
 Reihe und die Größe, die damit möglich ist; Modus 4 verteilt beides auf zwei.*
 
@@ -222,6 +222,19 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Richtung zurück zum Home** — das Wesentliche für den Betrieb außerhalb der Sichtweite.
 
 **Betrieb & Einrichtung**
+- **Datenvolumen-Budget mit Warnung.** Ein FPV-Stream kostet 0,5–1 GB pro Stunde und sagt
+  nichts dazu; das erste Symptom eines leeren Tarifs ist, dass das Fahrzeug weg ist. Das
+  Fahrzeug zählt seinen Verbrauch über **jede kostenpflichtige Verbindung** — LTE-Stick,
+  Handy-Hotspot, getethertes Notebook — und das OSD zeigt **⚠ DATA**, sobald der
+  eingestellte Anteil des Volumens verbraucht ist. Bewusst nicht gezählt werden der
+  eigene Hotspot des Fahrzeugs (dieser Verkehr ist kostenlos) und VPN-Schnittstellen (sie
+  würden doppelt zählen). Mit einem Huawei-HiLink-Stick lässt sich stattdessen der
+  **Abrechnungsmonat des Sticks** verwenden, der einen Neustart übersteht und dem echten
+  Rücksetztag folgt.
+- **Verbindungslücken werden festgehalten, nicht nur geahnt.** Ein Watchdog-Auslöser
+  dauert einen Steuertakt — die Kanäle springen auf Failsafe und zurück, bevor man es
+  lesen kann. Die Statusleiste zählt die Episoden pro Verbindung und zeigt die längste
+  Wartezeit auf einen Frame, gelb schon während die Strecke nur ihre Reserve verbraucht.
 - Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
   Telemetrie, Watchdog, **WLAN**, LTE, Fernzugriff, Sicherheit — vom Handy/Laptop, ohne
   Bildschirm. **WLAN-Einrichtung vom Handy**: scannen, Netz auswählen, verbinden — der

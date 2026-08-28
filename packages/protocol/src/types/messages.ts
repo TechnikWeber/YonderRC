@@ -158,6 +158,29 @@ export interface StatusMessage {
    * from a software crash unless the vehicle says so.
    */
   power?: PowerFlags;
+  /**
+   * Mobile data spent against the operator's budget, on the same slow cadence. A video
+   * link empties a data plan silently — there is no symptom until it is gone, and then
+   * the symptom is that the vehicle is gone.
+   */
+  data?: DataUsage;
+}
+
+export interface DataUsage {
+  /** Bytes charged to the current period. */
+  usedBytes: number;
+  /** The configured budget in bytes, or null when none is set. */
+  budgetBytes: number | null;
+  /** Share of the budget used, 0..100+, or null without a budget. */
+  percent: number | null;
+  /** 'counted' = summed on the vehicle, 'hilink' = the stick's own month counter. */
+  source: 'counted' | 'hilink';
+  /** 'warn' once past the configured share, 'over' past the budget itself. */
+  level: 'ok' | 'warn' | 'over';
+  /** Short OSD label, e.g. "2.38 GB / 4.00 GB". */
+  label: string;
+  /** When the current period started (ISO date), or null. */
+  since: string | null;
 }
 
 export interface PowerFlags {
