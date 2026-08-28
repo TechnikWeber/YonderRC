@@ -3,137 +3,93 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
-## v1.68.0
+## v1.68.1
 **English**
-- **A mobile-data budget, with the warning that matters.** An FPV link is a video stream
-  and a video stream empties a data plan quietly: there is no symptom until the plan is
-  gone, and the symptom then is that the vehicle is gone. Setup › *Mobile data budget*
-  takes the plan's allowance and the OSD shows **⚠ DATA** once the configured share is
-  spent — the same idea as the low-voltage warning. Reckon with 0.5–1 GB an hour.
-- **Counted across every metered uplink by default**, because the alternative fails in
-  the field: an LTE-only counter goes blind the moment someone tethers to a phone. Two
-  exclusions make the number usable rather than merely large. **VPN interfaces**
-  (Tailscale, WireGuard, ZeroTier) are skipped — their traffic leaves again through the
-  real uplink, so counting both counts every byte twice. **The vehicle's own WiFi
-  hotspot** is skipped too: a ground station connected straight to it pulls the whole
-  video stream for free, some 900 MB an hour that would empty a 4 GB budget in one
-  afternoon on the bench. The same radio in *client* mode is counted.
-- **Or let the LTE stick do it.** A Huawei HiLink stick already counts its own billing
-  month in its own flash, aligned to the reset day set in its web UI — so that total
-  survives a reboot, an SD-card swap and a reinstall. Selectable when a stick answers,
-  greyed out when none does, and the panel offers the limit the stick already holds so
-  nobody retypes it.
-- The counter is written to the config at most every 5 minutes or every 20 MB, which
-  bounds both SD-card wear and what a brownout can lose. It is kept in its own key, so
-  changing the warning threshold cannot wipe the total. Reset by hand, or automatically
-  on the plan's day of the month.
-- **Fixed: every tick box on the setup page was stretched across its own label.**
-  `input { width: 100% }` is right for a text field and wrong for a checkbox, which
-  inherited it inside a row-flex label — measured at 194–477 px instead of 13.
-- The status strip merged **Vehicle** and **Driver** into one cell. They are one fact and
-  both fixed for the life of a connection, and nine cells did not divide by the grid's
-  four columns.
+- **The data counter now survives a clean restart.** It was written at most every 5
+  minutes and nothing flushed it on shutdown, so every `systemctl restart` — which every
+  update does — threw away what had been counted since the last write. Now saved on
+  shutdown too.
+- **Mobile data is on the overview**, with usage, percent and which source counted it.
+  It was only in the Network tab, four panels down.
 
 **Deutsch**
-- **Ein Datenvolumen-Budget mit der Warnung, auf die es ankommt.** Eine FPV-Strecke ist
-  ein Videostream, und ein Videostream leert einen Datentarif lautlos: Es gibt kein
-  Symptom, bis das Volumen weg ist — und dann ist das Symptom, dass das Fahrzeug weg ist.
-  Setup › *Mobile data budget* nimmt das Vertragsvolumen, und das OSD zeigt **⚠ DATA**,
-  sobald der eingestellte Anteil verbraucht ist — dieselbe Idee wie die
-  Unterspannungswarnung. Rechne mit 0,5–1 GB pro Stunde.
-- **Standardmäßig über jede kostenpflichtige Verbindung gezählt**, weil die Alternative
-  im Feld versagt: Ein reiner LTE-Zähler ist blind, sobald jemand am Handy-Hotspot hängt.
-  Zwei Ausnahmen machen die Zahl brauchbar statt nur groß. **VPN-Schnittstellen**
-  (Tailscale, WireGuard, ZeroTier) werden übersprungen — ihr Verkehr verlässt das
-  Fahrzeug erneut über die echte Verbindung, beides zu zählen zählt jedes Byte doppelt.
-  **Der eigene WLAN-Hotspot des Fahrzeugs** ebenfalls: Eine direkt daran verbundene
-  Bodenstation zieht den kompletten Videostream kostenlos, rund 900 MB pro Stunde, die
-  ein 4-GB-Budget an einem Nachmittag auf der Werkbank leeren würden. Dasselbe
-  Funkmodul im *Client*-Modus wird gezählt.
-- **Oder der LTE-Stick übernimmt das.** Ein Huawei-HiLink-Stick zählt seinen
-  Abrechnungsmonat ohnehin schon im eigenen Flash, passend zum Rücksetztag aus seiner
-  Weboberfläche — dieser Wert übersteht Neustart, SD-Kartentausch und Neuinstallation.
-  Auswählbar, sobald ein Stick antwortet, sonst ausgegraut; das Panel bietet das Limit
-  an, das im Stick schon eingestellt ist, damit es niemand abtippen muss.
-- Der Zähler wird höchstens alle 5 Minuten oder alle 20 MB gespeichert — das begrenzt
-  sowohl SD-Karten-Verschleiß als auch das, was ein Spannungseinbruch verlieren kann. Er
-  liegt in einem eigenen Schlüssel, damit das Ändern der Warnschwelle den Stand nicht
-  löschen kann. Zurücksetzen von Hand oder automatisch am Tarif-Stichtag.
-- **Behoben: Jede Checkbox der Setup-Seite war über ihr eigenes Label gestreckt.**
-  `input { width: 100% }` ist für ein Textfeld richtig und für eine Checkbox falsch, die
-  es im Row-Flex-Label geerbt hat — gemessen 194–477 px statt 13.
-- Die Statusleiste fasst **Vehicle** und **Driver** zu einer Kachel zusammen. Das ist eine
-  Information, beide für die Dauer einer Verbindung fest — und neun Kacheln gingen nicht
-  in den vier Spalten des Rasters auf.
+- **Der Datenzähler übersteht jetzt einen sauberen Neustart.** Er wurde höchstens alle 5
+  Minuten geschrieben und beim Herunterfahren gar nicht, also warf jeder
+  `systemctl restart` — den jedes Update macht — den Stand seit dem letzten Schreiben weg.
+  Jetzt wird auch beim Beenden gespeichert.
+- **Mobile Daten stehen in der Übersicht**, mit Verbrauch, Prozent und Quelle. Bisher nur
+  im Network-Tab, vier Panels weiter unten.
+
+## v1.68.0
+**English**
+- **Mobile-data budget** (Setup › Network). Set the plan's allowance; the OSD shows
+  **⚠ DATA** past the configured share. An FPV stream costs 0.5–1 GB/h.
+- Two sources: **the vehicle** (default, sums every metered interface — works with a phone
+  hotspot too) or **the LTE stick's own billing month** (HiLink only, survives reboots).
+- Not counted: the vehicle's own hotspot (that traffic is free, ~900 MB/h) and VPN
+  interfaces (Tailscale/WireGuard/ZeroTier — they leave again through the real uplink and
+  would count twice).
+- Counter persists across reboots; reset by hand or on the plan's day of month.
+- **Fix:** every tick box on the setup page was stretched across its label (194–477 px
+  instead of 13) — `input { width: 100% }` inherited by a checkbox in a row-flex label.
+- Status strip: **Vehicle** and **Driver** merged into one cell, so the grid is 4×2 again.
+
+**Deutsch**
+- **Datenvolumen-Budget** (Setup › Network). Vertragsvolumen eintragen; das OSD zeigt
+  **⚠ DATA** ab dem eingestellten Anteil. Ein FPV-Stream kostet 0,5–1 GB/h.
+- Zwei Quellen: **das Fahrzeug** (Standard, summiert jede kostenpflichtige Schnittstelle —
+  auch Handy-Hotspot) oder **der Abrechnungsmonat des LTE-Sticks** (nur HiLink, übersteht
+  Neustarts).
+- Nicht gezählt: der eigene Hotspot des Fahrzeugs (kostenlos, ~900 MB/h) und
+  VPN-Schnittstellen (Tailscale/WireGuard/ZeroTier — sie gehen erneut über die echte
+  Verbindung raus und würden doppelt zählen).
+- Der Zähler übersteht Neustarts; Reset von Hand oder am Tarif-Stichtag.
+- **Behoben:** Jede Checkbox der Setup-Seite war über ihr Label gestreckt (194–477 px
+  statt 13) — `input { width: 100% }`, von einer Checkbox im Row-Flex-Label geerbt.
+- Statusleiste: **Vehicle** und **Driver** zu einer Kachel zusammengefasst, Raster wieder 4×2.
 
 ## v1.67.0
 **English**
-- **The link gaps you cannot see now leave a mark.** A watchdog trip lasts one control
-  tick: `VehicleCore` drops every channel to failsafe after 300 ms without a frame, the
-  status goes out at 20 Hz, and the bars snap back before anyone can read them — the
-  operator sees "something flickered" and has nothing to point at. The blackbox samples
-  at 2 Hz and misses it too. The status strip now carries **Link gaps**: failsafe
-  episodes since this connection began, plus the longest the vehicle ever waited for a
-  control frame.
-- **It warns before it trips, not only after.** A link peaking at 280 ms against a
-  300 ms watchdog has not failed yet, and that is worth knowing while it is still true —
-  so the cell turns amber once the worst gap passes 60 % of the vehicle's own watchdog
-  timeout, and red once an episode has actually happened. Every connection starts its
-  own tally; the opening moment, when the vehicle has accepted no frame at all and
-  reports failsafe by definition, is deliberately not counted.
-- Measured on the reference vehicle over an indoor LTE/hotspot link: 13 arrival gaps
-  past 300 ms in 60 seconds — one invisible failsafe episode every few seconds, with
-  0 % packet loss and an 88 ms average round-trip. Latency was never the problem; jitter
-  was, and nothing in the app said so.
+- Status strip: **Link gaps** — failsafe episodes since the connection began, plus the
+  longest the vehicle ever waited for a control frame. A watchdog trip lasts one control
+  tick and the bars snap back unread; the 2 Hz blackbox misses it too.
+- Amber once the worst gap passes 60 % of the vehicle's watchdog timeout, red after an
+  actual episode. Rising edges, not ticks; the opening moment of a connection (no frame
+  accepted yet) is not counted.
+- Measured indoors over LTE: 13 gaps past 300 ms per minute at 0 % packet loss. Latency
+  was fine, jitter was not, and nothing said so.
 
 **Deutsch**
-- **Die Verbindungslücken, die man nicht sehen kann, hinterlassen jetzt eine Spur.** Ein
-  Watchdog-Auslöser dauert einen Steuertakt: `VehicleCore` legt nach 300 ms ohne Frame
-  alle Kanäle auf Failsafe, der Status geht mit 20 Hz raus, und die Balken sind zurück,
-  bevor jemand sie lesen kann — man sieht „da hat was gezappelt" und hat nichts in der
-  Hand. Die Blackbox sampelt mit 2 Hz und verpasst es ebenfalls. Die Statusleiste zeigt
-  jetzt **Link gaps**: Failsafe-Episoden seit Verbindungsbeginn und die längste Zeit, die
-  das Fahrzeug je auf einen Steuerframe gewartet hat.
-- **Sie warnt, bevor es auslöst, nicht erst danach.** Eine Verbindung mit Spitzen von
-  280 ms bei 300 ms Watchdog ist noch nicht ausgefallen — und genau das will man wissen,
-  solange es noch stimmt. Die Zelle wird gelb, sobald die schlechteste Lücke 60 % des
-  fahrzeugeigenen Watchdog-Timeouts überschreitet, und rot, sobald es wirklich passiert
-  ist. Jede Verbindung zählt neu; der Moment des Verbindungsaufbaus, in dem das Fahrzeug
-  noch keinen einzigen Frame angenommen hat und per Definition Failsafe meldet, wird
-  bewusst nicht mitgezählt.
-- Am Referenzfahrzeug über eine Indoor-LTE/Hotspot-Strecke gemessen: 13 Ankunftslücken
-  über 300 ms in 60 Sekunden — alle paar Sekunden eine unsichtbare Failsafe-Episode, bei
-  0 % Paketverlust und 88 ms mittlerer Round-Trip-Zeit. Die Latenz war nie das Problem,
-  der Jitter war es — und nichts in der App hat das gesagt.
+- Statusleiste: **Link gaps** — Failsafe-Episoden seit Verbindungsbeginn und die längste
+  Wartezeit des Fahrzeugs auf einen Steuerframe. Ein Watchdog-Auslöser dauert einen
+  Steuertakt, die Balken sind zurück, bevor man sie liest; die 2-Hz-Blackbox verpasst ihn
+  ebenfalls.
+- Gelb, sobald die schlechteste Lücke 60 % des Watchdog-Timeouts überschreitet, rot nach
+  einer echten Episode. Gezählt werden Flanken, keine Ticks; der Verbindungsaufbau (noch
+  kein Frame angenommen) zählt nicht.
+- Indoor über LTE gemessen: 13 Lücken über 300 ms pro Minute bei 0 % Paketverlust. Die
+  Latenz war in Ordnung, der Jitter nicht — und nichts hat es gesagt.
 
 ## v1.66.1
 **English**
-- **The setup page now says which charge counter is actually running.** `Charge counter:
-  auto` states a wish, not an outcome — it degrades to Pi integration whenever the primary
-  current channel is not an INA228 (wrong kind, wrong address, a chip that never answered),
-  and the mAh keep coming either way. Only their accuracy changes, silently. Setup ›
-  Sensors now shows the resolved answer under the selector, and the overview carries a
-  `· counter` row next to the consumed mAh. Until now this lived in an OSD tooltip and a
-  startup log line — neither of which a phone can reach.
-- **Documented what the electronics really draw at idle**, measured on the reference
-  vehicle rather than estimated: a Pi 4B with a CSI camera, a HiLink LTE stick, a PCA9685
-  and a wired GPS pulls **0.7–1.0 A at 7.2 V with the motor stopped** — 1.4–2 A behind a
-  5 V regulator, before a single servo moves. "5 V / 3 A" is the floor, not headroom.
+- Setup › Sensors now shows **which charge counter is actually running**. `auto` states a
+  wish: it silently falls back to Pi integration when the primary current channel is not
+  an INA228, and the mAh keep coming either way — only their accuracy changes. Also on the
+  overview as a `· counter` row. It used to be visible only in an OSD tooltip and a
+  startup log line.
+- **Measured idle draw** documented (`HARDWARE.md` §2.3): Pi 4B + CSI camera + LTE stick +
+  PCA9685 + GPS, motor stopped = **0.7–1.0 A at 7.2 V**, i.e. 1.4–2 A behind a 5 V
+  regulator. "5 V / 3 A" is the floor, not headroom.
 
 **Deutsch**
-- **Die Setup-Seite sagt jetzt, welcher Ladungszähler tatsächlich läuft.** `Charge
-  counter: auto` beschreibt einen Wunsch, kein Ergebnis — es fällt still auf die
-  Pi-Integration zurück, sobald der primäre Stromkanal kein INA228 ist (falscher Typ,
-  falsche Adresse, ein Chip, der nie geantwortet hat), und die mAh laufen in beiden Fällen
-  weiter. Nur ihre Genauigkeit ändert sich. Setup › Sensors zeigt die aufgelöste Antwort
-  jetzt unter der Auswahl, die Übersicht eine Zeile `· counter` neben den verbrauchten
-  mAh. Bisher stand das in einem OSD-Tooltip und einer Startlog-Zeile — an beides kommt
-  ein Handy nicht heran.
-- **Dokumentiert, was die Elektronik im Leerlauf wirklich zieht**, am Referenzfahrzeug
-  gemessen statt geschätzt: ein Pi 4B mit CSI-Kamera, HiLink-LTE-Stick, PCA9685 und
-  verkabeltem GPS zieht bei stehendem Motor **0,7–1,0 A bei 7,2 V** — hinter einem
-  5-V-Regler 1,4–2 A, bevor sich ein einziger Servo bewegt. „5 V / 3 A" ist die
-  Untergrenze, nicht die Reserve.
+- Setup › Sensors zeigt jetzt, **welcher Ladungszähler tatsächlich läuft**. `auto` ist ein
+  Wunsch: Es fällt still auf die Pi-Integration zurück, wenn der primäre Stromkanal kein
+  INA228 ist — die mAh laufen in beiden Fällen weiter, nur ihre Genauigkeit ändert sich.
+  Auch in der Übersicht als Zeile `· counter`. Bisher nur in einem OSD-Tooltip und einer
+  Startlog-Zeile sichtbar.
+- **Gemessener Leerlaufstrom** dokumentiert (`HARDWARE.de.md` §2.3): Pi 4B + CSI-Kamera +
+  LTE-Stick + PCA9685 + GPS, Motor steht = **0,7–1,0 A bei 7,2 V**, also 1,4–2 A hinter
+  einem 5-V-Regler. „5 V / 3 A" ist die Untergrenze, nicht die Reserve.
 
 ## v1.66.0
 **English**

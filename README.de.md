@@ -222,19 +222,15 @@ Disarm — der Throttle-Kanal wird sichtbar sicher gehalten, solange disarmed.*
   Richtung zurück zum Home** — das Wesentliche für den Betrieb außerhalb der Sichtweite.
 
 **Betrieb & Einrichtung**
-- **Datenvolumen-Budget mit Warnung.** Ein FPV-Stream kostet 0,5–1 GB pro Stunde und sagt
-  nichts dazu; das erste Symptom eines leeren Tarifs ist, dass das Fahrzeug weg ist. Das
-  Fahrzeug zählt seinen Verbrauch über **jede kostenpflichtige Verbindung** — LTE-Stick,
-  Handy-Hotspot, getethertes Notebook — und das OSD zeigt **⚠ DATA**, sobald der
-  eingestellte Anteil des Volumens verbraucht ist. Bewusst nicht gezählt werden der
-  eigene Hotspot des Fahrzeugs (dieser Verkehr ist kostenlos) und VPN-Schnittstellen (sie
-  würden doppelt zählen). Mit einem Huawei-HiLink-Stick lässt sich stattdessen der
-  **Abrechnungsmonat des Sticks** verwenden, der einen Neustart übersteht und dem echten
-  Rücksetztag folgt.
-- **Verbindungslücken werden festgehalten, nicht nur geahnt.** Ein Watchdog-Auslöser
-  dauert einen Steuertakt — die Kanäle springen auf Failsafe und zurück, bevor man es
-  lesen kann. Die Statusleiste zählt die Episoden pro Verbindung und zeigt die längste
-  Wartezeit auf einen Frame, gelb schon während die Strecke nur ihre Reserve verbraucht.
+- **Datenvolumen-Budget**: zählt den Verbrauch über jede kostenpflichtige Verbindung
+  (LTE-Stick, Handy-Hotspot, getethertes Notebook) und zeigt **⚠ DATA** im OSD ab einem
+  eingestellten Anteil. Eigener Hotspot und VPN-Schnittstellen sind ausgenommen —
+  kostenlos bzw. doppelt gezählt. Alternativ der Abrechnungsmonat eines HiLink-Sticks.
+  Übersteht Neustarts; Reset von Hand oder am Tarif-Stichtag.
+- **Verbindungslücken**: ein Watchdog-Auslöser dauert einen Steuertakt und ist vorbei,
+  bevor man ihn lesen kann. Die Statusleiste zählt die Failsafe-Episoden pro Verbindung
+  und die längste Wartezeit auf einen Steuerframe — gelb, solange die Strecke nur ihre
+  Reserve verbraucht.
 - Grafische **Setup-Seite** direkt vom Fahrzeug (`/setup`): Treiber, Kameras,
   Telemetrie, Watchdog, **WLAN**, LTE, Fernzugriff, Sicherheit — vom Handy/Laptop, ohne
   Bildschirm. **WLAN-Einrichtung vom Handy**: scannen, Netz auswählen, verbinden — der

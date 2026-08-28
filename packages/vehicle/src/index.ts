@@ -83,7 +83,7 @@ async function main() {
     (e) => console.error('[video] initial camera generation failed:', (e as Error).message),
   );
 
-  startWsServer(core, config, system, telemetry, gps);
+  const { traffic } = startWsServer(core, config, system, telemetry, gps);
   console.log(`  setup UI  : http://<vehicle>:${config.port}/setup  (system: ${config.systemKind})`);
   console.log(`  control   : http://<vehicle>:${config.port}/  (ground app, if built)`);
   console.log(`  telemetry : ${config.telemetry.source} · ${config.telemetry.enabled ? 'on' : 'off'}`);
@@ -108,6 +108,10 @@ async function main() {
     console.log('\n[core] shutting down, holding failsafe…');
     await telemetry.stop();
     await gps.stop();
+    // Persist the data counter before the process goes: it is otherwise written at most
+    // every 5 min, so a clean `systemctl restart` — which every update does — threw away
+    // whatever had been counted since the last write.
+    traffic.stop();
     await core.stop();
     process.exit(0);
   };

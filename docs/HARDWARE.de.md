@@ -186,14 +186,11 @@ Fahrakku ──► BEC 5V/3A ──► Pi (5V/GND, z. B. GPIO Pin 2/6 oder USB-C
 - **Dem Pi ein ordentliches Netzteil geben**: 5,1 V / 3 A mit kurzem, dickem Kabel. Kamera
   plus LTE-Stick an einem Handy-Netzteil ist schon darüber und liegt im Leerlauf in
   Unterspannung, bevor du überhaupt gefahren bist.
-- **Wie viel das konkret ist — gemessen, nicht geschätzt.** Ein Pi 4B mit CSI-Kamera
-  (OV5647), HiLink-LTE-Stick, PCA9685 und verkabeltem GPS, alles hochgefahren und
-  streamend, aber **ohne drehenden Motor**, zieht akkuseitig **0,7–1,0 A bei 7,2 V**
-  (≈ 5–7 W, am INA228 des Referenzfahrzeugs abgelesen). Hinter einem 5-V-Regler sind das
-  **1,4–2 A, bevor sich ein einziger Servo bewegt**. „5 V / 3 A" ist also nicht großzügig,
-  sondern die Untergrenze: was übrig bleibt, ist das, was Servos und Empfangselektronik
-  bekommen. Ein 5-A-Buck-Boost-Modul direkt am Akku hielt `vcgencmd get_throttled` bei
-  `0x0` — auf demselben Fahrzeug, das mit kleinerer Versorgung Unterspannung meldete.
+- **Gemessener Leerlaufstrom** am Referenzfahrzeug (Pi 4B + CSI-Kamera + HiLink-LTE-Stick
+  + PCA9685 + GPS, streamend, Motor steht): **0,7–1,0 A bei 7,2 V** ≈ 5–7 W, also
+  **1,4–2 A hinter einem 5-V-Regler, bevor sich ein Servo bewegt**. „5 V / 3 A" ist die
+  Untergrenze, nicht die Reserve. Ein 5-A-Buck-Boost am Akku hielt `vcgencmd get_throttled`
+  bei `0x0`.
 - Das Fahrzeug prüft das selbst und zeigt **⚠ POWER** im OSD, solange die Schiene unter
   Spezifikation liegt (und unterscheidet eine thermische Drosselung davon) — der Wert kommt
   aus der Firmware, es ist also dasselbe Urteil wie `vcgencmd get_throttled`. `0x0` heißt
@@ -680,41 +677,28 @@ LTE-Prozentzahl** genau wie bei einem ModemManager-Modem.
 
 ### 4.1.2 Datenvolumen-Budget
 
-Eine FPV-Strecke ist ein Videostream, und ein Videostream leert einen Datentarif
-lautlos. Es gibt kein Symptom, bis das Volumen aufgebraucht ist — und dann ist das
-Symptom, dass das Fahrzeug weg ist. Rechne mit **0,5–1 GB pro Stunde** bei
-Standardqualität.
+Ein FPV-Stream kostet **0,5–1 GB pro Stunde**, und nichts meldet, dass das Volumen zur
+Neige geht. **Setup › Mobile data budget** zählt mit und zeigt `⚠ DATA` im OSD ab einem
+eingestellten Anteil.
 
-**Setup › Mobile data budget** zählt den Verbrauch und zeigt `⚠ DATA` im OSD, sobald ein
-eingestellter Anteil verbraucht ist — dieselbe Idee wie die Unterspannungswarnung. Zwei
-Messwege:
+| Gemessen von | Sieht | Übersteht Neustart |
+| --- | --- | --- |
+| **dem Fahrzeug** (Standard) | jede kostenpflichtige Schnittstelle: LTE-Stick, Handy-Hotspot, getethertes Notebook | ja |
+| **dem LTE-Stick** | nur Verkehr über den Stick | ja, im Flash des Sticks |
 
-| Gemessen von | Sieht | Übersteht Neustart | Nimm es, wenn |
-| --- | --- | --- | --- |
-| **dem Fahrzeug** (Standard) | jede kostenpflichtige Schnittstelle: LTE-Stick, Handy-Hotspot, getethertes Notebook | ja (der Zähler wird gespeichert) | immer — es ist der Weg, der keine Verbindung übersehen kann |
-| **dem LTE-Stick** | nur Verkehr über den Stick | ja, im Flash des Sticks | der Stick die einzige Verbindung ist und du den Abrechnungsmonat des Anbieters willst |
+Bewusst nicht gezählt:
 
-Zwei Dinge lässt die fahrzeugseitige Zählung bewusst weg, weil sie die Zahl sonst
-unbrauchbar machen würden:
+- **Der eigene WLAN-Hotspot des Fahrzeugs** — eine Bodenstation daran zieht den
+  Videostream kostenlos (~900 MB/h). Dasselbe Funkmodul im *Client*-Modus wird gezählt.
+- **VPN-Schnittstellen** (Tailscale, WireGuard, ZeroTier) — ihr Verkehr geht erneut über
+  die echte Verbindung raus, beides zu zählen zählt jedes Byte doppelt.
 
-- **Den eigenen WLAN-Hotspot des Fahrzeugs.** Eine direkt daran verbundene Bodenstation
-  zieht den kompletten Videostream darüber, und der kostet überhaupt nichts — rund
-  900 MB pro Stunde kostenloser Verkehr, der ein 4-GB-Budget an einem Nachmittag auf der
-  Werkbank leeren würde. Dasselbe Funkmodul im *Client*-Modus (Handy-Hotspot, Heimnetz)
-  wird gezählt.
-- **VPN-Schnittstellen** (Tailscale, WireGuard, ZeroTier). Deren Verkehr ist gekapselt
-  und verlässt das Fahrzeug erneut über die echte Verbindung — beides zu zählen zählt
-  jedes Byte doppelt.
+Einstellungen: **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (Standard 80) und
+optional der **Tag im Monat**, an dem der Tarif zurücksetzt. Sonst *Reset counter*. Mit
+HiLink-Stick bietet das Panel das im Stick gesetzte Limit an.
 
-**Plan allowance** ist der Vertragswert in MB (4096 für 4 GB), **Warn at** der Anteil,
-bei dem die Warnung kommen soll (Standard 80 %), und optional der **Tag im Monat**, an
-dem der Tarif zurücksetzt — sonst startet der Zähler nur neu, wenn du *Reset counter*
-drückst. Mit einem HiLink-Stick bietet das Panel das Limit an, das im Stick ohnehin
-schon eingestellt ist, damit es niemand abtippen muss.
-
-> Der Zähler wird höchstens alle fünf Minuten oder alle 20 MB in die Konfiguration
-> geschrieben, je nachdem was zuerst eintritt. Das begrenzt sowohl den SD-Karten-Verschleiß
-> als auch das, was ein Spannungseinbruch verlieren kann.
+> Der Zähler wird alle 5 Minuten, alle 20 MB und beim Herunterfahren gespeichert — ein
+> harter Stromausfall kostet höchstens die letzten Minuten.
 
 ### 4.2 Tailscale
 

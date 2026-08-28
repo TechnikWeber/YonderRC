@@ -208,18 +208,14 @@ disarm — the throttle channel is visibly held safe while disarmed.*
   direction back to home** — the essentials for beyond-line-of-sight.
 
 **Operation & setup**
-- **Mobile data budget with a warning.** An FPV stream costs 0.5–1 GB an hour and says
-  nothing about it; the first symptom of an empty plan is that the vehicle is gone. The
-  vehicle counts what it spends across **every metered uplink** — LTE stick, phone
-  hotspot, tethered laptop — and the OSD shows **⚠ DATA** once the configured share of
-  the allowance is gone. It deliberately does not count the vehicle's own hotspot (that
-  traffic is free) or VPN interfaces (they would be counted twice). With a Huawei HiLink
-  stick the **stick's own billing month** can be used instead, which survives a reboot
-  and follows the operator's real reset day.
-- **Link gaps are recorded, not just felt.** A watchdog trip lasts one control tick — the
-  channels snap to failsafe and back before it can be read. The status strip counts the
-  episodes per connection and shows the longest the vehicle ever waited for a frame,
-  amber while the link is merely spending its margin.
+- **Mobile data budget**: counts what the vehicle spends across every metered uplink
+  (LTE stick, phone hotspot, tethered laptop) and shows **⚠ DATA** in the OSD past a set
+  share of the plan. The vehicle's own hotspot and VPN interfaces are excluded — free and
+  double-counted respectively. A HiLink stick's own billing month can be used instead.
+  Survives reboots; resets by hand or on the plan's day of month.
+- **Link gaps**: a watchdog trip lasts one control tick and is gone before it can be read.
+  The status strip counts the failsafe episodes per connection and the longest wait for a
+  control frame — amber while the link is only spending its margin.
 - Graphical **setup page** served by the vehicle itself (`/setup`): driver, cameras,
   telemetry, watchdog, **Wi-Fi**, LTE, remote access, security — from a phone/laptop, no
   screen needed. **Wi-Fi onboarding from the phone**: scan, pick a network, connect —

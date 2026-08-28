@@ -270,7 +270,7 @@ export function startWsServer(
     console.log(`[link] listening on ws://${config.host}:${config.port}`);
   });
 
-  return { http, wss };
+  return { http, wss, traffic };
 }
 
 function handleHttp(

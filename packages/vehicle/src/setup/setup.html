@@ -911,9 +911,12 @@
       async function refresh() {
         try { renderStatus(await getJSON('/api/system')); } catch {}
         await refreshTelLive();
+        // Fetched BEFORE renderDevices, or the overview's data row would always show
+        // the previous cycle's answer.
+        try { dataLiveNow = await getJSON('/api/data'); } catch {}
         renderDevices();
         renderChargeLive();
-        try { renderDataLive(await getJSON('/api/data')); } catch {}
+        renderDataLive(dataLiveNow);
       }
 
       /**
@@ -984,6 +987,21 @@
           // the sentence count — the same reason the GPS panel shows it separately.
           const link = gpsNow.link;
           if (link) html += devRow('· receiver', link.bytes ? `${link.sentences} sentences${link.inView != null ? ' · ' + link.inView + ' in view' : ''}` : 'nothing received', link.bytes ? '' : 'bad');
+        }
+        html += sep;
+        // The budget belongs on the tab people leave open, not four panels down under
+        // Network — a warning you have to go looking for is not a warning.
+        const du = dataLiveNow;
+        if (!du || !du.config || du.config.enabled === false) {
+          html += devRow('Mobile data', 'not counted', '', 'network');
+        } else if (!du.usage) {
+          html += devRow('Mobile data', du.config.source === 'hilink' ? 'stick not answering' : 'starting…',
+            du.config.source === 'hilink' ? 'bad' : '', 'network');
+        } else {
+          const u = du.usage;
+          html += devRow('Mobile data', u.label + (u.percent != null ? ` · ${u.percent}%` : ''),
+            u.level === 'over' ? 'bad' : u.level === 'warn' ? 'warn' : 'go', 'network');
+          html += devRow('· counted by', u.source === 'hilink' ? 'the LTE stick' : 'the vehicle');
         }
         html += sep;
         html += devRow('Cameras', cams.length ? `${cams.length} configured` : 'none', cams.length ? 'go' : 'warn', 'camera');
@@ -2025,6 +2043,7 @@
 
       // ---- Mobile data budget ----
       let dataCfgNow = null;
+      let dataLiveNow = null;
       /**
        * The counter's live answer. It has to name its SOURCE, because "counted here"
        * and "counted by the stick" measure different things — the stick cannot see a
@@ -2064,6 +2083,7 @@
         try {
           const r = await getJSON('/api/data');
           dataCfgNow = r.config;
+          dataLiveNow = r;
           $('dataEnabled').checked = r.config.enabled !== false;
           $('dataSource').value = r.config.source || 'counted';
           $('dataBudget').value = r.config.budgetMb ?? '';
@@ -2071,6 +2091,7 @@
           $('dataResetDay').value = r.config.resetDay ?? '';
           renderDataStick(r.hilink);
           renderDataLive(r);
+          renderDevices();
         } catch {}
       }
       async function saveData() {

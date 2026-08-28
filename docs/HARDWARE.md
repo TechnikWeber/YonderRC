@@ -184,14 +184,10 @@ Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB
 - **Give the Pi a real supply**: 5.1 V / 3 A with a short, thick cable. A camera plus an
   LTE stick on a phone charger is already over the edge, and it will be under-voltage at
   idle before you have driven anywhere.
-- **How much that actually is — measured, not estimated.** A Pi 4B with a CSI camera
-  (OV5647), a HiLink LTE stick, a PCA9685 and a wired GPS, everything up and streaming
-  but **the motor not turning**, draws **0.7–1.0 A at 7.2 V** on the pack side (≈ 5–7 W,
-  read off the INA228 on the reference vehicle). Behind a 5 V regulator that is **1.4–2 A
-  before a single servo moves**. So "5 V / 3 A" is not generous, it is the floor: the
-  headroom you have left is what the servos and the receiver electronics get. A 5 A
-  buck-boost module fed from the pack held `vcgencmd get_throttled` at `0x0` on the same
-  vehicle that used to report under-voltage from a smaller supply.
+- **Measured idle draw** on the reference vehicle (Pi 4B + CSI camera + HiLink LTE stick
+  + PCA9685 + GPS, streaming, motor stopped): **0.7–1.0 A at 7.2 V** ≈ 5–7 W, i.e.
+  **1.4–2 A behind a 5 V regulator before a servo moves**. "5 V / 3 A" is the floor, not
+  headroom. A 5 A buck-boost from the pack held `vcgencmd get_throttled` at `0x0`.
 - The vehicle checks this itself and shows **⚠ POWER** in the OSD while the rail is below
   spec (and tells a thermal clamp apart from it) — the reading comes from the firmware, so
   it is the same verdict `vcgencmd get_throttled` gives. `0x0` is a healthy rail.
@@ -658,37 +654,28 @@ shows the LTE percentage** just as it does for a ModemManager modem.
 
 ### 4.1.2 Mobile data budget
 
-An FPV link is a video stream, and a video stream empties a data plan quietly. There is
-no symptom until the plan runs out, and the symptom then is that the vehicle is gone.
-Reckon with **0.5–1 GB per hour** at the default quality.
+An FPV stream costs **0.5–1 GB per hour** and nothing announces that the plan is running
+out. **Setup › Mobile data budget** counts it and puts `⚠ DATA` in the OSD past a
+configured share.
 
-**Setup › Mobile data budget** counts what has been spent and puts `⚠ DATA` in the OSD
-once a configured share is gone — the same idea as the low-voltage warning. Two ways to
-measure it:
+| Measured by | Sees | Survives a reboot |
+| --- | --- | --- |
+| **the vehicle** (default) | every metered interface: LTE stick, phone hotspot, tethered laptop | yes |
+| **the LTE stick** | only traffic through the stick | yes, in the stick's own flash |
 
-| Measured by | Sees | Survives a reboot | Use it when |
-| --- | --- | --- | --- |
-| **the vehicle** (default) | every metered interface: LTE stick, phone hotspot, tethered laptop | yes (the total is persisted) | always — it is the one that cannot miss an uplink |
-| **the LTE stick** | only traffic through the stick | yes, in the stick's own flash | the stick is the only uplink and you want the operator's own billing month |
+Deliberately not counted:
 
-Two things the vehicle-side count deliberately leaves out, because counting them would
-make the number useless:
+- **The vehicle's own WiFi hotspot** — a ground station on it pulls the video stream for
+  free (~900 MB/h). The same radio in *client* mode is counted.
+- **VPN interfaces** (Tailscale, WireGuard, ZeroTier) — their traffic leaves again
+  through the real uplink, so counting both counts every byte twice.
 
-- **The vehicle's own WiFi hotspot.** A ground station connected straight to the vehicle
-  pulls the full video stream over it and that costs nothing at all — some 900 MB an
-  hour of free traffic that would empty a 4 GB budget in one afternoon on the bench. The
-  same radio in *client* mode (a phone hotspot, a home network) is counted.
-- **VPN interfaces** (Tailscale, WireGuard, ZeroTier). Their traffic is encapsulated and
-  leaves again through the real uplink, so counting both counts every byte twice.
+Settings: **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (default 80), and
+optionally the **day of month** the plan resets. Otherwise reset with *Reset counter*.
+With a HiLink stick the panel offers the limit the stick already holds.
 
-Set **Plan allowance** to the contract figure in MB (4096 for 4 GB), **Warn at** to the
-share that should trip the warning (80 % by default), and optionally the **day of month**
-the plan resets — otherwise the counter only ever restarts when you press *Reset
-counter*. With a HiLink stick the panel offers the limit the stick already has
-configured, so nobody retypes it.
-
-> The counter is written to the config file at most every five minutes or every 20 MB,
-> whichever comes first. That bounds both the SD-card wear and what a brownout can lose.
+> The counter is saved every 5 minutes, every 20 MB and on shutdown — a hard power cut
+> can cost at most the last few minutes.
 
 ### 4.2 Tailscale
 
