@@ -69,6 +69,20 @@ export function satellitesInView(text: string): number | null {
 }
 
 /**
+ * Split a rolling serial buffer into the part that is safe to parse and the rest.
+ *
+ * The last line of a buffer is usually a sentence the read cut in half. Parsing and
+ * then dropping the whole buffer destroyed it — one sentence per second, and always
+ * the same one for seconds at a time, because the receiver's 1 Hz and the parse timer
+ * drift slowly against each other. `rest` goes back into the buffer instead.
+ */
+export function takeCompleteLines(buf: string): { batch: string; rest: string } {
+  const cut = buf.lastIndexOf('\n');
+  if (cut < 0) return { batch: '', rest: buf };
+  return { batch: buf.slice(0, cut + 1), rest: buf.slice(cut + 1) };
+}
+
+/**
  * Parse a batch of NMEA text into one GpsFix (later sentences fill in fields).
  * Robust to partial/garbage lines. `source` is stamped onto the result.
  */

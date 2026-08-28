@@ -3,6 +3,46 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.69.0
+**English**
+- **The OSD stopped blinking during the first real drive.** Home symbol, home arrow,
+  odometer and speed vanished for a few seconds at a time and came back — with 8
+  satellites and a solid fix. The receiver was fine: a fix is spread over several NMEA
+  sentences (GGA carries position and satellites, RMC speed and course, GSA the 2D/3D
+  mode) and the vehicle rebuilt the whole fix from scratch out of one one-second parse
+  window. A sentence burst cut by the window boundary produced a fix with holes, and the
+  OSD draws nothing for a missing value. It lasted seconds at a time because the
+  receiver's 1 Hz and ours are free-running clocks drifting through each other.
+- **A missing sentence is now a gap, not a loss.** Values are carried over for up to 3 s
+  (`mergeFix`), so a split burst is invisible. A reported loss of fix is never held — that
+  is real information and drops out at once.
+- **The half sentence at the window boundary is no longer destroyed.** The buffer is cut
+  at the last complete line and the remainder waits for the next window; before, exactly
+  one sentence per second was thrown away, and which one depended on the phase.
+- **A silent receiver now reports no fix** after 5 s instead of freezing the last one. A
+  position the vehicle left minutes ago is worse than no position: the home arrow keeps
+  pointing, confidently, at nothing.
+
+**Deutsch**
+- **Das OSD blinkt bei der ersten echten Probefahrt nicht mehr.** Haussymbol, Heimatpfeil,
+  Kilometerzähler und Geschwindigkeit verschwanden für ein paar Sekunden und kamen wieder
+  — bei 8 Satelliten und stehendem Fix. Der Empfänger war in Ordnung: ein Fix verteilt
+  sich über mehrere NMEA-Sätze (GGA bringt Position und Satelliten, RMC Geschwindigkeit
+  und Kurs, GSA den 2D/3D-Modus), und das Fahrzeug baute den kompletten Fix jede Sekunde
+  neu aus genau einem Parse-Fenster. Ein Satz-Burst, den die Fenstergrenze zerschnitt,
+  ergab einen Fix mit Löchern — und für einen fehlenden Wert zeichnet das OSD nichts.
+  Sekundenlang deshalb, weil die 1 Hz des Empfängers und unsere gegeneinander driften.
+- **Ein fehlender Satz ist jetzt eine Lücke, kein Verlust.** Werte werden bis zu 3 s
+  weitergetragen (`mergeFix`), ein zerschnittener Burst fällt damit nicht mehr auf. Ein
+  gemeldeter Fix-Verlust wird nie gehalten — das ist eine echte Information und fällt
+  sofort durch.
+- **Der halbe Satz an der Fenstergrenze wird nicht mehr vernichtet.** Der Puffer wird an
+  der letzten vollständigen Zeile getrennt, der Rest wartet aufs nächste Fenster; vorher
+  ging pro Sekunde genau ein Satz verloren, und welcher, entschied die Phase.
+- **Ein verstummter Empfänger meldet jetzt nach 5 s keinen Fix**, statt den letzten
+  einzufrieren. Eine Position, die das Fahrzeug vor Minuten verlassen hat, ist schlimmer
+  als gar keine: der Heimatpfeil zeigt weiter — überzeugt — ins Nichts.
+
 ## v1.68.3
 Documentation only — no code changes.
 

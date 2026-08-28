@@ -1,6 +1,7 @@
 import type { GpsConfig, GpsFix, GpsHome, GpsMessage } from '@yonderrc/protocol';
 import { emptyFix } from '@yonderrc/protocol';
-import { parseNmea, satellitesInView } from './nmea.js';
+import { parseNmea, satellitesInView, takeCompleteLines } from './nmea.js';
+import { mergeFix, reportedFix, type FixHold } from './fixMerge.js';
 
 /**
  * Owns the GPS: one selectable SOURCE (sim / local NMEA receiver / gpsd / — later —
@@ -102,15 +103,21 @@ class SerialNmeaSource implements GpsSource {
       this.buf += d.toString('ascii');
       if (this.buf.length > 8192) this.buf = this.buf.slice(-4096);
     });
-    // Parse the rolling buffer once a second (NMEA is ~1 Hz anyway).
+    // Parse the rolling buffer once a second (NMEA is ~1 Hz anyway). Only the part
+    // up to the last complete line is consumed: the sentence the window cut in half
+    // stays in the buffer and is parsed with the next one. Clearing the whole buffer
+    // destroyed exactly one sentence per second, and which one depended on the phase
+    // between the receiver's 1 Hz and ours — so it stayed the same one for seconds at
+    // a time. Whatever survives a split window is then held by `mergeFix`.
     this.timer = setInterval(() => {
-      if (!this.buf) return;
-      const complete = this.buf.split(/\r?\n/).filter((l) => l.trim().startsWith('$'));
+      const { batch, rest } = takeCompleteLines(this.buf);
+      if (!batch) return; // nothing complete yet — wait rather than parse a fragment
+      this.buf = rest;
+      const complete = batch.split(/\r?\n/).filter((l) => l.trim().startsWith('$'));
       this.stat.sentences += complete.length;
       if (complete.length) this.stat.last = complete[complete.length - 1].trim();
-      this.stat.inView = satellitesInView(this.buf) ?? this.stat.inView;
-      onFix(parseNmea(this.buf, 'serial-nmea'));
-      this.buf = '';
+      this.stat.inView = satellitesInView(batch) ?? this.stat.inView;
+      onFix(parseNmea(batch, 'serial-nmea'));
     }, 1000);
   }
   async stop(): Promise<void> {
@@ -182,6 +189,10 @@ export class GpsService {
   private savedHome: GpsHome | null;
   /** Auto-home for this session (takeoff point); not persisted. */
   private sessionHome: GpsHome | null = null;
+  /** Last reported fix plus the age of every field in it (see `mergeFix`). */
+  private hold: FixHold | null = null;
+  /** When the source last said anything at all; null until it does. */
+  private lastFixAt: number | null = null;
 
   constructor(cfg: GpsConfig) {
     this.cfg = cfg;
@@ -200,7 +211,15 @@ export class GpsService {
   async start(): Promise<void> {
     this.source = createSource(this.cfg);
     if (!this.source) { this.latest = emptyFix('off'); return; }
-    await this.source.start((f) => {
+    await this.source.start((raw) => {
+      // A parse window that missed a sentence is a gap, not a loss: fill it from the
+      // previous fix (briefly) so the OSD stops blinking in and out. Everything
+      // downstream — auto-home, home distance, odometer — reads the merged fix, so
+      // they cannot disagree with what is on screen.
+      const now = Date.now();
+      this.lastFixAt = now;
+      this.hold = mergeFix(this.hold, raw, now);
+      const f = this.hold.fix;
       this.latest = f;
       // Auto-home: set the session home the first time we get a solid fix.
       if (this.cfg.autoHome && !this.effectiveHome && this.goodFix(f)) {
@@ -214,6 +233,8 @@ export class GpsService {
   async stop(): Promise<void> {
     await this.source?.stop();
     this.source = null;
+    this.hold = null;
+    this.lastFixAt = null;
   }
 
   async reconfigure(cfg: GpsConfig): Promise<void> {
@@ -230,9 +251,14 @@ export class GpsService {
     return this.source?.stats?.() ?? null;
   }
 
+  /** The fix as it should be reported right now — see `reportedFix`. */
+  private get current(): GpsFix {
+    return reportedFix(this.latest, this.lastFixAt, Date.now());
+  }
+
   /** Save the current position as home (persisted by the caller). Returns it, or null. */
   setHomeNow(): GpsHome | null {
-    const f = this.latest;
+    const f = this.current;
     if (f.lat == null || f.lon == null) return null;
     this.savedHome = { lat: f.lat, lon: f.lon, altM: f.altM };
     return this.savedHome;
@@ -244,6 +270,6 @@ export class GpsService {
   }
 
   get message(): GpsMessage {
-    return { type: 'gps', ...this.latest, home: this.effectiveHome };
+    return { type: 'gps', ...this.current, home: this.effectiveHome };
   }
 }

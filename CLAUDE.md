@@ -104,6 +104,18 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   opens in that state, so it must never count as a dropout. Measured 2026-08-28 on an
   indoor LTE/hotspot link: 13 gaps >300 ms per minute at 0 % packet loss — jitter, not
   latency, is what trips the watchdog.
+- **A GPS fix is assembled, not received** (`vehicle/sensors/fixMerge.ts`, v1.69.0): NMEA
+  spreads one fix over several sentences (GGA position/sats, RMC speed/course, GSA mode),
+  and the serial source parses a one-second window. A burst cut by the window boundary
+  therefore yields a fix with holes — and the OSD draws nothing for a `null`, with the home
+  symbol, the arrow and the odometer sharing one condition (`gpsHome`) while the speed has
+  its own, which is why they dropped out in exactly those two groupings on the first real
+  drive. `mergeFix` carries a missing field for `FIX_HOLD_MS` (3 s) and no longer;
+  `takeCompleteLines` keeps the half sentence at the boundary instead of destroying it.
+  Two silences, deliberately kept apart: a **reported** loss of fix (`saysNoFix` — fixless
+  but with a satellite count) is taken verbatim, and a receiver saying nothing at all for
+  `FIX_STALE_MS` (5 s) reports no fix via `reportedFix` rather than freezing the last one.
+  Never report `this.latest` directly — `message` and `setHomeNow` go through `current`.
 - **Video** (`ground/src/components/VideoPanel.tsx`): self-healing WHEP player. The
   watchdog uses **refs, not stale state**; a fresh connect bumps `genRef` so a
   superseded attempt can't attach a dead stream. Keep that invariant.

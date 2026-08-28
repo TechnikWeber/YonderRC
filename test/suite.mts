@@ -554,7 +554,7 @@ async function main() {
 
   // ---- GPS: NMEA parsing + geo (distance/bearing) + sim service + home ----
   const { parseNmea, nmeaChecksumOk } = await import('../packages/vehicle/src/sensors/nmea');
-  const { distanceMeters, bearingDeg } = await import('../packages/protocol/src/types/gps');
+  const { distanceMeters, bearingDeg, emptyFix } = await import('../packages/protocol/src/types/gps');
   // Real GGA/RMC/GSA lines (checksums valid).
   const gga = '$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47';
   const rmc = '$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A';
@@ -574,6 +574,46 @@ async function main() {
   ok('nmea altitude', near(nf.altM!, 545.4, 0.1));
   ok('nmea speed m/s', nf.speedMs != null && nf.speedMs > 0);
   ok('nmea garbage ignored', parseNmea('hello\n$GPXXX,bad').hasFix === false);
+
+  // The first real drive (2026-08-28) showed the home symbol, the arrow, the odometer
+  // and the speed blinking in and out at 8 satellites with a solid fix. Cause: one
+  // parse window = one whole fix, rebuilt from scratch, so a sentence burst cut by the
+  // window boundary produced a fix with holes — and the OSD draws nothing for a null.
+  const { takeCompleteLines } = await import('../packages/vehicle/src/sensors/nmea');
+  const split = takeCompleteLines(`${gga}\n${rmc}\n$GPGS`);
+  ok('complete lines are parsed', split.batch.includes(rmc) && !split.batch.includes('$GPGS\n'));
+  ok('the half sentence waits for the next window', split.rest === '$GPGS');
+  ok('a buffer without a line end is never parsed', takeCompleteLines('$GPGG').batch === '');
+  const { mergeFix, FIX_HOLD_MS } = await import('../packages/vehicle/src/sensors/fixMerge');
+  // Window 1: the whole burst. Window 2: only GSA survived the cut — fix, but no
+  // position, which is exactly the case that made the home symbol disappear.
+  const h1 = mergeFix(null, parseNmea([gga, rmc, gsa].join('\n')), 1000);
+  ok('a complete window is passed through', h1.fix.lat != null && h1.fix.speedMs != null);
+  const h2 = mergeFix(h1, parseNmea(gsa), 2000);
+  ok('position survives a window without GGA/RMC', near(h2.fix.lat!, 48.1173, 1e-3));
+  ok('satellites survive it too', h2.fix.satellites === 8);
+  ok('speed survives it too', h2.fix.speedMs != null);
+  // Window with GGA but no RMC: only the speed was missing on the drive.
+  const h3 = mergeFix(h1, parseNmea([gga, gsa].join('\n')), 2000);
+  ok('speed survives a window without RMC', h3.fix.speedMs != null && h3.fix.lat != null);
+  // A held value must not outlive its usefulness: after the hold it goes.
+  const stale = mergeFix(h1, parseNmea(gsa), 1000 + FIX_HOLD_MS + 1);
+  ok('a held value expires', stale.fix.lat === null && stale.fix.speedMs === null);
+  ok('holding does not stack', mergeFix(h2, parseNmea(gsa), 1000 + FIX_HOLD_MS + 1).fix.lat === null);
+  // Silence is held; an explicit "no fix" is not — a lost fix must drop out at once.
+  const noFixGga = '$GPGGA,123519,,,,,0,00,,,M,,M,,*6B';
+  const lost = mergeFix(h1, parseNmea(noFixGga), 1500);
+  ok('a reported loss of fix is not held', lost.fix.hasFix === false && lost.fix.lat === null);
+  ok('silence keeps the fix', mergeFix(h1, parseNmea(gsv), 1500).fix.hasFix === true);
+  // A source switch starts over — the old receiver's position must not survive it.
+  ok('a source change drops the held fix', mergeFix(h1, emptyFix('sim'), 1500).fix.lat === null);
+  // Filling a gap is not the same as inventing one: a receiver that says nothing at
+  // all reports no fix, rather than a position the vehicle left minutes ago.
+  const { reportedFix, FIX_STALE_MS } = await import('../packages/vehicle/src/sensors/fixMerge');
+  ok('a live fix is reported as it is', reportedFix(h1.fix, 1000, 2000).lat != null);
+  ok('a silent receiver reports no fix', reportedFix(h1.fix, 1000, 1000 + FIX_STALE_MS + 1).hasFix === false);
+  ok('nothing ever received reports no fix', reportedFix(h1.fix, null, 2000).lat === null);
+  ok('a stale report keeps the source', reportedFix(h1.fix, null, 2000).source === h1.fix.source);
   // Geo: ~157 km between two points 1° apart in latitude near the equator... use known pair.
   ok('distance ~1.11km per 0.01°', near(distanceMeters(52.0, 13.0, 52.01, 13.0), 1112, 5), `=${Math.round(distanceMeters(52.0, 13.0, 52.01, 13.0))}`);
   ok('bearing north', Math.abs(bearingDeg(52.0, 13.0, 52.1, 13.0) - 0) < 1);
