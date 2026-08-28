@@ -167,6 +167,20 @@ export function shouldPersist(unsavedBytes: number, msSinceSave: number): boolea
   return unsavedBytes >= PERSIST_EVERY_BYTES || msSinceSave >= PERSIST_EVERY_MS;
 }
 
+/**
+ * The budget actually in force, in bytes.
+ *
+ * A HiLink stick already knows the plan — the operator typed it into the stick's own web
+ * UI and the stick enforces it. Making them type it again here, and warning about
+ * nothing until they do, is the setting that states a wish and silently does nothing.
+ * So an unset allowance falls back to the stick's own limit whenever the stick is the
+ * one doing the counting.
+ */
+export function effectiveBudgetBytes(budgetMb: number | null, fallbackBytes: number | null): number | null {
+  if (budgetMb && budgetMb > 0) return budgetMb * 1024 * 1024;
+  return fallbackBytes && fallbackBytes > 0 ? fallbackBytes : null;
+}
+
 /** Where the budget stands. `warn` is the point of the whole feature. */
 export function usageLevel(
   usedBytes: number,

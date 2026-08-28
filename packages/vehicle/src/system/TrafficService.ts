@@ -15,6 +15,7 @@ import {
   periodBoundaryOnOrBefore,
   shouldPersist,
   shouldRollPeriod,
+  effectiveBudgetBytes,
   usageLabel,
   usageLevel,
   type TrafficState,
@@ -148,11 +149,13 @@ export class TrafficService {
       this.latest = null;
       return;
     }
-    this.publish(this.hilink.monthBytes, this.hilink.monthSince);
+    // The stick's own configured limit stands in for an unset allowance — see
+    // effectiveBudgetBytes.
+    this.publish(this.hilink.monthBytes, this.hilink.monthSince, this.hilink.limitBytes);
   }
 
-  private publish(usedBytes: number, since: string | null): void {
-    const budgetBytes = this.cfg.budgetMb && this.cfg.budgetMb > 0 ? this.cfg.budgetMb * 1024 * 1024 : null;
+  private publish(usedBytes: number, since: string | null, fallbackBudgetBytes: number | null = null): void {
+    const budgetBytes = effectiveBudgetBytes(this.cfg.budgetMb ?? null, fallbackBudgetBytes);
     this.latest = {
       usedBytes: Math.round(usedBytes),
       budgetBytes,

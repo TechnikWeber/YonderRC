@@ -999,8 +999,9 @@
             du.config.source === 'hilink' ? 'bad' : '', 'network');
         } else {
           const u = du.usage;
-          html += devRow('Mobile data', u.label + (u.percent != null ? ` · ${u.percent}%` : ''),
-            u.level === 'over' ? 'bad' : u.level === 'warn' ? 'warn' : 'go', 'network');
+          html += devRow('Mobile data',
+            u.label + (u.percent != null ? ` · ${u.percent}%` : ' · no allowance set'),
+            u.budgetBytes == null ? 'warn' : u.level === 'over' ? 'bad' : u.level === 'warn' ? 'warn' : 'go', 'network');
           html += devRow('· counted by', u.source === 'hilink' ? 'the LTE stick' : 'the vehicle');
         }
         html += sep;
@@ -2065,7 +2066,15 @@
         const cls = u.level === 'over' ? 'bad' : u.level === 'warn' ? 'warn' : 'go';
         const since = u.since ? ` · since ${esc(String(u.since).slice(0, 10))}` : '';
         const pct = u.percent != null ? ` (<b class="v ${cls}">${u.percent}%</b>)` : '';
-        el.innerHTML = `Used: <b class="v ${cls}">${esc(u.label)}</b>${pct} — ${by}${since}`;
+        let note = '';
+        // Without a budget there is no threshold and the OSD can never warn. Saying
+        // "Used: 2.24 GB" and nothing else looks like it is working.
+        if (u.budgetBytes == null) {
+          note = ' — <b class="v warn">no allowance set, so nothing can warn</b>';
+        } else if (!cfg.budgetMb) {
+          note = " — allowance taken from the stick's own limit";
+        }
+        el.innerHTML = `Used: <b class="v ${cls}">${esc(u.label)}</b>${pct} — ${by}${since}${note}`;
       }
       /** The stick's own plan, offered as the allowance so nobody retypes it. */
       function renderDataStick(h) {
@@ -2076,7 +2085,7 @@
           ? "the LTE stick — its own billing month" + (h.startDay ? ` (resets on the ${h.startDay}.)` : '')
           : 'the LTE stick — no stick detected';
         if (has && h.limitBytes && !$('dataBudget').value) {
-          $('dataBudget').placeholder = `the stick says ${Math.round(h.limitBytes / 1048576)} MB`;
+          $('dataBudget').placeholder = `empty = the stick's own ${Math.round(h.limitBytes / 1048576)} MB`;
         }
       }
       async function loadData() {

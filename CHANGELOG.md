@@ -3,6 +3,23 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.68.2
+**English**
+- **An unset allowance now falls back to the LTE stick's own limit.** With `Measured by:
+  the LTE stick` the plan is already in the stick and enforced by it — retyping it here
+  was busywork, and until you did, nothing could warn.
+- **A counter with no allowance says so.** It showed `Used: 2.24 GB` and looked like it
+  was working, while no threshold existed and the OSD could never fire. Now stated in the
+  panel and flagged amber on the overview.
+
+**Deutsch**
+- **Ohne eingetragenes Volumen gilt jetzt das Limit des LTE-Sticks.** Bei `Measured by:
+  the LTE stick` steht der Tarif ohnehin im Stick und wird von ihm durchgesetzt — ihn hier
+  abzutippen war Doppelarbeit, und bis dahin konnte nichts warnen.
+- **Ein Zähler ohne Volumen sagt das jetzt.** Er zeigte `Used: 2.24 GB` und sah nach
+  Funktion aus, während es gar keine Schwelle gab und das OSD nie auslösen konnte. Jetzt
+  im Panel benannt und in der Übersicht gelb markiert.
+
 ## v1.68.1
 **English**
 - **The data counter now survives a clean restart.** It was written at most every 5

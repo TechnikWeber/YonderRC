@@ -1337,6 +1337,14 @@ async function main() {
     ok('and still names the driver', /\{vehicleName \|\| '—'\}\{driver \? ` · \$\{driver\}` : ''\}/.test(strip));
   }
 
+  // A budget-less counter cannot warn. The panel used to show "Used: 2.24 GB" and
+  // nothing else, which reads exactly like a working warning.
+  {
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('a missing allowance says so instead of looking fine', /no allowance set, so nothing can warn/.test(html));
+    ok('and the overview flags it too', /no allowance set/.test(html) && /u\.budgetBytes == null \? 'warn'/.test(html));
+  }
+
   // ---- tick boxes are tick-box sized ----
   // `input { width: 100% }` is right for text fields and wrong for a checkbox, which in
   // a row-flex label inherited it and stretched across the whole line — every tick box
@@ -1452,6 +1460,15 @@ async function main() {
     ok('a quiet minute does not write', !T.shouldPersist(1024, 60_000));
     ok('a big transfer writes early', T.shouldPersist(25 * 1024 ** 2, 1000));
     ok('and time alone writes eventually', T.shouldPersist(0, 6 * 60_000));
+
+    // ---- the allowance ----
+    // The stick already holds the plan the operator typed into its own web UI and
+    // enforces it. Making them retype it here — and warning about nothing until they do —
+    // is the same silent no-op as a `chargeSource` that never took effect.
+    ok('an explicit allowance wins', T.effectiveBudgetBytes(4096, 3 * GB) === 4096 * 1024 ** 2);
+    ok("an unset one falls back to the stick's limit", T.effectiveBudgetBytes(null, 3 * GB) === 3 * GB);
+    ok('with neither there is no budget at all', T.effectiveBudgetBytes(null, null) === null);
+    ok('and a zero limit is not a budget', T.effectiveBudgetBytes(0, 0) === null);
 
     // ---- the stick's own numbers ----
     const H = await import('../packages/vehicle/src/system/hilink');
