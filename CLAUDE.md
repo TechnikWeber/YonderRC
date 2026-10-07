@@ -9,8 +9,8 @@ configuration. It runs in the browser (incl. phone), as an Electron desktop app,
 on a Raspberry Pi as the vehicle computer. **Everything runs in a simulator without
 hardware** — sim-first is a core principle.
 
-Owner: Philipp Weber · GitHub: TechnikWeber/YonderRC · License: CC BY-NC-ND 4.0 **plus
-a no-military-use restriction** (see `LICENSE`; not a plain CC license).
+Owner: Philipp Weber · GitHub: TechnikWeber/YonderRC · License: PolyForm Noncommercial
+1.0.0 **plus a no-military-use restriction** (see `LICENSE`; not a plain PolyForm license).
 
 ## Monorepo layout (npm workspaces, TypeScript)
 - `packages/protocol` — shared types + pure functions (channels, shaping, telemetry,

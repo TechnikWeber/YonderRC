@@ -346,7 +346,7 @@ verursachen. Es wird **„wie besehen", ohne jede Gewährleistung** bereitgestel
 
 ## Lizenz
 
-**CC BY-NC-ND 4.0** (Namensnennung – nicht kommerziell – keine Bearbeitung) **plus eine
-Ergänzung: keine militärische Nutzung**. Kurz: kostenlos nutzen und unveränderte Kopien
-mit Namensnennung weitergeben; kein Bearbeiten, nichts Kommerzielles, nichts
-Militärisches. Volltext in [`LICENSE`](LICENSE).
+[PolyForm-Noncommercial-1.0.0](LICENSE) **plus eine Ergänzung: keine militärische
+Nutzung**. Kurz: kostenlos nutzen, verändern und weitergeben, auch verändert; nichts
+Kommerzielles, nichts Militärisches. Hinweise und Fremdkomponenten:
+[NOTICE.md](NOTICE.md).

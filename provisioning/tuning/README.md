@@ -35,4 +35,4 @@ in **Setup › Cameras › Tuning file** and pick a focus mode. Verified on a Pi
 `--autofocus-mode` is refused, with it both `auto` and `manual`/`--lens-position` work.
 
 Upstream: `raspberrypi/libcamera`, `src/ipa/rpi/vc4/data/imx519.json`, BSD-2-Clause —
-that licence covers this derivative too, not the project's CC BY-NC-ND.
+that licence covers this derivative too, not the project's own LICENSE.

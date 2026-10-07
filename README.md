@@ -330,6 +330,6 @@ It is provided **"as is", without any warranty**, and the author accepts **no li
 
 ## License
 
-**CC BY-NC-ND 4.0** (Attribution – NonCommercial – NoDerivatives) **plus one addition: no
-military or warfare use**. Use it for free and pass on unmodified copies with attribution;
-no modifying, no commercial and no military use. Full text in [`LICENSE`](LICENSE).
+[PolyForm-Noncommercial-1.0.0](LICENSE) **plus one addition: no military or warfare
+use**. Use, modify and share it for free, modified or not; no commercial and no military
+use. Notes and third-party components: [NOTICE.md](NOTICE.md).

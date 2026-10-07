@@ -3,6 +3,20 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## Unreleased
+**English**
+- **License is now PolyForm Noncommercial 1.0.0, still with the no-military-use
+  restriction.** Modified versions may now be made and shared, so forks and pull
+  requests are possible; commercial and military use stay excluded. Notes that are not
+  license terms moved to `NOTICE.md`.
+
+**Deutsch**
+- **Die Lizenz ist jetzt PolyForm Noncommercial 1.0.0, weiterhin mit dem Verbot
+  militärischer Nutzung.** Veränderte Fassungen dürfen jetzt erstellt und weitergegeben
+  werden, Forks und Pull Requests sind damit möglich; kommerzielle und militärische
+  Nutzung bleiben ausgeschlossen. Hinweise, die keine Lizenzbedingungen sind, stehen
+  jetzt in `NOTICE.md`.
+
 ## v1.69.0
 **English**
 - **The OSD stopped blinking during the first real drive.** Home symbol, home arrow,
