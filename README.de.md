@@ -210,9 +210,38 @@ aus und ging zurück wie vorgesehen, während der Link von WLAN auf LTE wechselt
 
 ---
 
-## Schnellstart
+## Auf echter Hardware
 
-Benötigt Node 20+.
+**Schritt für Schritt, von der leeren SD-Karte bis zur ersten Fahrt** — Imager, SSH,
+Dateien kopieren, was der Installer tut, geschrieben für Linux-Einsteiger:
+**[`docs/QUICKSTART.de.md`](docs/QUICKSTART.de.md)**. Teileliste, Verkabelung und der
+ganze Aufbau: **[`docs/HARDWARE.de.md`](docs/HARDWARE.de.md)**. Wenn etwas nicht geht:
+**[`docs/TROUBLESHOOTING.de.md`](docs/TROUBLESHOOTING.de.md)**.
+
+Die Kurzfassung, auf Raspberry Pi OS Lite mit bereits angeschlossener Hardware:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
+```
+
+Klont nach `/opt/yonderrc` und startet den Installer. Er schaut einmal nach der Hardware —
+ein PCA9685 am I²C wird zum Ausgabetreiber (neben einem INA2xx gehört er auf `0x41`), ein
+Kameramodul ersetzt das Testbild, und das native Modul, das der Treiber braucht, wird
+gebaut. Wird nichts gefunden, bleibt der Simulator, und eine einmal gespeicherte
+Einstellung wird nie geändert. Danach `http://<pi-ip>:8080/setup` öffnen; **Detect
+hardware** liest das **ID-Register** jedes I²C-Chips und benennt damit das tatsächliche
+Bauteil (INA228, MCP9808, BME280 — und den PCA9685 über seine All-Call-Adresse), statt aus
+einer geteilten Adresse zu raten. Kein Internet am Pi, oder eine eigene Kopie:
+[`docs/QUICKSTART.de.md`, Option B](docs/QUICKSTART.de.md#option-b-die-dateien-selbst-kopieren).
+
+Ein Hardware-Treiber, der nicht startet, fällt auf `sim` zurück — ein headless Gerät wird
+nie unkonfigurierbar, und die Setup-Seite sagt es samt Grund.
+
+---
+
+## Im Simulator ausprobieren
+
+Keine Hardware nötig. Benötigt Node 20+.
 
 ```bash
 npm install
@@ -240,65 +269,6 @@ Reihenfolge beachten — `npm run dev` schreibt zuerst die go2rtc-Config. Fedora
 ```bash
 npm test               # Sicherheits-/Logik-Testsuite
 ```
-
----
-
-## Auf echter Hardware
-
-**Neu bei Linux oder dem Raspberry Pi?** Von der leeren SD-Karte bis zur ersten Fahrt,
-Schritt für Schritt — Imager, SSH, Dateien kopieren, was der Installer tut:
-**[`docs/QUICKSTART.de.md`](docs/QUICKSTART.de.md)**. Teileliste, Verkabelung und der ganze
-Aufbau stehen in **[`docs/HARDWARE.de.md`](docs/HARDWARE.de.md)**; wenn etwas nicht geht,
-**[`docs/TROUBLESHOOTING.de.md`](docs/TROUBLESHOOTING.de.md)**.
-
-**Am schnellsten (eine Zeile auf Raspberry Pi OS Lite):**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
-```
-
-Klont nach `/opt/yonderrc` und startet den Installer. **Die Hardware vorher anschließen**:
-der Installer schaut einmal nach — ein PCA9685 am I²C wird zum Ausgabetreiber (neben einem
-INA2xx gehört er auf `0x41`), ein Kameramodul ersetzt das Testbild, und das native Modul,
-das der Treiber braucht, wird gebaut. Wird nichts gefunden, bleibt der Simulator, und eine
-einmal gespeicherte Einstellung wird nie geändert. Danach `http://<pi-ip>:8080/setup`
-öffnen; **Detect hardware** liest das **ID-Register** jedes I²C-Chips und benennt damit das
-tatsächliche Bauteil (INA228, MCP9808, BME280 — und den PCA9685 über seine
-All-Call-Adresse), statt aus einer geteilten Adresse zu raten. Ein Knopf trägt sie in die
-Formulare ein; das nötige native Modul installiert dieselbe Seite.
-
-**1. Repo auf den Pi kopieren** (`/opt/yonderrc`) — ein Weg genügt:
-
-```bash
-# a) git clone (wenn der Pi Internet hat)
-sudo mkdir -p /opt/yonderrc && sudo chown $USER /opt/yonderrc
-git clone https://github.com/TechnikWeber/YonderRC.git /opt/yonderrc
-
-# b) scp vom Laptop (dein lokales Repo auf den Pi kopieren) — auf dem LAPTOP ausführen:
-scp -r ~/YonderRC pi@yonderrc.local:/tmp/YonderRC
-ssh pi@yonderrc.local 'sudo mkdir -p /opt/yonderrc && sudo cp -a /tmp/YonderRC/. /opt/yonderrc/'
-
-# c) USB-Stick (Pi ohne Netz) — Stick einstecken, dann auf dem Pi:
-sudo mkdir -p /opt/yonderrc && sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # Pfad ggf. via lsblk prüfen
-```
-
-**2. Installieren und einrichten:**
-
-```bash
-sudo bash /opt/yonderrc/provisioning/install.sh   # Node, ffmpeg, go2rtc, systemd, I2C/UART
-# dann grafisch unter  http://<pi>:8080/setup  einrichten
-```
-
-Treiber-Auswahl per Env (Details in `docs/HARDWARE.de.md`):
-
-```bash
-YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C-PWM, 16 Kanäle
-YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio; Pins: docs/HARDWARE.de.md 2.8
-YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS an einen Flight Controller
-```
-
-Ein Hardware-Treiber, der nicht startet, fällt auf `sim` zurück — ein headless Gerät wird
-nie unkonfigurierbar.
 
 ---
 

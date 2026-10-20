@@ -360,7 +360,7 @@ in English**. Keep responses about verified-vs-needs-hardware honest.
 
 **Both language versions are edited in the same commit — always.** `README.md` /
 `README.de.md`, `docs/HARDWARE.md` / `.de.md`, `docs/QUICKSTART.md` / `.de.md`,
-`docs/TROUBLESHOOTING.md` / `.de.md`. A translation that lags is worse than
+`docs/TROUBLESHOOTING.md` / `.de.md`, `provisioning/README.md` / `.de.md`. A translation that lags is worse than
 none: it states as current something the project stopped doing, and the reader has no
 way to tell which of the two is the lie. The test suite fails if any of these pairs stops
 matching in structure (heading count), which catches the common case of adding a

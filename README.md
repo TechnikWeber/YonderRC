@@ -196,9 +196,37 @@ as designed while the link moved from Wi-Fi to LTE.
 
 ---
 
-## Quick start
+## On real hardware
 
-Requires Node 20+.
+**Step by step, from an empty SD card to the first drive** — Imager, SSH, copying the
+files, what the installer does, written for people new to Linux:
+**[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**. Parts list, wiring and the full build:
+**[`docs/HARDWARE.md`](docs/HARDWARE.md)**. When something does not work:
+**[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)**.
+
+The short version, on Raspberry Pi OS Lite with the hardware already wired:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
+```
+
+Clones to `/opt/yonderrc` and runs the installer. It looks at the hardware once — a
+PCA9685 on I²C becomes the output driver (next to an INA2xx it belongs on `0x41`), a camera
+module replaces the test pattern, and the native module the driver needs is built.
+Nothing found means the simulator stays, and a setting that was ever saved is never
+changed. Then open `http://<pi-ip>:8080/setup`; **Detect hardware** reads each I²C chip's
+**ID register**, so it names the actual part (INA228, MCP9808, BME280, and the PCA9685
+through its all-call address) instead of guessing from a shared address. No internet on
+the Pi, or your own copy: [`docs/QUICKSTART.md`, option B](docs/QUICKSTART.md#option-b-copy-the-files-yourself).
+
+A hardware driver that fails to start falls back to `sim`, so a headless device never
+becomes unconfigurable — and the setup page says so, with the reason.
+
+---
+
+## Try it in the simulator
+
+No hardware needed. Requires Node 20+.
 
 ```bash
 npm install
@@ -226,65 +254,6 @@ Mind the order — `npm run dev` writes the go2rtc config first. Fedora:
 ```bash
 npm test               # safety / logic test suite
 ```
-
----
-
-## On real hardware
-
-**New to Linux or the Raspberry Pi?** From an empty SD card to the first drive, step by
-step — Imager, SSH, copying the files, what the installer does:
-**[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**. Parts list, wiring and the full build are in
-**[`docs/HARDWARE.md`](docs/HARDWARE.md)**; when something does not work,
-**[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)**.
-
-**Quickest (one line on Raspberry Pi OS Lite):**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
-```
-
-Clones to `/opt/yonderrc` and runs the installer. **Wire the hardware first**: the
-installer looks once — a PCA9685 on I²C becomes the output driver (next to an INA2xx it
-belongs on `0x41`), a camera module replaces the test pattern, and the native module the
-driver needs is built. Nothing found means the simulator stays, and a setting that was
-ever saved is never changed. Then open `http://<pi-ip>:8080/setup`; **Detect hardware**
-reads each I²C chip's **ID register**, so it names the actual part (INA228, MCP9808,
-BME280, and the PCA9685 through its all-call address) instead of guessing from a shared
-address. One button fills those into the forms, and the native module a suggestion needs
-installs from the same page.
-
-**1. Copy the repo onto the Pi** (`/opt/yonderrc`) — one way is enough:
-
-```bash
-# a) git clone (if the Pi has internet)
-sudo mkdir -p /opt/yonderrc && sudo chown $USER /opt/yonderrc
-git clone https://github.com/TechnikWeber/YonderRC.git /opt/yonderrc
-
-# b) scp from the laptop (copy your local repo to the Pi) — run on the LAPTOP:
-scp -r ~/YonderRC pi@yonderrc.local:/tmp/YonderRC
-ssh pi@yonderrc.local 'sudo mkdir -p /opt/yonderrc && sudo cp -a /tmp/YonderRC/. /opt/yonderrc/'
-
-# c) USB stick (Pi with no network) — insert the stick, then on the Pi:
-sudo mkdir -p /opt/yonderrc && sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # check the path via lsblk
-```
-
-**2. Install and configure:**
-
-```bash
-sudo bash /opt/yonderrc/provisioning/install.sh   # Node, ffmpeg, go2rtc, systemd, I2C/UART
-# then configure graphically at  http://<pi>:8080/setup
-```
-
-Driver selection via env (details in `docs/HARDWARE.md`):
-
-```bash
-YRC_DRIVER=pca9685 npm run start -w @yonderrc/vehicle   # I2C PWM, 16 channels
-YRC_DRIVER=gpio-pwm npm run start -w @yonderrc/vehicle   # pigpio; pins: docs/HARDWARE.md 2.8
-YRC_DRIVER=sbus     npm run start -w @yonderrc/vehicle   # SBUS to a flight controller
-```
-
-A hardware driver that fails to start falls back to `sim`, so a headless device never
-becomes unconfigurable.
 
 ---
 

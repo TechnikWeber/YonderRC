@@ -1735,6 +1735,11 @@ async function main() {
       ok(`the same sections in both ${name} guides`, heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
       ok(`${name} links its translation both ways`, en.includes(`[Deutsch](${name}.de.md)`) && de.includes(`[English](${name}.md)`));
     }
+    {
+      const en = readFileSync('provisioning/README.md', 'utf8');
+      const de = readFileSync('provisioning/README.de.md', 'utf8');
+      ok('the same sections in both provisioning READMEs', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
+    }
     const readme = readFileSync('README.md', 'utf8');
     const readmeDe = readFileSync('README.de.md', 'utf8');
     ok('the READMEs point newcomers at the quick start',
