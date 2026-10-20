@@ -51,6 +51,16 @@ import { nudgeTrim, clearTrim } from './lib/trim';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
 import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, throttleChannelsOf, type AutoDisarmMode } from './lib/templates';
 import { applyTheme, rememberTheme } from './lib/theme';
+import {
+  EventLog, RttSamples, emptySendLoop, recordSendTick, groundFindings, mergeReports, groundReportFileName,
+  diagnosticsUrlFromWs,
+} from './lib/diagnostics';
+import { assessPad } from './lib/input/gamepadPick';
+import { DiagnosticsPanel, type DiagnosticsExport } from './components/DiagnosticsPanel';
+import type { DiagnosticFinding } from '@yonderrc/protocol';
+
+/** Shown in the masthead and written into diagnostics files. Bumped with every release. */
+export const GROUND_VERSION = '1.70.0';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -109,6 +119,16 @@ export function App() {
   const engine = useMemo(() => new BindingEngine(), []);
   const linkRef = useRef<LinkClient | null>(null);
   const lastTelemetryAt = useRef(0);
+  // The ground's half of a problem report (lib/diagnostics.ts): how regularly the control
+  // loop really ran, what the link did, and the round-trips. Bounded, always on — the
+  // report is wanted right after something went wrong, not after switching logging on.
+  const sendLoopRef = useRef(emptySendLoop(Date.now()));
+  const eventsRef = useRef(new EventLog());
+  const rttSamplesRef = useRef(new RttSamples());
+  const linkStateRef = useRef<LinkState>('disconnected');
+  const connectAttemptsRef = useRef(0);
+  const rttTickRef = useRef(0);
+  const logEvent = (kind: string, detail?: string) => eventsRef.current.push(kind, detail, Date.now());
 
   const active = profiles.find((p) => p.id === activeId) ?? profiles[0];
   const activeRef = useRef(active);
@@ -169,8 +189,18 @@ export function App() {
 
   if (linkRef.current === null) {
     linkRef.current = new LinkClient({
-      onState: setLinkState,
+      onState: (s) => {
+        // Only the edges: a link that is down retries every second, and logging each
+        // "connecting" would push everything else out of the timeline. The attempts
+        // are counted instead.
+        const prev = linkStateRef.current;
+        if (s === 'connected' || prev === 'connected') logEvent('link', s);
+        else if (s === 'connecting') connectAttemptsRef.current += 1;
+        linkStateRef.current = s;
+        setLinkState(s);
+      },
       onWelcome: (w) => {
+        logEvent('welcome', `${w.vehicleName}${w.version ? ` v${w.version}` : ''} · driver ${w.driver} · watchdog ${w.watchdogTimeoutMs} ms`);
         setWelcome(w);
         // One welcome per connection, so this is where a fresh link-quality tally
         // belongs — carrying the previous session's dropouts over would say nothing
@@ -192,15 +222,22 @@ export function App() {
         applyTheme(document, t);
         rememberTheme(localStorage, t);
       },
-      onControlPath: setControlPath,
+      onControlPath: (p) => {
+        logEvent('path', p);
+        setControlPath(p);
+      },
       onAuthFail: () => {
+        logEvent('auth', 'secret rejected (4001)');
         setAuthMsg('Vehicle rejected the secret — check the API secret and Connect again.');
         window.setTimeout(() => setAuthMsg(null), 6000);
       },
       // The vehicle dropped us on purpose (another ground took over, or this page
       // is not trusted). No auto-retry, and the message stays until it is read —
       // "why did my sticks stop working" deserves an answer that does not vanish.
-      onRejected: (reason) => setAuthMsg(reason),
+      onRejected: (reason) => {
+        logEvent('rejected', reason);
+        setAuthMsg(reason);
+      },
     });
   }
 
@@ -237,6 +274,11 @@ export function App() {
       const now = performance.now();
       const dt = now - last;
       last = now;
+      // How regularly frames really leave this app — the only place that can tell a
+      // throttled background tab from a network that delivers late.
+      if (linkStateRef.current === 'connected') {
+        recordSendTick(sendLoopRef.current, dt, Date.now(), typeof document !== 'undefined' && document.hidden);
+      }
 
       const name = input.pollGamepadName();
       setGamepad((prev) => (prev === name ? prev : name));
@@ -441,8 +483,24 @@ export function App() {
   const prevFailsafe = useRef(false);
   useEffect(() => {
     if (failsafe && !prevFailsafe.current) input.rumble();
+    if (failsafe !== prevFailsafe.current) logEvent('failsafe', failsafe ? 'on' : 'off');
     prevFailsafe.current = failsafe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [failsafe, input]);
+  // Changes only — every page load starts disarmed, and that is not news.
+  const prevArmed = useRef(false);
+  useEffect(() => {
+    if (armed !== prevArmed.current) logEvent('armed', armed ? 'armed' : 'disarmed');
+    prevArmed.current = armed;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [armed]);
+  // A hidden page is a throttled page: worth a line in the timeline next to the stalls.
+  useEffect(() => {
+    const onVis = () => logEvent('page', document.hidden ? 'hidden' : 'visible');
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const monitorChannels = connected && status ? status.channels : previewChannels;
 
@@ -460,6 +518,8 @@ export function App() {
       const sample = Math.max(0, Date.now() - status!.lastClientT);
       const prev = rttEma.current;
       rttEma.current = prev == null ? sample : prev + 0.1 * (sample - prev);
+      // Every fourth status (5/s) is plenty for percentiles and keeps two minutes.
+      if (++rttTickRef.current % 4 === 0) rttSamplesRef.current.push(sample);
     } else {
       rttEma.current = null;
     }
@@ -674,13 +734,103 @@ export function App() {
     return () => window.removeEventListener('pointerdown', onFirst);
   }, []);
 
+  /**
+   * Setup › Diagnostics: this app's half, the vehicle's half (fetched from its setup API
+   * on the same host as the control link), merged into one downloaded file. The secret
+   * goes as `?secret=` — a header would cost a CORS preflight the vehicle does not allow.
+   */
+  const exportDiagnostics = async (): Promise<DiagnosticsExport> => {
+    const pads = input.listGamepads();
+    const activePad = input.activeGamepad();
+    const rtt = rttSamplesRef.current.summary();
+    type Nav = Navigator & {
+      userAgentData?: { platform?: string; mobile?: boolean };
+      deviceMemory?: number;
+      connection?: { effectiveType?: string; rtt?: number; downlink?: number; type?: string };
+    };
+    const nav = navigator as Nav;
+    const ground = {
+      version: GROUND_VERSION,
+      vehicleUrl: url,
+      apiSecretSet: !!secret,
+      linkState,
+      connectAttempts: connectAttemptsRef.current,
+      controlPath,
+      preferWebRtc,
+      welcome: welcome
+        ? { vehicleName: welcome.vehicleName, version: welcome.version ?? null, driver: welcome.driver, watchdogMs: welcome.watchdogTimeoutMs, protocol: welcome.protocol, cameras: welcome.cameras.length, videoQuality: welcome.videoQuality }
+        : null,
+      linkQuality,
+      rtt,
+      sendLoop: { ...sendLoopRef.current, buckets: [...sendLoopRef.current.buckets], recentStalls: [...sendLoopRef.current.recentStalls] },
+      events: eventsRef.current.list(),
+      video: videoStatsRef.current,
+      browser: {
+        userAgent: navigator.userAgent,
+        platform: nav.userAgentData?.platform ?? navigator.platform,
+        mobile: nav.userAgentData?.mobile ?? null,
+        language: navigator.language,
+        cores: navigator.hardwareConcurrency ?? null,
+        memoryGb: nav.deviceMemory ?? null,
+        screen: `${screen.width}×${screen.height} @${window.devicePixelRatio}x`,
+        online: navigator.onLine,
+        connection: nav.connection ? { type: nav.connection.type ?? null, effectiveType: nav.connection.effectiveType ?? null, rttMs: nav.connection.rtt ?? null, downlinkMbps: nav.connection.downlink ?? null } : null,
+        pageHidden: document.hidden,
+        electron: !!window.yonder?.isElectron,
+      },
+      controller: {
+        provider: input.gamepadKind,
+        preferred: input.preferredGamepad,
+        active: activePad,
+        devices: pads.map((p) => ({ ...p, ...assessPad(p) })),
+      },
+      profile: active,
+      settings: { preArm, autoDisarmMode, hold: holdCfg, buttonHold: buttonHoldCfg, speech: speechCfg.enabled, blackbox: logging },
+    };
+    const findingsG = groundFindings({
+      sendLoop: sendLoopRef.current,
+      watchdogMs: welcome?.watchdogTimeoutMs ?? 0,
+      dropouts: linkQuality.dropouts,
+      rtt,
+      controller: { inputMethod: active.inputMethod, active: activePad, listed: pads.length },
+      connected,
+    });
+
+    let vehicle: { findings?: DiagnosticFinding[]; vehicle?: unknown } | null = null;
+    let vehicleError: string | null = null;
+    const vurl = diagnosticsUrlFromWs(url, secret);
+    if (!vurl) {
+      vehicleError = 'the vehicle address is not a valid ws:// URL.';
+    } else {
+      const ctl = new AbortController();
+      const timer = window.setTimeout(() => ctl.abort(), 25000);
+      try {
+        const r = await fetch(vurl, { signal: ctl.signal });
+        if (r.ok) vehicle = (await r.json()) as typeof vehicle;
+        else if (r.status === 401) vehicleError = 'the vehicle wants its API secret — enter it next to the address and try again.';
+        else if (r.status === 404) vehicleError = 'this vehicle is older than v1.70.0 and cannot export its half — update it (Setup › Software update).';
+        else vehicleError = `the vehicle answered HTTP ${r.status}.`;
+      } catch (e) {
+        vehicleError = connected
+          ? `no answer from ${vurl.split('?')[0]} (${(e as Error).name === 'AbortError' ? 'timeout' : (e as Error).message}).`
+          : 'not connected — connect to the vehicle first, so its half can be included.';
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+    const report = mergeReports(ground, findingsG, vehicle, vehicleError);
+    const fileName = groundReportFileName(welcome?.vehicleName ?? null);
+    downloadText(fileName, JSON.stringify(report, null, 2), 'application/json');
+    return { fileName, findings: report.findings as DiagnosticFinding[], vehicleError };
+  };
+
   return (
     <div className="app">
       {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
-        <span className="ver">ground · v1.69.0</span>
+        <span className="ver">ground · v{GROUND_VERSION}</span>
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
           <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
@@ -737,6 +887,7 @@ export function App() {
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
           <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} haptics={hapticCfg} onHaptics={setHapticCfg} budget={budgetCfg} onBudget={setBudgetCfg} budgetLive={budget} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <DiagnosticsPanel onExport={exportDiagnostics} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
             <p className="note">Ground settings (models, bindings, actions, battery, secret, video quality) live in this browser only. Reset restores the demo models and defaults.</p>

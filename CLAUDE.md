@@ -23,7 +23,11 @@ Owner: Philipp Weber · GitHub: TechnikWeber/YonderRC · License: PolyForm Nonco
 - `packages/desktop` — Electron shell + native SDL2 input, falls back to the browser
   gamepad API.
 - `docs/HARDWARE.md` — parts list + wiring + WLAN→LTE/Tailscale bring-up.
-- `provisioning/` — Pi install script, systemd, hotspot/onboarding.
+- `docs/QUICKSTART.md` — first install for people new to Linux (Imager, SSH, copying, what
+  the installer detects); `docs/TROUBLESHOOTING.md` — the diagnostics file and how to send
+  it, failsafe flicker, controllers, servos, install errors.
+- `provisioning/` — Pi only: install script (+ hardware detection), `diag.sh`, systemd,
+  hotspot/onboarding.
 - `test/suite.mts` — the whole test suite (`npm test`).
 
 ## Commands
@@ -104,6 +108,63 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   opens in that state, so it must never count as a dropout. Measured 2026-08-28 on an
   indoor LTE/hotspot link: 13 gaps >300 ms per minute at 0 % packet loss — jitter, not
   latency, is what trips the watchdog.
+- **The watchdog is 500 ms** (`WATCHDOG_TIMEOUT_MS`, v1.70.0; 300 before — a user report of
+  a vehicle flickering in and out of failsafe). The setup form used to send the field on
+  every Save, so a **stored 300 is the old default, not a choice**: `resolveWatchdogMs`
+  (vehicle `config.ts`) runs it at 500 unless the config also carries `watchdogChosen`,
+  which every save since v1.70.0 sets. `clampWatchdogMs` keeps it in 100–2000 ms (a typo is
+  either permanent failsafe or none). It applies **live** on Save
+  (`VehicleCore.setWatchdogTimeout`) — it is only a comparison.
+- **Diagnostics export** (v1.70.0): one file for a bug report. Vehicle half
+  `GET /api/diagnostics` (`transport/diagnosticsReport.ts`), guarded like a POST — origin
+  check, and the API secret when one is set (`?secret=`; a header would cost the ground a
+  CORS preflight); `?download=1` adds content-disposition. Ground half
+  (`ground/lib/diagnostics.ts`) records how regularly the **50 Hz send loop really ran**
+  (stalls > 100 ms, with `document.hidden` — a hidden tab is throttled by the browser) and a
+  bounded event timeline; *Setup › Diagnostics* merges both into one download. On the
+  vehicle `core/linkStats.ts` (`LinkStats`, fed by `VehicleCore` — counting only, never an
+  output) keeps the arrival-gap histogram and failsafe episodes; **episodes only count while
+  a ground is connected** (`endSession` on WS close — a closed app is parked, not dropping
+  out, found live). `system/loopDelay.ts` measures the service's own event-loop lateness —
+  Node records the whole timer interval, so the 20 ms resolution is subtracted (measured).
+  `system/logBuffer.ts` keeps the console (captured first thing in `index.ts`).
+  **Redaction is the rule**: `redactConfig` (structural: secret-named keys, `*Conf` texts,
+  GPS home) and `redactSecrets` (patterns: key=value, WPA key, tskey/login link, URL
+  credentials, `--pin=`, PEM/inline .ovpn keys, coordinate pairs) — the file goes to a
+  public issue; SSIDs and local IPs stay on purpose. `vehicleFindings`/`groundFindings`
+  turn the numbers into plain statements; add a finding only where the evidence is in the
+  report. `provisioning/diag.sh` is the terminal fallback with the same masks in sed.
+- **Driver running ≠ driver configured.** After a failed hardware driver the service runs
+  `sim`; `VehicleCore.driverKind` is the truth, `config.driverError` the reason. The welcome,
+  `/health`, `/api/config` (`driverRunning`) and the setup overview use it — they used to
+  echo the configured driver, so a vehicle without `i2c-bus` showed "pca9685" and moved nothing.
+- **Gamepad choice** (`ground/lib/input/gamepadPick.ts`, v1.70.0): the provider used to read
+  the first device the Gamepad API listed — a headset as often as the PS4 pad. `choosePad`:
+  an explicit choice (stored per browser by **id**, `yonderrc.gamepad.v1`) wins whenever that
+  device is connected; otherwise the best *likely* controller (standard mapping, or ≥4 axes,
+  or 2 axes + a controller-ish name/vendor id); something unlikely (audio, keyboard, the Sony
+  pads' Linux "Motion Sensors"/"Touchpad" devices) is **never picked automatically** but stays
+  listed (Setup › Controls › Game controller, `ControllerPicker.tsx`). **Learn** compares
+  against the rest position at Learn time (`movedAxis`, `newlyPressed`) — a non-standard
+  trigger rests at −1 and used to be learned instantly.
+- **Install-time hardware detection** (`system/firstRun.ts` + `cli/firstRun.ts`, run by
+  `install.sh` after I²C is enabled and before the services start): a PCA9685 → driver
+  `pca9685` (+ address, + `i2c-bus` in `hardwareDeps`, built by `restore_hw_deps`), a CSI
+  camera from `rpicam-hello --list-cameras` → one `rpicam` camera. **Only keys that were
+  never saved** are filled; sensors are reported, never configured (the shunt value decides
+  the current). Sim-first stays intact: on a machine without hardware nothing changes.
+- **OpenVPN is experimental** (`system/openvpn.ts`, v1.70.0): the uploaded profile is stored
+  verbatim and **sanitised every time it is written** — script hooks, `plugin`, `management`,
+  file-writing directives and Windows-only options commented out and listed; `dev` renamed to
+  `tunyrc`/`tapyrc` (status + data counter find it); `redirect-gateway` ignored unless
+  `openvpnFullTunnel`; external cert files refused with an explanation. Runs as
+  `openvpn-client@yonderrc` with `--no-block` (Type=notify would hang the request until the
+  tunnel is up). The sudoers file must list exactly `OVPN_*_ARGS` (the suite checks). Not yet
+  run on a vehicle — say so wherever it is offered.
+- **The vehicle's WireGuard interface is `yonderrc`** (wg-quick names it after the conf), so
+  the data counter excludes it by name (`VEHICLE_WG_IFACE`) — no `wg*` pattern catches it.
+- **Shell scripts keep LF** (`.gitattributes`): Git for Windows checks out CRLF, and a copy
+  made from such a checkout fails on the Pi with `$'\r': command not found`.
 - **A GPS fix is assembled, not received** (`vehicle/sensors/fixMerge.ts`, v1.69.0): NMEA
   spreads one fix over several sentences (GGA position/sats, RMC speed/course, GSA mode),
   and the serial source parses a one-second window. A burst cut by the window boundary
@@ -173,8 +234,8 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   blocked `git pull --ff-only` — keep generated state out of the working tree.
 
 ## Release / packaging flow
-Bump all five `package.json` to the same version and update the masthead string in
-`ground/src/App.tsx`, then add a `CHANGELOG.md` entry. The **vehicle banner and the setup
+Bump all five `package.json` to the same version and update `GROUND_VERSION` in
+`ground/src/App.tsx` (masthead and diagnostics files read it), then add a `CHANGELOG.md` entry. The **vehicle banner and the setup
 page read the version from `package.json`** (`config.version`, since v1.45.1) — nothing to
 bump there, and the test suite fails if the ground masthead falls behind. Locally you can just commit + tag + `gh release create`. README describes the
 current feature set; detailed history lives in `CHANGELOG.md` + releases.
@@ -298,8 +359,9 @@ German UI copy is fine in chat with the owner; **code, comments and identifiers 
 in English**. Keep responses about verified-vs-needs-hardware honest.
 
 **Both language versions are edited in the same commit — always.** `README.md` /
-`README.de.md`, `docs/HARDWARE.md` / `.de.md`. A translation that lags is worse than
+`README.de.md`, `docs/HARDWARE.md` / `.de.md`, `docs/QUICKSTART.md` / `.de.md`,
+`docs/TROUBLESHOOTING.md` / `.de.md`. A translation that lags is worse than
 none: it states as current something the project stopped doing, and the reader has no
-way to tell which of the two is the lie. The test suite fails if the two READMEs stop
+way to tell which of the two is the lie. The test suite fails if any of these pairs stops
 matching in structure (heading count), which catches the common case of adding a
 section to one of them.

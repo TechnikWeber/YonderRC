@@ -22,6 +22,9 @@ battery bar (top right), voltage/current/mAh (bottom right), link health as one 
 **Control**
 - 16 channels over WebSocket or a WebRTC data channel; keyboard, on-screen buttons,
   gamepad or a full touch joystick (multitouch, deadzone, spring return).
+- **The right controller**: every device the browser lists is shown with what it looks
+  like; a headset or a pad's motion sensors are never picked automatically, and the
+  choice is remembered (Setup › Controls › Game controller).
 - **Models** for car / boat / plane / drone with matching channel templates, selectable
   input method and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs), failsafe value.
@@ -52,9 +55,9 @@ link, state, session, round-trip, link gaps, input, vehicle, telemetry.*
 </details>
 
 **Safety**
-- **Failsafe watchdog**: no control frames → every channel goes to its failsafe value.
-  **Vehicle-type aware and separate from disarming** — drone *holds*, car/boat *stops*,
-  plane goes to *motor off*.
+- **Failsafe watchdog**: no control frames for 500 ms (adjustable, 100–2000) → every
+  channel goes to its failsafe value. **Vehicle-type aware and separate from disarming** —
+  drone *holds*, car/boat *stops*, plane goes to *motor off*.
 - **Arming**; every connection starts disarmed. Auto-disarm on reconnect follows the
   vehicle type (car/boat on, plane/drone off), overridable in Setup › Controls.
 - **Hold-to-arm** (1 s default) for arm *and* disarm, on the button and on a bound
@@ -132,6 +135,10 @@ link, state, session, round-trip, link gaps, input, vehicle, telemetry.*
   billing month can be used instead. Survives reboots.
 - **Link gaps**: a watchdog trip lasts one control tick and is gone before it can be read.
   The status strip counts the episodes per connection and the longest wait for a frame.
+- **Problem report in one file**: *Setup › Diagnostics* writes both halves — how regularly
+  the app really sent, the gaps the vehicle received, every failsafe episode, WiFi power
+  saving, supply, load, logs — and says in plain words what it found. Secrets and the GPS
+  position are removed. How to send it: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 - Graphical **setup page** on the vehicle (`/setup`): driver, cameras, telemetry,
   watchdog, Wi-Fi, LTE, remote access, security — from a phone, no screen needed.
   **Wi-Fi onboarding**: scan, pick, connect; the hotspot returns if the password was
@@ -143,6 +150,8 @@ link, state, session, round-trip, link gaps, input, vehicle, telemetry.*
   each one a URL (`…/setup#gps`). Overview answers "is everything there?" on one screen.*
 - **Remote access, one method**: **Tailscale**, **ZeroTier** or **WireGuard** — upload
   the `.conf` from your server or FritzBox, or type the values in. Up at boot.
+  **OpenVPN** for an existing OpenVPN server is there too, **experimental**: scripts in an
+  uploaded profile are removed, the vehicle keeps its own uplink.
 - **Robust LTE**: APN, SIM PIN, APN user/password, 4G-only mode, roaming toggle, raw
   `mmcli` diagnostics, PIN change/remove. `autoconnect` redials by itself.
 - **HiLink sticks too** (Huawei E3372h-320 & co.). They are routers, invisible to
@@ -222,8 +231,11 @@ npm test               # safety / logic test suite
 
 ## On real hardware
 
-Parts list, wiring and the step-by-step build are in
-**[`docs/HARDWARE.md`](docs/HARDWARE.md)**.
+**New to Linux or the Raspberry Pi?** From an empty SD card to the first drive, step by
+step — Imager, SSH, copying the files, what the installer does:
+**[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**. Parts list, wiring and the full build are in
+**[`docs/HARDWARE.md`](docs/HARDWARE.md)**; when something does not work,
+**[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)**.
 
 **Quickest (one line on Raspberry Pi OS Lite):**
 
@@ -231,11 +243,15 @@ Parts list, wiring and the step-by-step build are in
 curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
 ```
 
-Clones to `/opt/yonderrc` and runs the installer. Then open `http://<pi-ip>:8080/setup`
-and press **Detect hardware**: it reads each I²C chip's **ID register**, so it names the
-actual part (INA228, MCP9808, BME280, and the PCA9685 through its all-call address)
-instead of guessing from a shared address. One button fills those into the forms, and the
-native module a suggestion needs installs from the same page.
+Clones to `/opt/yonderrc` and runs the installer. **Wire the hardware first**: the
+installer looks once — a PCA9685 on I²C becomes the output driver (next to an INA2xx it
+belongs on `0x41`), a camera module replaces the test pattern, and the native module the
+driver needs is built. Nothing found means the simulator stays, and a setting that was
+ever saved is never changed. Then open `http://<pi-ip>:8080/setup`; **Detect hardware**
+reads each I²C chip's **ID register**, so it names the actual part (INA228, MCP9808,
+BME280, and the PCA9685 through its all-call address) instead of guessing from a shared
+address. One button fills those into the forms, and the native module a suggestion needs
+installs from the same page.
 
 **1. Copy the repo onto the Pi** (`/opt/yonderrc`) — one way is enough:
 
@@ -280,9 +296,11 @@ packages/
   vehicle/    vehicle service (Node/tsx): core, failsafe, drivers, sensors, go2rtc, setup
   ground/     ground station (React): control, FPV, OSD, recording, setup UI
   desktop/    Electron shell with native SDL2 input
-docs/HARDWARE.md   hardware guide
-provisioning/      Pi setup (systemd, LTE, Tailscale, hotspot/onboarding)
-test/              test suite (npm test)
+docs/QUICKSTART.md       first install on a Pi, step by step
+docs/HARDWARE.md         hardware guide
+docs/TROUBLESHOOTING.md  diagnostics file, failsafe flicker, controllers
+provisioning/            Pi only: installer, systemd, hotspot/onboarding, diag.sh
+test/                    test suite (npm test)
 ```
 
 Everything above the transport is transport-agnostic; control travels over WebSocket

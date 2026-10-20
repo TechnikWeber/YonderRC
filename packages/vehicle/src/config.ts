@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { WATCHDOG_TIMEOUT_MS } from '@yonderrc/protocol';
+import { LEGACY_WATCHDOG_TIMEOUT_MS, WATCHDOG_TIMEOUT_MS, clampWatchdogMs } from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg, GpsConfig, UiTheme } from '@yonderrc/protocol';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
@@ -21,6 +21,12 @@ export interface VehicleConfig {
   host: string;
   port: number;
   driver: DriverKind;
+  /**
+   * Why the configured driver did not start, when the service fell back to `sim`. The
+   * fallback keeps a headless vehicle reachable — and without this it was also silent:
+   * the setup page and the ground showed "pca9685" while nothing drove the servos.
+   */
+  driverError: string | null;
   watchdogTimeoutMs: number;
   /** Channels treated as throttle: forced safe while disarmed. */
   throttleChannels: number[];
@@ -144,6 +150,11 @@ export interface PersistentConfig {
   vehicleName?: string;
   driver?: DriverKind;
   watchdogTimeoutMs?: number;
+  /**
+   * Set by every save from v1.70.0 on: from then on even a stored 300 is somebody's
+   * choice, not the old default — see resolveWatchdogMs.
+   */
+  watchdogChosen?: boolean;
   throttleChannels?: number[];
   videoBaseUrl?: string | null;
   /** @deprecated migrated into `lte.apn`; still read for backward compatibility. */
@@ -179,6 +190,23 @@ export interface PersistentConfig {
   pca9685?: { bus?: number; address?: number };
   /** 'light' (default) or 'dark' — applied to the setup page and pushed to the ground. */
   theme?: UiTheme;
+}
+
+/**
+ * The watchdog a vehicle runs with. A stored value wins over the environment, like
+ * every persisted field — with one exception: exactly the pre-v1.70.0 default.
+ *
+ * The setup page sent the watchdog field with every Save of the vehicle form, so almost
+ * every configured vehicle carries `watchdogTimeoutMs: 300` without anyone ever having
+ * chosen it. Honouring that would keep exactly the vehicles that flicker in and out of
+ * failsafe on a jittery link on the value that makes them flicker. Any other stored
+ * value was typed in on purpose and stays — inside the range `clampWatchdogMs` allows —
+ * and so does a 300 saved since v1.70.0, which marks itself `watchdogChosen`.
+ */
+export function resolveWatchdogMs(stored: number | undefined, envMs: number, chosen = false): number {
+  if (stored === undefined) return clampWatchdogMs(envMs);
+  if (stored === LEGACY_WATCHDOG_TIMEOUT_MS && !chosen) return clampWatchdogMs(envMs);
+  return clampWatchdogMs(stored);
 }
 
 function num(name: string, fallback: number): number {
@@ -232,7 +260,8 @@ export function loadConfig(): VehicleConfig {
     // Persistent fields: file overrides env-default.
     vehicleName: p.vehicleName ?? process.env.YRC_NAME ?? 'YonderRC-Sim',
     driver: p.driver ?? envDriver ?? 'sim',
-    watchdogTimeoutMs: p.watchdogTimeoutMs ?? num('YRC_WATCHDOG_MS', WATCHDOG_TIMEOUT_MS),
+    driverError: null,
+    watchdogTimeoutMs: resolveWatchdogMs(p.watchdogTimeoutMs, num('YRC_WATCHDOG_MS', WATCHDOG_TIMEOUT_MS), p.watchdogChosen),
     throttleChannels:
       p.throttleChannels ??
       (process.env.YRC_THROTTLE_CH ?? '2')

@@ -107,8 +107,11 @@ export interface ThemeMessage {
 export interface WelcomeMessage {
   type: 'welcome';
   vehicleName: string;
+  /** The vehicle's software version (package.json) — optional: older vehicles do not send it. */
+  version?: string;
   protocol: number;
   channelCount: number;
+  /** The output driver actually RUNNING — `sim` after a hardware driver failed to start. */
   driver: string;
   /** Echo of watchdog timeout so the ground can show/keepalive correctly. */
   watchdogTimeoutMs: number;

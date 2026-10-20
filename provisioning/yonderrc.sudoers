@@ -8,7 +8,10 @@
 # WHAT IT ALLOWS (and why)
 #   mmcli        — unlock a PIN-locked SIM               (Setup › LTE)
 #   wg, wg-quick — bring the WireGuard tunnel up/down    (Setup › Remote access)
-#   install      — place the uploaded WireGuard .conf into /etc/wireguard
+#   install      — place the uploaded WireGuard .conf into /etc/wireguard, and the
+#                  OpenVPN profile + credentials into /etc/openvpn/client
+#   systemctl … openvpn-client@yonderrc — start/stop the OpenVPN tunnel
+#                  (experimental; exactly the three commands RealSystem runs)
 #   zerotier-cli — join/leave a ZeroTier network         (Setup › Remote access)
 #   reboot       — the "Reboot vehicle" button           (Setup › System)
 #   rfkill       — unblock the WiFi radio                (Setup › WiFi)
@@ -43,6 +46,9 @@ Cmnd_Alias YONDERRC = \
     /usr/sbin/reboot, /sbin/reboot, \
     /usr/sbin/rfkill, /usr/bin/rfkill, \
     /usr/bin/raspi-config, \
-    /usr/bin/systemctl restart yonderrc-vehicle.service
+    /usr/bin/systemctl restart yonderrc-vehicle.service, \
+    /usr/bin/systemctl enable openvpn-client@yonderrc, \
+    /usr/bin/systemctl restart --no-block openvpn-client@yonderrc, \
+    /usr/bin/systemctl disable --now openvpn-client@yonderrc
 
 yonderrc ALL=(root) NOPASSWD: YONDERRC

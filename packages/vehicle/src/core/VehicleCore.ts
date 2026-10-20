@@ -10,6 +10,7 @@ import {
 import type { ControlMessage, StatusMessage } from '@yonderrc/protocol';
 import type { OutputDriver } from '../drivers/OutputDriver.js';
 import { EscCalibration } from './EscCalibration.js';
+import { LinkStats, type ControlVia } from './linkStats.js';
 
 export interface VehicleCoreOptions {
   driver: OutputDriver;
@@ -64,6 +65,12 @@ export class VehicleCore {
   private timer: ReturnType<typeof setInterval> | null = null;
   private calibration = new EscCalibration();
 
+  /**
+   * Arrival-side record of the control link — gap histogram and failsafe episodes —
+   * for the diagnostics export. Counting only; it never influences an output.
+   */
+  readonly link = new LinkStats(Date.now());
+
   constructor(opts: VehicleCoreOptions) {
     this.driver = opts.driver;
     this.channelCount = opts.channelCount ?? CHANNEL_COUNT;
@@ -104,12 +111,19 @@ export class VehicleCore {
    * "stale". Arm and config still work, because those go over the reliable WS — which is
    * exactly what it looked like: a connected vehicle that would not steer.
    */
-  applyControl(msg: ControlMessage, session?: number): void {
-    if (session !== undefined && session !== this.controlSession) return; // superseded ground
-    if (msg.seq <= this.lastSeq) return; // newest-wins, drop stale
+  applyControl(msg: ControlMessage, session?: number, via: ControlVia = 'ws'): void {
+    if (session !== undefined && session !== this.controlSession) {
+      this.link.dropped('superseded');
+      return; // superseded ground
+    }
+    if (msg.seq <= this.lastSeq) {
+      this.link.dropped('stale');
+      return; // newest-wins, drop stale
+    }
     this.lastSeq = msg.seq;
     this.lastClientT = msg.t;
     this.lastFrameAt = Date.now();
+    this.link.frame(this.lastFrameAt, via);
     const incoming = msg.channels;
     for (let i = 0; i < this.channelCount; i++) {
       const v = incoming[i];
@@ -148,7 +162,35 @@ export class VehicleCore {
   beginControlSession(): number {
     this.controlSession += 1;
     this.resetControlLink();
+    this.link.beginSession(this.controlSession, Date.now());
     return this.controlSession;
+  }
+
+  /**
+   * The controlling ground's connection closed. Nothing changes for the outputs — the
+   * watchdog keeps them at failsafe — this only tells the link statistics that what
+   * follows is a parked vehicle, not a dropout.
+   */
+  endControlSession(session: number): void {
+    this.link.endSession(session, Date.now());
+  }
+
+  /** The output driver actually running — `sim` after a hardware driver failed to start. */
+  get driverKind(): string {
+    return this.driver.kind;
+  }
+
+  get watchdogMs(): number {
+    return this.watchdogTimeoutMs;
+  }
+
+  /**
+   * Change the watchdog live. It is only a comparison against the age of the last frame,
+   * so there is nothing to restart — the setup page's Save takes effect on the next tick.
+   * The caller clamps (see clampWatchdogMs); this refuses only what is not a number.
+   */
+  setWatchdogTimeout(ms: number): void {
+    if (Number.isFinite(ms) && ms > 0) this.watchdogTimeoutMs = ms;
   }
 
   /** The session token currently accepted. */
@@ -295,12 +337,23 @@ export class VehicleCore {
       return;
     }
     this.writing = true;
+    // A connection that has not delivered its first frame yet is not a dropout — every
+    // connection opens in failsafe (resetControlLink zeroes lastFrameAt).
+    let failsafeNow = false;
     try {
-      await this.driver.writeChannels(this.resolveOutput());
+      const out = this.resolveOutput();
+      failsafeNow = this.failsafeActive && this.lastFrameAt !== 0;
+      await this.driver.writeChannels(out);
     } catch (err) {
       console.error('[core] driver write failed:', err);
     } finally {
       this.writing = false;
+    }
+    // Statistics come last and on their own: counting must never cost a write.
+    try {
+      this.link.observeFailsafe(failsafeNow, Date.now());
+    } catch {
+      /* counting only */
     }
   }
 

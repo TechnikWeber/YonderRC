@@ -34,6 +34,9 @@ import { enableUart, explainSerial, serialState, stripSerialConsole } from './se
 import { HOTSPOT_ADDRESS, isCountryCode, radioIsUsable, type WifiRadioStatus } from './wifi.js';
 import { type HilinkStatus, type HilinkTraffic } from './hilink.js';
 import { classifyChanges, describeCheck, type UpdateCheck } from './update.js';
+import type { SystemDiagnostics } from './diagnostics.js';
+import { ovpnRefusal, sanitiseOvpn } from './openvpn.js';
+import { arch } from 'node:os';
 
 /**
  * Mock system: pretends to have an LTE modem and Tailscale so the entire setup
@@ -261,6 +264,20 @@ export class SimSystem implements SystemManager {
       if (!cfg.wireguardConf) return { ok: false, message: 'Upload a WireGuard .conf first.' };
       this.remote = { kind: 'wireguard', running: true, address: '192.168.178.120', detail: 'handshake ok', loginUrl: null };
       return { ok: true, message: 'WireGuard up (simulated).' };
+    }
+    if (cfg.kind === 'openvpn') {
+      // The same checks the real system makes, so a profile that would be refused on a
+      // vehicle is refused here too — only the tunnel itself is pretend.
+      if (!cfg.openvpnConf) return { ok: false, message: 'Upload an OpenVPN profile (.ovpn) first.' };
+      const haveCreds = !!(cfg.openvpnUsername && cfg.openvpnPassword);
+      const s = sanitiseOvpn(cfg.openvpnConf, { authFile: haveCreds ? '/etc/openvpn/client/yonderrc.auth' : null, fullTunnel: !!cfg.openvpnFullTunnel });
+      const refusal = ovpnRefusal(s, haveCreds);
+      if (refusal) return { ok: false, message: refusal };
+      this.remote = { kind: 'openvpn', running: true, address: '10.8.0.6', detail: 'tunnel up (simulated, experimental)', loginUrl: null };
+      return {
+        ok: true,
+        message: `OpenVPN up (simulated, experimental).${s.removed.length ? ` Removed from the profile: ${s.removed.join(', ')}.` : ''}`,
+      };
     }
     this.remote = { kind: 'none', running: false, address: null, detail: 'off' };
     return { ok: true, message: 'Remote access off.' };
@@ -501,5 +518,28 @@ export class SimSystem implements SystemManager {
 
   async shutdown(): Promise<ActionResult> {
     return { ok: true, message: 'Shutdown requested (simulated — no-op).' };
+  }
+
+  /**
+   * The shape a real Pi reports, filled with honest "simulated" markers — the export,
+   * the download buttons and the analysis all work on a dev machine, and nobody can
+   * mistake this for a vehicle's data.
+   */
+  async diagnostics(opts: { probeI2c: boolean }): Promise<SystemDiagnostics> {
+    return {
+      kind: this.kind,
+      os: { prettyName: 'simulated (no Raspberry Pi OS)', kernel: null, model: null, arch: arch() },
+      node: process.version,
+      git: { commit: null, dirty: null },
+      memory: { totalMb: null, availableMb: null },
+      wifi: { iface: 'wlan0', powerSave: null, link: null, signalDbm: this.wifi.mode === 'client' ? -52 : null },
+      network: { addresses: null, routes: null, devices: null },
+      services: {},
+      journal: [],
+      kernel: [],
+      i2c: opts.probeI2c ? '(simulated) 40: 40 41 -- -- …\n70: 70' : null,
+      video: null,
+      notes: ['Simulated system — OS details, journals and the I²C scan exist only on a real vehicle (YRC_SYSTEM=real).'],
+    };
   }
 }

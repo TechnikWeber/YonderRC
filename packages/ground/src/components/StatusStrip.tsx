@@ -135,7 +135,12 @@ export function StatusStrip({
       </div>
       <div className="stat">
         <div className="k">Input</div>
-        <div className={`v ${gamepad ? 'good' : ''}`}>
+        {/* Which device: two controllers, or a headset, used to be indistinguishable here.
+            Setup › Controls › Game controller lists them all. */}
+        <div
+          className={`v ${gamepad ? 'good' : ''}`}
+          title={gamepad ? `${gamepad} — change it in Setup › Controls › Game controller` : 'No game controller in use — Setup › Controls › Game controller'}
+        >
           {gamepad ? `gamepad · ${gamepadKind}` : 'kbd / touch'}
         </div>
       </div>

@@ -50,6 +50,9 @@ export function parseProcNetDev(text: string): IfaceBytes[] {
   return out;
 }
 
+/** The WireGuard interface RealSystem brings up (`wg-quick up yonderrc`). */
+export const VEHICLE_WG_IFACE = 'yonderrc';
+
 /**
  * Interfaces whose bytes cost money.
  *
@@ -57,7 +60,9 @@ export function parseProcNetDev(text: string): IfaceBytes[] {
  *
  *  - **Tunnels** (`tailscale0`, `wg*`, `zt*`, `tun*`). Their traffic is encapsulated and
  *    leaves again through the physical interface, so counting both counts every byte
- *    twice. All three remote-access backends this project offers are tunnels.
+ *    twice. Every remote-access backend this project offers is a tunnel — including the
+ *    WireGuard interface the vehicle creates itself, which `wg-quick` names after its
+ *    config file: `yonderrc`, not `wg0` (OpenVPN's is `tunyrc`/`tapyrc`, see openvpn.ts).
  *  - **The WiFi radio while it is running the vehicle's own hotspot.** A ground station
  *    connected straight to the vehicle's AP pulls the full video stream over it and that
  *    costs nothing at all — roughly 900 MB an hour of *free* traffic that would empty a
@@ -74,6 +79,7 @@ export function isMeteredIface(
 ): boolean {
   if (name === 'lo') return false;
   if (/^(tailscale|wg|zt|tun|tap|ppp|sit|gre)/.test(name)) return false;
+  if (name === VEHICLE_WG_IFACE) return false;
   if (/^(docker|br-|virbr|veth)/.test(name)) return false;
   if (name === (opts.wifiIface ?? 'wlan0') && opts.wifiMode === 'ap') return false;
   return true;

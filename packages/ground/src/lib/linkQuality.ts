@@ -9,8 +9,8 @@
  * count of the episodes plus the worst frame age the vehicle ever reported, both kept
  * for the life of one connection.
  *
- * The worst gap matters even when the count is zero: a link that peaks at 280 ms
- * against a 300 ms watchdog has not failed yet, and that is worth knowing before it
+ * The worst gap matters even when the count is zero: a link that peaks at 450 ms
+ * against a 500 ms watchdog has not failed yet, and that is worth knowing before it
  * does.
  */
 export interface LinkQuality {

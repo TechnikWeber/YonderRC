@@ -188,10 +188,13 @@ export function startWsServer(
     const welcome: WelcomeMessage = {
       type: 'welcome',
       vehicleName: config.vehicleName,
+      version: config.version,
       protocol: PROTOCOL_VERSION,
       channelCount: CHANNEL_COUNT,
-      driver: config.driver,
-      watchdogTimeoutMs: config.watchdogTimeoutMs,
+      // What is RUNNING, not what is configured: after a failed hardware driver the
+      // service drives sim, and the ground's status strip has to say so.
+      driver: core.driverKind,
+      watchdogTimeoutMs: core.watchdogMs,
       videoBaseUrl: config.videoBaseUrl,
       cameras: config.cameras.map((c) => safeStreamName(c.name)),
       videoQuality,
@@ -242,6 +245,7 @@ export function startWsServer(
 
     ws.on('close', () => {
       if (control === ws) control = null;
+      core.endControlSession(session);
       clearInterval(statusTimer);
       clearInterval(telemetryTimer);
       clearInterval(gpsTimer);
@@ -294,7 +298,7 @@ function handleHttp(
   }
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, vehicle: config.vehicleName, driver: config.driver }));
+    res.end(JSON.stringify({ ok: true, vehicle: config.vehicleName, driver: core.driverKind }));
     return;
   }
   // Serve the built ground app (control + setup from a phone in AP mode). Falls

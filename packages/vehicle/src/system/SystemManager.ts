@@ -6,6 +6,7 @@ import type { HwDepName } from './hwDeps.js';
 import type { WifiRadioStatus } from './wifi.js';
 import type { HilinkStatus, HilinkTraffic } from './hilink.js';
 import type { UpdateCheck, UpdateSource } from './update.js';
+import type { SystemDiagnostics } from './diagnostics.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -243,9 +244,10 @@ export interface ActionResult {
  * Remote access = how the vehicle stays reachable behind CGNAT/LTE. One method is
  * active at a time. Mesh VPNs (Tailscale, ZeroTier) need no VPS; WireGuard connects
  * the Pi as a peer to a WireGuard server you already run — e.g. a FritzBox, whose
- * exported `.conf` you upload here.
+ * exported `.conf` you upload here. OpenVPN (experimental) does the same for an
+ * OpenVPN server — see system/openvpn.ts.
  */
-export type RemoteAccessKind = 'none' | 'tailscale' | 'zerotier' | 'wireguard';
+export type RemoteAccessKind = 'none' | 'tailscale' | 'zerotier' | 'wireguard' | 'openvpn';
 
 export interface RemoteAccessConfig {
   kind: RemoteAccessKind;
@@ -255,6 +257,16 @@ export interface RemoteAccessConfig {
   zerotierNetworkId?: string | null;
   /** WireGuard: the full `.conf` text (e.g. a FritzBox export), applied verbatim. */
   wireguardConf?: string | null;
+  /**
+   * OpenVPN: the client profile as uploaded. Stored verbatim; sanitised every time it is
+   * written out (scripts removed, interface renamed — see sanitiseOvpn).
+   */
+  openvpnConf?: string | null;
+  /** OpenVPN: credentials for profiles with `auth-user-pass` (the password is a secret). */
+  openvpnUsername?: string | null;
+  openvpnPassword?: string | null;
+  /** OpenVPN: keep the server's redirect-gateway (all traffic through the VPN). Default off. */
+  openvpnFullTunnel?: boolean;
 }
 
 export interface RemoteAccessStatus {
@@ -385,15 +397,27 @@ export interface SystemManager {
    * but a hand on the switch, so the caller has to be sure.
    */
   shutdown(): Promise<ActionResult>;
+  /**
+   * What the operating system says, for the diagnostics export: OS and kernel, WiFi
+   * power saving, addresses and routes, unit states, journal tails. Slow — a dozen
+   * processes — so it only ever runs when somebody asks for a report. `probeI2c` is
+   * false while armed: a bus scan is harmless to the chips this project uses, but not
+   * something to do to a vehicle that is driving.
+   */
+  diagnostics(opts: { probeI2c: boolean }): Promise<SystemDiagnostics>;
 }
 
-/** Strip secrets (auth key, WG conf) from a remote config for safe display. */
+/** Strip secrets (auth key, WG conf, OpenVPN profile and password) from a remote config for safe display. */
 export function redactRemoteConfig(cfg: RemoteAccessConfig): Record<string, unknown> {
   return {
     kind: cfg.kind,
     zerotierNetworkId: cfg.zerotierNetworkId ?? null,
     hasTailscaleAuthKey: !!cfg.tailscaleAuthKey,
     hasWireguardConf: !!cfg.wireguardConf,
+    hasOpenvpnConf: !!cfg.openvpnConf,
+    openvpnUsername: cfg.openvpnUsername ?? null,
+    hasOpenvpnPassword: !!cfg.openvpnPassword,
+    openvpnFullTunnel: !!cfg.openvpnFullTunnel,
   };
 }
 

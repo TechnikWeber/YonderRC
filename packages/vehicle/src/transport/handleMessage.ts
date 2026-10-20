@@ -1,13 +1,15 @@
 import type { ClientMessage } from '@yonderrc/protocol';
 import { PROTOCOL_VERSION } from '@yonderrc/protocol';
 import type { VehicleCore } from '../core/VehicleCore.js';
+import type { ControlVia } from '../core/linkStats.js';
 
 /**
  * One place that turns a decoded client message into VehicleCore calls, so the
  * WebSocket path and the WebRTC data-channel path behave identically. RTC
- * signaling ('rtc') is handled by the transport, not here.
+ * signaling ('rtc') is handled by the transport, not here. `via` only labels the
+ * link statistics — both paths are treated exactly alike.
  */
-export function handleClientMessage(core: VehicleCore, msg: ClientMessage, session?: number): void {
+export function handleClientMessage(core: VehicleCore, msg: ClientMessage, session?: number, via: ControlVia = 'ws'): void {
   switch (msg.type) {
     case 'hello':
       if (msg.protocol !== PROTOCOL_VERSION) {
@@ -17,7 +19,7 @@ export function handleClientMessage(core: VehicleCore, msg: ClientMessage, sessi
       }
       break;
     case 'control':
-      core.applyControl(msg, session);
+      core.applyControl(msg, session, via);
       break;
     case 'arm':
       core.setArmed(msg.armed);

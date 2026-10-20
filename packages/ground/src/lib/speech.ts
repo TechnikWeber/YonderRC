@@ -109,8 +109,8 @@ export function announcementsFor(prev: SpeechState | null, next: SpeechState): A
  * outage nobody needed to know about — and a voice that cries wolf is a voice you
  * stop listening to.
  *
- * This does not delay the safety signal: the vehicle drops into failsafe after
- * 300 ms without frames, and **failsafe is announced immediately and urgently**.
+ * This does not delay the safety signal: the vehicle drops into failsafe once its
+ * watchdog runs out (500 ms by default), and **failsafe is announced immediately and urgently**.
  * So a genuine outage still speaks up at once; only the informational
  * "link lost" waits to see whether it mattered.
  */

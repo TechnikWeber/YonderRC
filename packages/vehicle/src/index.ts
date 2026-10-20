@@ -8,8 +8,13 @@ import { TelemetryService } from './sensors/TelemetryService.js';
 import { GpsService } from './sensors/GpsService.js';
 import { applyCameras, detectH264Encoder, detectRpicamBinary } from './video/cameraManager.js';
 import { startCaptivePortal } from './transport/captivePortal.js';
+import { captureConsole, serviceLog } from './system/logBuffer.js';
+import { startLoopDelayMonitor } from './system/loopDelay.js';
 
 async function main() {
+  // First, so the diagnostics export has the whole story — banner and driver start included.
+  captureConsole(serviceLog);
+  startLoopDelayMonitor();
   const config = loadConfig();
 
   console.log('');
@@ -42,6 +47,7 @@ async function main() {
   try {
     await core.start();
   } catch (err) {
+    config.driverError = (err as Error).message;
     console.error(
       `[core] driver "${config.driver}" failed to start: ${(err as Error).message}\n` +
         '[core] falling back to sim driver so the setup UI stays reachable.',

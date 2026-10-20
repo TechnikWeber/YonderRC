@@ -46,7 +46,7 @@ export class WebRtcControl {
       ch.onmessage = (m) => {
         try {
           const msg = JSON.parse(String(m.data)) as ClientMessage;
-          handleClientMessage(this.core, msg, this.session);
+          handleClientMessage(this.core, msg, this.session, 'webrtc');
         } catch {
           /* ignore malformed frame; newest supersedes */
         }

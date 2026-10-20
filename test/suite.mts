@@ -1438,6 +1438,10 @@ async function main() {
     ok('tunnels are not metered (they would double-count)',
       !T.isMeteredIface('tailscale0') && !T.isMeteredIface('wg0') && !T.isMeteredIface('ztabcdef'));
     ok('the LTE stick is metered', T.isMeteredIface('eth1'));
+    // wg-quick names the interface after its config file, and the vehicle's is
+    // /etc/wireguard/yonderrc.conf — so it is "yonderrc", which no wg* pattern catches.
+    ok('the vehicle’s own WireGuard tunnel is not metered', !T.isMeteredIface('yonderrc'));
+    ok('nor its OpenVPN tunnel', !T.isMeteredIface('tunyrc') && !T.isMeteredIface('tapyrc'));
     // The one that would ruin the feature: a ground station on the vehicle's own AP
     // pulls the whole video stream for free, ~900 MB an hour of traffic that costs
     // nothing and would empty a 4 GB budget in an afternoon on the bench.
@@ -1720,6 +1724,31 @@ async function main() {
     ok('the same sections in both hardware guides', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
   }
 
+  // ---- …nor the quick start and the troubleshooting guide ----
+  // Written for people new to Linux; a German reader following steps the English guide
+  // has since changed is exactly the person who cannot tell.
+  {
+    const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
+    for (const name of ['QUICKSTART', 'TROUBLESHOOTING']) {
+      const en = readFileSync(`docs/${name}.md`, 'utf8');
+      const de = readFileSync(`docs/${name}.de.md`, 'utf8');
+      ok(`the same sections in both ${name} guides`, heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
+      ok(`${name} links its translation both ways`, en.includes(`[Deutsch](${name}.de.md)`) && de.includes(`[English](${name}.md)`));
+    }
+    const readme = readFileSync('README.md', 'utf8');
+    const readmeDe = readFileSync('README.de.md', 'utf8');
+    ok('the READMEs point newcomers at the quick start',
+      readme.includes('docs/QUICKSTART.md') && readmeDe.includes('docs/QUICKSTART.de.md'));
+    ok('and at the troubleshooting guide',
+      readme.includes('docs/TROUBLESHOOTING.md') && readmeDe.includes('docs/TROUBLESHOOTING.de.md'));
+    const qs = readFileSync('docs/QUICKSTART.md', 'utf8');
+    // The two things the user report asked for explicitly.
+    ok('the quick start says to address the I²C chips before installing', /0x41/.test(qs) && qs.indexOf('0x41') < qs.indexOf('## 6.'));
+    ok('and how to copy the files without root', /not root/.test(qs) && /SFTP/.test(qs));
+    ok('the issue template asks for the diagnostics file', /Download diagnostics/.test(readFileSync('.github/ISSUE_TEMPLATE/bug_report.md', 'utf8')));
+    ok('shell scripts keep LF on any checkout', /^\*\.sh\s+text eol=lf/m.test(readFileSync('.gitattributes', 'utf8')));
+  }
+
   // ---- one theme, both halves ----
   // The vehicle owns the look: the setup page and the ground app are one product, and a
   // per-device toggle is how the two ends end up disagreeing with nobody able to say
@@ -1869,7 +1898,12 @@ async function main() {
   const { readVersion } = await import('../packages/vehicle/src/config');
   const pkgVersion = JSON.parse(readFileSync('package.json', 'utf8')).version as string;
   ok('the vehicle reads its version from package.json', readVersion() === pkgVersion, `${readVersion()} vs ${pkgVersion}`);
-  ok('and the ground masthead agrees', readFileSync('packages/ground/src/App.tsx', 'utf8').includes(`ground · v${pkgVersion}`));
+  {
+    // The masthead and the diagnostics file both read GROUND_VERSION — one literal to bump.
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('and the ground version agrees', app.includes(`export const GROUND_VERSION = '${pkgVersion}';`));
+    ok('which is what the masthead shows', app.includes('ground · v{GROUND_VERSION}'));
+  }
   ok('no hardcoded version left in the vehicle banner', !/YonderRC vehicle service {2}v\d/.test(readFileSync('packages/vehicle/src/index.ts', 'utf8')));
 
   // ---- generated video config lives outside the checkout ----
@@ -2647,6 +2681,449 @@ async function main() {
   // Failsafe still outranks it in the same tick.
   const both = announcementsFor(bBase, { ...bBase, returnNow: true, failsafe: true });
   ok('failsafe is still spoken first', both[0].text === 'Failsafe', both.map((a) => a.text).join('|'));
+
+  // ---- the watchdog: 500 ms, and the old default is not a choice ----
+  // A user report: "it keeps going in and out of failsafe". 300 ms was tighter than the
+  // jitter of the links this runs on (13 gaps > 300 ms per minute measured on LTE at 0 %
+  // loss), and the setup page saved the field on every Save — so a stored 300 is the old
+  // default, not a decision, until a v1.70 save marks it as one.
+  {
+    const P = await import('../packages/protocol/src/channels');
+    const { resolveWatchdogMs, loadConfig: lc } = await import('../packages/vehicle/src/config');
+    ok('the watchdog default is 500 ms', P.WATCHDOG_TIMEOUT_MS === 500);
+    ok('nothing stored → the default', resolveWatchdogMs(undefined, 500) === 500);
+    ok('a stored pre-v1.70 default is not a choice', resolveWatchdogMs(300, 500) === 500);
+    ok('a 300 saved since v1.70 is one', resolveWatchdogMs(300, 500, true) === 300);
+    ok('any other stored value is kept', resolveWatchdogMs(700, 500) === 700);
+    ok('the environment still decides when nothing is stored', resolveWatchdogMs(undefined, 800) === 800);
+    ok('a typo cannot make it permanent failsafe', resolveWatchdogMs(50, 500, true) === P.WATCHDOG_MIN_MS);
+    ok('nor switch it off', resolveWatchdogMs(50000, 500) === P.WATCHDOG_MAX_MS);
+    ok('garbage falls back to the default', P.clampWatchdogMs(Number('x')) === 500);
+
+    const cfgPath = join(tmpdir(), `yonderrc-wd-test-${process.pid}.json`);
+    const envCfg = process.env.YRC_CONFIG;
+    process.env.YRC_CONFIG = cfgPath;
+    writeFileSync(cfgPath, JSON.stringify({ watchdogTimeoutMs: 300 }));
+    ok('a vehicle configured before v1.70 runs 500 ms', lc().watchdogTimeoutMs === 500);
+    writeFileSync(cfgPath, JSON.stringify({ watchdogTimeoutMs: 300, watchdogChosen: true }));
+    ok('and one that chose 300 since keeps it', lc().watchdogTimeoutMs === 300);
+    rmSync(cfgPath, { force: true });
+    if (envCfg === undefined) delete process.env.YRC_CONFIG; else process.env.YRC_CONFIG = envCfg;
+
+    const setup = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('the setup page no longer falls back to 300', !/watchdogTimeoutMs[^\n]*\b300\b/.test(setup));
+    ok('and explains when to raise it', /raise it if the vehicle flickers in and out of failsafe/.test(setup));
+  }
+
+  // ---- what the control link delivered, measured at the vehicle ----
+  {
+    const { LinkStats, gapsOver, EPISODES_KEPT } = await import('../packages/vehicle/src/core/linkStats');
+    const s = new LinkStats(0);
+    s.beginSession(1, 0);
+    s.frame(1000, 'ws'); s.frame(1020, 'ws'); s.frame(1040, 'webrtc'); s.frame(1490, 'webrtc');
+    let snap = s.snapshot(1500);
+    ok('frames are counted per transport', snap.frames.ws === 2 && snap.frames.webrtc === 2);
+    ok('gaps land in their buckets', snap.gaps.buckets[0].count === 2 && snap.gaps.buckets.find((b) => b.upToMs === 500)!.count === 1);
+    ok('the longest gap is kept', snap.gaps.maxMs === 450);
+    ok('gaps over a watchdog are countable', gapsOver(snap, 300) === 1 && gapsOver(snap, 500) === 0);
+    s.observeFailsafe(true, 2000);
+    snap = s.snapshot(2300);
+    ok('a running episode counts with its length so far',
+      snap.failsafe.episodes === 1 && snap.failsafe.totalMs === 300 && snap.failsafe.recent[0].durationMs === null);
+    ok('and names the transport of the last frame before it', snap.failsafe.recent[0].via === 'webrtc');
+    s.observeFailsafe(true, 2100);
+    s.observeFailsafe(false, 2600);
+    snap = s.snapshot(3000);
+    ok('a held failsafe is one episode', snap.failsafe.episodes === 1 && snap.failsafe.longestMs === 600 && snap.failsafe.recent[0].durationMs === 600);
+    s.beginSession(2, 4000);
+    s.frame(9000, 'ws');
+    snap = s.snapshot(9000);
+    ok('no gap is measured across two connections', snap.gaps.maxMs === 450 && snap.sessions === 2 && snap.current.frames === 1);
+    s.dropped('stale');
+    s.dropped('superseded');
+    snap = s.snapshot(9000);
+    ok('refused frames are counted by reason', snap.frames.staleDropped === 1 && snap.frames.supersededDropped === 1);
+    for (let n = 0; n < EPISODES_KEPT + 10; n++) {
+      s.observeFailsafe(true, 10000 + n * 10);
+      s.observeFailsafe(false, 10005 + n * 10);
+    }
+    snap = s.snapshot(20000);
+    ok('only the recent episodes are kept in full', snap.failsafe.recent.length === EPISODES_KEPT && snap.failsafe.episodes === EPISODES_KEPT + 11);
+
+    // Closing the app is parking, not a dropout: found live, where one closed tab showed up
+    // as an "episode" lasting until the next ground connected.
+    const park = new LinkStats(0);
+    park.beginSession(1, 0);
+    park.frame(100, 'ws');
+    park.observeFailsafe(true, 700);
+    park.endSession(1, 900);
+    park.observeFailsafe(true, 5000);
+    let ps = park.snapshot(60000);
+    ok('a dropout running when the ground disconnects is closed there', ps.failsafe.episodes === 1 && ps.failsafe.recent[0].durationMs === 200 && ps.failsafe.recent[0].endedBy === 'disconnect');
+    ok('and the parked vehicle afterwards is not one', ps.failsafe.totalMs === 200);
+    park.endSession(7, 61000);
+    park.beginSession(2, 62000);
+    park.observeFailsafe(true, 63000);
+    park.beginSession(3, 63500);
+    ps = park.snapshot(64000);
+    ok('a new ground taking over ends the old episode', ps.failsafe.recent[1].durationMs === 500 && ps.failsafe.recent[1].endedBy === 'new ground');
+
+    const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
+    const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
+    const core = new VehicleCore({ driver: new SimDriver() });
+    const a = core.beginControlSession();
+    core.applyControl({ type: 'control', seq: 5, t: Date.now(), channels: [] }, a, 'webrtc');
+    core.applyControl({ type: 'control', seq: 4, t: Date.now(), channels: [] }, a, 'webrtc');
+    core.beginControlSession();
+    core.applyControl({ type: 'control', seq: 9, t: Date.now(), channels: [] }, a, 'webrtc');
+    const cs = core.link.snapshot(Date.now());
+    ok('the core feeds the link statistics',
+      cs.frames.webrtc === 1 && cs.frames.staleDropped === 1 && cs.frames.supersededDropped === 1 && cs.sessions === 2);
+    ok('the running driver is reported, not the configured one', core.driverKind === 'sim');
+    core.setWatchdogTimeout(700);
+    ok('the watchdog applies live', core.watchdogMs === 700);
+    core.setWatchdogTimeout(Number.NaN);
+    ok('and refuses what is not a number', core.watchdogMs === 700);
+  }
+
+  // ---- the diagnostics file: nothing secret leaves the box ----
+  {
+    const D = await import('../packages/vehicle/src/system/diagnostics');
+    const r = (s: string) => D.redactSecrets(s);
+    ok('a WireGuard private key is masked', !r('PrivateKey = yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=').includes('yAnz5'));
+    ok('a password pair is masked', !r('password: hunter2').includes('hunter2') && !r('802-11-wireless-security.psk:hunter2').includes('hunter2'));
+    ok('a secret in a URL query is masked', !r('GET /api/diagnostics?secret=s3cr3t&x=1').includes('s3cr3t'));
+    ok('a Tailscale auth key is masked', !r('tailscale up --authkey=tskey-auth-kAbC123-xyz').includes('kAbC123'));
+    ok('a pending Tailscale login is masked', !r('Login: https://login.tailscale.com/a/1a2b3c4d').includes('1a2b3c4d'));
+    ok('a SIM PIN argument is masked', !r('mmcli -m 0 --pin=4711').includes('4711'));
+    ok('credentials in a URL are masked', !r('rtsp://admin:geheim@192.168.1.20/stream').includes('geheim'));
+    ok('the hotspot key in its status message is masked', !r('Hotspot "YonderRC-setup" is up (WPA2, key s3cr3tpw) — join it').includes('s3cr3tpw'));
+    ok('inline OpenVPN keys are masked', !r('<key>\n-----BEGIN PRIVATE KEY-----\nMIIEvQ\n-----END PRIVATE KEY-----\n</key>').includes('MIIEvQ'));
+    ok('a PEM private key is masked anywhere', !r('-----BEGIN RSA PRIVATE KEY-----\nAAAAB3\n-----END RSA PRIVATE KEY-----').includes('AAAAB3'));
+    ok('a coordinate pair is masked', !r('[gps] auto-home set at 48.275812, 8.853601 (9 sats)').includes('48.2758'));
+    ok('ordinary log lines survive', r('[link] ground connected from 192.168.4.2') === '[link] ground connected from 192.168.4.2');
+    ok('a certificate is not a secret', r('<ca>\nPUBLICCERT\n</ca>').includes('PUBLICCERT'));
+
+    const stored = {
+      vehicleName: 'Buggy',
+      apiSecret: 'API-SECRET-1',
+      lte: { apn: 'internet.telekom', pin: '4321', password: 'APN-PW-1' },
+      hotspot: { ssid: 'YonderRC-setup', password: 'HOTSPOT-PW-1', mode: 'always' },
+      remoteAccess: {
+        kind: 'wireguard',
+        tailscaleAuthKey: 'tskey-auth-LEAK1',
+        wireguardConf: '[Interface]\nPrivateKey = WGPRIVATEKEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\nAddress = 10.0.0.2/32\n[Peer]\nPublicKey = x\nEndpoint = vpn.example.org:51820\n',
+      },
+      gps: { source: 'serial-nmea', autoHome: true, minSats: 6, home: { lat: 48.27581, lon: 8.85361, altM: 517 } },
+    };
+    const red = JSON.stringify(D.redactConfig(stored));
+    ok('no secret survives the config redaction',
+      ['API-SECRET-1', '4321', 'APN-PW-1', 'HOTSPOT-PW-1', 'tskey-auth-LEAK1', 'WGPRIVATEKEY', '48.27581'].every((x) => !red.includes(x)), red);
+    ok('but what helps debugging stays',
+      red.includes('internet.telekom') && red.includes('wireguard') && red.includes('vpn.example.org') && red.includes('Buggy'));
+    ok('a set secret reads as set, an unset one as unset',
+      /"apiSecret":"\(set\)"/.test(red) && D.redactConfig({ apiSecret: null }).apiSecret === null);
+    const gpsMsg = D.stripPosition({ type: 'gps', hasFix: true, lat: 48.2, lon: 8.8, satellites: 9, home: { lat: 48.2, lon: 8.8 } });
+    ok('a GPS message loses its position but keeps the fix', gpsMsg!.lat === undefined && gpsMsg!.satellites === 9 && typeof gpsMsg!.home === 'string');
+    ok('redactDeep keeps the shape', JSON.stringify(D.redactDeep({ a: ['psk=x1y2'], n: 3 })) === '{"a":["psk=***"],"n":3}');
+
+    ok('power save on', D.parsePowerSave('Power save: on') === true);
+    ok('power save off', D.parsePowerSave('Power save: off') === false);
+    ok('power save unknown', D.parsePowerSave('command failed: No such device (-19)') === null);
+    ok('the OS name is read', D.parseOsRelease('PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"\nID=debian') === 'Debian GNU/Linux 12 (bookworm)');
+    const mem = D.parseMeminfo('MemTotal:        3884136 kB\nMemFree:  1000 kB\nMemAvailable:    2900000 kB');
+    ok('memory is read in MB', mem.totalMb === 3793 && mem.availableMb === 2832);
+    const kl = D.interestingKernelLines(['usb 1-1.2: new device', 'hwmon hwmon1: Undervoltage detected!', 'brcmf_cfg80211_scan: scan error', 'random noise']);
+    ok('only the kernel lines that explain something', kl.length === 2 && /Undervoltage/.test(kl[0]));
+    const st = D.summariseStreams({ cam: { producers: [{ url: 'exec:rpicam-vid' }], consumers: [{}, {}] }, test: { producers: [{ error: 'exit status 1' }] } });
+    ok('go2rtc streams are summarised', st!.cam.producers === 1 && st!.cam.consumers === 2 && st!.test.errors[0] === 'exit status 1');
+    ok('a report file name is safe everywhere',
+      D.diagnosticsFileName('My Car / v2', new Date(2026, 9, 20, 14, 5)) === 'yonderrc-diagnostics-My-Car-v2-20261020-1405.json');
+
+    // ---- … and it says what it means ----
+    const { LinkStats } = await import('../packages/vehicle/src/core/linkStats');
+    const { powerState } = await import('../packages/vehicle/src/system/power');
+    const quiet = new LinkStats(0);
+    const base = {
+      systemKind: 'real', watchdogMs: 500, link: quiet.snapshot(60000), uptimeS: 600, loopDelay: { p99Ms: 3, maxMs: 9 },
+      power: powerState(0), wifi: { mode: 'client', powerSave: false, signalDbm: -55 },
+      driver: { configured: 'pca9685', running: 'pca9685', error: null }, health: null, memoryAvailableMb: 900,
+    };
+    ok('a healthy vehicle has nothing to say', D.vehicleFindings(base).length === 0, JSON.stringify(D.vehicleFindings(base)));
+    const fell = D.vehicleFindings({ ...base, driver: { configured: 'pca9685', running: 'sim', error: 'i2c-bus not available' } });
+    ok('a driver that fell back to sim is the first thing said', fell[0]?.level === 'bad' && fell[0].area === 'driver' && /i2c-bus/.test(fell[0].text));
+    ok('a sim driver on a real vehicle is mentioned', D.vehicleFindings({ ...base, driver: { configured: 'sim', running: 'sim', error: null } })[0]?.area === 'driver');
+    ok('a past brownout is a warning', D.vehicleFindings({ ...base, power: powerState(0x10000) })[0]?.area === 'power');
+    const ps = D.vehicleFindings({ ...base, wifi: { mode: 'client', powerSave: true, signalDbm: -55 } });
+    ok('WiFi power saving is named with its fix', ps[0]?.area === 'wifi' && /power_save off/.test(ps[0].fix ?? ''));
+    ok('but not on the vehicle’s own hotspot', D.vehicleFindings({ ...base, wifi: { mode: 'ap', powerSave: true, signalDbm: null } }).length === 0);
+    const flaky = new LinkStats(0);
+    flaky.beginSession(1, 0);
+    flaky.frame(1000, 'ws'); flaky.frame(1400, 'ws'); flaky.frame(1420, 'ws');
+    flaky.observeFailsafe(true, 5000); flaky.observeFailsafe(false, 5700);
+    const lf = D.vehicleFindings({ ...base, link: flaky.snapshot(6000) });
+    ok('failsafe episodes are reported with their length', lf.some((f) => f.area === 'link' && /1 failsafe episode/.test(f.text) && /700 ms/.test(f.text)));
+    ok('and gaps the old 300 ms watchdog would have tripped on', lf.some((f) => /pre-v1\.70\.0 default/.test(f.text)));
+    ok('a stalling vehicle is told apart from the network',
+      D.vehicleFindings({ ...base, loopDelay: { p99Ms: 80, maxMs: 300 } })[0]?.area === 'vehicle');
+  }
+
+  // ---- the service's own log, kept for the report ----
+  {
+    const { LogBuffer, captureConsole } = await import('../packages/vehicle/src/system/logBuffer');
+    const lb = new LogBuffer(3);
+    for (const t of ['a', 'b', 'c', 'd']) lb.push('log', t, 0);
+    ok('the log keeps only the newest lines', lb.size === 3 && lb.tail().map((l) => l.text).join('') === 'bcd');
+    lb.push('warn', 'x'.repeat(5000), 0);
+    ok('one huge line cannot flood it', lb.tail(1)[0].text.length < 2100);
+    const cap = new LogBuffer(10);
+    const quietLog = console.log;
+    console.log = () => {};
+    const restore = captureConsole(cap);
+    console.log('[test] captured %d', 7);
+    restore();
+    console.log = quietLog;
+    ok('console output is captured, formatted', cap.tail().some((l) => l.text === '[test] captured 7'));
+    ok('and the console is restored', console.log === quietLog);
+  }
+
+  // ---- the ground's half: was it the network, or did this app stop sending? ----
+  {
+    const G = await import('../packages/ground/src/lib/diagnostics');
+    const s = G.emptySendLoop(0);
+    for (let n = 0; n < 100; n++) G.recordSendTick(s, 20, n * 20, false);
+    ok('a steady loop has no stalls', s.stalls === 0 && s.ticks === 100 && s.buckets[0] === 100);
+    G.recordSendTick(s, 1000, 3000, true);
+    G.recordSendTick(s, 150, 3200, false);
+    ok('stalls are counted, hidden ones apart', s.stalls === 2 && s.stallsHidden === 1 && s.maxMs === 1000);
+    ok('and the long ones can be compared with the watchdog', G.sendGapsOver(s, 500) === 1);
+    const hiddenOnly = G.groundFindings({
+      sendLoop: s, watchdogMs: 500, dropouts: 1, rtt: null, connected: true,
+      controller: { inputMethod: 'touch', active: null, listed: 0 },
+    });
+    ok('a stall longer than the watchdog is a failsafe nobody else caused',
+      hiddenOnly[0]?.level === 'bad' && /longer than the vehicle's 500 ms watchdog/.test(hiddenOnly[0].text));
+    ok('and a hidden page is named as the reason', /background tabs/.test(hiddenOnly[0].fix ?? ''));
+    const steady = G.emptySendLoop(0);
+    for (let n = 0; n < 50; n++) G.recordSendTick(steady, 20, n * 20, false);
+    const net = G.groundFindings({
+      sendLoop: steady, watchdogMs: 500, dropouts: 3, rtt: { p95: 90 }, connected: true,
+      controller: { inputMethod: 'gamepad', active: null, listed: 1 },
+    });
+    ok('dropouts with a steady loop point at the network or the vehicle', net.some((f) => f.area === 'link' && /sent on time and arrived late/.test(f.text)));
+    ok('a gamepad model without a controller is flagged', net.some((f) => f.area === 'controller' && f.level === 'bad'));
+    const rs = new G.RttSamples();
+    [40, 50, 60, 70, 400].forEach((v) => rs.push(v));
+    const sum = rs.summary()!;
+    ok('round-trips are summarised', sum.n === 5 && sum.min === 40 && sum.max === 400 && sum.p50 === 60);
+    const merged = G.mergeReports({ v: 1 }, [{ level: 'warn', area: 'ground', text: 'g' }], { findings: [{ level: 'bad', area: 'driver', text: 'v' }], vehicle: { name: 'x' } }, null);
+    ok('the merged file carries both halves and all findings',
+      (merged.findings as unknown[]).length === 2 && (merged.vehicle as { name: string }).name === 'x' && merged.generatedBy === 'ground');
+    ok('the vehicle half is fetched from the control link’s host, secret as a query',
+      G.diagnosticsUrlFromWs('ws://192.168.4.1:8080', 'a b&c') === 'http://192.168.4.1:8080/api/diagnostics?secret=a%20b%26c');
+    ok('wss maps to https', G.diagnosticsUrlFromWs('wss://car.example:8443', null) === 'https://car.example:8443/api/diagnostics');
+    const ev = new G.EventLog();
+    for (let n = 0; n < 400; n++) ev.push('link', `e${n}`, n);
+    ok('the timeline is bounded', ev.list().length === 300 && ev.list()[299].detail === 'e399');
+  }
+
+  // ---- the game controller is the controller, not the headset ----
+  // A user report: "the browser was trying to use my audio headset as a joystick". The
+  // provider took the first device the Gamepad API listed.
+  {
+    const GP = await import('../packages/ground/src/lib/input/gamepadPick');
+    const headset = { index: 0, id: 'Logitech G PRO X Gaming Headset (Vendor: 046d Product: 0aaa)', mapping: '', axes: 0, buttons: 4 };
+    const ds4 = { index: 1, id: 'Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)', mapping: 'standard', axes: 4, buttons: 17 };
+    const ds4own = { index: 1, id: '054c-09cc-Wireless Controller', mapping: '', axes: 6, buttons: 14 };
+    const motion = { index: 2, id: 'Sony Interactive Entertainment Wireless Controller Motion Sensors', mapping: '', axes: 6, buttons: 0 };
+    const touch = { index: 3, id: 'Sony Interactive Entertainment Wireless Controller Touchpad', mapping: '', axes: 2, buttons: 1 };
+    const radio = { index: 0, id: 'EdgeTX RadioMaster TX16S Joystick (Vendor: 1209 Product: 4f54)', mapping: '', axes: 8, buttons: 24 };
+    const volume = { index: 0, id: 'USB Device (Vendor: 1b3f Product: 2008)', mapping: '', axes: 1, buttons: 3 };
+    ok('the headset loses to the controller', GP.choosePad([headset, ds4], null)?.id === ds4.id);
+    ok('also when the controller reports its own layout', GP.choosePad([headset, ds4own], null)?.id === ds4own.id);
+    ok('a headset alone is never picked automatically', GP.choosePad([headset], null) === null);
+    ok('an unnamed volume knob is not a controller', GP.choosePad([volume], null) === null);
+    ok('the pad’s Linux side devices are recognised', !GP.assessPad(motion).likely && !GP.assessPad(touch).likely);
+    ok('so the pad wins over its own motion sensors', GP.choosePad([motion, touch, ds4own], null)?.id === ds4own.id);
+    ok('an RC transmitter in joystick mode counts', GP.assessPad(radio).likely);
+    ok('an explicit choice wins, even a doubtful one', GP.choosePad([headset, ds4], headset.id)?.id === headset.id);
+    ok('a chosen pad that is gone falls back to the best match', GP.choosePad([headset, ds4], 'Xbox 360 Controller')?.id === ds4.id);
+    ok('everything is still listed, likely ones first', GP.rankPads([headset, motion, ds4]).map((p) => p.index).join() === '1,0,2');
+    ok('a resting trigger is not learned', GP.movedAxis([0, 0, -1, 0], [0.01, 0, -1, 0]) === -1);
+    ok('a moved stick is', GP.movedAxis([0, 0, -1, 0], [0, 0, -1, 0.9]) === 3);
+    ok('a pulled trigger is too', GP.movedAxis([0, 0, -1, 0], [0, 0, 0.2, 0]) === 2);
+    ok('a button already held is not learned', GP.newlyPressed([true, false], [true, false]) === -1 && GP.newlyPressed([true, false], [true, true]) === 1);
+    ok('labels drop the vendor suffix', GP.padLabel(ds4.id) === 'Wireless Controller' && GP.padLabel(ds4own.id) === 'Wireless Controller');
+    const mem = new Map<string, string>();
+    const store = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v), removeItem: (k: string) => void mem.delete(k) };
+    GP.savePadPref(store, ds4.id);
+    ok('the choice is remembered by name', GP.loadPadPref(store) === ds4.id);
+    GP.savePadPref(store, null);
+    ok('and automatic forgets it', GP.loadPadPref(store) === null);
+    ok('unreadable storage is not fatal', GP.loadPadPref({ getItem: () => { throw new Error('denied'); }, setItem: () => {} }) === null);
+    const picker = readFileSync('packages/ground/src/components/ControllerPicker.tsx', 'utf8');
+    ok('the controller group folds and starts closed like the others', /<details className="group" onToggle=/.test(picker) && !/<details className="group"[^>]*\bopen\b/.test(picker));
+    ok('and sits in Setup › Controls', readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8').includes('<ControllerPicker input={input} />'));
+  }
+
+  // ---- OpenVPN (experimental): an uploaded profile must not be a way to run code ----
+  {
+    const O = await import('../packages/vehicle/src/system/openvpn');
+    const profile = [
+      'client', 'dev tun', 'proto udp', 'remote vpn.example.org 1194', 'nobind',
+      'script-security 2', 'up /etc/openvpn/update-resolv-conf', 'down /etc/openvpn/update-resolv-conf',
+      'management 0.0.0.0 7505', 'log /etc/passwd', 'block-outside-dns', 'redirect-gateway def1',
+      'auth-user-pass',
+      '<ca>', '-----BEGIN CERTIFICATE-----', 'CAONLY', '-----END CERTIFICATE-----', '</ca>',
+      '<key>', '-----BEGIN PRIVATE KEY-----', 'KEYDATA', '-----END PRIVATE KEY-----', '</key>',
+    ].join('\r\n');
+    const s = O.sanitiseOvpn(profile, { authFile: O.OVPN_AUTH_PATH });
+    const active = s.conf.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'));
+    const has = (d: string) => active.some((l) => l.trim().split(/\s+/)[0] === d);
+    ok('script hooks are removed', !has('up') && !has('down') && !has('script-security'));
+    ok('so are the management port and file writes', !has('management') && !has('log'));
+    ok('and Windows-only options', !has('block-outside-dns'));
+    ok('what was removed is listed', ['script-security', 'up', 'down', 'management', 'log', 'block-outside-dns'].every((d) => s.removed.includes(d)));
+    ok('the vehicle keeps its own uplink by default', !has('redirect-gateway') && s.conf.includes('pull-filter ignore "redirect-gateway"'));
+    ok('unless all traffic is wanted through the VPN',
+      O.sanitiseOvpn(profile, { fullTunnel: true }).conf.includes('redirect-gateway def1') && !O.sanitiseOvpn(profile, { fullTunnel: true }).conf.includes('pull-filter'));
+    ok('the interface gets a known name', active.includes(`dev ${O.OVPN_TUN_IFACE}`) && !active.includes('dev tun'));
+    ok('inline certificates and keys stay intact', s.conf.includes('CAONLY') && s.conf.includes('KEYDATA'));
+    ok('credentials come from the vehicle’s own file', active.includes(`auth-user-pass ${O.OVPN_AUTH_PATH}`) && s.needsAuth);
+    ok('Windows line endings are gone', !s.conf.includes('\r'));
+    ok('a usable profile is not refused', O.ovpnRefusal(s, true) === null);
+    ok('but one that wants a password without one is', /username and password/.test(O.ovpnRefusal(s, false) ?? ''));
+    const files = O.sanitiseOvpn('client\nremote a.example 1194\nca ca.crt\ncert me.crt\nkey me.key\n');
+    ok('separate certificate files are named', files.externalFiles.join() === 'ca ca.crt,cert me.crt,key me.key');
+    ok('and explained', /certificates inline/.test(O.ovpnRefusal(files, false) ?? ''));
+    ok('a server config is not a client profile', O.sanitiseOvpn('port 1194\ndev tun\nserver 10.8.0.0 255.255.255.0\n').problems.length === 2);
+    ok('a <connection> block carries its own remote',
+      O.sanitiseOvpn('client\n<connection>\nremote a.example 1194 udp\n</connection>\n').problems.length === 0);
+    ok('a cut-off file is caught', /never closed/.test(O.sanitiseOvpn('client\nremote a 1\n<ca>\nXYZ\n').problems.join()));
+    ok('inline credentials need no form', !O.sanitiseOvpn('client\nremote a 1\nauth-user-pass\n<auth-user-pass>\nu\np\n</auth-user-pass>\n').needsAuth);
+    ok('a tap profile keeps being tap', O.sanitiseOvpn('client\nremote a 1\ndev tap0\n').conf.includes(`dev ${O.OVPN_TAP_IFACE}`));
+    ok('the plausibility check', O.looksLikeOvpn(profile) && !O.looksLikeOvpn('[Interface]\nPrivateKey = x\n'));
+    ok('the credentials file is two lines, no injected third', O.ovpnAuthFile('me\nevil', 'pw') === 'meevil\npw\n');
+    ok('a rejected login is explained', /rejected the username\/password/.test(O.explainOvpnLog(['AUTH: Received control message: AUTH_FAILED']) ?? ''));
+    ok('so is an unreachable server', /no answer from the server/.test(O.explainOvpnLog(['TLS Error: TLS key negotiation failed to occur within 60 seconds']) ?? ''));
+    ok('a working tunnel needs no explanation', O.explainOvpnLog(['Initialization Sequence Completed']) === null);
+    // The sudoers file must name exactly what RealSystem runs, or a non-root setup fails.
+    const sudoers = readFileSync('provisioning/yonderrc.sudoers', 'utf8');
+    ok('sudoers allows exactly the OpenVPN commands that are run',
+      [O.OVPN_ENABLE_ARGS, O.OVPN_RESTART_ARGS, O.OVPN_STOP_ARGS].every((a) => sudoers.includes(`/usr/bin/${a.join(' ')}`)));
+    ok('the installer installs OpenVPN', /apt-get install -y[^\n]*\bopenvpn\b/.test(readFileSync('provisioning/install.sh', 'utf8')));
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('the setup page offers it, marked experimental', /<option value="openvpn">[^<]*experimental/.test(html) && /id="remote-openvpn"/.test(html));
+
+    // Through the simulated system: the same refusals as on a vehicle.
+    const { SimSystem } = await import('../packages/vehicle/src/system/SimSystem');
+    const simSys = new SimSystem();
+    ok('the sim refuses what a vehicle would refuse', !(await simSys.remoteUp({ kind: 'openvpn', openvpnConf: profile })).ok);
+    const up = await simSys.remoteUp({ kind: 'openvpn', openvpnConf: profile, openvpnUsername: 'u', openvpnPassword: 'p' });
+    ok('and brings up a valid one, naming what it removed', up.ok && /script-security/.test(up.message));
+    ok('its status is experimental', /experimental/.test((await simSys.remoteStatus({ kind: 'openvpn' })).detail));
+    const { redactRemoteConfig } = await import('../packages/vehicle/src/system/SystemManager');
+    const shown = JSON.stringify(redactRemoteConfig({ kind: 'openvpn', openvpnConf: profile, openvpnUsername: 'u', openvpnPassword: 'TOPSECRETPW' }));
+    ok('the status API never hands out the profile or the password', !shown.includes('KEYDATA') && !shown.includes('TOPSECRETPW') && shown.includes('"hasOpenvpnConf":true'));
+  }
+
+  // ---- the installer configures what it finds, and only what was never saved ----
+  {
+    const F = await import('../packages/vehicle/src/system/firstRun');
+    const pca41 = { address: '0x41', hint: '', device: 'PCA9685', kind: 'pca9685', confirmed: true };
+    const ina40 = { address: '0x40', hint: '', device: 'INA228', kind: 'ina228', confirmed: true };
+    const imx708 = 'imx708_wide [4608x2592 10-bit RGGB] (/base/soc/i2c0mux/i2c@1/imx708@1a)';
+    const det = (i2c: unknown[], cameras: string[] = []) => ({ i2c, cameras, modemPresent: false, serial: [], notes: [] }) as Parameters<typeof F.firstRunPlan>[1];
+    const fresh = F.firstRunPlan({}, det([ina40, pca41, { address: '0x70', hint: '', device: null, kind: null, confirmed: false }], [imx708]));
+    ok('a PCA9685 becomes the output driver', fresh.patch.driver === 'pca9685' && fresh.patch.pca9685?.address === 0x41 && fresh.patch.pca9685?.bus === 1);
+    ok('and the module it needs gets built', fresh.patch.hardwareDeps?.includes('i2c-bus') === true);
+    ok('a CSI camera replaces the test pattern', fresh.patch.cameras?.[0]?.type === 'rpicam' && fresh.patch.cameras.length === 1);
+    ok('a current sensor is reported, never configured', fresh.patch.telemetry === undefined && fresh.notes.some((n) => /INA228 at 0x40/.test(n)));
+    const kept = F.firstRunPlan({ driver: 'sim', cameras: [] }, det([pca41], [imx708]));
+    ok('a saved driver is never changed', kept.patch.driver === undefined && kept.notes.some((n) => /keeping the saved "sim"/.test(n)));
+    ok('nor a saved camera list — empty included', kept.patch.cameras === undefined);
+    const bare = F.firstRunPlan({}, det([], []));
+    ok('nothing found leaves everything as it is', Object.keys(bare.patch).length === 0 && bare.notes.some((n) => /staying on "sim"/.test(n)));
+    ok('a saved address is kept even when the driver is new',
+      F.firstRunPlan({ pca9685: { address: 0x42 } }, det([pca41])).patch.pca9685 === undefined);
+    const usb = F.firstRunPlan({}, det([], ['USB Camera (/base/scb/pcie@7d500000/pci@0,0/usb@0,0-1:1.0-0c45:6366)']));
+    ok('a USB webcam is mentioned, not guessed into a config', usb.patch.cameras === undefined && usb.notes.some((n) => /USB\/V4L2/.test(n)));
+    ok('bare video nodes are not taken for a CSI camera', F.cameraEntryKind('/dev/video0') === 'v4l2' && F.cameraEntryKind(imx708) === 'csi');
+    ok('the sensor is named', F.sensorName(imx708) === 'imx708_wide');
+    const doubtful = F.firstRunPlan({}, det([{ address: '0x40', hint: '', device: null, kind: null, confirmed: false }, { address: '0x70', hint: '', device: null, kind: null, confirmed: false }]));
+    ok('a suspected 0x40 collision is pointed out', doubtful.notes.some((n) => /Move the PCA9685 to 0x41/.test(n)));
+    ok('a configured vehicle gets the module its settings need',
+      F.firstRunPlan({ driver: 'pca9685' }, det([])).patch.hardwareDeps?.join() === 'i2c-bus');
+    ok('serial GPS needs serialport', F.requiredHwDeps({ gps: { source: 'serial-nmea', autoHome: true, minSats: 6 } }).join() === 'serialport');
+    ok('nothing already recorded is asked for twice',
+      F.firstRunPlan({ driver: 'pca9685', hardwareDeps: ['i2c-bus'] }, det([])).patch.hardwareDeps === undefined);
+    const inst = readFileSync('provisioning/install.sh', 'utf8');
+    ok('the installer runs it after I²C is on, before the services start',
+      inst.indexOf('do_i2c 0') < inst.indexOf('npm run --silent first-run') && inst.indexOf('npm run --silent first-run') < inst.indexOf('-- systemd services'));
+    ok('and builds what it asked for afterwards', inst.indexOf('npm run --silent first-run') < inst.lastIndexOf('restore_hw_deps'));
+    ok('it switches WiFi power saving off for good', /wifi\.powersave = 2/.test(inst));
+    ok('and refuses to run without root, with the command to use', /id -u\)" -ne 0/.test(inst) && /sudo bash \$0/.test(inst));
+  }
+
+  // ---- GET /api/diagnostics end to end (sim system, real router) ----
+  {
+    const { handleSetup } = await import('../packages/vehicle/src/transport/setupRouter');
+    const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
+    const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
+    const { SimSystem } = await import('../packages/vehicle/src/system/SimSystem');
+    const { loadConfig: lc } = await import('../packages/vehicle/src/config');
+    const cfgPath = join(tmpdir(), `yonderrc-diag-test-${process.pid}.json`);
+    const envCfg = process.env.YRC_CONFIG;
+    process.env.YRC_CONFIG = cfgPath;
+    writeFileSync(cfgPath, JSON.stringify({
+      watchdogTimeoutMs: 300,
+      lte: { apn: 'web', pin: '9876' },
+      hotspot: { ssid: 'YonderRC-setup', password: 'HOTSPOT-PW-2', mode: 'always' },
+    }));
+    const config = lc();
+    const core = new VehicleCore({ driver: new SimDriver(), watchdogTimeoutMs: config.watchdogTimeoutMs });
+    const ctx = {
+      config, core, system: new SimSystem(),
+      telemetry: { message: null }, gps: { message: { type: 'gps', hasFix: false, lat: null, lon: null, home: null }, linkStats: () => null },
+      traffic: { usage: null }, applyCameras: async () => {},
+    } as unknown as Parameters<typeof handleSetup>[2];
+    const call = async (url: string, headers: Record<string, string> = {}, method = 'GET', body?: unknown) => {
+      const req = {
+        url, method, headers,
+        async *[Symbol.asyncIterator]() { if (body !== undefined) yield Buffer.from(JSON.stringify(body)); },
+      };
+      const res = { code: 0, head: {} as Record<string, string>, body: '', writeHead(c: number, h?: Record<string, string>) { this.code = c; this.head = h ?? {}; }, end(b?: string) { this.body = b ?? ''; }, setHeader() {} };
+      await handleSetup(req as never, res as never, ctx);
+      return res;
+    };
+    let res = await call('/api/diagnostics');
+    const rep = JSON.parse(res.body);
+    ok('the vehicle exports a report', res.code === 200 && rep.schema === 'yonderrc-diagnostics/1' && Array.isArray(rep.findings));
+    ok('with the link statistics and the log', !!rep.vehicle.link && Array.isArray(rep.vehicle.log) && rep.vehicle.watchdogMs === 500);
+    ok('and without the secrets in the stored config', !res.body.includes('9876') && !res.body.includes('HOTSPOT-PW-2'));
+    res = await call('/api/diagnostics?download=1');
+    ok('?download=1 makes it a file', /attachment; filename="yonderrc-diagnostics-/.test(res.head['content-disposition'] ?? ''));
+    res = await call('/api/diagnostics', { origin: 'https://evil.example' });
+    ok('a page from the internet may not read it', res.code === 403);
+    config.apiSecret = 'S3CRET-XYZ';
+    res = await call('/api/diagnostics');
+    ok('with an API secret set it is required', res.code === 401);
+    res = await call('/api/diagnostics?secret=S3CRET-XYZ');
+    ok('and accepted as a query', res.code === 200 && !res.body.includes('S3CRET-XYZ'));
+    config.apiSecret = null;
+
+    // The watchdog from the setup form: clamped, live, and marked as chosen.
+    res = await call('/api/config', {}, 'POST', { watchdogTimeoutMs: 40 });
+    ok('a watchdog typo is clamped and applied live', res.code === 200 && core.watchdogMs === 100);
+    const saved = JSON.parse(readFileSync(cfgPath, 'utf8'));
+    ok('and saved as a choice', saved.watchdogTimeoutMs === 100 && saved.watchdogChosen === true);
+    res = await call('/api/config');
+    ok('the form shows what runs', JSON.parse(res.body).watchdogTimeoutMs === 100);
+    ok('and which driver really runs', JSON.parse(res.body).driverRunning === 'sim');
+
+    rmSync(cfgPath, { force: true });
+    if (envCfg === undefined) delete process.env.YRC_CONFIG; else process.env.YRC_CONFIG = envCfg;
+  }
 
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);

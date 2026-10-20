@@ -1,5 +1,8 @@
 import type { InputSnapshot } from './bindingEngine';
 import { pickGamepadProvider, type GamepadProvider } from './gamepadProvider';
+import { loadPadPref, savePadPref, type PadInfo } from './gamepadPick';
+
+const storage = () => (typeof localStorage !== 'undefined' ? localStorage : null);
 
 /**
  * Raw input aggregator. Tracks keyboard, on-screen buttons and virtual joysticks,
@@ -12,6 +15,11 @@ export class InputManager {
   private pressed = new Set<string>(); // on-screen buttons, by binding id
   private joysticks = new Map<string, { x: number; y: number }>();
   private gamepad: GamepadProvider = pickGamepadProvider();
+  private padPref: string | null = loadPadPref(storage());
+
+  constructor() {
+    this.gamepad.setPreferred(this.padPref);
+  }
 
   attach(): void {
     window.addEventListener('keydown', this.onKeyDown);
@@ -61,6 +69,29 @@ export class InputManager {
   }
   readGamepadButtons(): boolean[] {
     return this.gamepad.buttons();
+  }
+
+  /** Every device the browser lists — controllers and the things that only claim to be. */
+  listGamepads(): PadInfo[] {
+    return this.gamepad.list();
+  }
+  /** The device being read right now. */
+  activeGamepad(): PadInfo | null {
+    return this.gamepad.active();
+  }
+  /** Raw state of one listed device (Setup's live view). */
+  peekGamepad(index: number): { axes: number[]; buttons: boolean[] } | null {
+    return this.gamepad.peek(index);
+  }
+  /** The operator's explicit choice (by id), or null for automatic. */
+  get preferredGamepad(): string | null {
+    return this.padPref;
+  }
+  /** Choose a device, or null for automatic. Remembered in this browser. */
+  setPreferredGamepad(id: string | null): void {
+    this.padPref = id;
+    this.gamepad.setPreferred(id);
+    savePadPref(storage(), id);
   }
 
   /** Haptic feedback (e.g. on failsafe). No-op where unsupported. */

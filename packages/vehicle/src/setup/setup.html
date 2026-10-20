@@ -256,6 +256,20 @@
       </section>
 
       <section class="panel" data-tab="overview">
+        <div class="eyebrow">Problem report</div>
+        <p class="msg" style="margin-top:0">Something not working? Download one file with everything needed to find the cause — and attach it to a GitHub issue.</p>
+        <div class="btns">
+          <button class="btn primary" onclick="run(this, () => downloadDiagnostics())">Download diagnostics</button>
+        </div>
+        <details class="hint">
+          <summary>What is in it — and what is not</summary>
+          <p>The vehicle's version and settings, its log, link statistics (gaps between control frames, every failsafe episode), WiFi and power state, temperature and load, and what the operating system says about its network and services. <b>Passwords, PINs, VPN keys, the API secret and the GPS position are removed.</b> Network names (SSIDs) and local IP addresses stay in — they are what a network problem is found with. Download it right after the problem happened: the link statistics count since the service started.</p>
+          <p>The ground app's own report (<b>Setup › Diagnostics</b> in the control app) contains this file plus the ground's side — browser, controller, how regularly it sent. Prefer that one when the problem is in driving. How to send it: <span class="mono">docs/TROUBLESHOOTING.md</span> in the repository.</p>
+        </details>
+        <div class="msg" id="diag-msg"></div>
+      </section>
+
+      <section class="panel" data-tab="overview">
         <div class="eyebrow">System</div>
         <div class="btns">
           <button class="btn bad" onclick="run(this, () => reboot())">Reboot vehicle</button>
@@ -467,6 +481,7 @@
             <option value="tailscale">Tailscale (mesh VPN, no server)</option>
             <option value="zerotier">ZeroTier (mesh VPN, no server)</option>
             <option value="wireguard">WireGuard (connect to your own server / FritzBox)</option>
+            <option value="openvpn">OpenVPN (your own server — experimental)</option>
           </select>
         </label>
         <div id="remote-tailscale" class="remote-fields" style="display:none">
@@ -514,6 +529,23 @@
             <p class="msg" id="wg-fields-warn" style="display:none"></p>
           </div>
         </div>
+        <div id="remote-openvpn" class="remote-fields" style="display:none">
+          <p class="msg" style="color:var(--idle)">⚠ <b>Experimental.</b> Built from the OpenVPN documentation and tested in the simulator, but not yet on a vehicle. Try it on the bench first and please report what works and what does not (GitHub issue, ideally with the diagnostics file from the Overview tab).</p>
+          <label>Client profile (.ovpn — certificates inline)
+            <input id="ovpnFile" type="file" accept=".ovpn,.conf,text/plain" onchange="loadOvpnFile(event)" />
+          </label>
+          <p class="msg" id="ovpn-file-msg">Upload the client profile your OpenVPN server exported. It is stored on the vehicle and run by systemd as <span class="mono">openvpn-client@yonderrc</span>.</p>
+          <div class="grid2">
+            <label>Username (only if the profile asks)<input id="ovpnUser" autocomplete="off" placeholder="usually empty" /></label>
+            <label>Password<input id="ovpnPass" type="password" autocomplete="new-password" placeholder="usually empty" /></label>
+          </div>
+          <label class="chk"><input type="checkbox" id="ovpnFull" /> <span>Send <b>all</b> of the vehicle's internet traffic through the VPN (keep the server's <span class="mono">redirect-gateway</span>)</span></label>
+          <details class="hint">
+            <summary>What the vehicle changes in the profile, and why</summary>
+            <p>An .ovpn file can run programs (<span class="mono">up</span>, <span class="mono">down</span>, <span class="mono">plugin</span> …) and write files (<span class="mono">log</span>, <span class="mono">status</span>) — as root on the vehicle. Those lines are commented out and listed below; usually it is a DNS hook the vehicle does not need. Windows-only options are dropped too, the tunnel interface is named <span class="mono">tunyrc</span>, and unless the box above is ticked, only the VPN's own network goes through the tunnel — the vehicle's internet stays on its own uplink, so a VPN that drops cannot take everything else with it. A profile that points at separate certificate files (<span class="mono">ca ca.crt</span>) cannot work as a single upload: export it with the certificates inline.</p>
+          </details>
+          <p class="msg" id="ovpn-warn" style="display:none"></p>
+        </div>
         <div class="btns">
           <button class="btn primary" onclick="run(this, () => remoteUp())">Bring up</button>
           <button class="btn" onclick="run(this, () => remoteDown())">Stop</button>
@@ -533,8 +565,13 @@
               <option value="sbus">sbus</option>
             </select>
           </label>
-          <label>Watchdog (ms)<input id="watchdogTimeoutMs" type="number" /></label>
+          <label>Watchdog (ms)<input id="watchdogTimeoutMs" type="number" min="100" max="2000" step="50" placeholder="500" /></label>
         </div>
+        <details class="hint">
+          <summary>Watchdog: 500 ms by default — raise it if the vehicle flickers in and out of failsafe</summary>
+          <p>No control frame for this long and every channel goes to its failsafe value. Shorter stops sooner after a real link loss; too short trips on ordinary jitter — WiFi power saving, an LTE cell handing over — and the vehicle stutters on a link that works. If the ground's status strip counts <b>link gaps</b>, try 700–1000 ms on LTE. Allowed: 100–2000 ms. Applies immediately on Save, no restart. (300 ms was the default before v1.70.0; a stored 300 from back then is treated as the old default.)</p>
+        </details>
+        <div class="msg" id="driver-warn" style="display:none;color:var(--bad)"></div>
         <div class="grid2" id="pca-row" style="display:none">
           <label>PCA9685 I²C address (hex)<input id="pcaAddr" placeholder="0x41 (recommended)" /></label>
           <label>PCA9685 I²C bus<input id="pcaBus" type="number" placeholder="1" /></label>
@@ -832,7 +869,7 @@
       // stopped" while ZeroTier is the one selected. `remote` is filled by loadRemote().
       let remoteKindNow = 'none';
       let remoteStatusNow = null;
-      const RKIND_LABEL = { none: 'none', tailscale: 'Tailscale', zerotier: 'ZeroTier', wireguard: 'WireGuard' };
+      const RKIND_LABEL = { none: 'none', tailscale: 'Tailscale', zerotier: 'ZeroTier', wireguard: 'WireGuard', openvpn: 'OpenVPN' };
       function remoteLabel(s) {
         const name = RKIND_LABEL[remoteKindNow] || remoteKindNow;
         if (remoteKindNow === 'none') return 'none';
@@ -948,6 +985,7 @@
       let telCfgNow = null;
       let telLiveNow = null;
       let gpsNow = null;
+      let cfgNow = null;
       function devRow(k, v, cls, tab) {
         const key = tab ? `<span class="k jump" onclick="showTab('${tab}')">${k} ›</span>` : `<span class="k">${k}</span>`;
         return `<div class="row">${key}<span class="v ${cls || ''}">${v}</span></div>`;
@@ -963,7 +1001,17 @@
       function renderDevices() {
         const sep = '<div class="sep"></div>';
         const tel = telSummary();
-        let html = sep + devRow('Sensors', tel.text, tel.cls, 'sensors');
+        // First line, because it is the one question a fresh install raises: is anything
+        // actually driving the servos, or is this still the simulator?
+        let html = sep;
+        if (cfgNow) {
+          const run = cfgNow.driverRunning || cfgNow.driver;
+          const fell = !cfgNow.restartPending && run !== cfgNow.driver;
+          html += devRow('Output driver',
+            fell ? `${esc(run)} — ${esc(cfgNow.driver)} failed to start` : run === 'sim' ? 'sim — nothing is wired to a servo' : esc(run),
+            fell ? 'bad' : run === 'sim' ? 'warn' : 'go', 'sensors');
+        }
+        html += devRow('Sensors', tel.text, tel.cls, 'sensors');
         const live = telLiveNow;
         if (live && live.ok !== false) {
           const one = (x) => `${esc(x.label)} ${x.value}`;
@@ -1106,7 +1154,19 @@
         $('cfg-msg').textContent = c.restartPending
           ? `Saved, not applied: the vehicle is still running driver "${c.driverRunning}"${c.driverRunning === 'pca9685' ? ` @ ${hexStr(run.address)}` : ''}. Restart to apply.`
           : '';
-        $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 300;
+        // The silent failure this line exists for: a hardware driver that did not start,
+        // so the service fell back to sim and the servos are driven by nothing — while
+        // every other place still read "pca9685".
+        const fellBack = !c.restartPending && c.driverRunning && c.driverRunning !== c.driver;
+        $('driver-warn').style.display = fellBack ? '' : 'none';
+        $('driver-warn').innerHTML = fellBack
+          ? `⚠ Driver <b class="mono">${esc(c.driver)}</b> did not start — the vehicle is running <b class="mono">${esc(c.driverRunning)}</b>, so no servo moves.` +
+            (c.driverError ? `<br><span class="mono">${esc(c.driverError)}</span>` : '') +
+            '<br>Usually the native module is missing (install it below) or the I²C address is wrong (<b>Detect hardware</b>). Then restart the vehicle service.'
+          : '';
+        cfgNow = c;
+        renderDevices();
+        $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 500;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
@@ -1400,7 +1460,7 @@
         const patch = {
           vehicleName: $('vehicleName').value.trim(),
           driver: $('driver').value,
-          watchdogTimeoutMs: Number($('watchdogTimeoutMs').value) || 300,
+          watchdogTimeoutMs: Number($('watchdogTimeoutMs').value) || 500,
           throttleChannels: $('throttleChannels').value.split(',').map((s) => Number(s.trim()) - 1).filter((n) => Number.isInteger(n) && n >= 0),
           videoBaseUrl: $('videoBaseUrl').value.trim() || null,
           disarmOnReconnect: $('disarmOnReconnect').checked,
@@ -1589,11 +1649,36 @@
 
       // ---- Remote access (Tailscale / ZeroTier / WireGuard) ----
       let wgConf = null; // holds an uploaded WireGuard .conf until Bring up
+      let ovpnConf = null; // …and an uploaded OpenVPN profile
       function renderRemote() {
         const k = $('remoteKind').value;
-        for (const kind of ['tailscale', 'zerotier', 'wireguard']) {
+        for (const kind of ['tailscale', 'zerotier', 'wireguard', 'openvpn']) {
           $('remote-' + kind).style.display = k === kind ? 'block' : 'none';
         }
+      }
+      function loadOvpnFile(ev) {
+        const f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          ovpnConf = String(reader.result || '');
+          const asks = /^\s*auth-user-pass\s*$/m.test(ovpnConf) && !/<auth-user-pass>/i.test(ovpnConf);
+          $('ovpn-file-msg').textContent = `Loaded ${f.name} (${ovpnConf.split('\n').length} lines).` +
+            (asks ? ' It asks for a username and password — enter them above.' : '') + ' Press Bring up to apply.';
+        };
+        reader.readAsText(f);
+      }
+      /** What the vehicle did to the stored profile — removed lines, and why it may not work. */
+      function renderOvpnInfo(info) {
+        const el = $('ovpn-warn');
+        if (!info) { el.style.display = 'none'; return; }
+        const parts = [];
+        if (info.problems && info.problems.length) parts.push(`<b style="color:var(--bad)">Cannot work:</b> ${esc(info.problems.join(' '))}`);
+        if (info.externalFiles && info.externalFiles.length) parts.push(`<b style="color:var(--bad)">Points at files that are not on the vehicle:</b> <span class="mono">${esc(info.externalFiles.join(', '))}</span> — export the profile with the certificates inline.`);
+        if (info.removed && info.removed.length) parts.push(`Removed from the profile (they would run as root): <span class="mono">${esc(info.removed.join(', '))}</span>.`);
+        if (info.needsAuth) parts.push('This profile asks for a username and password.');
+        el.style.display = parts.length ? '' : 'none';
+        el.innerHTML = parts.join('<br>');
       }
       // ---- WireGuard: a file, or the values typed in ----
       // Both end up as the same stored .conf; the form is filled by parsing it back, so
@@ -1654,6 +1739,11 @@
           $('remoteKind').value = c.kind || 'none';
           if (c.zerotierNetworkId) $('ztNetwork').value = c.zerotierNetworkId;
           if (c.hasWireguardConf) $('wg-file-msg').textContent = 'A WireGuard .conf is stored. Upload a new file only to replace it.';
+          if (c.hasOpenvpnConf) $('ovpn-file-msg').textContent = 'An OpenVPN profile is stored. Upload a new file only to replace it.';
+          $('ovpnUser').value = c.openvpnUsername || '';
+          $('ovpnPass').placeholder = c.hasOpenvpnPassword ? 'stored — leave empty to keep' : 'usually empty';
+          $('ovpnFull').checked = !!c.openvpnFullTunnel;
+          renderOvpnInfo(r.openvpn);
           fillWgFields(r.wireguardFields, r.wireguardExtraKeys, r.wireguardMultiPeer);
           renderWgSource();
           renderRemote();
@@ -1677,8 +1767,15 @@
           if ($('wgSrcFields').checked) body.wireguardFields = wgFieldsBody();
           else if (wgConf) body.wireguardConf = wgConf;
         }
+        if (kind === 'openvpn') {
+          if (ovpnConf) body.openvpnConf = ovpnConf;
+          body.openvpnUsername = $('ovpnUser').value.trim() || null;
+          if ($('ovpnPass').value) body.openvpnPassword = $('ovpnPass').value; // empty = keep stored
+          body.openvpnFullTunnel = $('ovpnFull').checked;
+        }
         $('ts-msg').textContent = 'Starting…';
         const r = await post('/api/remote', body);
+        $('ovpnPass').value = '';
         if (r.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${r.loginUrl}" target="_blank" rel="noreferrer">${r.loginUrl}</a>`;
         else $('ts-msg').textContent = r.message || '';
         setTimeout(loadRemote, 800);
@@ -1690,6 +1787,44 @@
         setTimeout(loadRemote, 500);
         refresh();
       }
+      // ---- Problem report ----
+      /**
+       * Download the vehicle's diagnostics file and show what it found right here — the
+       * findings are often the answer, before anybody has to send anything anywhere.
+       */
+      async function downloadDiagnostics() {
+        $('diag-msg').textContent = 'Collecting — this takes a few seconds…';
+        const get = () => fetch('/api/diagnostics?download=1', { headers: apiSecret ? { 'x-yonderrc-secret': apiSecret } : {} });
+        let r = await get();
+        if (r.status === 401) {
+          const s = prompt('API secret required:');
+          if (s == null) { $('diag-msg').textContent = 'Not downloaded — the vehicle wants its API secret for this.'; return; }
+          apiSecret = s; sessionStorage.setItem('yrc_secret', s);
+          r = await get();
+        }
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          $('diag-msg').textContent = j.message || `Failed (HTTP ${r.status}).`;
+          return;
+        }
+        const blob = await r.blob();
+        const name = (/filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '') || [])[1] || 'yonderrc-diagnostics.json';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        let findings = [];
+        try { findings = JSON.parse(await blob.text()).findings || []; } catch {}
+        const icon = { bad: '✗', warn: '⚠', info: 'ℹ' };
+        const list = findings.map((f) =>
+          `<div class="row" style="justify-content:flex-start"><span class="v ${f.level === 'bad' ? 'bad' : f.level === 'warn' ? 'warn' : ''}" style="text-align:left;font-family:var(--sans)">${icon[f.level] || '•'} ${esc(f.text)}${f.fix ? `<br><span style="color:var(--muted)">→ ${fmtFix(f.fix)}</span>` : ''}</span></div>`).join('');
+        $('diag-msg').innerHTML = `Saved <b class="mono">${esc(name)}</b>.` +
+          (findings.length ? ` What the vehicle noticed:${list}` : ' The vehicle noticed nothing unusual on its side — the ground app\'s report covers the other half.');
+      }
+
       async function reboot() {
         if (!confirm('Reboot the vehicle now?')) return;
         const r = await post('/api/reboot');

@@ -17,6 +17,7 @@ import {
 import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { CurveEditor } from './CurveEditor';
 import type { InputManager } from '../lib/input/inputManager';
+import { movedAxis, newlyPressed } from '../lib/input/gamepadPick';
 import { Hint } from './Hint';
 
 const METHODS: InputMethod[] = ['keyboard', 'gamepad', 'touch'];
@@ -120,21 +121,23 @@ export function BindingEditor({
       return () => window.removeEventListener('keydown', onKey);
     }
     if (draft.source === 'gamepad') {
+      // Compared against where everything rested when Learn was pressed: a trigger in a
+      // controller's own layout rests at −1 and used to be "learned" instantly, and a
+      // button already held down is not the one being chosen.
+      const axesNow = () => Array.from({ length: 8 }, (_, a) => input.readGamepadAxis(a));
+      const restAxes = axesNow();
+      const restButtons = input.readGamepadButtons();
       const id = setInterval(() => {
-        const btns = input.readGamepadButtons();
-        const bi = btns.findIndex((p) => p);
+        const bi = newlyPressed(restButtons, input.readGamepadButtons());
         if (bi >= 0) {
           setDraft((d) => ({ ...d, element: `button:${bi}` }));
           setLearning(false);
           return;
         }
-        for (let a = 0; a < 6; a++) {
-          const v = input.readGamepadAxis(a);
-          if (v != null && Math.abs(v) > 0.6) {
-            setDraft((d) => ({ ...d, element: `axis:${a}` }));
-            setLearning(false);
-            return;
-          }
+        const a = movedAxis(restAxes, axesNow());
+        if (a >= 0) {
+          setDraft((d) => ({ ...d, element: `axis:${a}` }));
+          setLearning(false);
         }
       }, 80);
       return () => clearInterval(id);

@@ -3,12 +3,58 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
-## Unreleased
+## v1.70.0
 **English**
 - **License is now PolyForm Noncommercial 1.0.0, still with the no-military-use
   restriction.** Modified versions may now be made and shared, so forks and pull
   requests are possible; commercial and military use stay excluded. Notes that are not
   license terms moved to `NOTICE.md`.
+
+*From a user's first-week report: a vehicle flickering in and out of failsafe, the browser
+taking a headset for the joystick, and a first install that assumed more Linux than a
+newcomer has.*
+
+- **The failsafe watchdog is 500 ms** (was 300). 300 ms was tighter than the jitter of the
+  links this runs on — 13 gaps over 300 ms per minute on LTE at 0 % loss, and a Pi on WiFi
+  with power saving holds packets for a few hundred ms — so a working link stuttered into
+  failsafe. A stored 300 from before is treated as the old default (the setup form saved it
+  on every Save); a value typed in on purpose stays. Now 100–2000 ms, applied on Save
+  without a restart.
+- **WiFi power saving is switched off** by the installer — the classic cause of that
+  stutter on a Pi in WiFi client mode.
+- **A problem report is one file.** *Setup › Diagnostics* in the control app downloads both
+  halves: how regularly the app really sent (with the moments the page was hidden — a
+  browser throttles a background tab), the gaps between the frames the vehicle received,
+  every failsafe episode and over which transport, WiFi power saving and signal, supply,
+  load, the vehicle's log and journal. It then says in plain words what it found — e.g.
+  "a failsafe that no network caused". The setup page has the vehicle half
+  (*Overview › Problem report*), `provisioning/diag.sh` covers a vehicle whose page does
+  not open. Passwords, PINs, VPN keys, the API secret, a pending Tailscale login and the
+  GPS position are removed. How to send it: `docs/TROUBLESHOOTING.md`, plus an issue
+  template.
+- **The right game controller.** The ground read the first device the browser listed —
+  often a headset. Every device is now listed with an assessment (standard layout, own
+  layout, not a controller) and a live input marker; a headset or a PS4's Linux motion
+  sensors are never picked automatically; the choice is remembered per browser
+  (*Setup › Controls › Game controller*), with PS4/PS5 pairing notes. **Learn** no longer
+  picks up a trigger that rests at −1.
+- **The installer configures the hardware it finds**: a PCA9685 becomes the output driver
+  (and `i2c-bus` is built), a CSI camera replaces the test pattern. Only settings that were
+  never saved; sensors are named, not configured. It also refuses to run without sudo and
+  moves a copy made elsewhere to `/opt/yonderrc` itself.
+- **"sim" is no longer hidden**: after a hardware driver failed to start, the setup overview,
+  the vehicle form and the ground's status strip show the driver that is actually running,
+  with the reason.
+- **OpenVPN (experimental)** as a fourth remote-access method: upload the `.ovpn`, optional
+  username/password. Script hooks and file-writing directives in the profile are removed
+  and listed, the vehicle keeps its own uplink unless *all traffic through the VPN* is
+  ticked. Not yet verified on a vehicle.
+- **Quick start for newcomers** (`docs/QUICKSTART.md`): Imager, finding the Pi, SSH from
+  Windows/macOS/Linux, plan B without Imager (`ssh` + `userconf.txt`), copying with
+  WinSCP/FileZilla without root, I²C addresses *before* installing.
+- Fixed: the vehicle's own WireGuard interface (`yonderrc`) was counted towards the mobile
+  data budget — twice, with the uplink. Shell scripts now keep LF line endings on a
+  Windows checkout (`.gitattributes`).
 
 **Deutsch**
 - **Die Lizenz ist jetzt PolyForm Noncommercial 1.0.0, weiterhin mit dem Verbot
@@ -16,6 +62,56 @@ self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
   werden, Forks und Pull Requests sind damit möglich; kommerzielle und militärische
   Nutzung bleiben ausgeschlossen. Hinweise, die keine Lizenzbedingungen sind, stehen
   jetzt in `NOTICE.md`.
+
+*Aus dem Bericht eines Nutzers nach der ersten Woche: ein Fahrzeug, das in den Failsafe
+flackert, ein Browser, der ein Headset für den Joystick hält, und eine Erstinstallation, die
+mehr Linux voraussetzte, als ein Einsteiger mitbringt.*
+
+- **Der Failsafe-Watchdog steht auf 500 ms** (vorher 300). 300 ms waren enger als der
+  Jitter der Verbindungen, über die das läuft — 13 Lücken über 300 ms pro Minute auf LTE bei
+  0 % Verlust, und ein Pi im WLAN mit Energiesparen hält Pakete einige hundert ms zurück —,
+  also stotterte ein funktionierender Link in den Failsafe. Ein gespeicherter Wert von 300 aus
+  der Zeit davor gilt als alter Standard (das Setup-Formular hat ihn bei jedem Speichern
+  mitgeschickt); ein bewusst eingetragener Wert bleibt. Jetzt 100–2000 ms, wirkt beim
+  Speichern ohne Neustart.
+- **Das WLAN-Energiesparen wird abgeschaltet** vom Installer — die klassische Ursache dieses
+  Stotterns bei einem Pi als WLAN-Client.
+- **Ein Problembericht ist eine Datei.** *Setup › Diagnostics* in der Steuer-App lädt beide
+  Hälften herunter: wie regelmäßig die App wirklich gesendet hat (mit den Momenten, in denen
+  die Seite verdeckt war — ein Browser bremst einen Hintergrund-Tab), die Lücken zwischen
+  den Frames, die das Fahrzeug empfangen hat, jede Failsafe-Episode und über welchen
+  Transport, WLAN-Energiesparen und Signal, Versorgung, Last, Log und Journal des
+  Fahrzeugs. Danach sagt sie in Klartext, was auffällt — z. B. „ein Failsafe, den kein Netz
+  verursacht hat". Die Setup-Seite hat die Fahrzeug-Hälfte (*Overview › Problem report*),
+  `provisioning/diag.sh` deckt ein Fahrzeug ab, dessen Seite sich nicht öffnet. Passwörter,
+  PINs, VPN-Schlüssel, das API-Secret, ein offener Tailscale-Login und die GPS-Position
+  werden entfernt. Wie man sie schickt: `docs/TROUBLESHOOTING.de.md`, dazu eine
+  Issue-Vorlage.
+- **Der richtige Gamecontroller.** Die Bodenstation las das erste Gerät, das der Browser
+  meldete — oft ein Headset. Jetzt wird jedes Gerät mit einer Einschätzung gelistet
+  (Standard-Layout, eigenes Layout, kein Controller) und mit einer Live-Anzeige für
+  Eingaben; ein Headset oder die Linux-Bewegungssensoren eines PS4-Pads werden nie
+  automatisch gewählt; die Wahl wird pro Browser gemerkt (*Setup › Controls › Game
+  controller*), mit Hinweisen zum Koppeln von PS4/PS5. **Learn** nimmt keinen Trigger mehr,
+  der bei −1 ruht.
+- **Der Installer richtet die gefundene Hardware ein**: ein PCA9685 wird zum Ausgabetreiber
+  (und `i2c-bus` wird gebaut), eine CSI-Kamera ersetzt das Testbild. Nur Einstellungen, die
+  nie gespeichert wurden; Sensoren werden genannt, nicht eingerichtet. Außerdem verweigert er
+  den Start ohne sudo und verschiebt eine anderswo abgelegte Kopie selbst nach
+  `/opt/yonderrc`.
+- **„sim" versteckt sich nicht mehr**: nach einem Hardware-Treiber, der nicht starten
+  konnte, zeigen Setup-Übersicht, Fahrzeugformular und die Statusleiste der Bodenstation den
+  Treiber, der tatsächlich läuft, mit Grund.
+- **OpenVPN (experimentell)** als vierte Fernzugriffs-Methode: `.ovpn` hochladen, optional
+  Benutzer/Passwort. Skript-Hooks und dateischreibende Direktiven im Profil werden entfernt
+  und aufgelistet, das Fahrzeug behält seinen eigenen Uplink, solange *gesamter Verkehr
+  durchs VPN* nicht angehakt ist. Auf einem Fahrzeug noch nicht verifiziert.
+- **Schnellstart für Einsteiger** (`docs/QUICKSTART.de.md`): Imager, den Pi finden, SSH unter
+  Windows/macOS/Linux, Plan B ohne Imager (`ssh` + `userconf.txt`), Kopieren mit
+  WinSCP/FileZilla ohne root, I²C-Adressen *vor* der Installation.
+- Behoben: die eigene WireGuard-Schnittstelle des Fahrzeugs (`yonderrc`) wurde beim
+  mobilen Datenbudget mitgezählt — doppelt, zusammen mit dem Uplink. Shell-Skripte behalten
+  bei einem Windows-Checkout ihre LF-Zeilenenden (`.gitattributes`).
 
 ## v1.69.0
 **English**

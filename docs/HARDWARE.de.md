@@ -287,11 +287,17 @@ Temperatursensor können also gleichzeitig laufen:
 
 ### 3.1 Raspberry Pi OS flashen
 
+> **Zum ersten Mal mit Linux?** [`QUICKSTART.de.md`](QUICKSTART.de.md) geht dieses Kapitel
+> Klick für Klick durch — Imager, den Pi finden, SSH unter Windows/macOS, Dateien kopieren.
+
 1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit)**. Der Installer ist gegen
-   **Bookworm** getestet; neuere Releases sollten gehen, sind aber nicht verifiziert.
+   **Bookworm** getestet; das aktuelle Lite-Image im Imager ist **Trixie**, das sollte
+   gehen, ist aber nicht verifiziert — das getestete Bookworm-Image steht dort als *Legacy*.
 2. In den Imager-Einstellungen (Zahnrad): **SSH aktivieren**, Benutzer setzen,
-   **WLAN-Zugangsdaten** eintragen, Hostname z. B. `yonderrc`.
-3. Flashen, einsetzen, einschalten.
+   **WLAN-Zugangsdaten** und das **WLAN-Land** eintragen, Hostname z. B. `yonderrc`.
+3. **Jetzt die Hardware anschließen** (Kapitel 2), den PCA9685 auf **0x41**, wenn ein
+   INA2xx am selben Bus hängt — der Installer schaut einmal auf den Bus, siehe 3.2.
+4. Flashen, einsetzen, einschalten.
 
 ### 3.2 Einloggen und Projekt auf den Pi kopieren
 
@@ -330,9 +336,28 @@ sudo bash /opt/yonderrc/provisioning/install.sh
 ```
 
 Das installiert Node 22, ffmpeg, NetworkManager, ModemManager, `usb-modeswitch`,
-`i2c-tools`, `gpsd`, `wireguard-tools`, Tailscale, ZeroTier und go2rtc, richtet die drei
-systemd-Dienste (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`) ein und aktiviert
-**I2C** und **UART**.
+`i2c-tools`, `gpsd`, `wireguard-tools`, `openvpn`, Tailscale, ZeroTier und go2rtc, richtet
+die drei systemd-Dienste (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`) ein, aktiviert
+**I2C** und **UART** und schaltet das **WLAN-Energiesparen ab** (es hält eingehende Pakete
+zurück und löst den Failsafe-Watchdog auf einem funktionierenden Link aus). Eine Kopie, die
+noch nicht in `/opt/yonderrc` liegt, wird zuerst dorthin verschoben.
+
+**Hardware-Erkennung.** Gleich nach dem Einschalten von I²C prüft der Installer einmal und
+trägt nur ein, was **noch nie gespeichert** wurde:
+
+- ein **PCA9685** an Bus 1 → Ausgabetreiber `pca9685` mit dieser Adresse, und das nötige
+  Modul `i2c-bus` wird gebaut;
+- eine **CSI-Kamera**, die `rpicam-hello --list-cameras` meldet → Kamera `cam` (`rpicam`,
+  1280×720 @ 30) statt des Testbilds;
+- Stromsensoren und andere Chips werden nur **genannt** — ihr Messwert hängt an Werten, die
+  auf der Platine stehen (dem Shunt), deshalb werden sie auf der Seite eingerichtet
+  (3.5 Schritt 4).
+
+Was er getan hat, steht unter `-- hardware detection`. Wird nichts gefunden, bleibt der
+Simulator; eine gespeicherte Wahl wird nie überschrieben, den Installer erneut laufen zu
+lassen ist also unbedenklich. Alles **vor** der Installation anschließen und adressieren —
+zwei Chips auf `0x40` sind nicht zu erkennen, und eine Kamera, die ein Overlay braucht
+(Arducam), wird erst nach 3.5 Schritt 2 und einem zweiten Lauf gefunden.
 
 ### 3.3 Hardware-Treiber-Abhängigkeiten (nur was du nutzt)
 
@@ -424,7 +449,9 @@ Lange Erklärungen stecken hinter einer einzeiligen Zusammenfassung.
    Kamera-Devices. Chips mit ID-Register werden **ausgelesen**, nicht geraten — eine
    ✓-Zeile nennt das echte Bauteil, und der PCA9685 wird über seine All-Call-Adresse
    gefunden. **Use these addresses** trägt sie in die Formulare ein; gespeichert wird erst
-   mit Save.
+   mit Save. (Der Installer hat dieselbe Prüfung einmal ausgeführt und Treiber und Kamera
+   schon gesetzt, wenn er sie gefunden hat — *Overview › Output driver* zeigt, was
+   tatsächlich läuft.)
 1. **Vehicle:** Name, **Output driver = `pca9685`** (Drohne: `sbus`; ohne Zusatzboard:
    `gpio-pwm`, Pins in 2.8), Gaskanal prüfen. Bei `pca9685` erscheint ein
    **I²C-Adressfeld** — **0x41** beim Referenzaufbau, 0x40 bei einem Board ohne Sensor
@@ -548,8 +575,8 @@ Bewusst nicht gezählt:
 
 - **Der eigene WLAN-Hotspot des Fahrzeugs** — eine Bodenstation daran zieht den
   Videostream kostenlos (~900 MB/h). Dasselbe Funkmodul im *Client*-Modus wird gezählt.
-- **VPN-Schnittstellen** (Tailscale, WireGuard, ZeroTier) — ihr Verkehr geht erneut über
-  die echte Verbindung raus, beides zu zählen zählt jedes Byte doppelt.
+- **VPN-Schnittstellen** (Tailscale, WireGuard, ZeroTier, OpenVPN) — ihr Verkehr geht
+  erneut über die echte Verbindung raus, beides zu zählen zählt jedes Byte doppelt.
 
 Einstellungen: **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (Standard 80) und
 optional der **Tag im Monat**, an dem der Tarif zurücksetzt. Sonst *Reset counter*. Mit
@@ -617,9 +644,22 @@ der Sitzung **löste Failsafe aus und nahm es zurück** — der Watchdog bei der
   (WireGuard) › Verbindung hinzufügen*, Config herunterladen, hochladen, *Bring up*.
   **PersistentKeepalive auf 25** lassen — hinter Carrier-NAT hält ein Tunnel ohne das nur
   bis zur ersten Leerlaufminute. Kommt beim nächsten Booten automatisch hoch.
+- **OpenVPN (eigener Server) — experimentell.** Das **Client-Profil** (`.ovpn`) hochladen,
+  das dein Server exportiert, **mit den Zertifikaten inline** (eine Datei mit `<ca>`-,
+  `<cert>`-, `<key>`-Blöcken); Benutzername und Passwort dazu, wenn das Profil sie
+  verlangt. Das Fahrzeug startet es als systemd-Unit `openvpn-client@yonderrc`,
+  Schnittstelle `tunyrc`. Bevor es geschrieben wird, wird das Profil **bereinigt**: Zeilen,
+  die als root Programme starten oder Dateien schreiben (`up`, `down`, `script-security`,
+  `plugin`, `log`, `management`, …), und reine Windows-Optionen werden auskommentiert und im
+  Panel aufgelistet, und ein gepushtes `redirect-gateway` wird ignoriert, solange
+  *gesamter Verkehr durchs VPN* nicht angehakt ist — das Fahrzeug behält seinen eigenen
+  Uplink, ein abreißendes VPN kann also nicht alles andere mitnehmen. Nach der
+  OpenVPN-Dokumentation gebaut, **auf einem Fahrzeug noch nicht verifiziert** — auf der
+  Werkbank testen und Rückmeldung geben.
 
-> ZeroTier/WireGuard brauchen ihre Werkzeuge auf dem Pi (`zerotier-cli`,
-> `wireguard-tools`); der Installer bringt sie mit. Die Methode vor dem Feldeinsatz prüfen.
+> ZeroTier/WireGuard/OpenVPN brauchen ihre Werkzeuge auf dem Pi (`zerotier-cli`,
+> `wireguard-tools`, `openvpn`); der Installer bringt sie mit. Die Methode vor dem
+> Feldeinsatz prüfen.
 
 ---
 
@@ -696,9 +736,12 @@ zurück, Video eingeschlossen — autark im Feld.
 ## 6. Was YonderRC an Sicherheit dazutut
 
 - **Failsafe-Watchdog:** bleiben gültige Steuerpakete länger als eingestellt aus (Standard
-  300 ms), geht jeder Kanal auf seinen Failsafe-Wert. Die Standards sind
+  **500 ms** seit v1.70.0, 100–2000 ms, Setup › Sensors & outputs; wirkt beim Speichern),
+  geht jeder Kanal auf seinen Failsafe-Wert. Die Standards sind
   **fahrzeugtyp-abhängig und getrennt vom Entschärfen**: Drohne hält Gas **Mitte**,
-  Auto/Boot **Stopp**, Flugzeug **Motor aus**. Pro Kanal einstellbar.
+  Auto/Boot **Stopp**, Flugzeug **Motor aus**. Pro Kanal einstellbar. Der alte Standard von
+  300 ms löste bei gewöhnlichem WLAN-/LTE-Jitter aus; ein gespeicherter Wert von 300 aus der
+  Zeit vor v1.70.0 gilt als dieser alte Standard und läuft mit 500.
 - **Entschärfen ≠ Failsafe:** bewusstes Entschärfen schaltet den Motor wirklich ab,
   unabhängig vom Failsafe-Wert.
 - **Armen:** der Gaskanal bleibt im Leerlauf, solange entschärft.
@@ -717,7 +760,9 @@ zurück, Video eingeschlossen — autark im Feld.
   und ohne Rückfrage, ein versehentlicher Druck schaltet die Motoren ab — bei einem
   Fluggerät ist das ein Absturz. Auf etwas legen, das du nicht versehentlich triffst.
 - **Treiber-Fallback:** ein Hardware-Treiber, der nicht startet, lässt den Dienst im
-  Sim-Modus weiterlaufen, die Setup-UI bleibt erreichbar.
+  Sim-Modus weiterlaufen, die Setup-UI bleibt erreichbar — und das wird gesagt: die
+  Setup-Übersicht, das Fahrzeugformular und die Statusleiste der Boden-App zeigen den
+  Treiber, der tatsächlich *läuft*, mit Grund.
 - **systemd `Restart=always`.**
 
 ### 6.1 Vertrauensmodell (wer das Fahrzeug steuern kann)
@@ -770,3 +815,7 @@ headless Fahrzeug darf dich nie aussperren — macht aber das Netz zur Sicherhei
 | Kein GPS-Fix | Richtige Quelle und Device in *Setup › GPS*? Seriell braucht `serialport`, USB-Dongles die **gpsd**-Quelle. Der erste Fix kann Minuten dauern. |
 | Kein Signalwert im OSD | LTE muss verbunden sein, oder die WLAN-Schnittstelle muss `wlan0` heißen. |
 | Keine Datenwarnung trotz Budget | Ohne **Plan allowance** gibt es keine Schwelle — das Panel sagt das (4.1.2). |
+| Flackert in den Failsafe und wieder heraus | Meist WLAN-Energiesparen, eine verdeckte Steuerseite oder Jitter — die Diagnosedatei sagt, was ([TROUBLESHOOTING.de.md §2](TROUBLESHOOTING.de.md#2-das-fahrzeug-flackert-in-den-failsafe-und-wieder-heraus)). |
+| Controller tut nichts / das falsche Gerät wird benutzt | Eine Taste daran drücken; *Setup › Controls › Game controller* listet jedes Gerät und lässt wählen ([TROUBLESHOOTING.de.md §3](TROUBLESHOOTING.de.md#3-der-gamecontroller-tut-nichts)). |
+| Übersicht: „Output driver … failed to start" | Das native Modul fehlt oder die Adresse stimmt nicht — die Zeile sagt, was (TROUBLESHOOTING.de.md §4). |
+| Alles andere | *Setup › Diagnostics* → eine Datei → GitHub-Issue ([TROUBLESHOOTING.de.md §1](TROUBLESHOOTING.de.md#1-ein-problem-melden-die-diagnosedatei)). |

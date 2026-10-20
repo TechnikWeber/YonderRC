@@ -1,7 +1,7 @@
 import { exec, execFile, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
-import { hostname, tmpdir } from 'node:os';
+import { arch as osArch, hostname, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -96,6 +96,30 @@ import {
 import { HW_DEPS, errorExcerpt, explainNpmFailure, hwDepInfo, isHwDep, lastLines, npmInstallArgs, type HwDepName } from './hwDeps.js';
 import { parseCameraList, captureNodes, explainNoCamera } from './cameras.js';
 import { parseThrottled, powerState, type PowerState } from './power.js';
+import { VEHICLE_WG_IFACE } from './traffic.js';
+import {
+  explainOvpnLog,
+  ovpnAuthFile,
+  ovpnRefusal,
+  sanitiseOvpn,
+  OVPN_AUTH_PATH,
+  OVPN_CONF_PATH,
+  OVPN_ENABLE_ARGS,
+  OVPN_RESTART_ARGS,
+  OVPN_STOP_ARGS,
+  OVPN_TAP_IFACE,
+  OVPN_TUN_IFACE,
+  OVPN_UNIT,
+} from './openvpn.js';
+import {
+  interestingKernelLines,
+  parseMeminfo,
+  parseOsRelease,
+  parsePowerSave,
+  redactSecrets,
+  summariseStreams,
+  type SystemDiagnostics,
+} from './diagnostics.js';
 import {
   applyCameraModule,
   explainBootConfig,
@@ -147,6 +171,21 @@ async function shArgs(file: string, args: string[]): Promise<{ ok: boolean; out:
     return { ok: true, out: stdout.trim() };
   } catch (err) {
     return { ok: false, out: (err as { stderr?: string }).stderr ?? String(err) };
+  }
+}
+
+/**
+ * Like shArgs, but keeps stdout when the exit code is non-zero. `systemctl is-active`
+ * prints one state per unit and exits 3 as soon as any of them is inactive — which is
+ * precisely the answer, not a failure.
+ */
+async function shArgsAny(file: string, args: string[]): Promise<{ ok: boolean; out: string; err: string }> {
+  try {
+    const { stdout, stderr } = await runFile(file, args, { timeout: 15000, env: C_LOCALE, maxBuffer: 4 * 1024 * 1024 });
+    return { ok: true, out: stdout.trim(), err: stderr.trim() };
+  } catch (e) {
+    const x = e as { stdout?: string; stderr?: string; message?: string };
+    return { ok: false, out: (x.stdout ?? '').trim(), err: (x.stderr ?? x.message ?? '').trim() };
   }
 }
 
@@ -712,7 +751,8 @@ export class RealSystem implements SystemManager {
   }
 
   // --- generic remote access (dispatch by kind) ---
-  private readonly wgIface = 'yonderrc';
+  // The data counter excludes this interface by the same constant — see traffic.ts.
+  private readonly wgIface = VEHICLE_WG_IFACE;
   private readonly wgConfPath = '/etc/wireguard/yonderrc.conf';
 
   async remoteUp(cfg: RemoteAccessConfig): Promise<ActionResult> {
@@ -740,7 +780,60 @@ export class RealSystem implements SystemManager {
       const up = await shArgs('sudo', ['wg-quick', 'up', this.wgIface]);
       return up.ok ? { ok: true, message: 'WireGuard up.' } : { ok: false, message: `wg-quick up failed: ${up.out}` };
     }
+    if (cfg.kind === 'openvpn') return this.openvpnUp(cfg);
     return { ok: true, message: 'Remote access off.' };
+  }
+
+  /**
+   * OpenVPN (experimental, see openvpn.ts): write the sanitised profile and the
+   * credentials, then hand it to systemd. `--no-block` on purpose: the unit is
+   * Type=notify and reports ready only once the tunnel is up, so waiting would hang this
+   * request for as long as the server takes to answer — forever when it never does. The
+   * status row follows the tunnel instead.
+   */
+  private async openvpnUp(cfg: RemoteAccessConfig): Promise<ActionResult> {
+    if (!cfg.openvpnConf) return { ok: false, message: 'Upload an OpenVPN profile (.ovpn) first.' };
+    if (!(await sh('command -v openvpn')).out.trim()) {
+      return {
+        ok: false,
+        message: 'OpenVPN is not installed on the vehicle. With internet, over SSH: `sudo apt install -y openvpn` — or re-run the installer (v1.70.0+ installs it).',
+      };
+    }
+    const haveCreds = !!(cfg.openvpnUsername && cfg.openvpnPassword);
+    const s = sanitiseOvpn(cfg.openvpnConf, { authFile: haveCreds ? OVPN_AUTH_PATH : null, fullTunnel: !!cfg.openvpnFullTunnel });
+    const refusal = ovpnRefusal(s, haveCreds);
+    if (refusal) return { ok: false, message: refusal };
+
+    // Written as a temp file the service user can create, then placed with root rights —
+    // and the temp copy removed at once: it holds the private key.
+    const place = async (content: string, dest: string) => {
+      const tmp = join(tmpdir(), `yonderrc-ovpn-${process.pid}-${Date.now()}`);
+      try {
+        writeFileSync(tmp, content, { mode: 0o600 });
+        return await shArgs('sudo', ['install', '-D', '-m', '600', tmp, dest]);
+      } finally {
+        rmSync(tmp, { force: true });
+      }
+    };
+    try {
+      const c = await place(s.conf, OVPN_CONF_PATH);
+      if (!c.ok) return { ok: false, message: `Could not install the profile: ${c.out}` };
+      if (s.needsAuth) {
+        const a = await place(ovpnAuthFile(cfg.openvpnUsername ?? '', cfg.openvpnPassword ?? ''), OVPN_AUTH_PATH);
+        if (!a.ok) return { ok: false, message: `Could not install the credentials: ${a.out}` };
+      }
+    } catch (e) {
+      return { ok: false, message: `write failed: ${(e as Error).message}` };
+    }
+    await shArgs('sudo', OVPN_ENABLE_ARGS);
+    const r = await shArgs('sudo', OVPN_RESTART_ARGS);
+    if (!r.ok) return { ok: false, message: `systemd could not start ${OVPN_UNIT}: ${r.out}` };
+    return {
+      ok: true,
+      message:
+        'OpenVPN is starting (experimental) — the status shows the tunnel address once it is up.' +
+        (s.removed.length ? ` Removed from the profile: ${s.removed.join(', ')}.` : ''),
+    };
   }
 
   async remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult> {
@@ -752,6 +845,11 @@ export class RealSystem implements SystemManager {
     if (cfg.kind === 'wireguard') {
       const r = await shArgs('sudo', ['wg-quick', 'down', this.wgIface]);
       return { ok: r.ok, message: r.ok ? 'WireGuard down.' : r.out };
+    }
+    if (cfg.kind === 'openvpn') {
+      // disable as well as stop: the unit is enabled so it survives a reboot.
+      const r = await shArgs('sudo', OVPN_STOP_ARGS);
+      return { ok: r.ok, message: r.ok ? 'OpenVPN stopped.' : r.out };
     }
     return { ok: true, message: 'Remote access off.' };
   }
@@ -784,6 +882,22 @@ export class RealSystem implements SystemManager {
       const addr = await shArgs('ip', ['-4', '-o', 'addr', 'show', 'dev', this.wgIface]);
       const ip = addr.ok ? addr.out.match(/inet (\d+\.\d+\.\d+\.\d+)/)?.[1] ?? null : null;
       return { kind: 'wireguard', running, address: ip, detail: running ? 'handshake ok' : 'no recent handshake' };
+    }
+    if (cfg.kind === 'openvpn') {
+      // Up = the unit runs AND the tunnel has an address; a running unit without one is
+      // still negotiating — or failing, which its log says better than we could.
+      const active = (await shArgsAny('systemctl', ['is-active', OVPN_UNIT])).out.trim() || 'unknown';
+      const iface = sanitiseOvpn(cfg.openvpnConf ?? '').device === 'tap' ? OVPN_TAP_IFACE : OVPN_TUN_IFACE;
+      const addr = await shArgs('ip', ['-o', 'addr', 'show', 'dev', iface]);
+      const ip = addr.ok ? addr.out.match(/inet (\d+\.\d+\.\d+\.\d+)/)?.[1] ?? addr.out.match(/inet6 ([0-9a-f:]+)/i)?.[1] ?? null : null;
+      const running = active === 'active' && !!ip;
+      let detail = running ? 'tunnel up' : active === 'active' ? 'connecting' : active;
+      if (!running) {
+        const log = await shArgsAny('journalctl', ['-u', OVPN_UNIT, '-n', '40', '--no-pager', '-o', 'cat']);
+        const why = explainOvpnLog(log.out.split('\n'));
+        if (why) detail += ` — ${why}`;
+      }
+      return { kind: 'openvpn', running, address: ip, detail: `${detail} (experimental)` };
     }
     return { kind: 'none', running: false, address: null, detail: 'off' };
   }
@@ -1248,6 +1362,120 @@ export class RealSystem implements SystemManager {
         ? `${mod.label} selected. Reboot to apply — the firmware only reads config.txt at boot.`
         : `${mod.label} selected — that is what the Pi already booted with, so no reboot is needed.`,
       rebootRequired: after.rebootRequired,
+    };
+  }
+
+  /**
+   * Everything the operating system can say about a link that flickers or a vehicle that
+   * misbehaves, in one pass. Every command may fail on its own — a Pi without WiFi, a
+   * journal that is not persistent — and a failure becomes a note in the report rather
+   * than an error: half a report is far more useful than none.
+   */
+  async diagnostics(opts: { probeI2c: boolean }): Promise<SystemDiagnostics> {
+    const notes: string[] = [];
+    const keep = (r: { ok: boolean; out: string }, what: string): string | null => {
+      if (r.ok) return r.out;
+      notes.push(`${what}: ${(r.out || 'failed').split('\n').filter(Boolean).slice(-1)[0] ?? 'failed'}`);
+      return null;
+    };
+
+    const [osr, uname, model, ps, link, addr, route, dev, mem] = await Promise.all([
+      sh('cat /etc/os-release'),
+      sh('uname -srm'),
+      sh("tr -d '\\0' < /proc/device-tree/model"),
+      sh(`iw dev ${WIFI_IFACE} get power_save`),
+      sh(`iw dev ${WIFI_IFACE} link`),
+      sh('ip -br addr'),
+      sh('ip route'),
+      sh('nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device'),
+      sh('cat /proc/meminfo'),
+    ]);
+
+    // One line per unit, in the order asked — exit code 3 just means "one is inactive".
+    const units = ['yonderrc-vehicle', 'go2rtc', 'yonderrc-onboard', 'NetworkManager', 'ModemManager', 'tailscaled', 'openvpn-client@yonderrc'];
+    const act = await shArgsAny('systemctl', ['is-active', ...units]);
+    const states = act.out.split('\n');
+    const services: Record<string, string> = {};
+    units.forEach((u, n) => { services[u] = states[n]?.trim() || 'unknown'; });
+
+    const journal: SystemDiagnostics['journal'] = [];
+    const tail = async (unit: string, lines: number, boot: string, label = unit) => {
+      // --boot=… in one word: -b takes an optional argument, and a separate "-1" only
+      // works because journalctl special-cases it.
+      const r = await shArgsAny('journalctl', ['-u', unit, `--boot=${boot}`, '--no-pager', '-n', String(lines), '-o', 'short-iso']);
+      if (!r.ok && !r.out) {
+        notes.push(`journal ${label}: ${r.err.split('\n').slice(-1)[0] || 'not available'}`);
+        return;
+      }
+      journal.push({ unit: label, lines: r.out.split('\n').filter(Boolean).map(redactSecrets) });
+    };
+    await tail('yonderrc-vehicle', 300, '0');
+    // The previous boot's last words are what explain a vehicle that reset itself — a
+    // brownout looks like a crash from the ground. Needs a persistent journal.
+    await tail('yonderrc-vehicle', 60, '-1', 'yonderrc-vehicle (previous boot)');
+    await tail('go2rtc', 80, '0');
+    await tail('yonderrc-onboard', 40, '0');
+    if (services['openvpn-client@yonderrc'] !== 'inactive' && services['openvpn-client@yonderrc'] !== 'unknown') {
+      await tail('openvpn-client@yonderrc', 80, '0');
+    }
+
+    let kernel: string[] = [];
+    const k = await shArgsAny('journalctl', ['-k', '--boot=0', '--no-pager', '-o', 'short-iso', '-n', '3000']);
+    if (k.out) kernel = interestingKernelLines(k.out.split('\n'));
+    else {
+      const d = await sh('dmesg');
+      if (d.ok) kernel = interestingKernelLines(d.out.split('\n'));
+      else notes.push('kernel log: not readable');
+    }
+
+    let i2c: string | null = null;
+    if (opts.probeI2c) i2c = keep(await sh('i2cdetect -y 1'), 'i2cdetect');
+    else notes.push('I²C scan skipped: the vehicle is armed.');
+
+    const g = gitEnv(REPO_ROOT);
+    const head = await shSlow('git', gitArgs(REPO_ROOT, ['rev-parse', '--short', 'HEAD']), { cwd: REPO_ROOT, timeoutMs: 15000, env: g.env });
+    const tree = await shSlow('git', gitArgs(REPO_ROOT, ['status', '--porcelain']), { cwd: REPO_ROOT, timeoutMs: 15000, env: g.env });
+
+    let video: SystemDiagnostics['video'] = null;
+    try {
+      const res = await fetch('http://127.0.0.1:1984/api/streams', { signal: AbortSignal.timeout(2500) });
+      video = summariseStreams(await res.json());
+    } catch (err) {
+      notes.push(`go2rtc API (127.0.0.1:1984): ${(err as Error).message}`);
+    }
+
+    const meminfo = parseMeminfo(mem.ok ? mem.out : '');
+    return {
+      kind: this.kind,
+      os: {
+        prettyName: osr.ok ? parseOsRelease(osr.out) : null,
+        kernel: keep(uname, 'uname'),
+        model: model.ok ? model.out.trim() || null : null,
+        arch: osArch(),
+      },
+      node: process.version,
+      git: {
+        commit: head.ok ? head.out.split('\n')[0].trim() || null : null,
+        dirty: tree.ok ? parseWorkingTree(tree.out).dirty.slice(0, 30) : null,
+      },
+      memory: meminfo,
+      wifi: {
+        iface: WIFI_IFACE,
+        powerSave: ps.ok ? parsePowerSave(ps.out) : null,
+        link: link.ok ? link.out : null,
+        signalDbm: link.ok ? parseWifiSignalDbm(link.out) : null,
+      },
+      network: {
+        addresses: keep(addr, 'ip addr'),
+        routes: keep(route, 'ip route'),
+        devices: keep(dev, 'nmcli device'),
+      },
+      services,
+      journal,
+      kernel,
+      i2c,
+      video,
+      notes,
     };
   }
 

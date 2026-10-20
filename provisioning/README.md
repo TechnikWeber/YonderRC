@@ -4,12 +4,29 @@ Turns a Raspberry Pi into a headless YonderRC vehicle: control service, go2rtc
 video, LTE, and Tailscale for remote access — configured from a phone/laptop via
 a local web page, no screen or keyboard needed.
 
+Everything in this folder runs **on the Pi** — nothing here is meant for your PC. First
+install, step by step for people new to Linux: [`docs/QUICKSTART.md`](../docs/QUICKSTART.md).
+
+| File | What it does |
+|---|---|
+| `bootstrap.sh` | the one-liner: clone to `/opt/yonderrc`, then run `install.sh` |
+| `install.sh` | packages, Node, go2rtc, services, I²C/UART, WiFi power saving off, hardware detection |
+| `diag.sh` | diagnostics file from a terminal, for when the setup page is not reachable |
+| `onboard.sh` | boot-time hotspot fallback (run by `yonderrc-onboard.service`) |
+| `systemd/` | the three units |
+| `yonderrc.sudoers` | only for running the service as a non-root user (§7) |
+
 ## 1. Flash
 
-Flash **Raspberry Pi OS Lite (64-bit, Bookworm)** with Raspberry Pi Imager. In the
-Imager settings, enable SSH and (optionally) preconfigure your home WiFi so the
-first boot is reachable. Pi 4 or Pi Zero 2 W are the sweet spot (they have the
-hardware H.264 encoder; the Pi 5 does not).
+Flash **Raspberry Pi OS Lite (64-bit)** with Raspberry Pi Imager — the installer is
+tested on **Bookworm** (listed as *Legacy* once Trixie became the default; Trixie should
+work but is unverified). In the Imager settings, enable SSH and preconfigure your home
+WiFi (with its country) so the first boot is reachable. Pi 4 or Pi Zero 2 W are the sweet
+spot (they have the hardware H.264 encoder; the Pi 5 does not).
+
+**Wire the hardware before installing**, and give every I²C chip its own address — a
+PCA9685 next to an INA2xx goes to `0x41` (solder bridge A0). The installer looks at the bus
+once (§2).
 
 ## 2. Copy the repo and install
 
@@ -19,19 +36,24 @@ hardware H.264 encoder; the Pi 5 does not).
 curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
 ```
 
-Or by hand:
+Or by hand — copy the repository anywhere on the Pi (scp, WinSCP/FileZilla over SFTP as
+your normal user, a USB stick) and run its installer; it moves the copy to
+`/opt/yonderrc` itself when that does not exist yet:
 
 ```bash
-sudo mkdir -p /opt/yonderrc
-# copy this repository into /opt/yonderrc (scp, git clone, or a USB stick), then:
-sudo bash /opt/yonderrc/provisioning/install.sh
+sudo bash ~/YonderRC/provisioning/install.sh
 ```
 
-After it's up, open `http://<pi-ip>:8080/setup` and press **Detect hardware** — it
-scans the I²C bus, LTE modem and cameras and suggests the driver/sensors to pick.
+**Hardware detection:** once I²C is on, the installer probes the bus and the camera port
+and fills in what was **never saved** — a PCA9685 becomes the output driver (and
+`i2c-bus` is built), a CSI camera replaces the test pattern. Sensors are named, not
+configured. A saved choice is never overwritten, so re-running the installer is safe.
+After it's up, open `http://<pi-ip>:8080/setup`: *Overview › Output driver* shows what is
+actually running, and **Detect hardware** probes again on demand.
 
-`install.sh` installs Node, ffmpeg, NetworkManager, ModemManager, Tailscale and
-go2rtc, does `npm install`, and enables three services:
+`install.sh` installs Node, ffmpeg, NetworkManager, ModemManager, Tailscale, ZeroTier,
+WireGuard and OpenVPN tools and go2rtc, does `npm install`, switches WiFi power saving off
+(it delays incoming packets and trips the failsafe watchdog), and enables three services:
 
 - `yonderrc-vehicle` — the control service + setup UI on port 8080
 - `go2rtc` — the video server on port 1984
@@ -76,8 +98,10 @@ setup page), e.g. `ws://100.x.y.z:8080`. Video works the same way via
 
 ## 6. Hardware drivers
 
-The default driver is `sim`. Switch it on the setup page (or via `YRC_DRIVER`).
-The native libraries are optional — install only what you use:
+The default driver is `sim` — unless the installer found a PCA9685 (§2), then it is
+`pca9685` and `i2c-bus` is already built. Switch it on the setup page (or via
+`YRC_DRIVER`; a saved setting wins over the variable). The native libraries are optional —
+install only what you use, from the setup page (*Native driver modules*) or here:
 
 ```bash
 cd /opt/yonderrc
@@ -91,8 +115,9 @@ npm install serialport   -w @yonderrc/vehicle   # SBUS
 The shipped `yonderrc-vehicle.service` runs as **`User=root`** (pigpio needs root
 for DMA PWM). If you instead run it as a **non-root user**, the vehicle's privileged
 helpers — SIM-PIN unlock (`mmcli`), WireGuard (`wg`/`wg-quick`), ZeroTier
-(`zerotier-cli`), placing the WireGuard conf (`install`) and the reboot button —
-need passwordless sudo. A ready-made, minimal policy ships in
+(`zerotier-cli`), OpenVPN (`systemctl … openvpn-client@yonderrc`), placing the WireGuard
+conf and the OpenVPN profile (`install`) and the reboot button — need passwordless sudo.
+The diagnostics export also reads the journal, which needs the `systemd-journal` group. A ready-made, minimal policy ships in
 [`provisioning/yonderrc.sudoers`](yonderrc.sudoers):
 
 ```bash

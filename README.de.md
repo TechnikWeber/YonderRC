@@ -23,6 +23,9 @@ Zahl (oben Mitte). Hell oder dunkel wird am Fahrzeug gewählt (Setup › Design)
 **Steuerung**
 - 16 Kanäle über WebSocket oder WebRTC-Datenkanal; Tastatur, Bildschirmtasten, Gamepad
   oder vollwertiger Touch-Joystick (Multitouch, Deadzone, Federrückstellung).
+- **Der richtige Controller**: jedes Gerät, das der Browser meldet, wird mit seiner
+  Einschätzung angezeigt; ein Headset oder die Bewegungssensoren eines Pads werden nie
+  automatisch gewählt, und die Wahl wird gemerkt (Setup › Controls › Game controller).
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
   wählbarer Eingabemethode und Rastung pro Achse (Mitte/Min/frei).
 - Pro Kanal: Trim, Expo, Reverse, Endpunkte (µs), Failsafe-Wert.
@@ -55,9 +58,9 @@ Touch-Stick.*
 </details>
 
 **Sicherheit**
-- **Failsafe-Watchdog**: bleiben Steuerpakete aus, geht jeder Kanal auf seinen
-  Failsafe-Wert. **Fahrzeugtyp-abhängig und getrennt vom Entschärfen** — Drohne *hält*,
-  Auto/Boot *stoppt*, Flugzeug geht auf *Motor aus*.
+- **Failsafe-Watchdog**: bleiben Steuerpakete 500 ms aus (einstellbar, 100–2000), geht
+  jeder Kanal auf seinen Failsafe-Wert. **Fahrzeugtyp-abhängig und getrennt vom
+  Entschärfen** — Drohne *hält*, Auto/Boot *stoppt*, Flugzeug geht auf *Motor aus*.
 - **Armen**; jede Verbindung startet entschärft. Auto-Disarm beim Reconnect folgt dem
   Fahrzeugtyp (Auto/Boot an, Flugzeug/Drohne aus), in Setup › Controls überschreibbar.
 - **Halten zum Armen** (Standard 1 s) für Armen *und* Entschärfen, am Button und an
@@ -140,6 +143,11 @@ Touch-Stick.*
 - **Verbindungslücken**: ein Watchdog-Auslöser dauert einen Steuertakt und ist vorbei,
   bevor man ihn lesen kann. Die Statusleiste zählt die Episoden pro Verbindung und die
   längste Wartezeit auf einen Frame.
+- **Problembericht in einer Datei**: *Setup › Diagnostics* schreibt beide Hälften — wie
+  regelmäßig die App wirklich gesendet hat, die Lücken, die das Fahrzeug empfangen hat,
+  jede Failsafe-Episode, WLAN-Energiesparen, Versorgung, Last, Logs — und sagt in
+  Klartext, was auffällt. Geheimnisse und die GPS-Position werden entfernt. Wie man sie
+  schickt: [`docs/TROUBLESHOOTING.de.md`](docs/TROUBLESHOOTING.de.md).
 - Grafische **Setup-Seite** am Fahrzeug (`/setup`): Treiber, Kameras, Telemetrie,
   Watchdog, WLAN, LTE, Fernzugriff, Sicherheit — vom Handy, ohne Bildschirm.
   **WLAN-Einrichtung**: scannen, wählen, verbinden; der Hotspot kommt zurück, wenn das
@@ -152,7 +160,9 @@ Touch-Stick.*
   jeder eine URL (`…/setup#gps`). Overview beantwortet „ist alles da?" auf einem Schirm.*
 - **Fernzugriff, eine Methode**: **Tailscale**, **ZeroTier** oder **WireGuard** — die
   `.conf` vom eigenen Server oder der FritzBox hochladen oder die Werte eintippen. Kommt
-  beim Booten hoch.
+  beim Booten hoch. **OpenVPN** für einen vorhandenen OpenVPN-Server gibt es auch,
+  **experimentell**: Skripte in einem hochgeladenen Profil werden entfernt, das Fahrzeug
+  behält seinen eigenen Uplink.
 - **Robustes LTE**: APN, SIM-PIN, APN-Benutzer/Passwort, 4G-only, Roaming-Schalter, rohe
   `mmcli`-Diagnose, PIN ändern/entfernen. `autoconnect` wählt selbst neu.
 - **Auch HiLink-Sticks** (Huawei E3372h-320 & Co.). Das sind Router, für `mmcli`
@@ -235,8 +245,11 @@ npm test               # Sicherheits-/Logik-Testsuite
 
 ## Auf echter Hardware
 
-Teileliste, Verkabelung und der Aufbau Schritt für Schritt stehen in
-**[`docs/HARDWARE.de.md`](docs/HARDWARE.de.md)**.
+**Neu bei Linux oder dem Raspberry Pi?** Von der leeren SD-Karte bis zur ersten Fahrt,
+Schritt für Schritt — Imager, SSH, Dateien kopieren, was der Installer tut:
+**[`docs/QUICKSTART.de.md`](docs/QUICKSTART.de.md)**. Teileliste, Verkabelung und der ganze
+Aufbau stehen in **[`docs/HARDWARE.de.md`](docs/HARDWARE.de.md)**; wenn etwas nicht geht,
+**[`docs/TROUBLESHOOTING.de.md`](docs/TROUBLESHOOTING.de.md)**.
 
 **Am schnellsten (eine Zeile auf Raspberry Pi OS Lite):**
 
@@ -244,11 +257,15 @@ Teileliste, Verkabelung und der Aufbau Schritt für Schritt stehen in
 curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
 ```
 
-Klont nach `/opt/yonderrc` und startet den Installer. Danach `http://<pi-ip>:8080/setup`
-öffnen und **Detect hardware** drücken: es liest das **ID-Register** jedes I²C-Chips und
-benennt damit das tatsächliche Bauteil (INA228, MCP9808, BME280 — und den PCA9685 über
-seine All-Call-Adresse), statt aus einer geteilten Adresse zu raten. Ein Knopf trägt sie
-in die Formulare ein; das nötige native Modul installiert dieselbe Seite.
+Klont nach `/opt/yonderrc` und startet den Installer. **Die Hardware vorher anschließen**:
+der Installer schaut einmal nach — ein PCA9685 am I²C wird zum Ausgabetreiber (neben einem
+INA2xx gehört er auf `0x41`), ein Kameramodul ersetzt das Testbild, und das native Modul,
+das der Treiber braucht, wird gebaut. Wird nichts gefunden, bleibt der Simulator, und eine
+einmal gespeicherte Einstellung wird nie geändert. Danach `http://<pi-ip>:8080/setup`
+öffnen; **Detect hardware** liest das **ID-Register** jedes I²C-Chips und benennt damit das
+tatsächliche Bauteil (INA228, MCP9808, BME280 — und den PCA9685 über seine
+All-Call-Adresse), statt aus einer geteilten Adresse zu raten. Ein Knopf trägt sie in die
+Formulare ein; das nötige native Modul installiert dieselbe Seite.
 
 **1. Repo auf den Pi kopieren** (`/opt/yonderrc`) — ein Weg genügt:
 
@@ -293,9 +310,11 @@ packages/
   vehicle/    Fahrzeug-Dienst (Node/tsx): Core, Failsafe, Treiber, Sensoren, go2rtc, Setup
   ground/     Bodenstation (React): Steuerung, FPV, OSD, Aufnahme, Setup-UI
   desktop/    Electron-Shell mit nativer SDL2-Eingabe
-docs/HARDWARE.de.md   Hardware-Anleitung
-provisioning/         Pi-Einrichtung (systemd, LTE, Tailscale, Hotspot/Onboarding)
-test/                 Testsuite (npm test)
+docs/QUICKSTART.de.md       Erstinstallation auf dem Pi, Schritt für Schritt
+docs/HARDWARE.de.md         Hardware-Anleitung
+docs/TROUBLESHOOTING.de.md  Diagnosedatei, Failsafe-Flackern, Controller
+provisioning/               nur Pi: Installer, systemd, Hotspot/Onboarding, diag.sh
+test/                       Testsuite (npm test)
 ```
 
 Alles oberhalb des Transports ist transportunabhängig; die Steuerung läuft über

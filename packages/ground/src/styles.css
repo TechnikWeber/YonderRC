@@ -1522,6 +1522,54 @@ details.hint > p {
 .radio input {
   accent-color: var(--accent);
 }
+/* Setup › Controls › Game controller: one full-width row per device the browser lists.
+   Device names are proper names, so no capitalisation, and long ones wrap. */
+.pad-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.radio.pad-row {
+  display: flex;
+  flex-wrap: wrap;
+  text-transform: none;
+  text-align: left;
+}
+.pad-name {
+  flex: 1 1 12em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+.pad-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+.pad-tag.go { color: var(--arm); }
+.pad-tag.idle { color: var(--idle); }
+/* Lights while the device is sending input — the way to tell two similar entries apart. */
+.pad-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+/* Diagnostics: what the report found, one line per finding. */
+.finding {
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 6px 0 0;
+  color: var(--text);
+}
+.finding.bad { color: var(--danger); }
+.finding.warn { color: var(--idle); }
+.finding .fix { color: var(--muted); display: block; }
 .note {
   font-size: 11px;
   color: var(--muted);

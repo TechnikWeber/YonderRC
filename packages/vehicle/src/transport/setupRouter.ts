@@ -2,13 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { VehicleConfig, PersistentConfig } from '../config.js';
-import { loadPersisted, savePersisted, resetPersisted } from '../config.js';
+import { loadPersisted, savePersisted, resetPersisted, resolveWatchdogMs } from '../config.js';
+import { collectVehicleDiagnostics } from './diagnosticsReport.js';
+import { diagnosticsFileName } from '../system/diagnostics.js';
 import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
 import type { TrafficService } from '../system/TrafficService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
-import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US } from '@yonderrc/protocol';
+import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US, clampWatchdogMs } from '@yonderrc/protocol';
 import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { CSI_MODULES, moduleById, reconcileCameras } from '../system/bootConfig.js';
@@ -36,6 +38,7 @@ import {
   type WireguardFields,
 } from '../system/wireguard.js';
 import { HW_DEPS, isHwDep } from '../system/hwDeps.js';
+import { looksLikeOvpn, normaliseOvpn, ovpnRefusal, sanitiseOvpn } from '../system/openvpn.js';
 import { isCountryCode } from '../system/wifi.js';
 import { isIpv4 } from '../system/hilink.js';
 import { isGitBranch, isGitSource, UPDATE_SOURCE_DEFAULT } from '../system/update.js';
@@ -156,6 +159,34 @@ export async function handleSetup(
     return true;
   }
 
+  /**
+   * The diagnostics export (see system/diagnostics.ts). A GET, but guarded like a POST:
+   * it carries the service log and network details, which is more than a status page,
+   * so a configured API secret is required (`?secret=` — a header would cost the ground
+   * app a CORS preflight) and a page from the internet may not read it.
+   * `?download=1` makes a browser save it as a file instead of showing it.
+   */
+  if (url === '/api/diagnostics' && method === 'GET') {
+    if (!originAllowed(origin, secretProven, req.headers.host, secFetchSiteOf(req))) {
+      json(res, 403, { ok: false, message: `Refused: a page from ${origin} may not read this vehicle's diagnostics.` });
+      return true;
+    }
+    if (!secretOk(ctx.config.apiSecret, readSecretFromReq(req))) {
+      json(res, 401, { ok: false, message: 'Unauthorized — provide the API secret.' });
+      return true;
+    }
+    const report = await collectVehicleDiagnostics(ctx);
+    const download = new URLSearchParams((req.url ?? '').split('?')[1] ?? '').get('download') === '1';
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'access-control-allow-origin': '*',
+      'cache-control': 'no-store',
+      ...(download ? { 'content-disposition': `attachment; filename="${diagnosticsFileName(ctx.config.vehicleName)}"` } : {}),
+    });
+    res.end(JSON.stringify(report, null, 2));
+    return true;
+  }
+
   // ---- native driver modules (i2c-bus / pigpio / serialport) ----
   // The whole point is that a vehicle you only reach from a phone never forces
   // the operator into an SSH session; see hwDeps.ts.
@@ -241,8 +272,12 @@ export async function handleSetup(
     json(res, 200, {
       vehicleName: persisted.vehicleName ?? c.vehicleName,
       driver: persisted.driver ?? c.driver,
-      driverRunning: c.driver,
-      watchdogTimeoutMs: persisted.watchdogTimeoutMs ?? c.watchdogTimeoutMs,
+      // What is actually driving the servos — `sim` after a hardware driver failed to
+      // start, with the reason next to it. Saved ≠ running ≠ working.
+      driverRunning: ctx.core.driverKind,
+      driverError: c.driverError,
+      // A stored pre-v1.70.0 default is not shown as if someone had chosen it.
+      watchdogTimeoutMs: resolveWatchdogMs(persisted.watchdogTimeoutMs, ctx.core.watchdogMs, persisted.watchdogChosen),
       throttleChannels: persisted.throttleChannels ?? c.throttleChannels,
       cameras: c.cameras,
       videoBaseUrl: persisted.videoBaseUrl !== undefined ? persisted.videoBaseUrl : c.videoBaseUrl,
@@ -270,6 +305,15 @@ export async function handleSetup(
     const patch = (await readBody(req)) as PersistentConfig;
     // Normalise an empty secret to null (= OFF) so clearing it is unambiguous.
     if (patch.apiSecret !== undefined) patch.apiSecret = patch.apiSecret || null;
+    // The watchdog is a safety setting: a typo must not become 50 ms (permanent
+    // failsafe) or 50 s (no failsafe). Clamped, then applied at once — it is only a
+    // comparison, so unlike the driver it needs no restart.
+    if (patch.watchdogTimeoutMs !== undefined) {
+      patch.watchdogTimeoutMs = clampWatchdogMs(Number(patch.watchdogTimeoutMs));
+      patch.watchdogChosen = true;
+      ctx.core.setWatchdogTimeout(patch.watchdogTimeoutMs);
+      ctx.config.watchdogTimeoutMs = patch.watchdogTimeoutMs;
+    }
     // The driver is built once at startup, so its kind/bus/address can only change
     // with a restart. Say so precisely instead of leaving the operator to guess —
     // and deliberately do NOT touch ctx.config.driverOptions here: it describes what
@@ -358,12 +402,18 @@ export async function handleSetup(
     // two secrets: this endpoint answers without the API secret, and on a box whose
     // onboarding hotspot is open by default that would hand out the VPN key.
     const conf = ctx.config.remoteAccess.wireguardConf;
+    const ovpn = ctx.config.remoteAccess.openvpnConf;
+    const ovpnCheck = ovpn ? sanitiseOvpn(ovpn, { fullTunnel: !!ctx.config.remoteAccess.openvpnFullTunnel }) : null;
     json(res, 200, {
       config: redactRemoteConfig(ctx.config.remoteAccess),
       status: await ctx.system.remoteStatus(ctx.config.remoteAccess),
       wireguardFields: redactWireguardFields(conf ? parseWireguardConf(conf) : WIREGUARD_DEFAULTS),
       wireguardMultiPeer: conf ? hasMultiplePeers(conf) : false,
       wireguardExtraKeys: conf ? unsupportedWireguardKeys(conf) : [],
+      // What the vehicle does to the stored OpenVPN profile — never the profile itself.
+      openvpn: ovpnCheck
+        ? { removed: ovpnCheck.removed, externalFiles: ovpnCheck.externalFiles, needsAuth: ovpnCheck.needsAuth, problems: ovpnCheck.problems }
+        : null,
     });
     return true;
   }
@@ -376,7 +426,29 @@ export async function handleSetup(
       tailscaleAuthKey: body.tailscaleAuthKey !== undefined ? body.tailscaleAuthKey || null : cur.tailscaleAuthKey ?? null,
       zerotierNetworkId: body.zerotierNetworkId !== undefined ? body.zerotierNetworkId || null : cur.zerotierNetworkId ?? null,
       wireguardConf: body.wireguardConf !== undefined ? body.wireguardConf || null : cur.wireguardConf ?? null,
+      openvpnConf: body.openvpnConf !== undefined ? (body.openvpnConf ? normaliseOvpn(body.openvpnConf) : null) : cur.openvpnConf ?? null,
+      openvpnUsername: body.openvpnUsername !== undefined ? body.openvpnUsername || null : cur.openvpnUsername ?? null,
+      // A blank password keeps the stored one — the page never received it to send back.
+      openvpnPassword: body.openvpnPassword ? body.openvpnPassword : cur.openvpnPassword ?? null,
+      openvpnFullTunnel: body.openvpnFullTunnel !== undefined ? !!body.openvpnFullTunnel : !!cur.openvpnFullTunnel,
     };
+    if (cfg.kind === 'openvpn') {
+      // Refused here, before anything is stored, rather than in a systemd log later.
+      if (!cfg.openvpnConf) {
+        json(res, 400, { ok: false, message: 'OpenVPN needs the client profile (.ovpn) your server exported — upload it first.' });
+        return true;
+      }
+      if (!looksLikeOvpn(cfg.openvpnConf)) {
+        json(res, 400, { ok: false, message: "That doesn't look like an OpenVPN client profile (no client / remote lines). Export the profile for a client, not the server configuration." });
+        return true;
+      }
+      const haveCreds = !!(cfg.openvpnUsername && cfg.openvpnPassword);
+      const refusal = ovpnRefusal(sanitiseOvpn(cfg.openvpnConf, { fullTunnel: cfg.openvpnFullTunnel }), haveCreds);
+      if (refusal) {
+        json(res, 400, { ok: false, message: refusal });
+        return true;
+      }
+    }
     if (cfg.kind === 'zerotier' && !(cfg.zerotierNetworkId && isZerotierNetworkId(cfg.zerotierNetworkId))) {
       json(res, 400, { ok: false, message: 'ZeroTier needs a 16-hex network ID.' });
       return true;
@@ -416,6 +488,13 @@ export async function handleSetup(
     savePersisted(ctx.config.configPath, { remoteAccess: cfg });
     ctx.config.remoteAccess = cfg;
     const r = await ctx.system.remoteUp(cfg);
+    // OpenVPN runs as an *enabled* systemd unit, so switching away from it would leave it
+    // coming back at every boot next to the new method. Stopped only once the new method
+    // is up: a vehicle reached through the VPN must not be cut off by a failed switch.
+    if (r.ok && cur.kind === 'openvpn' && cfg.kind !== 'openvpn') {
+      const down = await ctx.system.remoteDown(cur);
+      r.message += down.ok ? ' OpenVPN stopped.' : ` (OpenVPN could not be stopped: ${down.message})`;
+    }
     json(res, r.ok ? 200 : 500, r);
     return true;
   }

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { ACTION_LABELS, type ActionBindings, type ActionId } from '../lib/actions';
 import type { BatteryWarnCfg } from '../lib/battery';
 import type { InputManager } from '../lib/input/inputManager';
+import { newlyPressed } from '../lib/input/gamepadPick';
 import type { AutoDisarmMode } from '../lib/templates';
+import { ControllerPicker } from './ControllerPicker';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
 import { clampButtonHoldSeconds, BUTTON_HOLD_MAX_S, BUTTON_HOLD_MIN_S, type ButtonHoldCfg } from '../lib/buttonHold';
 import { speechAvailable, speak, type SpeechCfg } from '../lib/speech';
@@ -99,9 +101,10 @@ export function ControlsPanel({
       window.addEventListener('keydown', onKey, { once: true });
       return () => window.removeEventListener('keydown', onKey);
     }
+    // Only a button pressed AFTER Learn counts — one already held is not a choice.
+    const rest = input.readGamepadButtons();
     const iv = setInterval(() => {
-      const btns = input.readGamepadButtons();
-      const bi = btns.findIndex((p) => p);
+      const bi = newlyPressed(rest, input.readGamepadButtons());
       if (bi >= 0) {
         set(learn.id, { button: bi });
         setLearn(null);
@@ -330,7 +333,7 @@ export function ControlsPanel({
             works). Both wait a couple of seconds first: the WebSocket reconnects a second after any
             drop, so a WiFi roam would otherwise be announced as an outage, and a voice that cries wolf
             is one you stop listening to. That costs nothing in safety — <b>failsafe is announced
-            immediately</b>, and the vehicle enters it 300 ms after the frames stop. Deliberately
+            immediately</b>, and the vehicle enters it once its watchdog runs out (500 ms by default). Deliberately
             nothing else: a chatty voice gets muted, and then the ones that matter are gone too. Uses
             the browser's built-in voice — no network. On iOS it stays silent until you have tapped the
             page once.
@@ -381,6 +384,8 @@ export function ControlsPanel({
           keep driving as soon as control frames resume.
         </p>
       )}
+
+      <ControllerPicker input={input} />
 
       <details className="group">
         <summary className="eyebrow">Action bindings</summary>

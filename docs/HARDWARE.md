@@ -288,11 +288,17 @@ sensor can all run at once:
 
 ### 3.1 Flash Raspberry Pi OS
 
+> **First time with Linux?** [`QUICKSTART.md`](QUICKSTART.md) walks through this chapter
+> click by click — Imager, finding the Pi, SSH from Windows/macOS, copying the files.
+
 1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit)**. The installer is tested
-   against **Bookworm**; newer releases should work but are unverified.
-2. In the Imager settings (gear): **enable SSH**, set a user, enter **Wi-Fi credentials**,
-   hostname e.g. `yonderrc`.
-3. Flash, insert, power on.
+   against **Bookworm**; Imager's current Lite image is **Trixie**, which should work but is
+   unverified — the tested Bookworm image is listed as *Legacy*.
+2. In the Imager settings (gear): **enable SSH**, set a user, enter **Wi-Fi credentials**
+   and the **Wi-Fi country**, hostname e.g. `yonderrc`.
+3. **Wire the hardware now** (chapter 2), with the PCA9685 on **0x41** when an INA2xx shares
+   the bus — the installer looks at the bus once, see 3.2.
+4. Flash, insert, power on.
 
 ### 3.2 Log in and copy the project onto the Pi
 
@@ -331,9 +337,26 @@ sudo bash /opt/yonderrc/provisioning/install.sh
 ```
 
 That installs Node 22, ffmpeg, NetworkManager, ModemManager, `usb-modeswitch`,
-`i2c-tools`, `gpsd`, `wireguard-tools`, Tailscale, ZeroTier and go2rtc, sets up the three
-systemd services (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`) and enables **I2C** and
-**UART**.
+`i2c-tools`, `gpsd`, `wireguard-tools`, `openvpn`, Tailscale, ZeroTier and go2rtc, sets up
+the three systemd services (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`), enables
+**I2C** and **UART** and switches **WiFi power saving off** (it holds incoming packets back
+and trips the failsafe watchdog on a working link). A copy that is not in `/opt/yonderrc`
+yet is moved there first.
+
+**Hardware detection.** Right after enabling I²C the installer probes once and fills in
+only what was **never saved**:
+
+- a **PCA9685** found on bus 1 → output driver `pca9685` with that address, and the
+  `i2c-bus` module it needs is built;
+- a **CSI camera** listed by `rpicam-hello --list-cameras` → camera `cam` (`rpicam`,
+  1280×720 @ 30) instead of the test pattern;
+- current sensors and other chips are only **named** — their reading depends on values
+  printed on the board (the shunt), so they are set up in the page (3.5 step 4).
+
+It prints what it did under `-- hardware detection`. Nothing found means the simulator
+stays; a saved choice is never overwritten, so re-running the installer is safe. Wire and
+address everything **before** installing — two chips on `0x40` cannot be identified, and a
+camera that needs an overlay (Arducam) is only found after 3.5 step 2 and a second run.
 
 ### 3.3 Hardware driver dependencies (only what you use)
 
@@ -418,7 +441,9 @@ are collapsed behind a one-line summary.
 0. **Detect hardware** (in *Vehicle configuration*) scans I²C, `mmcli` and the camera
    devices. Chips with an ID register are **read out**, not guessed — a ✓ row names the
    actual part, and the PCA9685 is found through its all-call address. **Use these
-   addresses** fills them into the forms; nothing is saved until you press Save.
+   addresses** fills them into the forms; nothing is saved until you press Save. (The
+   installer ran the same probe once and already set driver and camera if it found them —
+   *Overview › Output driver* shows what is actually running.)
 1. **Vehicle:** name, **Output driver = `pca9685`** (drone: `sbus`; no extra board:
    `gpio-pwm`, pins in 2.8), check the throttle channel. With `pca9685` an **I²C address**
    field appears — **0x41** for the reference build, 0x40 for a board with no sensor next
@@ -537,8 +562,8 @@ Deliberately not counted:
 
 - **The vehicle's own WiFi hotspot** — a ground station on it pulls the video stream for
   free (~900 MB/h). The same radio in *client* mode is counted.
-- **VPN interfaces** (Tailscale, WireGuard, ZeroTier) — their traffic leaves again
-  through the real uplink, so counting both counts every byte twice.
+- **VPN interfaces** (Tailscale, WireGuard, ZeroTier, OpenVPN) — their traffic leaves
+  again through the real uplink, so counting both counts every byte twice.
 
 Settings: **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (default 80), and
 optionally the **day of month** the plan resets. Otherwise reset with *Reset counter*.
@@ -606,9 +631,21 @@ Pick **one** method:
   connection*, download the config, upload it, *Bring up*. Keep **PersistentKeepalive at
   25** — behind carrier NAT a tunnel without it works until the first idle minute. Comes
   up automatically on the next boot.
+- **OpenVPN (your own server) — experimental.** Upload the **client profile** (`.ovpn`)
+  your server exports, **with the certificates inline** (one file with `<ca>`, `<cert>`,
+  `<key>` blocks); add username and password if the profile asks for them. The vehicle
+  runs it as the systemd unit `openvpn-client@yonderrc`, interface `tunyrc`. Before it is
+  written out, the profile is **sanitised**: lines that run programs or write files as root
+  (`up`, `down`, `script-security`, `plugin`, `log`, `management`, …) and Windows-only
+  options are commented out and listed in the panel, and a pushed `redirect-gateway` is
+  ignored unless *all traffic through the VPN* is ticked — the vehicle keeps its own
+  uplink, so a dropping VPN cannot take everything else with it. Built from the OpenVPN
+  documentation, **not yet verified on a vehicle** — test it on the bench and report
+  back.
 
-> ZeroTier/WireGuard need their tools on the Pi (`zerotier-cli`, `wireguard-tools`); the
-> installer adds them. Verify the method before relying on it in the field.
+> ZeroTier/WireGuard/OpenVPN need their tools on the Pi (`zerotier-cli`,
+> `wireguard-tools`, `openvpn`); the installer adds them. Verify the method before relying
+> on it in the field.
 
 ---
 
@@ -684,9 +721,12 @@ video included — self-sufficient in the field.
 ## 6. What safety YonderRC adds
 
 - **Failsafe watchdog:** no valid control frames for longer than the configured time
-  (default 300 ms) and every channel goes to its failsafe value. The defaults are
+  (default **500 ms** since v1.70.0, 100–2000 ms, Setup › Sensors & outputs; applies on
+  Save) and every channel goes to its failsafe value. The defaults are
   **vehicle-type aware and separate from disarming**: drone holds throttle **mid**,
-  car/boat **stop**, plane **motor off**. Adjustable per channel.
+  car/boat **stop**, plane **motor off**. Adjustable per channel. The old default of 300 ms
+  tripped on ordinary WiFi/LTE jitter; a stored 300 from before v1.70.0 is treated as that
+  old default and runs at 500.
 - **Disarming ≠ failsafe:** deliberate disarming really switches the motor off,
   independent of the failsafe value.
 - **Arming:** the throttle stays at idle while disarmed.
@@ -705,7 +745,8 @@ video included — self-sufficient in the field.
   press cuts the motors — on an aircraft that is a crash. Bind it to something you cannot
   hit by accident.
 - **Driver fallback:** a hardware driver that fails to start leaves the service running in
-  sim with the setup UI reachable.
+  sim with the setup UI reachable — and says so: the setup overview, the vehicle form and
+  the ground's status strip show the driver that is actually *running*, with the reason.
 - **systemd `Restart=always`.**
 
 ### 6.1 Trust model (who can control the vehicle)
@@ -756,3 +797,7 @@ vehicle must never lock you out — but it makes the network the security bounda
 | No GPS fix | Right source and device in *Setup › GPS*? Serial needs `serialport`; USB dongles need **gpsd**. First fix can take minutes. |
 | No signal value in the OSD | LTE must be connected, or the Wi-Fi interface must be `wlan0`. |
 | No data warning despite a budget | Without a **Plan allowance** there is no threshold — the panel says so (4.1.2). |
+| Flickers in and out of failsafe | Usually WiFi power saving, a hidden control page or jitter — the diagnostics file tells which ([TROUBLESHOOTING.md §2](TROUBLESHOOTING.md#2-the-vehicle-flickers-in-and-out-of-failsafe)). |
+| Controller does nothing / the wrong device is used | Press a button on it; *Setup › Controls › Game controller* lists every device and lets you pick ([TROUBLESHOOTING.md §3](TROUBLESHOOTING.md#3-the-game-controller-does-nothing)). |
+| Overview: "Output driver … failed to start" | The native module is missing or the address is wrong — the line says which (TROUBLESHOOTING.md §4). |
+| Anything else | *Setup › Diagnostics* → one file → GitHub issue ([TROUBLESHOOTING.md §1](TROUBLESHOOTING.md#1-reporting-a-problem-the-diagnostics-file)). |

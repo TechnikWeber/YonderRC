@@ -36,8 +36,36 @@ export const CONTROL_PERIOD_MS = 1000 / CONTROL_RATE_HZ;
  * declares the link lost and drives every channel to its failsafe value.
  * This is time-based on purpose — it fires on a silent LTE drop, not only on a
  * clean TCP reset like the old code.
+ *
+ * 500 ms since v1.70.0. It was 300 ms, and that was tighter than the links this runs
+ * on: an indoor LTE/hotspot link measured 13 gaps over 300 ms per minute at 0 %
+ * packet loss (2026-08-28), and a Pi on WiFi with power saving on stalls incoming
+ * packets for a few hundred ms. Jitter, not loss — so the vehicle flickered in and out
+ * of failsafe on a link that was working. 500 ms still stops a car at 10 m/s within
+ * 5 m of a real loss, and the setup page can tighten it per vehicle.
  */
-export const WATCHDOG_TIMEOUT_MS = 300;
+export const WATCHDOG_TIMEOUT_MS = 500;
+
+/**
+ * The default before v1.70.0. The setup page saved the watchdog field on every Save,
+ * so a stored 300 is almost always the old default rather than a choice — see
+ * `resolveWatchdogMs` in the vehicle config.
+ */
+export const LEGACY_WATCHDOG_TIMEOUT_MS = 300;
+
+/**
+ * The range a watchdog may be set to. Below 100 ms a healthy 50 Hz link already trips it
+ * (five frames); above 2 s a vehicle that lost its link keeps executing the last command
+ * for long enough to leave the field. A typo — 50, or 50000 — must not become either.
+ */
+export const WATCHDOG_MIN_MS = 100;
+export const WATCHDOG_MAX_MS = 2000;
+
+/** Keep a watchdog value inside the safe range; anything unreadable becomes the default. */
+export function clampWatchdogMs(ms: number): number {
+  if (!Number.isFinite(ms)) return WATCHDOG_TIMEOUT_MS;
+  return Math.round(clamp(ms, WATCHDOG_MIN_MS, WATCHDOG_MAX_MS));
+}
 
 export function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
