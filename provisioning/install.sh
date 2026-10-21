@@ -76,7 +76,7 @@ if [ ! -x /usr/local/bin/go2rtc ]; then
   ARCH=$(dpkg --print-architecture) # arm64 / armhf
   case "$ARCH" in
     arm64) GOARCH=arm64 ;;
-    armhf) GOARCH=armv7 ;;
+    armhf) [ "$(uname -m)" = armv6l ] && GOARCH=armv6 || GOARCH=arm ;; # asset names: go2rtc_linux_arm / _armv6
     *) GOARCH=amd64 ;;
   esac
   curl -fsSL -o /usr/local/bin/go2rtc \

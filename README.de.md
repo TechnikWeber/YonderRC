@@ -47,9 +47,22 @@ Danach `http://<pi-ip>:8080/setup` öffnen.
 
 ## Im Simulator ausprobieren
 
-Braucht [Node.js](https://nodejs.org) 20 oder neuer.
+Läuft unter Windows, Linux und macOS. Du brauchst [Node.js](https://nodejs.org) 20 oder
+neuer (npm ist dabei) und [Git](https://git-scm.com); für Video zusätzlich `ffmpeg`. Kein
+Compiler: Die Hardware-Treiber sind optional und werden auf einem PC übersprungen.
+
+| System | Einmal installieren |
+| --- | --- |
+| Windows | `winget install OpenJS.NodeJS.LTS Git.Git Gyan.FFmpeg`, danach ein neues Terminal öffnen |
+| Debian / Ubuntu | `sudo apt install git ffmpeg`, Node.js von [nodejs.org](https://nodejs.org/de/download) (das Systempaket ist oft älter als 20) |
+| Fedora | `sudo dnf install nodejs git ffmpeg-free openh264` |
+| macOS | `brew install node git ffmpeg` |
+
+Dann in einem Terminal (unter Windows PowerShell):
 
 ```bash
+git clone https://github.com/TechnikWeber/YonderRC.git
+cd YonderRC
 npm install
 npm run dev
 ```
@@ -57,8 +70,8 @@ npm run dev
 `http://localhost:5173` öffnen, **Connect** drücken, **Arm 1 s halten** und mit
 `W A S D` fahren. Vom Handy: `http://<IP-deines-PCs>:5173`.
 
-Video im Simulator braucht `ffmpeg`: `npm run dev:video` in einem zweiten Terminal starten.
-Tests: `npm test`.
+Für Video `npm run dev:video` in einem zweiten Terminal im selben Ordner starten. Beim
+ersten Mal lädt es go2rtc nach `bin/`. Tests: `npm test`.
 
 ## Wie dieser Code entstanden ist
 

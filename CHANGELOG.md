@@ -3,6 +3,29 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.72.1
+*The simulator on Windows and macOS, with video; go2rtc on 32-bit Pi OS.*
+
+**English**
+- **`npm run dev:video` runs on Windows, Linux and macOS.** It is a Node script now and
+  downloads the go2rtc build for your system. Before, it was a bash script that always
+  fetched the Linux binary, so video in the simulator only worked on Linux.
+- **The README says how to get the simulator running**: what to install on Windows,
+  Debian/Ubuntu, Fedora and macOS, then clone, `npm install`, `npm run dev`.
+- **Install on 32-bit Pi OS**: the installer asked for a go2rtc file that does not exist
+  (`go2rtc_linux_armv7`) and stopped. It now fetches `go2rtc_linux_arm`, or `_armv6` on a
+  Pi Zero / Pi 1.
+
+**Deutsch**
+- **`npm run dev:video` läuft unter Windows, Linux und macOS.** Es ist jetzt ein
+  Node-Skript und lädt das go2rtc für dein System. Vorher war es ein Bash-Skript, das
+  immer die Linux-Version holte; Video im Simulator ging also nur unter Linux.
+- **Das README erklärt, wie man den Simulator startet**: was unter Windows, Debian/Ubuntu,
+  Fedora und macOS zu installieren ist, dann klonen, `npm install`, `npm run dev`.
+- **Installation auf 32-Bit-Pi-OS**: Der Installer wollte eine go2rtc-Datei, die es nicht
+  gibt (`go2rtc_linux_armv7`), und brach ab. Jetzt holt er `go2rtc_linux_arm`, bzw.
+  `_armv6` auf einem Pi Zero / Pi 1.
+
 ## v1.72.0
 *One setup per controller: a controller with a layout of its own is shown once where its
 sticks and buttons are, and every controller can have its own action buttons.*
