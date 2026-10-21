@@ -2794,11 +2794,13 @@ async function main() {
   // ---- the diagnostics file: nothing secret leaves the box ----
   {
     const D = await import('../packages/vehicle/src/system/diagnostics');
+    // Assembled at runtime: a literal in Tailscale's key format trips GitHub secret scanning.
+    const FAKE_TS = ['tskey', 'auth', ''].join('-');
     const r = (s: string) => D.redactSecrets(s);
     ok('a WireGuard private key is masked', !r('PrivateKey = yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk=').includes('yAnz5'));
     ok('a password pair is masked', !r('password: hunter2').includes('hunter2') && !r('802-11-wireless-security.psk:hunter2').includes('hunter2'));
     ok('a secret in a URL query is masked', !r('GET /api/diagnostics?secret=s3cr3t&x=1').includes('s3cr3t'));
-    ok('a Tailscale auth key is masked', !r('tailscale up --authkey=tskey-auth-kAbC123-xyz').includes('kAbC123'));
+    ok('a Tailscale auth key is masked', !r(`tailscale up --authkey=${FAKE_TS}kAbC123-xyz`).includes('kAbC123'));
     ok('a pending Tailscale login is masked', !r('Login: https://login.tailscale.com/a/1a2b3c4d').includes('1a2b3c4d'));
     ok('a SIM PIN argument is masked', !r('mmcli -m 0 --pin=4711').includes('4711'));
     ok('credentials in a URL are masked', !r('rtsp://admin:geheim@192.168.1.20/stream').includes('geheim'));
@@ -2816,14 +2818,14 @@ async function main() {
       hotspot: { ssid: 'YonderRC-setup', password: 'HOTSPOT-PW-1', mode: 'always' },
       remoteAccess: {
         kind: 'wireguard',
-        tailscaleAuthKey: 'tskey-auth-LEAK1',
+        tailscaleAuthKey: FAKE_TS + 'LEAK1',
         wireguardConf: '[Interface]\nPrivateKey = WGPRIVATEKEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\nAddress = 10.0.0.2/32\n[Peer]\nPublicKey = x\nEndpoint = vpn.example.org:51820\n',
       },
       gps: { source: 'serial-nmea', autoHome: true, minSats: 6, home: { lat: 48.27581, lon: 8.85361, altM: 517 } },
     };
     const red = JSON.stringify(D.redactConfig(stored));
     ok('no secret survives the config redaction',
-      ['API-SECRET-1', '4321', 'APN-PW-1', 'HOTSPOT-PW-1', 'tskey-auth-LEAK1', 'WGPRIVATEKEY', '48.27581'].every((x) => !red.includes(x)), red);
+      ['API-SECRET-1', '4321', 'APN-PW-1', 'HOTSPOT-PW-1', FAKE_TS + 'LEAK1', 'WGPRIVATEKEY', '48.27581'].every((x) => !red.includes(x)), red);
     ok('but what helps debugging stays',
       red.includes('internet.telekom') && red.includes('wireguard') && red.includes('vpn.example.org') && red.includes('Buggy'));
     ok('a set secret reads as set, an unset one as unset',
