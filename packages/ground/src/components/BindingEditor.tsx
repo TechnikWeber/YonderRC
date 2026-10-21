@@ -5,7 +5,9 @@ import {
   applyEndpoints,
   applyStickMode,
   createBinding,
+  detachIfNotStick,
   disarmedThrottleUs,
+  funcFromLabel,
   nextFreeChannel,
   rebuildForMethod,
   setDetent,
@@ -19,23 +21,32 @@ import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS 
 import { CurveEditor } from './CurveEditor';
 import type { InputManager } from '../lib/input/inputManager';
 import { movedAxis, newlyPressed } from '../lib/input/gamepadPick';
+import { describeElement, pairElement, parsePairElement } from '../lib/input/padElements';
+import { createFollower, followElement, followedChannel, isFollower, leaderCandidates, leaderOf, throttleOutputsOf } from '../lib/follow';
+import { trimmableBindings, trimTargetOf } from '../lib/trim';
+import { channelName } from '../lib/channelName';
 import { Hint } from './Hint';
 
 const METHODS: InputMethod[] = ['keyboard', 'gamepad', 'touch'];
 const DETENTS: Detent[] = ['center', 'low', 'free'];
 const AXIS_ORDER: StickAxis[] = ['leftX', 'leftY', 'rightX', 'rightY'];
 const AXIS_LABEL: Record<StickAxis, string> = { leftX: 'Left ◀▶', leftY: 'Left ▲▼', rightX: 'Right ◀▶', rightY: 'Right ▲▼' };
-const SOURCES: ChannelBinding['source'][] = ['keyboard', 'gamepad', 'onscreen'];
+const SOURCES: ChannelBinding['source'][] = ['keyboard', 'gamepad', 'onscreen', 'follow'];
+const SOURCE_LABEL: Partial<Record<ChannelBinding['source'], string>> = { follow: 'follow another channel' };
 const MODES: BindingMode[] = ['proportional', 'momentary', 'toggle', 'hold-ramp'];
 const RESTS: Detent[] = ['center', 'low', 'free'];
 const REST_LABEL: Record<Detent, string> = { center: 'center', low: 'min', free: 'hold' };
 
-type Draft = { channel: number; label: string; source: ChannelBinding['source']; mode: BindingMode; element: string; detent: Detent };
+/** `pair`: a gamepad axis made of two buttons (element `buttons:P:N`). */
+type Draft = { channel: number; label: string; source: ChannelBinding['source']; mode: BindingMode; element: string; detent: Detent; pair: boolean };
+/** What Learn is listening for: the input itself, or one side of a two-button axis. */
+type Learning = null | 'element' | 'pos' | 'neg';
 
 export function BindingEditor({
   profile,
   locked = false,
   input,
+  outputs,
   onChange: onChangeRaw,
   onRename,
   onDelete,
@@ -44,6 +55,8 @@ export function BindingEditor({
   profile: Profile;
   locked?: boolean;
   input: InputManager;
+  /** What each channel is wired to on the vehicle (welcome.outputs). */
+  outputs?: string[];
   onChange: (next: Profile) => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -56,6 +69,8 @@ export function BindingEditor({
 
   // Speed-limit steps live on the throttle channel, where you'd look for them.
   const throttleSet = new Set(throttleChannelsOf(profile));
+  // …plus the followers of a throttle channel: they stop with it.
+  const throttleOutputs = new Set(throttleOutputsOf(profile));
   const limit = limitOf(profile);
   const setLimitStepPct = (i: 0 | 1 | 2, pct: number) => {
     const steps = [...limit.steps] as [number, number, number];
@@ -82,9 +97,9 @@ export function BindingEditor({
   // ---- Add / edit channel form ----
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const emptyDraft = (): Draft => ({ channel: nextFreeChannel(profile), label: '', source: 'keyboard', mode: 'momentary', element: '', detent: 'center' });
+  const emptyDraft = (): Draft => ({ channel: nextFreeChannel(profile), label: '', source: 'keyboard', mode: 'momentary', element: '', detent: 'center', pair: false });
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [learning, setLearning] = useState(false);
+  const [learning, setLearning] = useState<Learning>(null);
 
   const openAdd = () => {
     setEditingId(null);
@@ -100,13 +115,14 @@ export function BindingEditor({
       mode: b.mode,
       element: b.element,
       detent: b.detent ?? 'center',
+      pair: b.source === 'gamepad' && parsePairElement(b.element) !== null,
     });
     setAdding(true);
   };
   const closeForm = () => {
     setAdding(false);
     setEditingId(null);
-    setLearning(false);
+    setLearning(null);
   };
 
   // Capture a keyboard key or gamepad button/axis for the new binding's element.
@@ -116,7 +132,7 @@ export function BindingEditor({
       const onKey = (e: KeyboardEvent) => {
         e.preventDefault();
         setDraft((d) => ({ ...d, element: e.key.toLowerCase() }));
-        setLearning(false);
+        setLearning(null);
       };
       window.addEventListener('keydown', onKey, { once: true });
       return () => window.removeEventListener('keydown', onKey);
@@ -130,15 +146,26 @@ export function BindingEditor({
       const restButtons = input.readGamepadButtons();
       const id = setInterval(() => {
         const bi = newlyPressed(restButtons, input.readGamepadButtons());
+        // One side of a two-button axis: only a button will do — in the standard layout
+        // the triggers are buttons 6 and 7, in the browser and in the desktop app alike.
+        if (learning === 'pos' || learning === 'neg') {
+          if (bi < 0) return;
+          setDraft((d) => {
+            const cur = parsePairElement(d.element) ?? { pos: null, neg: null };
+            return { ...d, element: learning === 'pos' ? pairElement(bi, cur.neg) : pairElement(cur.pos, bi) };
+          });
+          setLearning(null);
+          return;
+        }
         if (bi >= 0) {
           setDraft((d) => ({ ...d, element: `button:${bi}` }));
-          setLearning(false);
+          setLearning(null);
           return;
         }
         const a = movedAxis(restAxes, axesNow());
         if (a >= 0) {
           setDraft((d) => ({ ...d, element: `axis:${a}` }));
-          setLearning(false);
+          setLearning(null);
         }
       }, 80);
       return () => clearInterval(id);
@@ -146,24 +173,81 @@ export function BindingEditor({
     return;
   }, [learning, draft.source, input]);
 
-  const saveChannel = () => {
-    const element = draft.source === 'onscreen' ? 'btn' : draft.element.trim();
-    if (!element) return;
+  // Two buttons rest in the middle. Right for steering, and for a car's or boat's
+  // throttle (centre = stop) — wrong for a throttle that rests at idle, where both
+  // released would be half throttle. The pre-arm check would refuse to arm; better to
+  // say so here.
+  const draftLabel = draft.label || (editingId ? profile.bindings.find((b) => b.id === editingId)?.label ?? '' : '');
+  const pairProblem =
+    draft.source === 'gamepad' && draft.mode === 'proportional' && draft.pair &&
+    funcFromLabel(draftLabel) === 'throttle' && throttleRestStick(undefined, profile.vehicleType) !== 0
+      ? `Two buttons rest in the middle, and a ${profile.vehicleType}'s throttle rests at idle — use a stick for it.`
+      : null;
+  const draftLeader = draft.source === 'follow' ? followedChannel({ source: 'follow', element: draft.element }) : null;
+  // What the channel being edited may copy — never itself, wherever it is about to move.
+  const followable = leaderCandidates(profile, draft.channel).filter((b) => b.id !== editingId);
+  const canSave =
+    draft.source === 'follow'
+      ? draftLeader !== null && followable.some((b) => b.channel === draftLeader)
+      : draft.source === 'onscreen'
+        ? true
+        : draft.pair
+          ? parsePairElement(draft.element) !== null && !pairProblem
+          : draft.element.trim() !== '';
+
+  const saveFollower = () => {
+    const leader = followable.find((b) => b.channel === draftLeader);
+    if (!leader) return;
+    const label = draft.label || (editingId ? profile.bindings.find((b) => b.id === editingId)?.label ?? '' : '');
     if (editingId) {
       onChange({
         ...profile,
         bindings: profile.bindings.map((b) =>
-          b.id === editingId
-            ? { ...b, channel: draft.channel, label: draft.label || b.label, source: draft.source, element, mode: draft.mode, detent: draft.detent }
-            : b,
+          b.id !== editingId
+            ? b
+            : isFollower(b)
+              ? { ...b, channel: draft.channel, label: label || b.label, element: followElement(leader.channel) }
+              : createFollower({ id: b.id, channel: draft.channel, leader, label }),
         ),
+      });
+    } else {
+      onChange({ ...profile, bindings: [...profile.bindings, createFollower({ channel: draft.channel, leader, label })] });
+    }
+    closeForm();
+  };
+
+  const saveChannel = () => {
+    if (!canSave) return;
+    if (draft.source === 'follow') {
+      saveFollower();
+      return;
+    }
+    const element = draft.source === 'onscreen' ? 'btn' : draft.element.trim();
+    // A two-button axis rests in the middle, whatever the form said.
+    const detent: Detent = draft.pair ? 'center' : draft.detent;
+    if (editingId) {
+      // A channel that moves takes its followers along, rather than leaving them behind
+      // with nothing to copy.
+      const before = profile.bindings.find((b) => b.id === editingId);
+      const movedFrom = before && !isFollower(before) && before.channel !== draft.channel ? before.channel : null;
+      onChange({
+        ...profile,
+        bindings: profile.bindings.map((b) => {
+          if (b.id === editingId)
+            return detachIfNotStick(
+              { ...b, channel: draft.channel, label: draft.label || b.label, source: draft.source, element, mode: draft.mode, detent },
+              profile.inputMethod,
+            );
+          if (movedFrom !== null && followedChannel(b) === movedFrom) return { ...b, element: followElement(draft.channel) };
+          return b;
+        }),
       });
     } else {
       onChange({
         ...profile,
         bindings: [
           ...profile.bindings,
-          createBinding({ channel: draft.channel, source: draft.source, element, mode: draft.mode, label: draft.label, endpoints: profile.endpoints, detent: draft.detent }),
+          createBinding({ channel: draft.channel, source: draft.source, element, mode: draft.mode, label: draft.label, endpoints: profile.endpoints, detent }),
         ],
       });
     }
@@ -272,19 +356,35 @@ export function BindingEditor({
 
       <div className="field">
         <div className="eyebrow">Channels</div>
-        {profile.bindings.map((b) => (
+        {profile.bindings.map((b) => {
+          const follower = isFollower(b);
+          const leader = follower ? leaderOf(profile, b) : null;
+          const how = follower
+            ? `follows ${leader ? `${channelName(leader.channel)} · ${leader.label ?? '—'}` : channelName(followedChannel(b) ?? b.channel)}`
+            : `${b.source}/${b.mode}${b.element ? ` · ${b.source === 'gamepad' ? describeElement(b.element) : b.element}` : ''}`;
+          return (
           <div className="binding" key={b.id}>
             <div className="binding-top">
-              <span className="ch-label">CH{String(b.channel + 1).padStart(2, '0')} · {b.label ?? '—'}</span>
-              <span className="ch-mode" title={`${b.source}/${b.mode}${b.element ? ` · ${b.element}` : ''}`}>
-                {b.source}/{b.mode}{b.element ? ` · ${b.element}` : ''}
-              </span>
-              {/* Grouped so the two buttons can never end up on separate lines. */}
+              <span className="ch-label">{channelName(b.channel, outputs)} · {b.label ?? '—'}</span>
+              <span className="ch-mode" title={how}>{how}</span>
+              {/* Grouped so the controls can never end up on separate lines. Reverse is
+                  here, not in the collapsed details: it is what people look for first,
+                  and behind "trim · expo · …" nobody found it. */}
               <div className="ch-actions">
+                <label className="rev-toggle" title="Reverse this channel's direction">
+                  <input type="checkbox" checked={b.shaping.reverse} onChange={(e) => patchShaping(b.id, { reverse: e.target.checked })} />
+                  reverse
+                </label>
                 <button className="btn tiny" onClick={() => openEdit(b)} title="Edit channel">Edit</button>
                 <button className="btn tiny danger" onClick={() => removeBinding(b.id)} title="Remove channel">Remove</button>
               </div>
             </div>
+            {follower && !leader && (
+              <p className="ch-warn">
+                ⚠ {channelName(followedChannel(b) ?? b.channel)} has no input of its own to copy — this channel
+                holds its failsafe value ({b.shaping.failsafeUs} µs). Edit it and pick the channel to follow.
+              </p>
+            )}
             {/* Shown outside the collapsed <details>: a failsafe that opens the
                 throttle is not something you should have to expand a row to find.
                 The value is a raw µs, so on a reversed channel a perfectly
@@ -306,23 +406,34 @@ export function BindingEditor({
                   "fs 1500" next to a channel sitting at 1000 is otherwise a
                   puzzle rather than information. */}
               <summary title={throttleSet.has(b.channel) ? `Failsafe = link loss WHILE ARMED. Disarmed = deliberately off, on the ground. For a ${profile.vehicleType} these are different on purpose.` : undefined}>
-                trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}
-                {throttleSet.has(b.channel) ? ` · disarmed ${disarmedThrottleUs(profile.vehicleType, b.shaping)}` : ''}
-                {b.shaping.reverse ? ' · rev' : ''}
-                {curveIsIdentity(b.shaping.curve) ? '' : ` · curve ${b.shaping.curve!.points.length}pt`}
-                {b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}
+                {follower ? (
+                  <>
+                    offset {b.shaping.trimUs} µs · {b.shaping.minUs}–{b.shaping.maxUs} µs{b.shaping.reverse ? ' · rev' : ''} · failsafe
+                    {throttleOutputs.has(b.channel) ? ' and disarmed' : ''} {leader ? `follow ${channelName(leader.channel)}` : 'stored'}
+                  </>
+                ) : (
+                  <>
+                    trim {b.shaping.trimUs} · expo {b.shaping.expo} · {b.shaping.minUs}–{b.shaping.maxUs} µs · fs {b.shaping.failsafeUs}
+                    {throttleSet.has(b.channel) ? ` · disarmed ${disarmedThrottleUs(profile.vehicleType, b.shaping)}` : ''}
+                    {b.shaping.reverse ? ' · rev' : ''}
+                    {curveIsIdentity(b.shaping.curve) ? '' : ` · curve ${b.shaping.curve!.points.length}pt`}
+                    {b.detent ? ` · rest ${REST_LABEL[b.detent]}` : ''}
+                  </>
+                )}
               </summary>
+              {/* A follower copies its leader's final value: its own are only the offset
+                  (two servos rarely centre on the same µs) and the endpoints. Expo, curve
+                  and failsafe come with the copy. */}
               <div className="shaping-grid">
-                <label>trim µs<input type="number" value={b.shaping.trimUs} onChange={(e) => patchShaping(b.id, { trimUs: Number(e.target.value) })} /></label>
-                <label>expo<input type="number" step={0.05} min={0} max={1} value={b.shaping.expo} onChange={(e) => patchShaping(b.id, { expo: Number(e.target.value) })} /></label>
+                <label>{follower ? 'offset µs' : 'trim µs'}<input type="number" value={b.shaping.trimUs} onChange={(e) => patchShaping(b.id, { trimUs: Number(e.target.value) })} /></label>
+                {!follower && <label>expo<input type="number" step={0.05} min={0} max={1} value={b.shaping.expo} onChange={(e) => patchShaping(b.id, { expo: Number(e.target.value) })} /></label>}
                 <label>min µs<input type="number" value={b.shaping.minUs} onChange={(e) => patchShaping(b.id, { minUs: Number(e.target.value) })} /></label>
                 <label>max µs<input type="number" value={b.shaping.maxUs} onChange={(e) => patchShaping(b.id, { maxUs: Number(e.target.value) })} /></label>
-                <label>failsafe µs<input type="number" value={b.shaping.failsafeUs} onChange={(e) => patchShaping(b.id, { failsafeUs: Number(e.target.value) })} /></label>
-                <label className="rev">reverse<input type="checkbox" checked={b.shaping.reverse} onChange={(e) => patchShaping(b.id, { reverse: e.target.checked })} /></label>
+                {!follower && <label>failsafe µs<input type="number" value={b.shaping.failsafeUs} onChange={(e) => patchShaping(b.id, { failsafeUs: Number(e.target.value) })} /></label>}
               </div>
               {/* Only stick axes get a curve — a switch has two positions, there is
                   nothing in between to shape. */}
-              {b.mode === 'proportional' && (
+              {b.mode === 'proportional' && !follower && (
                 <CurveEditor
                   curve={b.shaping.curve}
                   disabled={locked}
@@ -359,7 +470,8 @@ export function BindingEditor({
               )}
             </details>
           </div>
-        ))}
+          );
+        })}
 
         {adding ? (
           <div className="add-channel">
@@ -367,46 +479,108 @@ export function BindingEditor({
               <label>Channel
                 <select value={draft.channel} onChange={(e) => setDraft({ ...draft, channel: Number(e.target.value) })}>
                   {Array.from({ length: CHANNEL_COUNT }, (_, i) => (
-                    <option key={i} value={i}>CH{String(i + 1).padStart(2, '0')}{profile.bindings.some((b) => b.channel === i) ? ' (in use)' : ''}</option>
+                    <option key={i} value={i}>{channelName(i, outputs)}{profile.bindings.some((b) => b.channel === i) ? ' (in use)' : ''}</option>
                   ))}
                 </select>
               </label>
               <label>Label<input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="e.g. Winch" /></label>
               <label>Source
-                <select value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value as ChannelBinding['source'], element: '' })}>
-                  {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                <select value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value as ChannelBinding['source'], element: '', pair: false })}>
+                  {SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s] ?? s}</option>)}
                 </select>
               </label>
-              <label>Mode
-                <select value={draft.mode} onChange={(e) => setDraft({ ...draft, mode: e.target.value as BindingMode })}>
-                  {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </label>
-              {draft.source !== 'onscreen' && (
-                <label className="add-element">Input
-                  <div className="learn-row">
-                    <input
-                      value={draft.element}
-                      onChange={(e) => setDraft({ ...draft, element: e.target.value })}
-                      placeholder={draft.source === 'keyboard' ? "key e.g. r  ·  axis: a|d" : 'button:0 · axis:2'}
-                    />
-                    <button className="btn tiny" onClick={() => setLearning((v) => !v)}>{learning ? 'Press…' : 'Learn'}</button>
-                  </div>
+              {draft.source !== 'follow' && (
+                <label>Mode
+                  <select
+                    value={draft.mode}
+                    onChange={(e) => {
+                      const mode = e.target.value as BindingMode;
+                      // Two buttons make an axis; as a switch they would make no sense.
+                      setDraft((d) => ({ ...d, mode, ...(mode !== 'proportional' && d.pair ? { pair: false, element: '' } : {}) }));
+                    }}
+                  >
+                    {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
                 </label>
               )}
-              <label className="add-rest">Rest position
-                <select value={draft.detent} onChange={(e) => setDraft({ ...draft, detent: e.target.value as Detent })}>
-                  {RESTS.map((d) => <option key={d} value={d}>{REST_LABEL[d]}</option>)}
-                </select>
-              </label>
+              {draft.source === 'follow' ? (
+                <label className="add-element">Copies
+                  <select
+                    value={draftLeader ?? ''}
+                    onChange={(e) => setDraft({ ...draft, element: e.target.value === '' ? '' : followElement(Number(e.target.value)) })}
+                  >
+                    <option value="">— pick the channel to follow —</option>
+                    {followable.map((b) => (
+                      <option key={b.id} value={b.channel}>{channelName(b.channel, outputs)} · {b.label ?? '—'}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : draft.pair ? (
+                <div className="add-element pair-learn">
+                  {(['pos', 'neg'] as const).map((side) => {
+                    const p = parsePairElement(draft.element);
+                    const n = side === 'pos' ? p?.pos : p?.neg;
+                    return (
+                      <label key={side}>
+                        {side === 'pos' ? '+ button (forward, right)' : '− button (back, left)'}
+                        <div className="learn-row">
+                          <input
+                            type="number"
+                            min={0}
+                            value={n ?? ''}
+                            placeholder={side === 'pos' ? '7 = RT/R2' : '6 = LT/L2'}
+                            onChange={(e) => {
+                              const v = e.target.value === '' ? null : Number(e.target.value);
+                              setDraft((d) => {
+                                const cur = parsePairElement(d.element) ?? { pos: null, neg: null };
+                                return { ...d, element: side === 'pos' ? pairElement(v, cur.neg) : pairElement(cur.pos, v) };
+                              });
+                            }}
+                          />
+                          <button className="btn tiny" onClick={() => setLearning((l) => (l === side ? null : side))}>{learning === side ? 'Press…' : 'Learn'}</button>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                draft.source !== 'onscreen' && (
+                  <label className="add-element">Input
+                    <div className="learn-row">
+                      <input
+                        value={draft.element}
+                        onChange={(e) => setDraft({ ...draft, element: e.target.value })}
+                        placeholder={draft.source === 'keyboard' ? "key e.g. r  ·  axis: a|d" : 'button:0 · axis:2'}
+                      />
+                      <button className="btn tiny" onClick={() => setLearning((l) => (l === 'element' ? null : 'element'))}>{learning === 'element' ? 'Press…' : 'Learn'}</button>
+                    </div>
+                  </label>
+                )
+              )}
+              {draft.source === 'gamepad' && draft.mode === 'proportional' && (
+                <label className="chk add-element">
+                  <input type="checkbox" checked={draft.pair} onChange={(e) => setDraft({ ...draft, pair: e.target.checked, element: '' })} />
+                  Two buttons as one axis — e.g. RT/R2 forward, LT/L2 back. Rests in the middle.
+                </label>
+              )}
+              {draft.source !== 'follow' && !draft.pair && (
+                <label className="add-rest">Rest position
+                  <select value={draft.detent} onChange={(e) => setDraft({ ...draft, detent: e.target.value as Detent })}>
+                    {RESTS.map((d) => <option key={d} value={d}>{REST_LABEL[d]}</option>)}
+                  </select>
+                </label>
+              )}
             </div>
+            {pairProblem && <p className="ch-warn">⚠ {pairProblem}</p>}
             <div className="add-actions">
-              <button className="btn" onClick={saveChannel}>{editingId ? 'Save' : 'Add'}</button>
+              <button className="btn" onClick={saveChannel} disabled={!canSave}>{editingId ? 'Save' : 'Add'}</button>
               <button className="btn ghost" onClick={closeForm}>Cancel</button>
             </div>
             <p className="note">
               proportional = axis (keyboard needs two keys like <code>a|d</code>) · momentary = while held · toggle = on/off · hold-ramp = ramps while held.
               Rest position = where a switch/ramp sits when released: <b>center</b> (1500), <b>min</b> (1000) or <b>hold</b> (stays put). Independent of stick modes.
+              <b> Follow another channel</b> copies that channel's final value, with its own offset, reverse and endpoints — a second
+              steering servo, a second ESC. Its failsafe (and, on a throttle, its disarmed value) follow too.
             </p>
           </div>
         ) : (
@@ -415,6 +589,23 @@ export function BindingEditor({
 
         <p className="note">Up to {CHANNEL_COUNT} channels. Templates give you the model's default map; add or remove channels here for full flexibility.</p>
       </div>
+
+      {trimmableBindings(profile).length > 0 && (
+        <div className="field">
+          <div className="eyebrow">Trim buttons</div>
+          <label className="trim-target">Trim −/+ act on
+            <select value={trimTargetOf(profile) ?? ''} onChange={(e) => onChange({ ...profile, trimTarget: e.target.value || undefined })}>
+              {trimmableBindings(profile).map((b) => (
+                <option key={b.id} value={b.id}>{channelName(b.channel, outputs)} · {b.label ?? '—'}</option>
+              ))}
+            </select>
+          </label>
+          <p className="note">
+            Bind the two buttons under Controls › Action bindings: 5 µs a press, up to ±150 µs, saved with the
+            model — the same trim as the buttons under the sticks.
+          </p>
+        </div>
+      )}
       </div>
     </section>
   );

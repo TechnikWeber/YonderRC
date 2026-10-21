@@ -342,7 +342,9 @@ export function throttleFailsafeRisk(vehicleType: VehicleType, shape: ChannelSha
  */
 export function throttleChannelsOf(profile: Profile): number[] {
   const derived = profile.bindings
-    .filter((b) => funcFromLabel(b.label) === 'throttle')
+    // A follower named "Throttle" is still a copy: its leader carries the pre-arm check
+    // and the limiter, and lib/follow.ts throttleOutputsOf adds it for the vehicle.
+    .filter((b) => b.source !== 'follow' && funcFromLabel(b.label) === 'throttle')
     .map((b) => b.channel)
     .filter((ch) => Number.isInteger(ch) && ch >= 0);
   const unique = [...new Set(derived)].sort((a, b) => a - b);
@@ -584,6 +586,26 @@ export function repairAxisBindings(profile: Profile): Profile {
     return { ...b, source: wantSource as ChannelBinding['source'], element: wantElement };
   });
   return changed ? { ...profile, bindings } : profile;
+}
+
+/**
+ * A stick binding the editor gave another input — other keys, another axis, two
+ * buttons — is no longer the template's stick. Drop `stickAxis`, or repairAxisBindings
+ * would put the stick back at the next load and a mode switch would move it again: an
+ * edit that silently came undone.
+ *
+ * Only for a binding still on the model's own source: an edited touch stick comes
+ * back from the form as an on-screen button, and that is exactly what the repair is
+ * there to undo.
+ */
+export function detachIfNotStick(b: ChannelBinding, method: InputMethod): ChannelBinding {
+  if (!b.stickAxis) return b;
+  const ownSource = method === 'keyboard' ? 'keyboard' : method === 'gamepad' ? 'gamepad' : 'virtual';
+  if (b.source !== ownSource || b.source === 'virtual') return b;
+  if (b.element === AXIS_ELEMENT[method]?.[b.stickAxis]) return b;
+  const detached = { ...b };
+  delete detached.stickAxis;
+  return detached;
 }
 
 /** The detents currently in effect, for the editor UI. */

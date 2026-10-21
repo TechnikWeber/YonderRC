@@ -3548,6 +3548,217 @@ async function main() {
     ok('the vehicle takes the path from the protocol', proxy.includes("import { VIDEO_PATH } from '@yonderrc/protocol'") && !proxy.includes('export const VIDEO_PATH'));
   }
 
+  // ---- v1.71: one button layout, in the browser and the desktop app ----
+  {
+    const S = await import('../packages/desktop/src/sdlService');
+    // A controller the way @kmamal/sdl reports it: axes and buttons by name.
+    const axes = { leftStickX: 0.5, leftStickY: -0.25, rightStickX: 0, rightStickY: 1, leftTrigger: 0.5, rightTrigger: 0.5 };
+    const buttons = {
+      a: true, b: false, x: false, y: false, leftShoulder: false, rightShoulder: true, back: false, start: true,
+      guide: false, leftStick: false, rightStick: false, dpadUp: true, dpadDown: false, dpadLeft: false, dpadRight: false,
+    };
+    const rest = S.freshTriggerRest();
+    const s1 = S.standardSnapshot('Pad', axes, buttons, rest);
+    ok('the desktop reports the four stick axes, like the browser', s1.axes.length === 4 && s1.axes[1] === -0.25 && s1.axes[3] === 1);
+    ok('and the seventeen standard buttons', s1.buttons.length === 17 && s1.values.length === 17);
+    // The bug: Start was 7 and D-pad up 11 in the desktop app, 9 and 12 in the browser.
+    ok('Start is 9 and D-pad up 12, as in the browser', s1.buttons[9] && s1.buttons[12] && !s1.buttons[7] && !s1.buttons[11]);
+    ok('the shoulders stay 4 and 5', s1.buttons[5] && !s1.buttons[4]);
+    ok('a trigger that reads 0.5 at rest is released', s1.values[6] === 0 && s1.values[7] === 0 && !s1.buttons[6] && !s1.buttons[7]);
+    const pulled = S.standardSnapshot('Pad', { ...axes, rightTrigger: 1 }, buttons, rest);
+    ok('pulled all the way it is 1, and pressed', pulled.values[7] === 1 && pulled.buttons[7]);
+    ok('halfway is halfway', near(S.standardSnapshot('Pad', { ...axes, rightTrigger: 0.75 }, buttons, rest).values[7], 0.5));
+    const held = S.freshTriggerRest();
+    S.standardSnapshot('Pad', { ...axes, leftTrigger: 0.9 }, buttons, held); // held while plugged in
+    const letGo = S.standardSnapshot('Pad', { ...axes, leftTrigger: 0 }, buttons, held);
+    ok('a trigger held at plug-in finds its rest when let go', letGo.values[6] === 0 && held.leftTrigger === 0);
+    ok('a light touch is not a press', !S.standardSnapshot('Pad', { ...axes, leftTrigger: 0.05 }, buttons, held).buttons[6]);
+    ok('other buttons are 0 or 1', s1.values[0] === 1 && s1.values[1] === 0);
+    ok('nothing readable is nothing pressed', S.standardSnapshot('Pad', undefined, undefined, S.freshTriggerRest()).values.every((v) => v === 0));
+    ok('no travel left to measure is no travel', S.triggerTravel(1, 0.99) === 0 && S.triggerTravel(NaN, 0) === 0);
+    const GP = await import('../packages/ground/src/lib/input/gamepadProvider');
+    ok('a trigger a hair off zero rests at zero', GP.dzButton(0.03) === 0 && GP.dzButton(0.5) === 0.5 && GP.dzButton(NaN) === 0 && GP.dzButton(3) === 1);
+
+    // What the desktop stored in its old numbering is renumbered, once.
+    const L = await import('../packages/ground/src/lib/padLayout');
+    ok('SDL Back, Start and Guide move to 8, 9 and 16',
+      L.elementFromSdl('button:6') === 'button:8' && L.elementFromSdl('button:7') === 'button:9' && L.elementFromSdl('button:8') === 'button:16');
+    ok('the stick clicks and the D-pad move one up', L.elementFromSdl('button:9') === 'button:10' && L.elementFromSdl('button:11') === 'button:12' && L.elementFromSdl('button:14') === 'button:15');
+    ok('A to RB stay', [0, 1, 2, 3, 4, 5].every((n) => L.elementFromSdl(`button:${n}`) === `button:${n}`));
+    ok('a trigger axis becomes the trigger button, same 0..1', L.elementFromSdl('axis:5') === 'buttons:7:' && L.elementFromSdl('axis:4:inv') === 'buttons::6');
+    ok('sticks and unknown numbers stay', L.elementFromSdl('axis:1:inv') === 'axis:1:inv' && L.elementFromSdl('button:40') === 'button:40');
+    const store = (init: Record<string, string>) => {
+      const m = new Map(Object.entries(init));
+      return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+    };
+    const padCar = buildProfile('car', { inputMethod: 'gamepad' });
+    const winchCar = {
+      ...padCar,
+      bindings: [...padCar.bindings, createBinding({ channel: 6, source: 'gamepad', element: 'button:7', mode: 'toggle', label: 'Winch', endpoints: padCar.endpoints })],
+    };
+    const desk = store({
+      'yonderrc.profiles.v3': JSON.stringify([winchCar]),
+      'yonderrc.actions.v2': JSON.stringify({ 'toggle-arm': { key: null, button: 7 }, 'next-camera': { key: 'c', button: null } }),
+    });
+    ok('the desktop renumbers once, and only once', L.migratePadLayout(desk, true) === 'moved' && L.migratePadLayout(desk, true) === 'done');
+    type Stored = { label?: string; element: string };
+    const deskBindings = (JSON.parse(desk.m.get('yonderrc.profiles.v3')!) as { bindings: Stored[] }[])[0].bindings;
+    ok('a Start learned on the desktop is still Start', deskBindings.find((b) => b.label === 'Winch')?.element === 'button:9');
+    ok("the template's buttons are where they were", deskBindings.filter((b) => b.label === 'Lights' || b.label === 'Horn').map((b) => b.element).join() === 'button:0,button:1');
+    const deskActions = JSON.parse(desk.m.get('yonderrc.actions.v2')!) as Record<string, { key: string | null; button: number | null }>;
+    ok('an arm button moves with it, keys stay', deskActions['toggle-arm'].button === 9 && deskActions['next-camera'].key === 'c' && deskActions['next-camera'].button === null);
+    const browser = store({ 'yonderrc.profiles.v3': JSON.stringify([winchCar]) });
+    ok('the browser only gets the mark',
+      L.migratePadLayout(browser, false) === 'marked' &&
+        (JSON.parse(browser.m.get('yonderrc.profiles.v3')!) as { bindings: Stored[] }[])[0].bindings.find((b) => b.label === 'Winch')?.element === 'button:7');
+    const damaged = store({ 'yonderrc.profiles.v3': '{not json' });
+    ok('a damaged store is left alone, and still marked',
+      L.migratePadLayout(damaged, true) === 'moved' && damaged.m.get('yonderrc.profiles.v3') === '{not json' && damaged.m.get(L.PAD_LAYOUT_KEY) === 'standard');
+    const mainTsx = readFileSync('packages/ground/src/main.tsx', 'utf8');
+    ok('the renumbering runs before the first render', mainTsx.indexOf('migratePadLayout(') > 0 && mainTsx.indexOf('migratePadLayout(') < mainTsx.indexOf('createRoot('));
+  }
+
+  // ---- v1.71: two buttons as one axis ----
+  {
+    const P = await import('../packages/ground/src/lib/input/padElements');
+    const T = await import('../packages/ground/src/lib/templates');
+    const { preArmCheck } = await import('../packages/ground/src/lib/safety');
+    ok('a pair round-trips', P.pairElement(7, 6) === 'buttons:7:6' && JSON.stringify(P.parsePairElement('buttons:7:6')) === JSON.stringify({ pos: 7, neg: 6 }));
+    ok('one side may be empty, both may not', P.parsePairElement('buttons:7:')?.neg === null && P.parsePairElement('buttons::') === null && P.parsePairElement('button:7') === null);
+    ok('the editor names the buttons', P.describeElement('buttons:7:6') === '+ 7 (RT/R2) · − 6 (LT/L2)' && P.describeElement('button:9') === 'button 9 (Start)');
+
+    const padCar = buildProfile('car', { inputMethod: 'gamepad' });
+    const thr = padCar.bindings.find((b) => b.label === 'Throttle')!;
+    const pairCar = { ...padCar, bindings: padCar.bindings.map((b) => (b.id === thr.id ? T.detachIfNotStick({ ...b, element: 'buttons:7:6', detent: 'center' as const }, 'gamepad') : b)) };
+    const eng = new BindingEngine();
+    const triggers = (r2: number, l2: number) => snap({ gamepadAxis: () => 0, gamepadButtonValue: (n) => (n === 7 ? r2 : n === 6 ? l2 : 0) });
+    ok('R2 halfway is half throttle forward', eng.compute(pairCar, triggers(0.5, 0), 20)[thr.channel] === 1750);
+    ok('L2 all the way is full reverse', eng.compute(pairCar, triggers(0, 1), 20)[thr.channel] === 1000);
+    ok('both released is stop', eng.compute(pairCar, triggers(0, 0), 20)[thr.channel] === 1500);
+    ok('both pulled cancel out', eng.compute(pairCar, triggers(1, 1), 20)[thr.channel] === 1500);
+    ok('no controller is stop, not a guess', eng.compute(pairCar, snap({ gamepadButtonValue: () => 1 }), 20)[thr.channel] === 1500);
+    ok('without analog values a pressed button is all the way', eng.compute(pairCar, snap({ gamepadAxis: () => 0, gamepadButton: (n) => n === 7 }), 20)[thr.channel] === 2000);
+    ok('the pre-arm check takes a released pair as stop', preArmCheck(pairCar, eng.compute(pairCar, triggers(0, 0), 20)).ok && !preArmCheck(pairCar, eng.compute(pairCar, triggers(1, 0), 20)).ok);
+    // The trap: a template stick given another input used to come back on the next load.
+    ok('a stick given two buttons leaves the template', pairCar.bindings.find((b) => b.id === thr.id)?.stickAxis === undefined);
+    ok('…so the next load keeps the buttons', T.repairAxisBindings(pairCar).bindings.find((b) => b.id === thr.id)?.element === 'buttons:7:6');
+    ok('…and a mode switch leaves them be', T.applyStickMode(pairCar, 1).bindings.find((b) => b.id === thr.id)?.element === 'buttons:7:6');
+    ok('a stick that is still the stick stays one', T.detachIfNotStick(thr, 'gamepad').stickAxis === thr.stickAxis);
+    const touchSteer = buildProfile('car', { inputMethod: 'touch' }).bindings.find((b) => b.stickAxis)!;
+    ok("an edited touch stick is left for the repair to put back", T.detachIfNotStick({ ...touchSteer, source: 'onscreen', element: 'btn' }, 'touch').stickAxis === touchSteer.stickAxis);
+    const editor = readFileSync('packages/ground/src/components/BindingEditor.tsx', 'utf8');
+    ok('a pair always rests in the middle, and is refused on an idle throttle',
+      editor.includes("const detent: Detent = draft.pair ? 'center' : draft.detent;") && editor.includes('throttleRestStick(undefined, profile.vehicleType) !== 0'));
+    ok('an edited input leaves the template stick', editor.includes('detachIfNotStick('));
+  }
+
+  // ---- v1.71: follower channels ----
+  {
+    const F = await import('../packages/ground/src/lib/follow');
+    const T = await import('../packages/ground/src/lib/templates');
+    const eng = new BindingEngine();
+    const padCar = buildProfile('car', { inputMethod: 'gamepad' });
+    const steer = padCar.bindings.find((b) => b.label === 'Steering')!;
+    const servo2 = F.createFollower({ channel: 1, leader: steer, label: 'Steering 2' });
+    const twin = { ...padCar, bindings: [...padCar.bindings, servo2] };
+    ok('a follower names its leader', F.followedChannel(servo2) === steer.channel && F.leaderOf(twin, servo2)?.id === steer.id);
+    const raw = eng.compute(twin, snap({ gamepadAxis: (n) => (n === 0 ? 0.5 : 0) }), 20);
+    ok('the engine leaves a follower to applyFollowers', raw[1] === 1500);
+    const out = F.applyFollowers(twin, raw);
+    ok('it copies its leader exactly', out[1] === out[steer.channel] && out[steer.channel] !== 1500);
+    ok('with its own offset', F.followerUs(1600, { ...servo2, shaping: { ...servo2.shaping, trimUs: 20 } }) === 1620);
+    ok('a mirrored servo mirrors around neutral, then the offset', F.followerUs(1600, { ...servo2, shaping: { ...servo2.shaping, reverse: true, trimUs: -10 } }) === 1390);
+    const narrow = { ...servo2, shaping: { ...servo2.shaping, minUs: 1200, maxUs: 1800 } };
+    ok('and inside its own endpoints', F.followerUs(2000, narrow) === 1800 && F.followerUs(1000, narrow) === 1200);
+    ok('a model without followers costs nothing', F.applyFollowers(padCar, raw) === raw);
+    const trimmed = { ...twin, bindings: twin.bindings.map((b) => (b.id === steer.id ? { ...b, shaping: { ...b.shaping, trimUs: 30 } } : b)) };
+    const trimmedOut = F.applyFollowers(trimmed, eng.compute(trimmed, snap({ gamepadAxis: () => 0 }), 20));
+    ok('a steering trim moves both servos', trimmedOut[steer.channel] === 1530 && trimmedOut[1] === 1530);
+
+    // Twin ESCs: the second one stops where the first one stops.
+    const plane = buildProfile('plane', { inputMethod: 'gamepad' });
+    const pThr = plane.bindings.find((b) => b.label === 'Throttle')!;
+    const esc2 = F.createFollower({ channel: 6, leader: pThr, label: 'Throttle 2' });
+    const twinPlane = { ...plane, bindings: [...plane.bindings, esc2] };
+    ok('a second ESC is throttle to the vehicle', F.throttleOutputsOf(twinPlane).includes(6) && F.throttleOutputsOf(twinPlane).includes(pThr.channel));
+    ok('…while the pre-arm check and the limiter watch the first', !T.throttleChannelsOf(twinPlane).includes(6));
+    ok('its failsafe is the first one’s', profileFailsafeUs(twinPlane)[6] === profileFailsafeUs(twinPlane)[pThr.channel]);
+    ok('and so is its disarmed value', profileDisarmedUs(twinPlane)[6] === 1000 && profileDisarmedUs(twinPlane)[pThr.channel] === 1000);
+    const revEsc = { ...esc2, shaping: { ...esc2.shaping, reverse: true } };
+    ok('a reversed second ESC stops at its own reversed stop', profileDisarmedUs({ ...plane, bindings: [...plane.bindings, revEsc] })[6] === 2000);
+    ok('a follower named Throttle is still only a copy',
+      !T.throttleChannelsOf({ ...twinPlane, bindings: twinPlane.bindings.map((b) => (b.id === esc2.id ? { ...b, label: 'Throttle' } : b)) }).includes(6));
+    const orphan = { ...plane, bindings: [...plane.bindings.filter((b) => b.id !== pThr.id), esc2] };
+    ok('a follower whose leader is gone holds its stored failsafe',
+      F.applyFollowers(orphan, eng.compute(orphan, snap({}), 20))[6] === esc2.shaping.failsafeUs && profileFailsafeUs(orphan)[6] === esc2.shaping.failsafeUs);
+    const chained = { ...esc2, id: 'f-chain', channel: 7, element: F.followElement(6) };
+    ok('a follower cannot follow a follower', F.leaderOf({ ...twinPlane, bindings: [...twinPlane.bindings, chained] }, chained) === null);
+    ok('…and is never offered one', !F.leaderCandidates(twinPlane, 7).some((b) => F.isFollower(b)));
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('followers come after the limiter, and into the pre-arm view',
+      app.includes('applyFollowers(activeRef.current, applyThrottleLimit(activeRef.current, raw))') && app.includes('liveChannelsRef.current = applyFollowers(activeRef.current, raw)'));
+    ok('the vehicle is told about every throttle output', app.includes('throttleOutputsOf(p),'));
+  }
+
+  // ---- v1.71: trim on buttons, reverse in sight, the board's own numbers ----
+  {
+    const TR = await import('../packages/ground/src/lib/trim');
+    const F = await import('../packages/ground/src/lib/follow');
+    const A = await import('../packages/ground/src/lib/actions');
+    const padCar = buildProfile('car', { inputMethod: 'gamepad' });
+    const steer = padCar.bindings.find((b) => b.label === 'Steering')!;
+    const thr = padCar.bindings.find((b) => b.label === 'Throttle')!;
+    const plane = buildProfile('plane', { inputMethod: 'gamepad' });
+    ok('the trim buttons trim the steering on a car', TR.trimTargetOf(padCar) === steer.id);
+    ok('…the aileron on a plane', TR.trimTargetOf(plane) === plane.bindings.find((b) => b.label === 'Aileron')!.id);
+    const servo2 = F.createFollower({ channel: 1, leader: steer, label: 'Steering 2' });
+    ok('…never a follower', TR.defaultTrimTarget({ ...padCar, bindings: [servo2, ...padCar.bindings] }) === steer.id);
+    ok("the model's own choice wins while it exists", TR.trimTargetOf({ ...padCar, trimTarget: thr.id }) === thr.id && TR.trimTargetOf({ ...padCar, trimTarget: 'gone' }) === steer.id);
+    ok('trim −/+ ship unbound', A.migrateActions(null)['trim-dec'].button === null && A.migrateActions(null)['trim-inc'].key === null);
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('a trim button steps the trim target', app.includes("'trim-dec': () => trimByButton(-1)") && app.includes('nudgeTrim(p, id, dir * TRIM_STEP_US)'));
+    const controls = readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8');
+    ok('…and can be bound', controls.includes("'trim-dec', 'trim-inc'"));
+    const editor = readFileSync('packages/ground/src/components/BindingEditor.tsx', 'utf8');
+    ok('reverse sits in the channel row, not behind the details', editor.includes('className="rev-toggle"') && !editor.includes('<label className="rev">'));
+
+    const N = await import('../packages/ground/src/lib/channelName');
+    ok('a channel is CH03 without wiring', N.channelName(2) === 'CH03');
+    ok('with a PCA9685 it says which output', N.channelName(2, ['out 0', 'out 1', 'out 2']) === 'CH03 · out 2');
+    ok('a channel with no output says so', N.channelName(5, ['GPIO 17', '']) === 'CH06 · not wired');
+    const { Pca9685Driver } = await import('../packages/vehicle/src/drivers/Pca9685Driver');
+    const { GpioPwmDriver } = await import('../packages/vehicle/src/drivers/GpioPwmDriver');
+    const { SbusDriver } = await import('../packages/vehicle/src/drivers/SbusDriver');
+    const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
+    const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
+    const pca = new Pca9685Driver();
+    ok('the board counts from 0', pca.outputLabel(0) === 'out 0' && pca.outputLabel(15) === 'out 15' && pca.outputLabel(16) === null);
+    const gpio = new GpioPwmDriver({ pins: [18, 27] });
+    ok('GPIO names the pin, and nothing past the list', gpio.outputLabel(1) === 'GPIO 27' && gpio.outputLabel(2) === null);
+    ok('SBUS counts from 1', new SbusDriver().outputLabel(0) === 'SBUS 1');
+    const labels = new VehicleCore({ driver: gpio }).outputLabels();
+    ok('the vehicle reports what runs', labels?.length === 16 && labels[0] === 'GPIO 18' && labels[2] === '');
+    ok('a sim has no wiring to report', new VehicleCore({ driver: new SimDriver() }).outputLabels() === undefined);
+    ok('the welcome carries it', readFileSync('packages/vehicle/src/transport/wsServer.ts', 'utf8').includes('outputs: core.outputLabels(),'));
+    const calib = readFileSync('packages/ground/src/components/CalibrationPanel.tsx', 'utf8');
+    ok('ESC calibration names the output, and takes a second ESC as a throttle', calib.includes('channelName(channel - 1, outputs)') && calib.includes('throttleOutputsOf(profile)'));
+
+    // Found on the way: every key counted as control, even inside a text field.
+    const { InputManager, isTypingTarget } = await import('../packages/ground/src/lib/input/inputManager');
+    ok('a text field is typing', isTypingTarget({ tagName: 'INPUT', type: 'text' } as unknown as EventTarget) && isTypingTarget({ tagName: 'TEXTAREA' } as unknown as EventTarget));
+    ok('a checkbox or the page is not', !isTypingTarget({ tagName: 'INPUT', type: 'checkbox' } as unknown as EventTarget) && !isTypingTarget({ tagName: 'BODY' } as unknown as EventTarget) && !isTypingTarget(null));
+    const im = new InputManager();
+    const press = (key: string, target: unknown) => {
+      let prevented = false;
+      (im as unknown as { onKeyDown: (e: unknown) => void }).onKeyDown({ key, target, preventDefault: () => (prevented = true) });
+      return prevented;
+    };
+    const typedSpace = press(' ', { tagName: 'INPUT', type: 'text' });
+    ok('a space typed into a label reaches the label', !typedSpace && !im.snapshot().keys.has(' '));
+    ok('a "w" typed into the address is not throttle', (press('w', { tagName: 'INPUT', type: 'text' }), !im.snapshot().keys.has('w')));
+    ok('on the page the keys still drive', press(' ', { tagName: 'BODY' }) && im.snapshot().keys.has(' '));
+  }
+
   // ---- v1.70.1: a network name is not markup ----
   {
     const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { CalibrationStatus, Profile } from '@yonderrc/protocol';
 import { channelEndpoints, throttleChannelsOf } from '../lib/templates';
+import { throttleOutputsOf } from '../lib/follow';
+import { channelName } from '../lib/channelName';
 
 /**
  * ESC throttle-range calibration wizard. Runs against the vehicle's non-blocking
@@ -9,6 +11,7 @@ import { channelEndpoints, throttleChannelsOf } from '../lib/templates';
  */
 export function CalibrationPanel({
   profile,
+  outputs,
   calibration,
   connected,
   onStart,
@@ -16,6 +19,8 @@ export function CalibrationPanel({
   onCancel,
 }: {
   profile: Profile;
+  /** What each channel is wired to on the vehicle (welcome.outputs). */
+  outputs?: string[];
   calibration: CalibrationStatus | undefined;
   connected: boolean;
   onStart: (channel: number, minUs: number, maxUs: number) => void;
@@ -34,6 +39,8 @@ export function CalibrationPanel({
   // The ESC has to learn the range it is actually driven with, so use the
   // channel's own endpoints (the profile-wide ones are only a fallback).
   const ep = channelEndpoints(profile, channel - 1);
+  // A second ESC that follows the throttle is calibrated on its own channel — no warning.
+  const throttleOutputs = throttleOutputsOf(profile).map((c) => c + 1);
 
   return (
     <section className="panel calib">
@@ -57,9 +64,9 @@ export function CalibrationPanel({
             />
           </label>
           <p className="calib-range">
-            Will teach the ESC <b>CH{String(channel).padStart(2, '0')}</b>: max{' '}
+            Will teach the ESC <b>{channelName(channel - 1, outputs)}</b>: max{' '}
             <b>{ep.maxUs} µs</b> → min <b>{ep.minUs} µs</b>
-            {channel !== derived && <> · ⚠ not this model's throttle channel (CH{String(derived).padStart(2, '0')})</>}
+            {!throttleOutputs.includes(channel) && <> · ⚠ not this model's throttle channel ({channelName(derived - 1, outputs)})</>}
           </p>
           <button
             className="btn wide primary"

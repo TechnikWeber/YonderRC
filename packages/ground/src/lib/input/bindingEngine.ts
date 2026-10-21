@@ -8,6 +8,7 @@ import {
   shapeSwitch,
 } from '@yonderrc/protocol';
 import type { ChannelBinding, Profile } from '@yonderrc/protocol';
+import { parsePairElement, type PairElement } from './padElements';
 
 /**
  * A read-only view of every input source at one instant. The engine depends only
@@ -20,6 +21,8 @@ export interface InputSnapshot {
   joystick: (id: string) => { x: number; y: number } | null;
   gamepadAxis: (n: number) => number | null; // null if no gamepad
   gamepadButton: (n: number) => boolean;
+  /** How far a button is pressed, 0..1 (analog triggers); absent = pressed ? 1 : 0. */
+  gamepadButtonValue?: (n: number) => number;
 }
 
 const CENTER_SPRING_PER_SEC = 3.5; // keyboard/virtual axis return-to-center
@@ -73,6 +76,9 @@ export class BindingEngine {
 
     for (const b of profile.bindings) {
       if (b.channel < 0 || b.channel >= CHANNEL_COUNT) continue;
+      // A follower reads no input: it copies its channel after the speed limiter
+      // (lib/follow.ts applyFollowers), so it is left at neutral here.
+      if (b.source === 'follow') continue;
       channels[b.channel] = this.evalBinding(b, snap, dt, dtMs);
     }
     return channels;
@@ -113,6 +119,8 @@ export class BindingEngine {
   /** Proportional [-1,1] value from the binding's source. */
   private readAxis(b: ChannelBinding, snap: InputSnapshot, dt: number): number {
     if (b.source === 'gamepad') {
+      const pair = parsePairElement(b.element);
+      if (pair) return readPair(pair, snap);
       const { index, invert } = parseAxisElement(b.element);
       const v = snap.gamepadAxis(index);
       if (v !== null) return invert ? -v : v;
@@ -182,6 +190,17 @@ function rampAxis(current: number, dir: number, dt: number, detent: 'center' | '
     return target;
   }
   return clamp(current + dir * KEY_RAMP_PER_SEC * dt, -1, 1);
+}
+
+/**
+ * Two buttons as one axis: how far the positive one is pressed minus the negative one.
+ * Both released is 0 — a pair rests in the middle, which is why the editor only offers
+ * it where the channel rests there too. No controller reads as rest.
+ */
+function readPair(p: PairElement, snap: InputSnapshot): number {
+  if (snap.gamepadAxis(0) === null) return 0;
+  const v = (n: number | null) => (n === null ? 0 : snap.gamepadButtonValue?.(n) ?? (snap.gamepadButton(n) ? 1 : 0));
+  return clamp(v(p.pos) - v(p.neg), -1, 1);
 }
 
 function parseAxisElement(el: string): { index: number; invert: boolean } {

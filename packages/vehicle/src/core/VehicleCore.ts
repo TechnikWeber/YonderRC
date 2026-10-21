@@ -209,6 +209,17 @@ export class VehicleCore {
     return this.driver.kind;
   }
 
+  /**
+   * What each channel is wired to on the running driver ('' = nowhere), or undefined
+   * when the driver has no hardware to name — the sim, or a hardware driver that fell
+   * back to it.
+   */
+  outputLabels(): string[] | undefined {
+    const d = this.driver;
+    if (!d.outputLabel) return undefined;
+    return Array.from({ length: CHANNEL_COUNT }, (_, ch) => d.outputLabel?.(ch) ?? '');
+  }
+
   get watchdogMs(): number {
     return this.watchdogTimeoutMs;
   }

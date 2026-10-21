@@ -206,6 +206,8 @@ export function startWsServer(
       // What is RUNNING, not what is configured: after a failed hardware driver the
       // service drives sim, and the ground's status strip has to say so.
       driver: core.driverKind,
+      // …and the same for the wiring: a sim fallback has no outputs to name.
+      outputs: core.outputLabels(),
       watchdogTimeoutMs: core.watchdogMs,
       videoBaseUrl: config.videoBaseUrl,
       cameras: config.cameras.map((c) => safeStreamName(c.name)),

@@ -105,6 +105,11 @@ export class Pca9685Driver implements OutputDriver {
     return this.last.slice();
   }
 
+  /** The board prints its outputs 0–15; channel N is output N. */
+  outputLabel(ch: number): string | null {
+    return Number.isInteger(ch) && ch >= 0 && ch < CHANNEL_COUNT ? `out ${ch}` : null;
+  }
+
   async close(): Promise<void> {
     try {
       await this.writeReg(PCA9685_MODE1, MODE1_SLEEP); // outputs off

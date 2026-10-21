@@ -33,6 +33,10 @@ export class InputManager {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
+    // Typing into a field is typing, not driving. Every key used to count: a space never
+    // reached a label or a model name, and on a keyboard model a "w" typed into the
+    // vehicle address was throttle.
+    if (isTypingTarget(e.target)) return;
     this.keys.add(normKey(e.key));
     if (isControlKey(normKey(e.key))) e.preventDefault();
   };
@@ -106,12 +110,22 @@ export class InputManager {
       joystick: (id) => this.joysticks.get(id) ?? null,
       gamepadAxis: (n) => this.gamepad.axis(n),
       gamepadButton: (n) => this.gamepad.button(n),
+      gamepadButtonValue: (n) => this.gamepad.buttonValue(n),
     };
   }
 }
 
 function normKey(key: string): string {
   return key.toLowerCase();
+}
+
+/** A text field, a select or editable text — not a checkbox, a radio or a button. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as { tagName?: unknown; type?: unknown; isContentEditable?: unknown } | null;
+  if (!el || typeof el.tagName !== 'string') return false;
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+  if (el.tagName === 'INPUT') return !['checkbox', 'radio', 'button', 'range', 'submit', 'reset'].includes(String(el.type));
+  return el.isContentEditable === true;
 }
 function isControlKey(k: string): boolean {
   return ['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' '].includes(k);

@@ -3,6 +3,72 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.71.0
+*Controller and channel wishes from users: two buttons as one axis, trim on buttons,
+follower channels, the board's own output numbers — and one button layout in the browser
+and the desktop app.*
+
+**English**
+- **Two buttons as one axis.** A gamepad channel can be driven by two buttons — RT/R2
+  forward, LT/L2 back, each by how far it is pulled. It rests in the middle, so it is
+  offered for steering and for a car's or boat's throttle; on a throttle that rests at
+  idle the editor refuses it.
+- **Trim on buttons.** Two new actions, Trim − and Trim +, for a key or a controller
+  button (Setup › Controls › Action bindings, unbound by default). 5 µs a press, on the
+  steering unless the model names another channel (Setup › model › Trim buttons). A click
+  per step, a lower tone back at centre.
+- **Follower channels** for a second steering servo (Traxxas Revo) or a second ESC: Add
+  channel › Source › *follow another channel*. It copies the other channel's final value —
+  trim and speed limiter included — with its own offset, reverse and endpoints. Its
+  failsafe and disarmed values follow too, so two ESCs never disagree about stop.
+- **Reverse is in the channel row.** It was there all along, hidden in the collapsed details.
+- **The hardware's own numbers.** Connected, every channel shows what it is wired to:
+  `CH03 · out 2` on a PCA9685 board (which counts from 0), the GPIO pin, or the SBUS
+  channel. ESC calibration names the output too.
+- **One button layout.** The desktop app numbered controller buttons differently from the
+  browser (Start was 7 there and 9 here; the triggers were axes). It now reports the
+  browser's standard layout, and what it had stored is renumbered once, automatically —
+  every binding keeps its physical button. The default templates were never affected.
+  Tested against recorded controller data, not a real pad in the desktop app: if a button
+  lands somewhere unexpected there, please open an issue.
+- **Edits to a stick channel stay.** Giving a template stick another input — other keys,
+  another axis, two buttons — was undone at the next load.
+- **Typing is not driving.** Keys typed into a text field no longer count as control
+  input: a space now reaches a label, and on a keyboard model a "w" typed into the
+  vehicle address is no longer throttle.
+
+**Deutsch**
+- **Zwei Tasten als eine Achse.** Ein Gamepad-Kanal lässt sich mit zwei Tasten steuern —
+  RT/R2 vorwärts, LT/L2 zurück, jeweils so weit, wie sie gezogen sind. Die Ruhelage ist die
+  Mitte; angeboten wird das deshalb für die Lenkung und das Gas von Auto und Boot. Bei
+  einem Gas, das im Leerlauf ruht, lehnt der Editor es ab.
+- **Trimmung auf Tasten.** Zwei neue Aktionen, Trim − und Trim +, für eine Taste oder
+  einen Controller-Knopf (Setup › Controls › Action bindings, standardmäßig unbelegt).
+  5 µs pro Druck, auf der Lenkung, solange das Modell keinen anderen Kanal nennt (Setup ›
+  Modell › Trim buttons). Ein Klick pro Schritt, ein tieferer Ton zurück in der Mitte.
+- **Folgekanäle** für ein zweites Lenkservo (Traxxas Revo) oder einen zweiten Regler: Add
+  channel › Source › *follow another channel*. Er kopiert den fertigen Wert des anderen
+  Kanals — Trimmung und Speed-Limiter eingeschlossen — mit eigenem Versatz, Reverse und
+  Endpunkten. Failsafe- und Disarm-Wert folgen mit, damit zwei Regler sich nie uneins
+  sind, was Stopp heißt.
+- **Reverse steht in der Kanalzeile.** Es war immer da, nur versteckt in den eingeklappten
+  Details.
+- **Die Nummern der Hardware.** Verbunden zeigt jeder Kanal, woran er hängt:
+  `CH03 · out 2` am PCA9685-Board (das ab 0 zählt), der GPIO-Pin oder der SBUS-Kanal. Auch
+  die Regler-Kalibrierung nennt den Ausgang.
+- **Ein Tastenlayout.** Die Desktop-App nummerierte Controller-Tasten anders als der
+  Browser (Start war dort 7, hier 9; die Trigger waren Achsen). Sie meldet jetzt das
+  Standard-Layout des Browsers, und was sie gespeichert hatte, wird einmal automatisch
+  umgerechnet — jede Belegung behält ihre echte Taste. Die Standard-Vorlagen waren nie
+  betroffen. Getestet mit aufgezeichneten Controller-Daten, nicht mit einem echten Pad in
+  der Desktop-App: Landet dort eine Taste woanders, bitte ein Issue aufmachen.
+- **Änderungen an einem Stick-Kanal bleiben.** Bekam ein Vorlagen-Stick eine andere
+  Eingabe — andere Tasten, eine andere Achse, zwei Tasten —, war das beim nächsten Laden
+  wieder weg.
+- **Tippen ist nicht Fahren.** Tasten, die in ein Textfeld getippt werden, zählen nicht
+  mehr als Steuereingabe: Ein Leerzeichen kommt jetzt im Namen an, und bei einem
+  Tastatur-Modell ist ein „w" in der Fahrzeugadresse kein Gas mehr.
+
 ## v1.70.2
 *Video follows the control link — whatever address the vehicle has stored for itself.*
 

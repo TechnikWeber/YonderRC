@@ -25,6 +25,14 @@ export interface OutputDriver {
   /** Read back the last values written, for status/telemetry. */
   readLast(): number[];
 
+  /**
+   * What channel `ch` (0-based) is wired to, in the hardware's own words — `out 2` on
+   * a PCA9685 board, `GPIO 27`, `SBUS 3` — or null when it goes nowhere. The app
+   * counts channels from 1, the board from 0; this is what bridges the two. Absent on
+   * drivers without hardware.
+   */
+  outputLabel?(ch: number): string | null;
+
   /** Release resources (I2C bus, serial port, …). */
   close(): Promise<void>;
 }

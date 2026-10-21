@@ -117,6 +117,32 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   unbound** (panic fires instantly with no hold — an accidental press is a crash);
   storage is `yonderrc.actions.v2`, and `migrateActions` drops a stored panic binding
   that is exactly the pre-v1.30 `escape` default while keeping deliberate choices.
+  **Trim −/+** (v1.71) nudge `trimTargetOf(profile)` (`lib/trim.ts`): the model's
+  `trimTarget` while that binding exists, else the steering-like channel, never a follower.
+- **Follower channels** (`ground/src/lib/follow.ts`, v1.71): `source: 'follow'`, element
+  `ch:N`. The engine skips them; App applies `applyFollowers` AFTER the limiter (and to the
+  pre-arm view), so a follower copies the FINAL value plus its own offset (`trimUs`),
+  reverse (mirror around 1500) and endpoints. Failsafe and disarmed values are derived the
+  same way (`profiles.ts`), `throttleOutputsOf` (not `throttleChannelsOf`, which excludes
+  followers) is the list the vehicle gets, a follower without a leader holds its stored
+  failsafe, and a follower never follows a follower.
+- **Gamepad elements** (`ground/src/lib/input/padElements.ts`): `axis:N[:inv]`, `button:N`,
+  and since v1.71 `buttons:P:N` — two buttons as one axis (value P − N, analog triggers via
+  `buttonValue`). It rests at 0, so the editor forces detent `center` and refuses it on a
+  throttle that rests at idle. An edited stick binding goes through `detachIfNotStick`,
+  otherwise `repairAxisBindings` puts the template stick back at the next load.
+- **One button layout** (v1.71): the desktop's SDL bridge reports the browser's standard
+  layout (`STANDARD_BUTTONS` in `desktop/src/sdlService.ts`; triggers are analog buttons
+  6/7, each measured from its own rest). Bindings the desktop stored in the old SDL order
+  are renumbered once by `migratePadLayout` (`lib/padLayout.ts`, called in `main.tsx`
+  before the first render); the mark is set whatever happens — renumbering twice would move
+  every button on again.
+- **Output names** (v1.71): `OutputDriver.outputLabel(ch)` → `VehicleCore.outputLabels()`
+  → `welcome.outputs` (undefined on sim) → `channelName(ch, outputs)` in the ground:
+  `CH03 · out 2`. The app keeps counting from 1.
+- **Typing is not driving** (v1.71): `InputManager` ignores keys whose target is a text
+  field (`isTypingTarget`) — a space never reached a label, and on a keyboard model a "w"
+  typed into the address was throttle.
 - **Mobile data budget** (`vehicle/system/traffic.ts` + `TrafficService.ts`, v1.68.0):
   `/proc/net/dev` byte counters summed over the **metered** interfaces, warned on in the
   OSD (`⚠ DATA`) against `config.dataUsage.budgetMb`. Three rules that are easy to get

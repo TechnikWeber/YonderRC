@@ -53,6 +53,12 @@ export class GpioPwmDriver implements OutputDriver {
     return this.last.slice();
   }
 
+  /** The BCM pin a channel drives; a channel past the pin list drives nothing. */
+  outputLabel(ch: number): string | null {
+    const pin = this.pins[ch];
+    return pin === undefined ? null : `GPIO ${pin}`;
+  }
+
   async close(): Promise<void> {
     // Drop pulses (servoWrite 0 = off) so outputs are defined at shutdown.
     try {

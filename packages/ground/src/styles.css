@@ -1915,6 +1915,13 @@ input[type='range'] {
 .add-channel code { font-family: var(--mono); background: var(--panel); padding: 1px 4px; border-radius: 3px; }
 @media (max-width: 560px) { .add-grid { grid-template-columns: 1fr; } }
 
+/* ---- v1.71: reverse in the row, two-button axes, trim buttons ---- */
+.ch-actions .rev-toggle { cursor: pointer; font-size: 11px; }
+.add-grid label.chk { flex-direction: row; align-items: center; gap: 6px; }
+.pair-learn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 560px) { .pair-learn { grid-template-columns: 1fr; } }
+.trim-target { display: flex; flex-direction: column; gap: 4px; max-width: 360px; font-size: 11px; color: var(--muted); }
+
 /* ---- crash recovery (v1.12) ---- */
 .crash { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .crash-card { max-width: 520px; background: var(--panel); border: 1px solid var(--line-bright); border-radius: 12px; padding: 24px; }

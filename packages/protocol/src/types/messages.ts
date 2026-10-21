@@ -113,6 +113,12 @@ export interface WelcomeMessage {
   channelCount: number;
   /** The output driver actually RUNNING — `sim` after a hardware driver failed to start. */
   driver: string;
+  /**
+   * What each channel is wired to on that driver, by index (v1.71): `out 0`…`out 15`
+   * on a PCA9685 board, `GPIO 18` for a pin, `SBUS 1`… — '' for a channel that goes
+   * nowhere. Absent in simulation and from older vehicles.
+   */
+  outputs?: string[];
   /** Echo of watchdog timeout so the ground can show/keepalive correctly. */
   watchdogTimeoutMs: number;
   /**

@@ -13,7 +13,9 @@ export type ActionId =
   | 'next-camera'
   | 'record-toggle'
   | 'snapshot'
-  | 'throttle-limit';
+  | 'throttle-limit'
+  | 'trim-dec'
+  | 'trim-inc';
 
 export interface ActionBinding {
   key: string | null; // keyboard key (lower-case)
@@ -28,10 +30,15 @@ export const ACTION_LABELS: Record<ActionId, string> = {
   'record-toggle': 'Record start/stop',
   snapshot: 'Snapshot',
   'throttle-limit': 'Speed limit — next step',
+  'trim-dec': 'Trim − (left / down)',
+  'trim-inc': 'Trim + (right / up)',
 };
 
-const KEY = 'yonderrc.actions.v2';
-const LEGACY_KEY = 'yonderrc.actions.v1';
+/** Where the bindings are stored; exported for the one-time layout move (padLayout.ts). */
+export const ACTIONS_KEY = 'yonderrc.actions.v2';
+export const LEGACY_ACTIONS_KEY = 'yonderrc.actions.v1';
+const KEY = ACTIONS_KEY;
+const LEGACY_KEY = LEGACY_ACTIONS_KEY;
 
 /**
  * Panic-disarm ships **unbound on purpose**. It cuts the motors instantly and
@@ -49,6 +56,10 @@ const DEFAULTS: ActionBindings = {
   'record-toggle': { key: 'r', button: null },
   snapshot: { key: 't', button: null },
   'throttle-limit': { key: null, button: null },
+  // Unbound like the rest: the D-pad is where trims usually go, and where a model's
+  // own switches may already be.
+  'trim-dec': { key: null, button: null },
+  'trim-inc': { key: null, button: null },
 };
 
 /** The panic binding that used to ship by default, up to v1.29.0. */

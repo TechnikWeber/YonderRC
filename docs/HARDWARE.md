@@ -109,7 +109,8 @@ terminal resistance both land in the measurement. Feed a known current and enter
 - The PCA9685 also answers on **0x70**, its *all-call* address. It has no ID register, so
   that is how **Detect hardware** tells it apart from an INA2xx. YonderRC leaves all-call
   enabled on purpose so the chip stays identifiable while running.
-- Servos/ESC go to outputs 0–15. App channels 1–16 map to PCA9685 channels 0–15.
+- Servos/ESC go to outputs 0–15. App channels 1–16 map to PCA9685 channels 0–15; while
+  connected, the app shows the output next to each channel (`CH03 · out 2`).
 
 ### 2.2 INA228 (current/voltage) ↔ I2C
 

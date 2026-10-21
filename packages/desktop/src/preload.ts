@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer } from 'electron';
  * exposes them synchronously so the renderer's InputManager can poll them exactly
  * like navigator.getGamepads(). Also exposes rumble.
  */
-type Snapshot = { id: string; axes: number[]; buttons: boolean[] };
+type Snapshot = { id: string; axes: number[]; buttons: boolean[]; values: number[] };
 let gamepads: Snapshot[] = [];
 
 ipcRenderer.on('yonder:gamepad', (_e, data: Snapshot[]) => {

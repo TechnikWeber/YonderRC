@@ -102,6 +102,9 @@ der Steuer-App eingestellt.
 - **„Own layout"** heißt, der Browser bildet das Gerät nicht auf das Standard-Layout ab: die
   Stick-Achsen können anders nummeriert sein. Im Kanal-Editor **Learn** benutzen und den
   Stick bewegen. Ein Trigger, der bei −1 ruht, wird nicht mehr versehentlich „gelernt".
+- **Tastennummern** folgen seit v1.71 auch in der Desktop-App dem Standard-Layout
+  (Start = 9, RT/R2 = 7, LT/L2 = 6, wie im Browser). Was die Desktop-App vorher gelernt
+  hatte, wurde einmal automatisch umgerechnet; jede Belegung behält ihre echte Taste.
 - **PS4 / PS5:** per USB geht es sofort. Bluetooth: **Share + PS** (PS5: **Create + PS**)
   halten, bis die Lichtleiste blinkt, dann in den Bluetooth-Einstellungen des Systems
   koppeln. In Chrome und Edge hat er dann das Standard-Layout. **DS4Windows** versteckt den

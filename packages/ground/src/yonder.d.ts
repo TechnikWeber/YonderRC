@@ -3,8 +3,12 @@ export interface YonderBridge {
   isElectron: boolean;
   /** Whether the native SDL controller layer is active. */
   sdlActive: boolean;
-  /** Latest controller snapshots from the native SDL layer. */
-  getGamepads(): { id: string; axes: number[]; buttons: boolean[] }[];
+  /**
+   * Latest controller snapshots from the native SDL layer, in the standard layout.
+   * `values` (0..1 per button, the triggers' travel) is absent from desktop apps
+   * older than v1.71.
+   */
+  getGamepads(): { id: string; axes: number[]; buttons: boolean[]; values?: number[] }[];
   /** Rumble a controller by index. Magnitudes 0..1. */
   rumble(index: number, low: number, high: number, ms: number): void;
 }

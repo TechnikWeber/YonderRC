@@ -15,7 +15,7 @@ import {
 } from '../lib/returnBudget';
 import { Hint } from './Hint';
 
-const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'next-camera', 'record-toggle', 'snapshot'];
+const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'trim-dec', 'trim-inc', 'next-camera', 'record-toggle', 'snapshot'];
 
 export function ControlsPanel({
   bindings,
@@ -424,6 +424,11 @@ export function ControlsPanel({
             </div>
           ))}
         </div>
+        <p className="note">
+          Trim −/+ move one channel per model by 5 µs a press, with a click to hear it — the
+          steering by default; pick another under Setup › model › Trim buttons. Button numbers
+          are the standard layout, the same in the browser and in the desktop app.
+        </p>
       </details>
 
       <details className="group">

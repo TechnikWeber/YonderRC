@@ -1,8 +1,10 @@
 import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/protocol';
 import type { Profile } from '@yonderrc/protocol';
 import { buildProfile, disarmedThrottleUs, plainShaping, repairAxisBindings, throttleChannelsOf, withResolvedThrottle } from './templates';
+import { followerUs, isFollower, leaderOf } from './follow';
 
-const PROFILES_KEY = 'yonderrc.profiles.v3';
+/** Where the models are stored; exported for the one-time layout move (padLayout.ts). */
+export const PROFILES_KEY = 'yonderrc.profiles.v3';
 const ACTIVE_KEY = 'yonderrc.activeProfile.v3';
 
 /** Model demo profiles: a car, a plane and a drone, each pre-wired to its type. */
@@ -62,11 +64,30 @@ export function setActiveId(id: string): void {
 export function profileFailsafeUs(profile: Profile): number[] {
   const arr = neutralChannels();
   for (const b of profile.bindings) {
+    if (isFollower(b)) continue;
     if (b.channel >= 0 && b.channel < CHANNEL_COUNT) {
       arr[b.channel] = b.shaping.failsafeUs ?? CHANNEL_NEUTRAL_US;
     }
   }
-  return arr;
+  // Followers after their leaders: theirs is the leader's failsafe, through the
+  // follower's own offset — never a value of its own that could disagree.
+  return withFollowerValues(profile, arr, () => true);
+}
+
+/**
+ * Overwrite the follower channels in a safety array from their leaders' entries in it,
+ * for the followers `want` selects. A follower without a leader keeps its stored
+ * failsafe — the value applyFollowers drives it to as well.
+ */
+function withFollowerValues(profile: Profile, arr: number[], want: (leader: number | null) => boolean): number[] {
+  const out = arr.slice();
+  for (const f of profile.bindings) {
+    if (!isFollower(f) || f.channel < 0 || f.channel >= CHANNEL_COUNT) continue;
+    const leader = leaderOf(profile, f);
+    if (!want(leader ? leader.channel : null)) continue;
+    out[f.channel] = leader ? followerUs(arr[leader.channel], f) : f.shaping.failsafeUs;
+  }
+  return out;
 }
 
 /**
@@ -79,14 +100,16 @@ export function profileFailsafeUs(profile: Profile): number[] {
  */
 export function profileDisarmedUs(profile: Profile): number[] {
   const arr = neutralChannels();
-  for (const ch of throttleChannelsOf(profile)) {
+  const throttle = throttleChannelsOf(profile);
+  for (const ch of throttle) {
     if (ch < 0 || ch >= CHANNEL_COUNT) continue;
     // throttleChannelsOf normally derives from the bindings, but it can fall back
     // to the stored list, which may name a channel nothing is bound to.
     const b = profile.bindings.find((x) => x.channel === ch);
     arr[ch] = disarmedThrottleUs(profile.vehicleType, b?.shaping ?? plainShaping(profile.endpoints));
   }
-  return arr;
+  // A second ESC following a throttle channel stops where that one stops.
+  return withFollowerValues(profile, arr, (leader) => leader !== null && throttle.includes(leader));
 }
 
 let cloneCounter = 0;

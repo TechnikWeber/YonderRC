@@ -73,6 +73,11 @@ export class SbusDriver implements OutputDriver {
     return this.last.slice();
   }
 
+  /** SBUS numbers its channels from 1, like the app. */
+  outputLabel(ch: number): string | null {
+    return Number.isInteger(ch) && ch >= 0 && ch < CHANNEL_COUNT ? `SBUS ${ch + 1}` : null;
+  }
+
   async close(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;

@@ -109,7 +109,8 @@ Klemmenwiderstand landen beide in der Messung. Bekannten Strom einspeisen und
 - Der PCA9685 antwortet zusätzlich auf **0x70**, seiner *All-Call*-Adresse. Er hat kein
   ID-Register, und genau darüber unterscheidet **Detect hardware** ihn von einem INA2xx.
   YonderRC lässt All-Call absichtlich aktiv, damit der Chip im Betrieb erkennbar bleibt.
-- Servos/ESC an die Ausgänge 0–15. App-Kanäle 1–16 entsprechen PCA9685-Kanälen 0–15.
+- Servos/ESC an die Ausgänge 0–15. App-Kanäle 1–16 entsprechen PCA9685-Kanälen 0–15;
+  verbunden zeigt die App den Ausgang neben jedem Kanal (`CH03 · out 2`).
 
 ### 2.2 INA228 (Strom/Spannung) ↔ I2C
 

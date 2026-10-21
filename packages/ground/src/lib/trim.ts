@@ -1,4 +1,5 @@
 import { clampChannelUs, type ChannelBinding, type Profile } from '@yonderrc/protocol';
+import { funcFromLabel } from './templates';
 
 /**
  * Live trims — nudging a proportional channel's neutral while you drive, instead
@@ -29,6 +30,30 @@ export function clampTrim(us: number): number {
 /** The channels worth showing a trim for: the proportional (stick) axes. */
 export function trimmableBindings(profile: Profile): ChannelBinding[] {
   return profile.bindings.filter((b) => b.mode === 'proportional');
+}
+
+/**
+ * The channel the Trim −/+ action buttons nudge when the model names none (v1.71):
+ * the steering-like one — steering or rudder on a car or boat, aileron or roll in the
+ * air — else the first stick channel that is not throttle. Never a follower: it moves
+ * with its leader's trim already.
+ */
+export function defaultTrimTarget(profile: Profile): string | null {
+  const candidates = trimmableBindings(profile).filter((b) => b.source !== 'follow');
+  const want = profile.vehicleType === 'car' || profile.vehicleType === 'boat' ? 'rudder' : 'aileron';
+  return (
+    candidates.find((b) => funcFromLabel(b.label) === want)?.id ??
+    candidates.find((b) => funcFromLabel(b.label) !== 'throttle')?.id ??
+    candidates[0]?.id ??
+    null
+  );
+}
+
+/** The binding the trim buttons act on: the model's own choice while it exists, else the default. */
+export function trimTargetOf(profile: Profile): string | null {
+  const chosen = profile.trimTarget;
+  if (chosen && trimmableBindings(profile).some((b) => b.id === chosen)) return chosen;
+  return defaultTrimTarget(profile);
 }
 
 /**

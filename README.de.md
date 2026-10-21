@@ -28,10 +28,17 @@ Zahl (oben Mitte). Hell oder dunkel wird am Fahrzeug gewählt (Setup › Design)
   automatisch gewählt, und die Wahl wird gemerkt (Setup › Controls › Game controller).
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
   wählbarer Eingabemethode und Rastung pro Achse (Mitte/Min/frei).
-- Pro Kanal: Trim, Expo, Reverse, Endpunkte (µs), Failsafe-Wert.
+- Pro Kanal: Trim, Expo, Reverse, Endpunkte (µs), Failsafe-Wert. Verbunden zeigt jeder
+  Kanal auch seinen Ausgang an der Hardware (`CH03 · out 2`).
 - **Kennlinien** pro Stick-Kanal (3/5/7/9 Punkte, Live-Plot) für Formen, die Expo nicht
   abbilden kann. Standardmäßig aus.
-- **Live-Trims** unter den Sticks: 5 µs pro Druck, bis ±150 µs, im Modell gespeichert.
+- **Live-Trims** unter den Sticks: 5 µs pro Druck, bis ±150 µs, im Modell gespeichert —
+  auch auf zwei belegbaren Tasten oder Controller-Knöpfen (Trim −/+), standardmäßig die
+  Lenkung.
+- **Zwei Tasten als eine Achse**, z. B. RT/R2 vorwärts und LT/L2 zurück bei Auto oder Boot.
+  Controller-Tasten haben im Browser und in der Desktop-App dieselben Nummern.
+- **Folgekanäle** für ein zweites Lenkservo oder einen zweiten Regler: eine Kopie eines
+  anderen Kanals mit eigenem Versatz, Reverse und Endpunkten. Failsafe und Disarm folgen mit.
 - **Speed-Limiter**, drei Stufen, im Fahren umschaltbar. Skaliert um die Ruhelage des
   Gaskanals — ein Auto wird in beide Richtungen begrenzt, ein Flugzeug nur nach oben.
 

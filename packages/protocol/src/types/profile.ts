@@ -9,7 +9,12 @@
 
 export type VehicleType = 'car' | 'plane' | 'drone' | 'boat';
 export type InputMethod = 'keyboard' | 'gamepad' | 'touch';
-export type InputSource = 'gamepad' | 'keyboard' | 'onscreen' | 'virtual';
+/**
+ * Where a binding's value comes from. `follow` (v1.71) reads no input at all: the
+ * channel copies another one — element `ch:N`, 0-based — with its own offset (trimUs),
+ * reverse and endpoints. Two steering servos, two ESCs.
+ */
+export type InputSource = 'gamepad' | 'keyboard' | 'onscreen' | 'virtual' | 'follow';
 
 /**
  * Detent = what a stick axis does when released:
@@ -111,6 +116,11 @@ export interface Profile {
   stickMode?: StickMode;
   /** Speed limiter for the throttle channel(s). Optional — absent = full travel. */
   throttleLimit?: ThrottleLimit;
+  /**
+   * The binding (id) the Trim −/+ action buttons nudge. Absent, or naming a binding
+   * that is gone: the steering-like channel (lib/trim.ts defaultTrimTarget).
+   */
+  trimTarget?: string;
   bindings: ChannelBinding[];
 }
 

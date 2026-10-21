@@ -98,6 +98,9 @@ control app.
 - **"Own layout"** means the browser does not map the device to the standard layout: the
   stick axes may be numbered differently. Use **Learn** in the channel editor and move the
   stick. A trigger resting at −1 is no longer "learned" by accident.
+- **Button numbers** follow the standard layout in the desktop app too, since v1.71
+  (Start = 9, RT/R2 = 7, LT/L2 = 6, as in the browser). What the desktop app had learned
+  before was renumbered once, automatically; each binding kept its physical button.
 - **PS4 / PS5:** USB works straight away. Bluetooth: hold **Share + PS** (PS5: **Create +
   PS**) until the light bar flashes, pair it in the system's Bluetooth settings. In Chrome
   and Edge it then has the standard layout. **DS4Windows** hides the real controller and

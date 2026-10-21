@@ -48,9 +48,10 @@ import {
   type ReturnBudgetCfg, type EnergySample,
 } from './lib/returnBudget';
 import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
-import { nudgeTrim, clearTrim } from './lib/trim';
+import { nudgeTrim, clearTrim, trimTargetOf, TRIM_STEP_US } from './lib/trim';
+import { applyFollowers, throttleOutputsOf } from './lib/follow';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
-import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, throttleChannelsOf, type AutoDisarmMode } from './lib/templates';
+import { buildProfile, vehicleTypes, disarmOnReconnectForType, resolveAutoDisarm, type AutoDisarmMode } from './lib/templates';
 import { applyTheme, rememberTheme } from './lib/theme';
 import {
   EventLog, RttSamples, emptySendLoop, recordSendTick, groundFindings, mergeReports, groundReportFileName,
@@ -62,7 +63,7 @@ import { DiagnosticsPanel, type DiagnosticsExport } from './components/Diagnosti
 import type { DiagnosticFinding } from '@yonderrc/protocol';
 
 /** Shown in the masthead and written into diagnostics files. Bumped with every release. */
-export const GROUND_VERSION = '1.70.2';
+export const GROUND_VERSION = '1.71.0';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -233,7 +234,9 @@ export function App() {
   function pushConfig(p: Profile) {
     linkRef.current?.sendConfig(
       profileFailsafeUs(p),
-      throttleChannelsOf(p), // derived, not the (possibly stale) stored list
+      // Derived, not the (possibly stale) stored list — and with every follower of a
+      // throttle channel: a second ESC is held at stop while disarmed like the first.
+      throttleOutputsOf(p),
       profileDisarmedUs(p),
       // 'auto' = vehicle-type policy (car/boat on, aircraft off); the operator can force it.
       resolveAutoDisarm(autoDisarmRef.current, p.vehicleType),
@@ -274,9 +277,11 @@ export function App() {
 
       // RAW command first: the pre-arm check must see what the sticks really
       // ask for, so the speed limiter can never soften that check.
-      const channels = engine.compute(activeRef.current, input.snapshot(), dt, buttonHoldRef.current);
-      liveChannelsRef.current = channels;
-      const sent = applyThrottleLimit(activeRef.current, channels);
+      const raw = engine.compute(activeRef.current, input.snapshot(), dt, buttonHoldRef.current);
+      liveChannelsRef.current = applyFollowers(activeRef.current, raw);
+      // Followers copy their channel's FINAL value — after the limiter — so both halves
+      // of a twin always get the same command (lib/follow.ts).
+      const sent = applyFollowers(activeRef.current, applyThrottleLimit(activeRef.current, raw));
 
       // Nothing at all rather than "sticks centred" or a frame a second — the vehicle's
       // own failsafe takes over. See lib/controlGate.ts.
@@ -365,6 +370,24 @@ export function App() {
     setPreArmMsg('PANIC — disarm sent');
     window.setTimeout(() => setPreArmMsg((m) => (m === 'PANIC — disarm sent' ? null : m)), 2500);
   };
+  // Trim −/+ on a key or controller button: one step on the model's trim channel per
+  // press, heard rather than looked at — the eyes are on the video. A click per step,
+  // a lower tone back at centre, a dull one at the limit.
+  const trimByButton = (dir: -1 | 1) => {
+    const p = activeRef.current;
+    const id = trimTargetOf(p);
+    if (!id) return;
+    const next = nudgeTrim(p, id, dir * TRIM_STEP_US);
+    if (next === p) {
+      beep(220, 120, 0.06);
+      return;
+    }
+    updateProfile(next);
+    const trimUs = next.bindings.find((b) => b.id === id)?.shaping.trimUs ?? 0;
+    if (trimUs === 0) beep(600, 110, 0.06);
+    else beep(dir > 0 ? 1320 : 990, 30, 0.05);
+  };
+
   // The bound arm key/button gets the same hold protection as the on-screen
   // button (panic-disarm never does); the progress feeds the button's fill so
   // there's visible feedback wherever you look.
@@ -375,6 +398,8 @@ export function App() {
       'panic-disarm': panicDisarm,
       'toggle-arm': () => requestArm(!armed),
       'throttle-limit': () => updateProfile(withStep(activeRef.current, nextStep(limitOf(activeRef.current).step))),
+      'trim-dec': () => trimByButton(-1),
+      'trim-inc': () => trimByButton(1),
     },
     input,
     {
@@ -889,6 +914,7 @@ export function App() {
             profile={active}
             locked={armed}
             input={input}
+            outputs={connected ? welcome?.outputs : undefined}
             onChange={updateProfile}
             onRename={(name) => updateProfile({ ...active, name })}
             onDelete={deleteActive}
@@ -896,6 +922,7 @@ export function App() {
           />
           <CalibrationPanel
             profile={active}
+            outputs={connected ? welcome?.outputs : undefined}
             calibration={status?.calibration}
             connected={connected}
             onStart={(ch, minUs, maxUs) => linkRef.current?.sendCalib('start', ch, minUs, maxUs)}

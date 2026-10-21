@@ -27,10 +27,16 @@ battery bar (top right), voltage/current/mAh (bottom right), link health as one 
   choice is remembered (Setup › Controls › Game controller).
 - **Models** for car / boat / plane / drone with matching channel templates, selectable
   input method and per-axis detent (center/min/free).
-- Per channel: trim, expo, reverse, endpoints (µs), failsafe value.
+- Per channel: trim, expo, reverse, endpoints (µs), failsafe value. Connected, each
+  channel also shows its output on the hardware (`CH03 · out 2`).
 - **Response curves** per stick channel (3/5/7/9 points, live plot) for shapes expo
   cannot express. Off by default.
-- **Live trims** under the sticks: 5 µs a press, up to ±150 µs, saved with the model.
+- **Live trims** under the sticks: 5 µs a press, up to ±150 µs, saved with the model —
+  also on two bindable keys or controller buttons (Trim −/+), steering by default.
+- **Two buttons as one axis**, e.g. RT/R2 forward and LT/L2 back on a car or boat.
+  Controller buttons are numbered alike in the browser and the desktop app.
+- **Follower channels** for a second steering servo or ESC: a copy of another channel
+  with its own offset, reverse and endpoints. Failsafe and disarm follow along.
 - **Speed limiter**, three steps, switchable while driving. Scaled around the throttle's
   rest position, so a car is capped in both directions and a plane only upwards.
 

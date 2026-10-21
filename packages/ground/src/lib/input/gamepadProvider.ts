@@ -26,6 +26,8 @@ export interface GamepadProvider {
   /** Deadzoned axis value in [-1,1], or null if no controller. */
   axis(n: number): number | null;
   button(n: number): boolean;
+  /** How far a button is pressed, 0..1 — analog for the triggers (6/7), 0 or 1 otherwise. */
+  buttonValue(n: number): number;
   buttons(): boolean[];
   /** Best-effort haptics; no-op where unsupported. */
   rumble(low: number, high: number, ms: number): void;
@@ -33,6 +35,9 @@ export interface GamepadProvider {
 
 const DEADZONE = 0.08;
 const dz = (v: number) => (Math.abs(v) < DEADZONE ? 0 : v);
+/** A released trigger that does not quite read 0 must not creep a channel. */
+const BUTTON_DEADZONE = 0.05;
+export const dzButton = (v: number) => (Number.isFinite(v) && v >= BUTTON_DEADZONE ? Math.min(1, v) : 0);
 
 function infosOf(pads: (Gamepad | null)[]): PadInfo[] {
   const out: PadInfo[] = [];
@@ -88,6 +93,10 @@ class BrowserGamepadProvider implements GamepadProvider {
   }
   button(n: number): boolean {
     return this.pad()?.buttons[n]?.pressed ?? false;
+  }
+  buttonValue(n: number): number {
+    const b = this.pad()?.buttons[n];
+    return b ? dzButton(typeof b.value === 'number' ? b.value : b.pressed ? 1 : 0) : 0;
   }
   buttons(): boolean[] {
     return this.pad()?.buttons.map((b) => b.pressed) ?? [];
@@ -146,6 +155,11 @@ class ElectronSdlProvider implements GamepadProvider {
   }
   button(n: number): boolean {
     return this.pad()?.buttons[n] ?? false;
+  }
+  buttonValue(n: number): number {
+    const g = this.pad();
+    if (!g) return 0;
+    return dzButton(g.values?.[n] ?? (g.buttons[n] ? 1 : 0));
   }
   buttons(): boolean[] {
     return this.pad()?.buttons ?? [];
