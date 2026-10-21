@@ -25,6 +25,9 @@ battery bar (top right), voltage/current/mAh (bottom right), link health as one 
 - **The right controller**: every device the browser lists is shown with what it looks
   like; a headset or a pad's motion sensors are never picked automatically, and the
   choice is remembered (Setup › Controls › Game controller).
+- **One setup per controller**: a controller with a layout of its own — an RC transmitter
+  in joystick mode, say — is shown once where its sticks and buttons are (*Set up*), and
+  every model works with it. Each controller can also have its own action buttons.
 - **Models** for car / boat / plane / drone with matching channel templates, selectable
   input method and per-axis detent (center/min/free).
 - Per channel: trim, expo, reverse, endpoints (µs), failsafe value. Connected, each

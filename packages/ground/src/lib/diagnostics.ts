@@ -129,7 +129,8 @@ export interface GroundFindingInput {
   /** Failsafe episodes the ground saw on this connection (link-gaps counter). */
   dropouts: number;
   rtt: { p95: number } | null;
-  controller: { inputMethod: string; active: { id: string; mapping: string } | null; listed: number };
+  /** `setUp`: the controller in use has a layout of its own set up (padProfiles.ts). */
+  controller: { inputMethod: string; active: { id: string; mapping: string } | null; listed: number; setUp?: boolean };
   connected: boolean;
 }
 
@@ -175,7 +176,16 @@ export function groundFindings(i: GroundFindingInput): DiagnosticFinding[] {
       fix: 'Setup › Controls › Game controller. A browser only shows a controller after one of its buttons was pressed on this page.',
     });
   } else if (c.active && c.active.mapping !== 'standard') {
-    out.push({ level: 'info', area: 'controller', text: `The controller in use (${c.active.id}) reports its own layout — stick axes may differ from the templates; use Learn.` });
+    out.push(
+      c.setUp
+        ? { level: 'info', area: 'controller', text: `The controller in use (${c.active.id}) reports its own layout and is set up — its controls are read as the standard ones.` }
+        : {
+            level: 'info',
+            area: 'controller',
+            text: `The controller in use (${c.active.id}) reports its own layout and is not set up — its sticks may not be where the models expect them.`,
+            fix: 'Setup › Controls › Game controller › Set up: show the app once where its sticks and buttons are.',
+          },
+    );
   }
   if (!i.connected) {
     out.push({ level: 'info', area: 'ground', text: 'Not connected to the vehicle when this report was made — the link numbers cover the last connection only.' });

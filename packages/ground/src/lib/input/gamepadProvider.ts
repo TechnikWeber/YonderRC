@@ -8,8 +8,13 @@
  * Both providers read ONE pad: the one `choosePad` picks — the operator's explicit
  * choice when that device is connected, otherwise the best match. Not simply the first
  * device in the list, which used to be a headset as often as a controller.
+ *
+ * What they hand out is in STANDARD numbers: a pad with a layout of its own is read
+ * through its setup (lib/input/padProfiles.ts, v1.72). `peek` stays raw — it is what the
+ * setup itself learns from.
  */
 import { choosePad, type PadInfo } from './gamepadPick';
+import { stdAxis, stdButton, stdButtons, type PadLayout, type RawPad } from './padProfiles';
 
 export interface GamepadProvider {
   readonly kind: 'browser' | 'sdl';
@@ -21,6 +26,8 @@ export interface GamepadProvider {
   list(): PadInfo[];
   /** Read this device (by id) whenever it is connected; null = pick automatically. */
   setPreferred(id: string | null): void;
+  /** Where each device's standard controls are, by device id; undefined = its own numbers. */
+  setLayouts(lookup: (id: string) => PadLayout | undefined): void;
   /** Raw state of one listed device, for the live view in Setup. */
   peek(index: number): { axes: number[]; buttons: boolean[] } | null;
   /** Deadzoned axis value in [-1,1], or null if no controller. */
@@ -47,12 +54,18 @@ function infosOf(pads: (Gamepad | null)[]): PadInfo[] {
   return out;
 }
 
+const noLayouts = (): PadLayout | undefined => undefined;
+
 class BrowserGamepadProvider implements GamepadProvider {
   readonly kind = 'browser';
   private preferred: string | null = null;
+  private layoutOf: (id: string) => PadLayout | undefined = noLayouts;
 
   setPreferred(id: string | null): void {
     this.preferred = id;
+  }
+  setLayouts(lookup: (id: string) => PadLayout | undefined): void {
+    this.layoutOf = lookup;
   }
 
   private raw(): (Gamepad | null)[] {
@@ -88,18 +101,20 @@ class BrowserGamepadProvider implements GamepadProvider {
   axis(n: number): number | null {
     const p = this.pad();
     if (!p) return null;
-    const v = p.axes[n];
+    const v = stdAxis(p, this.layoutOf(p.id), n);
     return typeof v === 'number' ? dz(v) : null;
   }
   button(n: number): boolean {
-    return this.pad()?.buttons[n]?.pressed ?? false;
+    const p = this.pad();
+    return p ? stdButton(p, this.layoutOf(p.id), n).pressed : false;
   }
   buttonValue(n: number): number {
-    const b = this.pad()?.buttons[n];
-    return b ? dzButton(typeof b.value === 'number' ? b.value : b.pressed ? 1 : 0) : 0;
+    const p = this.pad();
+    return p ? dzButton(stdButton(p, this.layoutOf(p.id), n).value) : 0;
   }
   buttons(): boolean[] {
-    return this.pad()?.buttons.map((b) => b.pressed) ?? [];
+    const p = this.pad();
+    return p ? stdButtons(p, this.layoutOf(p.id)) : [];
   }
   rumble(low: number, high: number, ms: number): void {
     const p = this.pad() as (Gamepad & { vibrationActuator?: { playEffect: (t: string, o: object) => void } }) | null;
@@ -123,9 +138,17 @@ class BrowserGamepadProvider implements GamepadProvider {
 class ElectronSdlProvider implements GamepadProvider {
   readonly kind = 'sdl';
   private preferred: string | null = null;
+  private layoutOf: (id: string) => PadLayout | undefined = noLayouts;
 
   setPreferred(id: string | null): void {
     this.preferred = id;
+  }
+  setLayouts(lookup: (id: string) => PadLayout | undefined): void {
+    this.layoutOf = lookup;
+  }
+  /** The bridge's snapshot in the Gamepad API's shape — only built when a layout needs it. */
+  private raw(g: { axes: number[]; buttons: boolean[]; values?: number[] }): RawPad {
+    return { axes: g.axes, buttons: g.buttons.map((pressed, i) => ({ pressed, value: g.values?.[i] ?? (pressed ? 1 : 0) })) };
   }
   private snap() {
     return window.yonder?.getGamepads?.() ?? [];
@@ -150,19 +173,28 @@ class ElectronSdlProvider implements GamepadProvider {
   axis(n: number): number | null {
     const g = this.pad();
     if (!g) return null;
-    const v = g.axes[n];
+    const layout = this.layoutOf(g.id);
+    const v = layout ? stdAxis(this.raw(g), layout, n) : g.axes[n];
     return typeof v === 'number' ? dz(v) : null;
   }
   button(n: number): boolean {
-    return this.pad()?.buttons[n] ?? false;
+    const g = this.pad();
+    if (!g) return false;
+    const layout = this.layoutOf(g.id);
+    return layout ? stdButton(this.raw(g), layout, n).pressed : g.buttons[n] ?? false;
   }
   buttonValue(n: number): number {
     const g = this.pad();
     if (!g) return 0;
+    const layout = this.layoutOf(g.id);
+    if (layout) return dzButton(stdButton(this.raw(g), layout, n).value);
     return dzButton(g.values?.[n] ?? (g.buttons[n] ? 1 : 0));
   }
   buttons(): boolean[] {
-    return this.pad()?.buttons ?? [];
+    const g = this.pad();
+    if (!g) return [];
+    const layout = this.layoutOf(g.id);
+    return layout ? stdButtons(this.raw(g), layout) : g.buttons;
   }
   rumble(low: number, high: number, ms: number): void {
     // The bridge rumbles by list position, so it has to be the chosen pad's position.

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { InputManager } from '../lib/input/inputManager';
 import { assessPad, choosePad, padLabel, rankPads, type PadInfo } from '../lib/input/gamepadPick';
+import { withoutLayout, type PadProfiles } from '../lib/input/padProfiles';
 import { Hint } from './Hint';
+import { PadSetup } from './PadSetup';
 
 /**
  * Setup › Controls › Game controller: every device the browser reports, which one is
@@ -12,12 +14,28 @@ import { Hint } from './Hint';
  * The list is polled while the group is open: the Gamepad API has connect events, but
  * a browser only fires them after a button press, and the live "input" marker is what
  * tells two similar entries apart anyway.
+ *
+ * A device with a layout of its own gets a "Set up" button (v1.72, PadSetup): show the app
+ * once where its sticks and buttons are, and every model works with it.
  */
-export function ControllerPicker({ input }: { input: InputManager }) {
+export function ControllerPicker({
+  input,
+  profiles,
+  onProfiles,
+  locked,
+}: {
+  input: InputManager;
+  /** Every controller's setup (lib/input/padProfiles.ts). */
+  profiles: PadProfiles;
+  onProfiles: (next: PadProfiles) => void;
+  /** Armed: the setup is locked. */
+  locked: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [pads, setPads] = useState<PadInfo[]>(() => input.listGamepads());
   const [pref, setPref] = useState<string | null>(() => input.preferredGamepad);
   const [busy, setBusy] = useState<Set<number>>(new Set());
+  const [setupId, setSetupId] = useState<string | null>(null);
   const last = useRef(new Map<number, number[]>());
 
   useEffect(() => {
@@ -50,6 +68,9 @@ export function ControllerPicker({ input }: { input: InputManager }) {
   const auto = choosePad(pads, null);
   const ranked = rankPads(pads);
   const prefMissing = !!pref && !pads.some((p) => p.id === pref);
+  const isSetUp = (id: string) => !!profiles[id]?.layout;
+  // Set up once, not plugged in now: still listed, so the setup can be looked at or dropped.
+  const absentSetUp = Object.keys(profiles).filter((id) => isSetUp(id) && !pads.some((p) => p.id === id));
 
   return (
     <details className="group" onToggle={(e) => setOpen(e.currentTarget.open)}>
@@ -73,10 +94,33 @@ export function ControllerPicker({ input }: { input: InputManager }) {
               </span>
               {active?.index === p.index && <span className="pad-tag go">in use</span>}
               {busy.has(p.index) && <span className="pad-dot" title="input right now" />}
+              {(a.layout === 'own' || isSetUp(p.id)) && (
+                <button
+                  className="btn tiny"
+                  title="Show the app where this controller's sticks and buttons are"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSetupId(p.id);
+                  }}
+                >
+                  {isSetUp(p.id) ? 'Set up ✓' : 'Set up'}
+                </button>
+              )}
             </label>
           );
         })}
+        {absentSetUp.map((id) => (
+          <div key={`absent:${id}`} className="pad-row pad-absent">
+            <span className="pad-name">{padLabel(id)}</span>
+            <span className="pad-tag idle">set up · not connected</span>
+            <button className="btn tiny" onClick={() => setSetupId(id)}>Set up ✓</button>
+            <button className="btn tiny ghost" disabled={locked} onClick={() => onProfiles(withoutLayout(profiles, id))}>Forget</button>
+          </div>
+        ))}
       </div>
+      {setupId && (
+        <PadSetup input={input} id={setupId} profiles={profiles} onChange={onProfiles} locked={locked} onClose={() => setSetupId(null)} />
+      )}
       {pads.length === 0 && (
         <p className="note">
           No controller visible yet. A browser only reveals a controller after one of its <b>buttons is
@@ -95,10 +139,16 @@ export function ControllerPicker({ input }: { input: InputManager }) {
           The chosen controller is not connected — {auto ? `using ${padLabel(auto.id)} meanwhile` : 'none is used meanwhile'}.
         </p>
       )}
-      {active && active.mapping !== 'standard' && (
+      {active && active.mapping !== 'standard' && !isSetUp(active.id) && (
         <p className="note">
-          <b>{padLabel(active.id)}</b> reports its own layout, so the stick numbers may not be where the
-          model templates expect them. Use <b>Learn</b> in the channel editor to assign each axis by moving it.
+          <b>{padLabel(active.id)}</b> reports its own layout, so its sticks may not be where the models
+          expect them. Press <b>Set up</b> next to it and show the app once where its sticks and buttons are —
+          then every model works with it.
+        </p>
+      )}
+      {active && isSetUp(active.id) && (
+        <p className="note">
+          <b>{padLabel(active.id)}</b> is set up: its controls are read as the standard ones.
         </p>
       )}
       <Hint summary="PS4 / PS5 controller: pairing and the usual traps">

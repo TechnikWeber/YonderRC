@@ -3012,7 +3012,7 @@ async function main() {
     ok('unreadable storage is not fatal', GP.loadPadPref({ getItem: () => { throw new Error('denied'); }, setItem: () => {} }) === null);
     const picker = readFileSync('packages/ground/src/components/ControllerPicker.tsx', 'utf8');
     ok('the controller group folds and starts closed like the others', /<details className="group" onToggle=/.test(picker) && !/<details className="group"[^>]*\bopen\b/.test(picker));
-    ok('and sits in Setup › Controls', readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8').includes('<ControllerPicker input={input} />'));
+    ok('and sits in Setup › Controls', readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8').includes('<ControllerPicker input={input} profiles={padProfiles}'));
   }
 
   // ---- OpenVPN (experimental): an uploaded profile must not be a way to run code ----
@@ -3757,6 +3757,153 @@ async function main() {
     ok('a space typed into a label reaches the label', !typedSpace && !im.snapshot().keys.has(' '));
     ok('a "w" typed into the address is not throttle', (press('w', { tagName: 'INPUT', type: 'text' }), !im.snapshot().keys.has('w')));
     ok('on the page the keys still drive', press(' ', { tagName: 'BODY' }) && im.snapshot().keys.has(' '));
+  }
+
+  // ---- v1.72: one setup per controller ----
+  {
+    const PP = await import('../packages/ground/src/lib/input/padProfiles');
+    const GP = await import('../packages/ground/src/lib/input/gamepadPick');
+    const PE = await import('../packages/ground/src/lib/input/padElements');
+    const A = await import('../packages/ground/src/lib/actions');
+    const D = await import('../packages/ground/src/lib/diagnostics');
+    type Profiles = ReturnType<typeof PP.loadPadProfiles>;
+    const btn = (pressed: boolean) => ({ pressed, value: pressed ? 1 : 0 });
+    // An RC transmitter in joystick mode, channel order AETR: aileron (right ◀▶) on axis 0,
+    // elevator (right ▲▼, up reads −) on 1, throttle (left ▲▼, up reads +, stays where it is
+    // left) on 2, rudder (left ◀▶) on 3, switch SA on 4 (−1 / +1). Its own layout.
+    const tx = (o: { ail?: number; ele?: number; thr?: number; rud?: number; sa?: number; b?: boolean[] } = {}) => ({
+      axes: [o.ail ?? 0, o.ele ?? 0, o.thr ?? -1, o.rud ?? 0, o.sa ?? -1],
+      buttons: (o.b ?? [false, false, false]).map(btn),
+    });
+    const ID = 'RadioMaster TX16S Joystick (Vendor: 1209 Product: 4f54)';
+
+    const r0 = tx({ ail: 0.5, b: [false, true] });
+    ok('without a setup a controller reads as it always did', PP.stdAxis(r0, undefined, 0) === 0.5 && PP.stdButton(r0, undefined, 1).pressed && PP.stdButtons(r0, undefined).length === 2);
+
+    // Learning the sticks: moved right, pushed up — from wherever everything rested.
+    const rest = tx();
+    const learnStick = (target: number, now: ReturnType<typeof tx>) => PP.learnAxisSource(target, rest.axes, now.axes);
+    const lx = learnStick(0, tx({ rud: 0.9 }));
+    const ly = learnStick(1, tx({ thr: 0.5 }));
+    const rx = learnStick(2, tx({ ail: 0.9 }));
+    const ry = learnStick(3, tx({ ele: -0.9 }));
+    ok('the left stick is learned where it is, up turned to the standard\'s −', lx?.axis === 3 && !lx.invert && ly?.axis === 2 && ly.invert === true);
+    ok('…and the right one', rx?.axis === 0 && !rx.invert && ry?.axis === 1 && !ry.invert);
+    ok('a button does not teach a stick', learnStick(0, tx({ b: [true] })) === null);
+    let profiles: Profiles = {};
+    ([[0, lx], [1, ly], [2, rx], [3, ry]] as const).forEach(([n, src]) => (profiles = PP.withAxisSource(profiles, ID, n, src!)));
+    const t1 = tx({ rud: 0.4, thr: 1, ail: -0.3, ele: 0.6 });
+    const lay = () => profiles[ID]?.layout;
+    ok('then the rudder stick is the left stick ◀▶', PP.stdAxis(t1, lay(), 0) === 0.4);
+    ok('…the throttle stick up is the left stick up', PP.stdAxis(t1, lay(), 1) === -1);
+    ok('…aileron and elevator are the right stick', PP.stdAxis(t1, lay(), 2) === -0.3 && PP.stdAxis(t1, lay(), 3) === 0.6);
+    ok('no device axis drives two sticks', PP.sharedStickAxes(lay()).length === 0);
+    ok('a setup half done is pointed out', PP.sharedStickAxes(PP.withAxisSource({}, ID, 0, { axis: 1 })[ID].layout).join() === '1');
+
+    // Buttons: a switch the transmitter reports as an axis, a trigger resting at −1, half a stick.
+    const sw = PP.learnButtonSource({ axes: rest.axes, buttons: [false, false, false] }, { axes: tx({ sa: 1 }).axes, buttons: [false, false, false] });
+    ok('a flipped switch is learned as a button', !!sw && 'axis' in sw && sw.axis === 4 && sw.from === -1 && sw.to === 1);
+    profiles = PP.withButtonSource(profiles, ID, 9, sw!);
+    ok('…and reads as one', PP.stdButton(tx({ sa: 1 }), lay(), 9).pressed && !PP.stdButton(tx({ sa: -1 }), lay(), 9).pressed);
+    const half = PP.learnButtonSource({ axes: [0, 0], buttons: [] }, { axes: [0, -0.8], buttons: [] });
+    ok('a stick pushed up can stand in for a trigger', !!half && 'axis' in half && half.from === 0 && half.to === -1);
+    const halfSrc = half as { from: number; to: number };
+    ok('…as far as it is pushed, pressed past half', near(PP.axisAsButton(-0.5, halfSrc).value, 0.5) && !PP.axisAsButton(-0.3, halfSrc).pressed && PP.axisAsButton(-0.9, halfSrc).pressed && PP.axisAsButton(0.7, halfSrc).value === 0);
+    const trig = PP.learnButtonSource({ axes: [-1], buttons: [] }, { axes: [0.4], buttons: [] });
+    ok('a trigger resting at −1 is read from its rest', !!trig && 'axis' in trig && trig.from === -1 && trig.to === 1);
+    const pressed = PP.learnButtonSource({ axes: [0], buttons: [false, false] }, { axes: [0.9], buttons: [false, true] });
+    ok('a button pressed wins over an axis moved', !!pressed && 'button' in pressed && pressed.button === 1);
+    ok('what the setup leaves alone keeps its own number', PP.stdButton(tx({ b: [true] }), lay(), 0).pressed);
+    ok('a control set to none never fires', !PP.stdButton(tx({ b: [true] }), { buttons: { 0: null } }, 0).pressed && PP.stdAxis(tx({ ail: 1 }), { axes: { 2: null } }, 2) === 0);
+    ok('Learn and the actions see every standard button', PP.stdButtons(tx(), lay()).length === PP.STANDARD_BUTTON_COUNT);
+    ok('the setup table says where each control is', PP.describeAxisSource(ly, 1) === 'axis 2 · reversed' && PP.describeButtonSource(sw, 9) === 'axis 4 · −1 → +1' && PP.describeAxisSource(undefined, 3) === 'axis 3 — its own number');
+
+    // Stored per device, checked on the way in.
+    const mem = new Map<string, string>();
+    const store = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
+    PP.savePadProfiles(store, profiles);
+    ok('a setup survives a reload', JSON.stringify(PP.loadPadProfiles(store)) === JSON.stringify(profiles));
+    mem.set(PP.PADS_KEY, JSON.stringify({
+      x: {
+        layout: {
+          axes: { 0: { axis: -1 }, 1: { axis: 2, invert: 'yes' }, 7: { axis: 1 } },
+          buttons: { 0: { axis: 1, from: 0, to: 0 }, 3: { button: 2.5 }, 4: null },
+        },
+        actions: { 'toggle-arm': 9, 'bad key!': 1, snapshot: 'x' },
+      },
+      '': { actions: { snapshot: 1 } },
+    }));
+    ok('a stored setup is checked, not trusted', JSON.stringify(PP.loadPadProfiles(store)) === JSON.stringify({ x: { layout: { axes: { 1: { axis: 2 } }, buttons: { 4: null } }, actions: { 'toggle-arm': 9 } } }));
+    mem.set(PP.PADS_KEY, '{not json');
+    ok('garbage is no setup at all', JSON.stringify(PP.loadPadProfiles(store)) === '{}');
+
+    // Action buttons per controller; keys belong to the keyboard.
+    const shared = { ...A.migrateActions(null), 'toggle-arm': { key: 'a', button: 9 }, 'panic-disarm': { key: null, button: 16 } };
+    ok('a controller without buttons of its own uses the shared ones', PP.padActionsFor(shared, undefined) === shared && PP.padActionsFor(shared, profiles[ID]) === shared);
+    let own = PP.withOwnActions(profiles, ID, shared);
+    ok('its own buttons start as the shared ones', PP.padActionsFor(shared, own[ID])['toggle-arm'].button === 9);
+    own = PP.withOwnActionButton(own, ID, 'toggle-arm', 4);
+    const eff = PP.padActionsFor(shared, own[ID]);
+    ok('then they are its own, and the shared ones stay', eff['toggle-arm'].button === 4 && shared['toggle-arm'].button === 9);
+    ok('the keys stay shared — there is one keyboard', eff['toggle-arm'].key === 'a');
+    ok('an action its buttons do not know yet falls back to the shared one', PP.padActionsFor(shared, { actions: { 'toggle-arm': 4 } })['panic-disarm'].button === 16);
+    ok('back to the shared buttons, the setup stays', !PP.withoutOwnActions(own, ID)[ID].actions && !!PP.withoutOwnActions(own, ID)[ID].layout);
+    ok('an empty setup is no setup', !(ID in PP.withoutLayout(PP.withoutOwnActions(own, ID), ID)));
+
+    // The real path: the browser reports the transmitter, the InputManager reads it through
+    // its setup, and an unchanged template model drives from it.
+    const { InputManager } = await import('../packages/ground/src/lib/input/inputManager');
+    const savedNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    let frame = tx({ rud: 0.5, thr: 1, sa: 1 });
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      writable: true,
+      value: { getGamepads: () => [{ id: ID, index: 0, connected: true, mapping: '', axes: frame.axes, buttons: frame.buttons }] },
+    });
+    try {
+      const im = new InputManager();
+      ok('without its setup the transmitter reads as its own numbers', im.readGamepadAxis(0) === 0 && near(im.readGamepadAxis(3)!, 0.5));
+      im.setPadProfiles(profiles);
+      ok('with it the rudder stick is the left stick ◀▶', near(im.readGamepadAxis(0)!, 0.5));
+      ok('…the throttle stick up is the left stick up', im.readGamepadAxis(1) === -1);
+      ok('…and switch SA is Start, for the action buttons too', im.readGamepadButtons()[9] === true && im.readButtonsOf(ID)?.[9] === true);
+      const car = buildProfile('car', { inputMethod: 'gamepad' });
+      const steerCh = car.bindings.find((b) => b.label === 'Steering')!.channel;
+      const thrCh = car.bindings.find((b) => b.label === 'Throttle')!.channel;
+      const out = new BindingEngine().compute(car, im.snapshot(), 20);
+      ok('a template model drives from the set-up transmitter unchanged', out[steerCh] === 1750 && out[thrCh] === 2000);
+      frame = tx({ rud: -1, thr: -1 });
+      const out2 = new BindingEngine().compute(car, im.snapshot(), 20);
+      ok('…both ways', out2[steerCh] === 1000 && out2[thrCh] === 1000);
+      ok('a device not listed has no buttons to learn', im.readButtonsOf('someone else') === null);
+    } finally {
+      if (savedNavigator) Object.defineProperty(globalThis, 'navigator', savedNavigator);
+      else delete (globalThis as { navigator?: unknown }).navigator;
+    }
+
+    // Learn in the channel editor takes what the channel reads.
+    const restS = { axes: [0, 0, 0, 0], buttons: [false, false] };
+    const both = { axes: [0, 0.9, 0, 0], buttons: [false, true] };
+    ok('Learn takes an axis for a stick channel', GP.learnedElement('proportional', restS, both) === 'axis:1');
+    ok('…a button for a switch', GP.learnedElement('toggle', restS, both) === 'button:1' && GP.learnedElement('momentary', restS, { axes: [0, 0.9, 0, 0], buttons: [false, false] }) === null);
+    ok('…and nothing while a stick channel only sees a button', GP.learnedElement('proportional', restS, { axes: [0, 0, 0, 0], buttons: [true, false] }) === null);
+    ok('a stick is named by where it drives the channel', PE.describeElement('axis:1:inv') === 'left stick ↑' && PE.describeElement('axis:0') === 'left stick →' && PE.describeElement('axis:3') === 'right stick ↓' && PE.describeElement('axis:5:inv') === 'axis 5 reversed');
+
+    // Wired in: the action buttons in use, the setup, the editor, the report.
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('the action buttons in use are the controller\'s own', app.includes('padActionsFor(actions, gamepad ? padProfiles[gamepad] : undefined)') && /useActionHotkeys\(\s*padActions,/.test(app) && app.includes('actions={padActions}'));
+    const picker = readFileSync('packages/ground/src/components/ControllerPicker.tsx', 'utf8');
+    ok('a controller with its own layout can be set up', picker.includes("a.layout === 'own' || isSetUp(p.id)") && picker.includes('<PadSetup'));
+    const setupSrc = readFileSync('packages/ground/src/components/PadSetup.tsx', 'utf8');
+    ok('…but not while armed', setupSrc.includes('if (!learning || locked) return;') && setupSrc.includes('disabled={!canLearn}'));
+    const controls = readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8');
+    ok('each controller can have its own action buttons', controls.includes('withOwnActions(padProfiles, scope, bindings)') && controls.includes('input.readButtonsOf(scope)'));
+    ok('…any controller plugged in, not only the one in use', controls.includes('input.listGamepads().filter((p) => assessPad(p).likely)'));
+    const editor = readFileSync('packages/ground/src/components/BindingEditor.tsx', 'utf8');
+    ok('the channel editor learns by mode and points at a controller not set up', editor.includes('learnedElement(draft.mode') && editor.includes('padNotSetUp'));
+    const findings = (setUp: boolean) =>
+      D.groundFindings({ sendLoop: D.emptySendLoop(0), watchdogMs: 500, dropouts: 0, rtt: null, connected: true, controller: { inputMethod: 'gamepad', active: { id: ID, mapping: '' }, listed: 1, setUp } });
+    ok('the report says whether such a controller is set up', findings(false).some((f) => f.text.includes('is not set up') && !!f.fix) && findings(true).some((f) => f.text.includes('and is set up')));
   }
 
   // ---- v1.70.1: a network name is not markup ----

@@ -1,6 +1,7 @@
 import type { InputSnapshot } from './bindingEngine';
 import { pickGamepadProvider, type GamepadProvider } from './gamepadProvider';
 import { loadPadPref, savePadPref, type PadInfo } from './gamepadPick';
+import { loadPadProfiles, rawFromPeek, savePadProfiles, stdButtons, type PadProfiles } from './padProfiles';
 
 const storage = () => (typeof localStorage !== 'undefined' ? localStorage : null);
 
@@ -16,9 +17,12 @@ export class InputManager {
   private joysticks = new Map<string, { x: number; y: number }>();
   private gamepad: GamepadProvider = pickGamepadProvider();
   private padPref: string | null = loadPadPref(storage());
+  /** Each controller's setup — its layout and its own action buttons (padProfiles.ts). */
+  private pads: PadProfiles = loadPadProfiles(storage());
 
   constructor() {
     this.gamepad.setPreferred(this.padPref);
+    this.gamepad.setLayouts((id) => this.pads[id]?.layout);
   }
 
   attach(): void {
@@ -96,6 +100,26 @@ export class InputManager {
     this.padPref = id;
     this.gamepad.setPreferred(id);
     savePadPref(storage(), id);
+  }
+
+  /** Every controller's setup, by device id. */
+  get padProfiles(): PadProfiles {
+    return this.pads;
+  }
+  /** Replace the setups; read from the next frame on, remembered in this browser. */
+  setPadProfiles(next: PadProfiles): void {
+    this.pads = next;
+    savePadProfiles(storage(), next);
+  }
+  /**
+   * The buttons of one listed device in standard numbers, read through its setup — so a
+   * controller that is not the one in use can still learn its own action buttons. Null
+   * while it is not connected.
+   */
+  readButtonsOf(id: string): boolean[] | null {
+    const pad = this.gamepad.list().find((p) => p.id === id);
+    const peek = pad ? this.gamepad.peek(pad.index) : null;
+    return peek ? stdButtons(rawFromPeek(peek), this.pads[id]?.layout) : null;
   }
 
   /** Haptic feedback (e.g. on failsafe). No-op where unsupported. */

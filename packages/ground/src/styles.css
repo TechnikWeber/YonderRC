@@ -1560,6 +1560,61 @@ details.hint > p {
   background: var(--accent);
   flex: 0 0 auto;
 }
+/* v1.72: a controller set up once and not plugged in now — listed like the others. */
+.pad-row.pad-absent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+/* Setup › Controls › Game controller › Set up: one row per standard control. */
+.pad-setup {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--line-bright);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.pad-setup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.pad-map {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pad-map-row {
+  display: grid;
+  grid-template-columns: minmax(8em, 1fr) minmax(8em, 1.4fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.pad-map-name { font-size: 13px; }
+.pad-map-src { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.pad-map-buttons { margin-top: 10px; }
+.pad-map-buttons > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.pad-live {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 560px) {
+  .pad-map-row { grid-template-columns: 1fr auto auto; }
+  .pad-map-src { grid-column: 1 / -1; grid-row: 2; }
+}
+/* Action bindings: whose buttons the table shows. */
+.pad-scope { margin: 8px 0 4px; }
+.pad-scope label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.pad-scope select { max-width: 100%; }
 /* Diagnostics: what the report found, one line per finding. */
 .finding {
   font-size: 12px;

@@ -95,9 +95,15 @@ control app.
   used, and lights a dot while a device sends input. Pick yours if the automatic choice
   is wrong — a headset or a "Motion Sensors" device is never chosen automatically, but it
   is listed.
-- **"Own layout"** means the browser does not map the device to the standard layout: the
-  stick axes may be numbered differently. Use **Learn** in the channel editor and move the
-  stick. A trigger resting at −1 is no longer "learned" by accident.
+- **"Own layout"** means the browser does not map the device to the standard layout — an
+  RC transmitter in joystick mode, for instance: its axes and buttons are numbered its own
+  way. Press **Set up** next to it and show the app once where its sticks and buttons are
+  (a switch it reports as an axis works too); from then on every model works with it. A
+  channel learned with it before that may point at another control afterwards — press
+  **Learn** on it once more.
+- **A button works on one controller and not on another:** each controller can have its
+  own action buttons (Setup › Controls › Action bindings › *Controller buttons for*). One
+  without its own uses the shared ones; keys are always shared.
 - **Button numbers** follow the standard layout in the desktop app too, since v1.71
   (Start = 9, RT/R2 = 7, LT/L2 = 6, as in the browser). What the desktop app had learned
   before was renumbered once, automatically; each binding kept its physical button.

@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { ACTION_LABELS, type ActionBindings, type ActionId } from '../lib/actions';
 import type { BatteryWarnCfg } from '../lib/battery';
 import type { InputManager } from '../lib/input/inputManager';
-import { newlyPressed } from '../lib/input/gamepadPick';
+import { assessPad, newlyPressed, padLabel } from '../lib/input/gamepadPick';
+import {
+  padActionsFor,
+  withOwnActionButton,
+  withOwnActions,
+  withoutOwnActions,
+  type PadProfiles,
+} from '../lib/input/padProfiles';
 import type { AutoDisarmMode } from '../lib/templates';
 import { ControllerPicker } from './ControllerPicker';
 import { clampHoldSeconds, HOLD_MAX_S, HOLD_MIN_S, type HoldCfg } from '../lib/hold';
@@ -48,7 +55,12 @@ export function ControlsPanel({
   onAutoDisarmMode,
   typeDefault,
   vehicleType,
+  padProfiles,
+  onPadProfiles,
+  activePad,
+  armed,
 }: {
+  /** The shared action bindings: every key, and the buttons of controllers without their own. */
   bindings: ActionBindings;
   onBindings: (b: ActionBindings) => void;
   preArm: boolean;
@@ -82,12 +94,43 @@ export function ControlsPanel({
   /** What the vehicle-type policy alone would pick — shown next to "Auto". */
   typeDefault: boolean;
   vehicleType: string;
+  /** Every controller's setup — layout and own action buttons (lib/input/padProfiles.ts). */
+  padProfiles: PadProfiles;
+  onPadProfiles: (p: PadProfiles) => void;
+  /** The id of the controller in use, or null. */
+  activePad: string | null;
+  armed: boolean;
 }) {
   const [learn, setLearn] = useState<{ id: ActionId; what: 'key' | 'button' } | null>(null);
 
   const set = (id: ActionId, patch: Partial<ActionBindings[ActionId]>) =>
     onBindings({ ...bindings, [id]: { ...bindings[id], ...patch } });
   const setBat = (patch: Partial<BatteryWarnCfg>) => onBattery({ ...battery, ...patch });
+
+  // Whose buttons the table shows: '' = the shared ones, else one controller's. Until
+  // the operator picks, it is the controller in use when that has its own — what you see
+  // is then what a press does.
+  const [scopePick, setScopePick] = useState<string | null>(null);
+  // The one in use, every other controller plugged in (not a headset), and the ones that
+  // have a setup stored.
+  const connectedPads = input.listGamepads().filter((p) => assessPad(p).likely).map((p) => p.id);
+  const knownPads = [...new Set([...(activePad ? [activePad] : []), ...connectedPads, ...Object.keys(padProfiles)])];
+  const scope =
+    scopePick !== null && (scopePick === '' || knownPads.includes(scopePick))
+      ? scopePick
+      : activePad && padProfiles[activePad]?.actions
+        ? activePad
+        : '';
+  const scopeOwn = scope !== '' && !!padProfiles[scope]?.actions;
+  const shownButtons = scope ? padActionsFor(bindings, padProfiles[scope]) : bindings;
+  // A controller that uses the shared buttons shows them, but changing them is done for
+  // all controllers — in the shared view — or after giving it its own.
+  const buttonsEditable = scope === '' || scopeOwn;
+  const scopeConnected = scope === '' || input.listGamepads().some((p) => p.id === scope);
+  const setButton = (id: ActionId, button: number | null) => {
+    if (scope === '') set(id, { button });
+    else if (scopeOwn) onPadProfiles(withOwnActionButton(padProfiles, scope, id, button));
+  };
 
   // Capture the next key or gamepad button for the action being learned.
   useEffect(() => {
@@ -101,18 +144,21 @@ export function ControlsPanel({
       window.addEventListener('keydown', onKey, { once: true });
       return () => window.removeEventListener('keydown', onKey);
     }
-    // Only a button pressed AFTER Learn counts — one already held is not a choice.
-    const rest = input.readGamepadButtons();
+    // Only a button pressed AFTER Learn counts — one already held is not a choice. A
+    // controller with its own buttons is read itself, through its setup, even when it is
+    // not the one in use.
+    const read = () => (scope ? input.readButtonsOf(scope) ?? [] : input.readGamepadButtons());
+    const rest = read();
     const iv = setInterval(() => {
-      const bi = newlyPressed(rest, input.readGamepadButtons());
+      const bi = newlyPressed(rest, read());
       if (bi >= 0) {
-        set(learn.id, { button: bi });
+        setButton(learn.id, bi);
         setLearn(null);
       }
     }, 70);
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [learn, input]);
+  }, [learn, input, scope]);
 
   return (
     <section className="panel controls-panel">
@@ -385,7 +431,7 @@ export function ControlsPanel({
         </p>
       )}
 
-      <ControllerPicker input={input} />
+      <ControllerPicker input={input} profiles={padProfiles} onProfiles={onPadProfiles} locked={armed} />
 
       <details className="group">
         <summary className="eyebrow">Action bindings</summary>
@@ -395,6 +441,45 @@ export function ControlsPanel({
           aircraft that is a crash. Bind it to something you can't hit by accident, and if you fly with
           a controller, bind it there — a keyboard key is no use with both hands on the sticks.
         </Hint>
+        {knownPads.length > 0 && (
+          <div className="pad-scope">
+            <label>
+              Controller buttons for
+              <select value={scope} onChange={(e) => setScopePick(e.target.value)}>
+                <option value="">every controller (shared)</option>
+                {knownPads.map((id) => (
+                  <option key={id} value={id}>
+                    {padLabel(id)}
+                    {id === activePad ? ' · in use' : ''}
+                    {padProfiles[id]?.actions ? ' · own buttons' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {scope !== '' && !scopeOwn && (
+              <p className="note">
+                <b>{padLabel(scope)}</b> uses the shared buttons.{' '}
+                <button className="btn tiny" onClick={() => onPadProfiles(withOwnActions(padProfiles, scope, bindings))}>
+                  Give it its own
+                </button>
+              </p>
+            )}
+            {scopeOwn && (
+              <p className="note">
+                <b>{padLabel(scope)}</b> has its own buttons; the keys stay shared.{' '}
+                <button className="btn tiny ghost" onClick={() => onPadProfiles(withoutOwnActions(padProfiles, scope))}>
+                  Use the shared ones again
+                </button>
+              </p>
+            )}
+            {scope === '' && activePad && padProfiles[activePad]?.actions && (
+              <p className="note">
+                The controller in use, <b>{padLabel(activePad)}</b>, has its own buttons — these apply to every other
+                controller.
+              </p>
+            )}
+          </div>
+        )}
         <div className="actions-grid">
           <div className="actions-head"><span>Action</span><span>Key</span><span>Button</span></div>
           {ORDER.map((id) => (
@@ -413,11 +498,17 @@ export function ControlsPanel({
               <div className="learn-cell">
                 <input
                   type="number"
-                  value={bindings[id].button ?? ''}
+                  value={shownButtons[id].button ?? ''}
                   placeholder="—"
-                  onChange={(e) => set(id, { button: e.target.value === '' ? null : Number(e.target.value) })}
+                  disabled={!buttonsEditable}
+                  onChange={(e) => setButton(id, e.target.value === '' ? null : Number(e.target.value))}
                 />
-                <button className="btn tiny" onClick={() => setLearn({ id, what: 'button' })}>
+                <button
+                  className="btn tiny"
+                  disabled={!buttonsEditable || !scopeConnected}
+                  title={!scopeConnected ? 'Connect this controller to learn its buttons' : undefined}
+                  onClick={() => setLearn({ id, what: 'button' })}
+                >
                   {learn?.id === id && learn.what === 'button' ? 'Press…' : 'Learn'}
                 </button>
               </div>
@@ -427,7 +518,8 @@ export function ControlsPanel({
         <p className="note">
           Trim −/+ move one channel per model by 5 µs a press, with a click to hear it — the
           steering by default; pick another under Setup › model › Trim buttons. Button numbers
-          are the standard layout, the same in the browser and in the desktop app.
+          are the standard layout, the same in the browser and in the desktop app. Each controller
+          can have buttons of its own (above); keys belong to the keyboard and stay shared.
         </p>
       </details>
 

@@ -123,10 +123,10 @@ export function savePadPref(store: Store | null | undefined, id: string | null):
  * device's own layout rests at −1, and the old absolute test learned it the instant
  * Learn was pressed. Returns −1 while nothing moved.
  */
-export function movedAxis(baseline: (number | null)[], now: (number | null)[], threshold = 0.6): number {
+export function movedAxis(baseline: readonly (number | null)[], now: readonly (number | null)[], threshold = 0.6): number {
   for (let i = 0; i < now.length; i++) {
     const v = now[i];
-    if (v == null) continue;
+    if (v == null || !Number.isFinite(v)) continue;
     const base = baseline[i] ?? 0;
     if (Math.abs(v - base) > threshold) return i;
   }
@@ -134,9 +134,29 @@ export function movedAxis(baseline: (number | null)[], now: (number | null)[], t
 }
 
 /** "Learn" for a button: one that is down now and was not when learning began. −1 if none. */
-export function newlyPressed(baseline: boolean[], now: boolean[]): number {
+export function newlyPressed(baseline: readonly boolean[], now: readonly boolean[]): number {
   for (let i = 0; i < now.length; i++) if (now[i] && !baseline[i]) return i;
   return -1;
+}
+
+/**
+ * What the channel editor's Learn takes for a channel of this mode (v1.72): a stick channel
+ * an axis, a switch a button. Either used to be taken for either — and a stick channel on
+ * `button:N` then read axis N, a switch on `axis:N` read button N. A switch that the
+ * controller reports as an axis becomes a button in its setup (lib/input/padProfiles.ts).
+ * Null while nothing suitable moved.
+ */
+export function learnedElement(
+  mode: 'proportional' | 'momentary' | 'toggle' | 'hold-ramp',
+  rest: { axes: readonly (number | null)[]; buttons: readonly boolean[] },
+  now: { axes: readonly (number | null)[]; buttons: readonly boolean[] },
+): string | null {
+  if (mode === 'proportional') {
+    const a = movedAxis(rest.axes, now.axes);
+    return a >= 0 ? `axis:${a}` : null;
+  }
+  const b = newlyPressed(rest.buttons, now.buttons);
+  return b >= 0 ? `button:${b}` : null;
 }
 
 /** A shorter label for the UI: the browser's id minus the vendor/product suffix. */

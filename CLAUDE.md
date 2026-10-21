@@ -119,6 +119,8 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   that is exactly the pre-v1.30 `escape` default while keeping deliberate choices.
   **Trim −/+** (v1.71) nudge `trimTargetOf(profile)` (`lib/trim.ts`): the model's
   `trimTarget` while that binding exists, else the steering-like channel, never a follower.
+  Since v1.72 a controller can have its own buttons (see *Controller setups*); this
+  storage then holds the keys and the shared buttons.
 - **Follower channels** (`ground/src/lib/follow.ts`, v1.71): `source: 'follow'`, element
   `ch:N`. The engine skips them; App applies `applyFollowers` AFTER the limiter (and to the
   pre-arm view), so a follower copies the FINAL value plus its own offset (`trimUs`),
@@ -143,6 +145,19 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
 - **Typing is not driving** (v1.71): `InputManager` ignores keys whose target is a text
   field (`isTypingTarget`) — a space never reached a label, and on a keyboard model a "w"
   typed into the address was throttle.
+- **Controller setups** (`ground/src/lib/input/padProfiles.ts`, v1.72): stored per device
+  id (`yonderrc.pads.v1`, sanitised by `cleanPadProfiles`): a `layout` — for a controller
+  that reports its own layout, where each standard control is on it (stick axes: device
+  axis + invert; buttons: a device button, or an axis range `from → to` for a switch, a
+  trigger or half a stick) — and/or its own action `actions`. The providers hand out
+  STANDARD numbers through the active pad's layout (`stdAxis`/`stdButton`/`stdButtons`);
+  `peek` stays raw, because `PadSetup.tsx` learns from it. Whatever a layout does not
+  mention keeps the device's own number, so no layout is exactly the old behaviour and
+  models never need converting — they speak the standard layout. The action buttons in
+  effect are `padActionsFor(shared, profile)` (own buttons, else the shared ones; keys are
+  always shared), which App hands to `useActionHotkeys` and VideoPanel. The setup is locked
+  while armed. The channel editor's Learn is mode-aware (`learnedElement`: an axis for
+  proportional, a button otherwise).
 - **Mobile data budget** (`vehicle/system/traffic.ts` + `TrafficService.ts`, v1.68.0):
   `/proc/net/dev` byte counters summed over the **metered** interfaces, warned on in the
   OSD (`⚠ DATA`) against `config.dataUsage.budgetMb`. Three rules that are easy to get

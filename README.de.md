@@ -26,6 +26,10 @@ Zahl (oben Mitte). Hell oder dunkel wird am Fahrzeug gewählt (Setup › Design)
 - **Der richtige Controller**: jedes Gerät, das der Browser meldet, wird mit seiner
   Einschätzung angezeigt; ein Headset oder die Bewegungssensoren eines Pads werden nie
   automatisch gewählt, und die Wahl wird gemerkt (Setup › Controls › Game controller).
+- **Eine Einrichtung pro Controller**: Einem Controller mit eigenem Layout — etwa einem
+  RC-Sender im Joystick-Modus — zeigt man einmal, wo seine Sticks und Tasten sind
+  (*Set up*), und jedes Modell funktioniert damit. Jeder Controller kann auch eigene
+  Aktionstasten haben.
 - **Modelle** für Auto / Boot / Flugzeug / Drohne mit passenden Kanal-Vorlagen,
   wählbarer Eingabemethode und Rastung pro Achse (Mitte/Min/frei).
 - Pro Kanal: Trim, Expo, Reverse, Endpunkte (µs), Failsafe-Wert. Verbunden zeigt jeder

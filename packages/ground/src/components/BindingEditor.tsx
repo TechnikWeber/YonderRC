@@ -20,7 +20,7 @@ import {
 import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { CurveEditor } from './CurveEditor';
 import type { InputManager } from '../lib/input/inputManager';
-import { movedAxis, newlyPressed } from '../lib/input/gamepadPick';
+import { learnedElement, newlyPressed, padLabel } from '../lib/input/gamepadPick';
 import { describeElement, pairElement, parsePairElement } from '../lib/input/padElements';
 import { createFollower, followElement, followedChannel, isFollower, leaderCandidates, leaderOf, throttleOutputsOf } from '../lib/follow';
 import { trimmableBindings, trimTargetOf } from '../lib/trim';
@@ -93,6 +93,10 @@ export function BindingEditor({
   const detentOf = (ax: StickAxis): Detent => axisBindings.find((b) => b.stickAxis === ax)?.detent ?? 'center';
   const showDetents = profile.inputMethod !== 'gamepad'; // physical stick centers itself
   const mode = profile.stickMode ?? 2;
+  // A controller with a layout of its own, not set up yet: its numbers are not the
+  // standard ones the model's sticks use.
+  const activePad = profile.inputMethod === 'gamepad' ? input.activeGamepad() : null;
+  const padNotSetUp = activePad !== null && activePad.mapping !== 'standard' && !input.padProfiles[activePad.id]?.layout;
 
   // ---- Add / edit channel form ----
   const [adding, setAdding] = useState(false);
@@ -157,21 +161,18 @@ export function BindingEditor({
           setLearning(null);
           return;
         }
-        if (bi >= 0) {
-          setDraft((d) => ({ ...d, element: `button:${bi}` }));
-          setLearning(null);
-          return;
-        }
-        const a = movedAxis(restAxes, axesNow());
-        if (a >= 0) {
-          setDraft((d) => ({ ...d, element: `axis:${a}` }));
+        // A stick channel takes an axis, a switch a button — the other kind is not what
+        // the channel would read.
+        const el = learnedElement(draft.mode, { axes: restAxes, buttons: restButtons }, { axes: axesNow(), buttons: input.readGamepadButtons() });
+        if (el) {
+          setDraft((d) => ({ ...d, element: el }));
           setLearning(null);
         }
       }, 80);
       return () => clearInterval(id);
     }
     return;
-  }, [learning, draft.source, input]);
+  }, [learning, draft.source, draft.mode, input]);
 
   // Two buttons rest in the middle. Right for steering, and for a car's or boat's
   // throttle (centre = stop) — wrong for a throttle that rests at idle, where both
@@ -284,6 +285,13 @@ export function BindingEditor({
             </label>
           ))}
         </div>
+        {padNotSetUp && activePad && (
+          <p className="note warn-note">
+            <b>{padLabel(activePad.id)}</b> reports a layout of its own, so its sticks may not be where this model
+            expects them. Set it up once under Controls › Game controller › <b>Set up</b> — then every model works
+            with it.
+          </p>
+        )}
       </div>
 
       <div className="field">
@@ -578,6 +586,7 @@ export function BindingEditor({
             </div>
             <p className="note">
               proportional = axis (keyboard needs two keys like <code>a|d</code>) · momentary = while held · toggle = on/off · hold-ramp = ramps while held.
+              On a controller, Learn takes a stick for <i>proportional</i> and a button for the others.
               Rest position = where a switch/ramp sits when released: <b>center</b> (1500), <b>min</b> (1000) or <b>hold</b> (stays put). Independent of stick modes.
               <b> Follow another channel</b> copies that channel's final value, with its own offset, reverse and endpoints — a second
               steering servo, a second ESC. Its failsafe (and, on a throttle, its disarmed value) follow too.

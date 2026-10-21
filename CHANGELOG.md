@@ -3,6 +3,62 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.72.0
+*One setup per controller: a controller with a layout of its own is shown once where its
+sticks and buttons are, and every controller can have its own action buttons.*
+
+**English**
+- **Set up a controller once, use it with every model.** A device the browser reports with
+  a layout of its own — an RC transmitter in joystick mode, a pad it does not know — gets a
+  **Set up** button in Setup › Controls › Game controller. Move each stick, press or flip
+  what should be A … Home: the app learns where the standard controls are on it. Models
+  keep speaking the standard layout (left stick, R2/L2, Start), so every model works with
+  it, from a template or not — no second model for the transmitter. A switch reported as
+  an axis works as a button, and a stick pushed one way can stand in for a trigger.
+  Locked while armed. Tested with simulated controllers, not a real transmitter: if yours
+  behaves differently, please open an issue.
+- **Action buttons per controller.** Setup › Controls › Action bindings › *Controller
+  buttons for*: give a controller its own buttons for arm, panic, trims …; one without its
+  own uses the shared buttons, as every controller did before. Keys stay shared — there is
+  one keyboard. Nothing changes until you do this.
+- **Nothing to convert.** Since v1.71 the models use the standard layout in the browser and
+  the desktop app alike, so stored models stay exactly as they are, and a standard pad needs
+  no setup. A channel learned with an own-layout controller before it was set up may point
+  at another control afterwards — press Learn on it once more.
+- **The channel editor names the stick**: `left stick ↑` instead of `axis:1:inv`. And Learn
+  takes a stick for a proportional channel and a button for a switch. It used to take
+  either — a stick channel on a button then read nothing but centre, and a switch on an
+  axis read the button with the same number.
+- The diagnostics file says whether an own-layout controller in use is set up, and carries
+  the setups.
+
+**Deutsch**
+- **Einen Controller einmal einrichten, mit jedem Modell nutzen.** Ein Gerät, das der
+  Browser mit eigenem Layout meldet — ein RC-Sender im Joystick-Modus, ein Pad, das er nicht
+  kennt —, bekommt in Setup › Controls › Game controller einen **Set up**-Knopf. Jeden Stick
+  bewegen, drücken oder umlegen, was A … Home sein soll: Die App lernt, wo die
+  Standard-Bedienelemente an ihm sind. Modelle sprechen weiter das Standard-Layout (linker
+  Stick, R2/L2, Start), deshalb funktioniert jedes Modell damit, aus der Vorlage oder nicht —
+  kein zweites Modell für den Sender. Ein Schalter, der als Achse kommt, geht als Taste, und
+  ein Stick in eine Richtung kann einen Trigger ersetzen. Gesperrt, solange das Fahrzeug
+  scharf ist. Getestet mit simulierten Controllern, nicht mit einem echten Sender: Verhält
+  sich deiner anders, bitte ein Issue aufmachen.
+- **Aktionstasten pro Controller.** Setup › Controls › Action bindings › *Controller
+  buttons for*: einem Controller eigene Tasten für Arm, Panic, Trims … geben; einer ohne
+  eigene benutzt die gemeinsamen, wie bisher jeder Controller. Tastatur-Tasten bleiben
+  gemeinsam — es gibt eine Tastatur. Es ändert sich nichts, bis du das einstellst.
+- **Nichts umzurechnen.** Seit v1.71 nutzen die Modelle im Browser und in der Desktop-App
+  dasselbe Standard-Layout, deshalb bleiben gespeicherte Modelle genau so, wie sie sind, und
+  ein Standard-Pad braucht keine Einrichtung. Ein Kanal, der mit einem Controller mit
+  eigenem Layout gelernt wurde, bevor dieser eingerichtet war, kann danach auf ein anderes
+  Bedienelement zeigen — dort einmal Learn drücken.
+- **Der Kanal-Editor nennt den Stick**: `left stick ↑` statt `axis:1:inv`. Und Learn nimmt
+  für einen proportionalen Kanal einen Stick und für einen Schalter eine Taste. Vorher nahm
+  es beides — ein Stick-Kanal auf einer Taste las dann nur die Mitte, und ein Schalter auf
+  einer Achse las die Taste mit derselben Nummer.
+- Die Diagnosedatei sagt, ob ein Controller mit eigenem Layout eingerichtet ist, und enthält
+  die Einrichtungen.
+
 ## v1.71.0
 *Controller and channel wishes from users: two buttons as one axis, trim on buttons,
 follower channels, the board's own output numbers — and one button layout in the browser

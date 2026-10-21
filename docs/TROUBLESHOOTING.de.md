@@ -99,9 +99,15 @@ der Steuer-App eingestellt.
   benutzt wird, und zeigt einen Punkt, solange ein Gerät Eingaben sendet. Dort deines
   wählen, falls die automatische Wahl falsch ist — ein Headset oder ein
   „Motion Sensors"-Gerät wird nie automatisch gewählt, aber gelistet.
-- **„Own layout"** heißt, der Browser bildet das Gerät nicht auf das Standard-Layout ab: die
-  Stick-Achsen können anders nummeriert sein. Im Kanal-Editor **Learn** benutzen und den
-  Stick bewegen. Ein Trigger, der bei −1 ruht, wird nicht mehr versehentlich „gelernt".
+- **„Own layout"** heißt, der Browser bildet das Gerät nicht auf das Standard-Layout ab —
+  etwa bei einem RC-Sender im Joystick-Modus: Achsen und Tasten sind auf seine eigene Art
+  nummeriert. Daneben **Set up** drücken und der App einmal zeigen, wo seine Sticks und
+  Tasten sind (auch ein Schalter, den er als Achse meldet); ab dann funktioniert jedes
+  Modell damit. Ein Kanal, der vorher mit ihm gelernt wurde, kann danach auf ein anderes
+  Bedienelement zeigen — dort einmal **Learn** drücken.
+- **Eine Taste geht an einem Controller und am anderen nicht:** Jeder Controller kann
+  eigene Aktionstasten haben (Setup › Controls › Action bindings › *Controller buttons
+  for*). Einer ohne eigene benutzt die gemeinsamen; Tasten der Tastatur gelten immer für alle.
 - **Tastennummern** folgen seit v1.71 auch in der Desktop-App dem Standard-Layout
   (Start = 9, RT/R2 = 7, LT/L2 = 6, wie im Browser). Was die Desktop-App vorher gelernt
   hatte, wurde einmal automatisch umgerechnet; jede Belegung behält ihre echte Taste.

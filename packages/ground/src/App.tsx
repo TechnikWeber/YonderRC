@@ -58,12 +58,13 @@ import {
   diagnosticsUrlFromWs,
 } from './lib/diagnostics';
 import { assessPad } from './lib/input/gamepadPick';
+import { padActionsFor, type PadProfiles } from './lib/input/padProfiles';
 import { effectiveVideoBase, videoSecretFor } from './lib/videoLink';
 import { DiagnosticsPanel, type DiagnosticsExport } from './components/DiagnosticsPanel';
 import type { DiagnosticFinding } from '@yonderrc/protocol';
 
 /** Shown in the masthead and written into diagnostics files. Bumped with every release. */
-export const GROUND_VERSION = '1.71.0';
+export const GROUND_VERSION = '1.72.0';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -101,6 +102,14 @@ export function App() {
 
   const input = useMemo(() => new InputManager(), []);
   const engine = useMemo(() => new BindingEngine(), []);
+  // Each controller's setup: where a controller with its own layout has the standard
+  // controls, and its own action buttons. The InputManager reads it every frame; this
+  // copy is what the panels render.
+  const [padProfiles, setPadProfilesState] = useState<PadProfiles>(() => input.padProfiles);
+  const setPadProfiles = (p: PadProfiles) => {
+    input.setPadProfiles(p);
+    setPadProfilesState(p);
+  };
   const linkRef = useRef<LinkClient | null>(null);
   const lastTelemetryAt = useRef(0);
   // The ground's half of a problem report (lib/diagnostics.ts): how regularly the control
@@ -388,12 +397,16 @@ export function App() {
     else beep(dir > 0 ? 1320 : 990, 30, 0.05);
   };
 
+  // The action buttons of the controller in use: its own where it has them, else the
+  // shared ones. Keys are always the shared ones.
+  const padActions = padActionsFor(actions, gamepad ? padProfiles[gamepad] : undefined);
+
   // The bound arm key/button gets the same hold protection as the on-screen
   // button (panic-disarm never does); the progress feeds the button's fill so
   // there's visible feedback wherever you look.
   const [hotkeyHold, setHotkeyHold] = useState(0);
   useActionHotkeys(
-    actions,
+    padActions,
     {
       'panic-disarm': panicDisarm,
       'toggle-arm': () => requestArm(!armed),
@@ -823,6 +836,8 @@ export function App() {
         preferred: input.preferredGamepad,
         active: activePad,
         devices: pads.map((p) => ({ ...p, ...assessPad(p) })),
+        // Where a controller with its own layout has its controls, and own action buttons.
+        setups: padProfiles,
       },
       profile: active,
       settings: { preArm, autoDisarmMode, hold: holdCfg, buttonHold: buttonHoldCfg, speech: speechCfg.enabled, blackbox: logging },
@@ -832,7 +847,7 @@ export function App() {
       watchdogMs: welcome?.watchdogTimeoutMs ?? 0,
       dropouts: linkQuality.dropouts,
       rtt,
-      controller: { inputMethod: active.inputMethod, active: activePad, listed: pads.length },
+      controller: { inputMethod: active.inputMethod, active: activePad, listed: pads.length, setUp: !!(activePad && padProfiles[activePad.id]?.layout) },
       connected,
     });
 
@@ -929,7 +944,7 @@ export function App() {
             onNext={() => linkRef.current?.sendCalib('next')}
             onCancel={() => linkRef.current?.sendCalib('cancel')}
           />
-          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} haptics={hapticCfg} onHaptics={setHapticCfg} budget={budgetCfg} onBudget={setBudgetCfg} budgetLive={budget} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} />
+          <ControlsPanel bindings={actions} onBindings={setActions} preArm={preArm} onPreArm={setPreArmPersist} hold={holdCfg} onHold={setHoldCfg} buttonHold={buttonHoldCfg} onButtonHold={setButtonHoldCfg} speech={speechCfg} onSpeech={setSpeechCfg} haptics={hapticCfg} onHaptics={setHapticCfg} budget={budgetCfg} onBudget={setBudgetCfg} budgetLive={budget} battery={batteryCfg} onBattery={setBatteryCfg} logging={logging} onLogging={setLogging} logRows={logRows} logFixes={logFixes} onDownloadLog={downloadLog} onDownloadGpx={downloadGpx} onClearLog={clearLog} input={input} autoDisarm={resolveAutoDisarm(autoDisarmMode, active.vehicleType)} autoDisarmMode={autoDisarmMode} onAutoDisarmMode={setAutoDisarmMode} typeDefault={disarmOnReconnectForType(active.vehicleType)} vehicleType={active.vehicleType} padProfiles={padProfiles} onPadProfiles={setPadProfiles} activePad={gamepad} armed={armed} />
           <DiagnosticsPanel onExport={exportDiagnostics} />
           <section className="panel">
             <span className="eyebrow">Ground app</span>
@@ -958,7 +973,7 @@ export function App() {
             profile={active}
             telemetry={connected ? telemetry : null}
             input={input}
-            actions={actions}
+            actions={padActions}
             sessionSeconds={armed ? sessionSeconds : null}
             batteryLow={battery.low && batteryCfg.osdBlink}
             batteryReason={battery.reason}
