@@ -54,8 +54,6 @@ the setup page, but "plug in, install, drive" only works in this order.
    | MCP9808 temperature | `0x18` | — |
    | BME280 / BMP280 | `0x76` / `0x77` | — |
 
-   The PCA9685 also answers on **`0x70`** (its all-call address) — keep that address
-   free; an I²C multiplexer (TCA9548A) ships on exactly `0x70`.
    Without a current sensor, the PCA9685 can stay on `0x40`.
 4. **Camera:** ribbon cable into the **CAM** port (not DISPLAY), contacts facing the
    HDMI side. The official Pi cameras are detected automatically. Others (Arducam
@@ -220,7 +218,8 @@ Then, before the vehicle leaves the bench: a **password for the setup hotspot**
 3. **Game controller:** plug it in or pair it via Bluetooth, then **press one of its
    buttons** — browsers only show a controller after that. *Setup › Controls › Game
    controller* lists every device and which one is used; pick yours if the automatic
-   choice is wrong. PS4/PS5 pairing is explained right there.
+   choice is wrong. PS4/PS5 pairing is explained right there. An RC transmitter or
+   another controller marked *own layout*: press **Set up** next to it once.
 4. Back to **Drive**: does the channel monitor follow the sticks? Then **hold Arm for
    1 s**, and carefully.
 

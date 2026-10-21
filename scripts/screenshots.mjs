@@ -181,7 +181,7 @@ await shot({
 });
 
 // The phone view is an emulated 390px viewport, not a device photo — the caption in
-// both READMEs says so. Captured as PNG; optimise() turns it into the .jpeg they link.
+// both feature lists (docs/FEATURES*.md) says so. Captured as PNG; optimise() turns it into the .jpeg they link.
 await shot({ url: GROUND, out: 'Mobile_FPV.png', width: 390, height: 844, dsf: 2, mobile: true, prep: [CONNECT, 14000], settle: 2000 });
 
 ws.close();

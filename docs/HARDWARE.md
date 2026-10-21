@@ -102,13 +102,9 @@ terminal resistance both land in the measurement. Feed a known current and enter
 | V+ (servo power) | **not** from the Pi! | its own BEC 5–6 V |
 
 - **V+** is the servo/ESC supply and comes from the BEC, **not** from the Pi.
-- Default address **0x40**, which every INA2xx also uses. **Leave the sensor on 0x40 and
-  move the PCA9685 to 0x41** (close bridge **A0**), then enter `0x41` under Setup ›
-  *Vehicle configuration* and restart the service. The PCA moves because its address is
-  settable from the browser.
-- The PCA9685 also answers on **0x70**, its *all-call* address. It has no ID register, so
-  that is how **Detect hardware** tells it apart from an INA2xx. YonderRC leaves all-call
-  enabled on purpose so the chip stays identifiable while running.
+- Default address **0x40** — the same as every INA2xx sensor. **Leave the sensor on 0x40
+  and move the PCA9685 to 0x41** (close the solder bridge **A0**), then enter `0x41` under
+  Setup › *Vehicle configuration* and restart the service.
 - Servos/ESC go to outputs 0–15. App channels 1–16 map to PCA9685 channels 0–15; while
   connected, the app shows the output next to each channel (`CH03 · out 2`).
 
@@ -156,18 +152,11 @@ Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB
 ```
 
 - Do **not** power the Pi from a PCA9685 channel.
-- **Servo V+ does not come from the Pi either.** The 5 V header pins sit on the input rail
-  with no fuse, so a servo browns the whole board out — and that failure looks like a
-  software crash, not a power problem: picture fine, freeze, back a minute later. It costs
-  an SD card eventually.
-- **5.1 V / 3 A with a short, thick cable.** A camera plus an LTE stick on a phone charger
-  is already over the edge.
-- **Measured idle draw** (Pi 4B + CSI camera + HiLink LTE stick + PCA9685 + GPS,
-  streaming, motor stopped): **0.7–1.0 A at 7.2 V** ≈ 5–7 W — **1.4–2 A behind a 5 V
-  regulator before a servo moves**. "5 V / 3 A" is the floor, not headroom. A 5 A
-  buck-boost from the pack held `vcgencmd get_throttled` at `0x0`.
-- The vehicle shows **⚠ POWER** in the OSD while the rail is below spec, and tells a
-  thermal clamp apart from it. `0x0` is a healthy rail.
+- **Servo V+ does not come from the Pi either.** A servo on the Pi's 5 V pins pulls the
+  whole Pi down — it looks like a software crash: picture freezes, back a minute later.
+- **5.1 V / 3 A with a short, thick cable is the minimum.** Pi, camera, LTE stick and GPS
+  alone draw 1.4–2 A at 5 V; a 5 A regulator from the drive battery is a safe choice.
+- The OSD shows **⚠ POWER** while the supply is too weak.
 - Power-on order: electronics first, drive last. To switch off use **Shut down** on the
   setup page and wait for the green LED.
 
@@ -194,18 +183,12 @@ most speak **NMEA at 9600 baud** over UART.
 | TX  | GPIO15 / RXD | Pin 10 |
 | RX  | GPIO14 / TXD | Pin 8 |
 
-- **TX and RX cross over.** Getting it wrong gives the same symptom as no cable: silence.
-- Use **`/dev/serial0`** — the alias always points at the UART wired to the header. **Not
-  `/dev/ttyAMA0` on a Pi 3/4/5**: that is the *Bluetooth* PL011. It opens without error and
-  never delivers a byte, which reads exactly like a wiring fault. Setup › GPS warns about
-  it. The serial source needs the optional `serialport` package (3.3).
-- **Raspberry Pi OS parks a login console on that UART**, and a console talking over the
-  receiver shreds its sentences. Setup › GPS checks both conditions (`enable_uart=1`, no
-  serial console) and offers **Free the serial port for GPS** (backups as `*.yonderrc-bak`, reboot required). The installer does
-  this on fresh installs since v1.61.0.
-- **Indoors, where there is no fix:** the GPS panel counts arriving NMEA sentences and
-  shows satellites *in view*. Sentences ticking up with 0 satellites means cable, baud and
-  port are all correct. "Nothing received" is the wiring; "no fix" is the roof.
+- **TX and RX cross over.** Swapped, the receiver stays silent.
+- Use **`/dev/serial0`**, not `/dev/ttyAMA0` (that is Bluetooth on a Pi 3/4/5). Needs the
+  `serialport` module (3.3).
+- If Setup › GPS offers **Free the serial port for GPS**, press it and reboot.
+- **Indoors there is no fix**, but the GPS panel counts the incoming data: counting up
+  means the wiring is right. "Nothing received" is the wiring; "no fix" is the roof.
 - **USB dongles** (u-blox VK-172, GlobalSat BU-353): pick the **gpsd** source instead.
 - Set **min. satellites** (6 is a good default) and enable **auto-home**.
 
@@ -289,83 +272,45 @@ sensor can all run at once:
 
 ### 3.1 Flash Raspberry Pi OS
 
-> **First time with Linux?** [`QUICKSTART.md`](QUICKSTART.md) walks through this chapter
-> click by click — Imager, finding the Pi, SSH from Windows/macOS, copying the files.
+> **First time with Linux?** [`QUICKSTART.md`](QUICKSTART.md) shows this chapter click by
+> click — Imager, finding the Pi, SSH, copying the files.
 
-1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit)**. The installer is tested
-   against **Bookworm**; Imager's current Lite image is **Trixie**, which should work but is
-   unverified — the tested Bookworm image is listed as *Legacy*.
-2. In the Imager settings (gear): **enable SSH**, set a user, enter **Wi-Fi credentials**
-   and the **Wi-Fi country**, hostname e.g. `yonderrc`.
-3. **Wire the hardware now** (chapter 2), with the PCA9685 on **0x41** when an INA2xx shares
-   the bus — the installer looks at the bus once, see 3.2.
+1. **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit)**. Tested on **Bookworm**
+   (listed as *Legacy*); the current **Trixie** should work but is untested.
+2. In the Imager settings: **enable SSH**, a user, **Wi-Fi name, password and country**,
+   hostname `yonderrc`.
+3. **Wire the hardware first** (chapter 2), the PCA9685 on **0x41** — the installer looks
+   at the bus once.
 4. Flash, insert, power on.
 
-### 3.2 Log in and copy the project onto the Pi
+### 3.2 Install
+
+With internet on the Pi, log in (`ssh pi@yonderrc.local`) and run:
 
 ```bash
-ssh pi@yonderrc.local          # or the IP from your router
+curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
 ```
 
-Then get the project onto `/opt/yonderrc`. **Three ways — pick one:**
+No internet on the Pi, or your own copy: copy the folder over
+([`QUICKSTART.md`, option B](QUICKSTART.md#option-b-copy-the-files-yourself)), then
+`sudo bash /opt/yonderrc/provisioning/install.sh`.
 
-**a) git clone (easiest, if the Pi has internet)**
-```bash
-sudo mkdir -p /opt/yonderrc
-sudo chown $USER /opt/yonderrc
-git clone https://github.com/TechnikWeber/YonderRC.git /opt/yonderrc
-```
+The installer sets up everything the vehicle needs (Node, video, network and VPN tools,
+three systemd services), enables I²C and the serial port, and turns Wi-Fi power saving
+off. Then it looks at the hardware **once** and fills in only what was never saved:
 
-**b) scp from the laptop** — run on your **laptop**:
-```bash
-# in the folder that contains YonderRC:
-scp -r ~/YonderRC pi@yonderrc.local:/tmp/YonderRC
-# then on the Pi:
-ssh pi@yonderrc.local 'sudo mkdir -p /opt/yonderrc && sudo cp -a /tmp/YonderRC/. /opt/yonderrc/'
-```
-Don't copy `node_modules` — the installer installs fresh anyway.
+- a **PCA9685** → output driver `pca9685` with its address;
+- a **CSI camera** → camera `cam` instead of the test pattern;
+- current sensors are only **named** — set them up on the page (3.5 step 4).
 
-**c) USB stick (Pi with no network)**
-```bash
-sudo mkdir -p /opt/yonderrc
-sudo cp -a /media/*/YonderRC/. /opt/yonderrc/   # adjust the path (lsblk shows the drive)
-```
-
-Then install:
-
-```bash
-sudo bash /opt/yonderrc/provisioning/install.sh
-```
-
-That installs Node 22, ffmpeg, NetworkManager, ModemManager, `usb-modeswitch`,
-`i2c-tools`, `gpsd`, `wireguard-tools`, `openvpn`, Tailscale, ZeroTier and go2rtc, sets up
-the three systemd services (`yonderrc-vehicle`, `go2rtc`, `yonderrc-onboard`), enables
-**I2C** and **UART** and switches **WiFi power saving off** (it holds incoming packets back
-and trips the failsafe watchdog on a working link). A copy that is not in `/opt/yonderrc`
-yet is moved there first.
-
-**Hardware detection.** Right after enabling I²C the installer probes once and fills in
-only what was **never saved**:
-
-- a **PCA9685** found on bus 1 → output driver `pca9685` with that address, and the
-  `i2c-bus` module it needs is built;
-- a **CSI camera** listed by `rpicam-hello --list-cameras` → camera `cam` (`rpicam`,
-  1280×720 @ 30) instead of the test pattern;
-- current sensors and other chips are only **named** — their reading depends on values
-  printed on the board (the shunt), so they are set up in the page (3.5 step 4).
-
-It prints what it did under `-- hardware detection`. Nothing found means the simulator
-stays; a saved choice is never overwritten, so re-running the installer is safe. Wire and
-address everything **before** installing — two chips on `0x40` cannot be identified, and a
-camera that needs an overlay (Arducam) is only found after 3.5 step 2 and a second run.
+Nothing found → the simulator stays. Running the installer again is safe. Two chips on the
+same address cannot be told apart, so set the addresses **before** installing.
 
 ### 3.3 Hardware driver dependencies (only what you use)
 
-The native libraries are **optional dependencies** — they compile on the Pi and a vehicle
-needs at most one, so the installer runs `npm install --omit=optional`.
-
-**Install the one you need in the browser** — Setup › Vehicle configuration › **Native
-driver modules**:
+The hardware drivers need a native module, which is compiled on the Pi. A vehicle needs at
+most one, so none is installed by default. **Install yours in the browser** — Setup ›
+Vehicle configuration › **Native driver modules**:
 
 | module | needed for |
 | --- | --- |
@@ -373,16 +318,13 @@ driver modules**:
 | `pigpio` | GPIO-PWM output instead of a PCA9685 (pin map: 2.8) |
 | `serialport` | SBUS output (flight controller) · serial GPS |
 
-Each row shows its status and has an **Install** button; the page then offers the service
-restart. Three things to know:
+Press **Install**, then restart the service when the page offers it.
 
-- The Pi needs **internet** — its own hotspot has no uplink, so join a network first.
-- It **takes a minute**: the module is compiled on the Pi.
-- A failed build names the cause and the fixing command. Usually
-  `sudo apt install -y build-essential`; `pigpio` also needs `sudo apt install -y pigpio`.
+- The Pi needs **internet** — its own hotspot has none, so join a network first.
+- It **takes a minute**.
+- A failed build names the cause and the command that fixes it.
 
-What you installed is remembered (`hardwareDeps`) and restored by `install.sh` after every
-update, so an update cannot turn a configured vehicle back into a simulator.
+Installed modules are restored after every update.
 
 Over SSH instead:
 
@@ -398,26 +340,15 @@ sudo systemctl restart yonderrc-vehicle
 
 **From the setup page** — *Software update*:
 
-1. **Check for updates** reports installed version, available version, how many commits
-   behind and each subject line. It changes nothing.
-2. **Update & restart** does what an SSH session would — `git pull --ff-only`, install
-   changed dependencies, rebuild the control app if needed — and restarts the service
-   last, so it never comes back into a half-updated checkout.
+1. **Check for updates** shows what is new. It changes nothing.
+2. **Update & restart** downloads, installs, rebuilds and restarts. If a step fails, the
+   old version keeps running.
 
-It refuses, and says why, on **local changes** (a fast-forward would fail or throw them
-away) and with **no internet**. A failed step stops there and the old version keeps running.
+It refuses, with the reason, when there is no internet or the files were changed by hand.
+*Update source* can point at a fork or another branch.
 
-**Update source.** Default is the checkout's own `origin` / `main`. The two fields under
-*Update source* take a remote name or full URL plus a branch, so a vehicle can point at
-your fork or a test branch without code changes.
-
-> **The generated video config** lives at **`/var/lib/yonderrc/go2rtc.yaml`**, outside the
-> checkout (`YRC_GO2RTC_CONFIG` overrides it). Writing it inside the repo left every
-> vehicle with local modifications — exactly what a fast-forward trips over.
-> `install.sh` moves an existing file across once.
-
-> **Not covered:** apt packages, systemd units and `install.sh` itself. When the check says
-> the installer changed, run `sudo bash provisioning/install.sh` once.
+> When the check says the **installer** changed, run `sudo bash provisioning/install.sh`
+> once — system packages and services are not updated from the page.
 
 The equivalent over SSH:
 
@@ -433,61 +364,31 @@ sudo bash provisioning/install.sh
 
 Open **`http://yonderrc.local:8080/setup`** (or `http://<pi-ip>:8080/setup`).
 
-Seven tabs — **Overview · Network · Remote access · Sensors & outputs · Camera · GPS ·
-Design**. *Overview* answers "is everything there?" on one screen. *Design* picks light
-(default) or dark; the vehicle stores it and pushes it to the ground app, and the video
-overlay stays light-on-dark in both. Every tab is a URL (`…/setup#gps`). Long explanations
-are collapsed behind a one-line summary.
+The page has tabs — **Overview · Network · Remote access · Sensors & outputs · Camera ·
+GPS · Design**. *Overview* shows on one screen whether everything is there.
 
-0. **Detect hardware** (in *Vehicle configuration*) scans I²C, `mmcli` and the camera
-   devices. Chips with an ID register are **read out**, not guessed — a ✓ row names the
-   actual part, and the PCA9685 is found through its all-call address. **Use these
-   addresses** fills them into the forms; nothing is saved until you press Save. (The
-   installer ran the same probe once and already set driver and camera if it found them —
-   *Overview › Output driver* shows what is actually running.)
+0. **Detect hardware** (in *Vehicle configuration*) lists the chips, modem and cameras it
+   finds, by name. **Use these addresses** fills them into the forms; Save keeps them.
 1. **Vehicle:** name, **Output driver = `pca9685`** (drone: `sbus`; no extra board:
-   `gpio-pwm`, pins in 2.8), check the throttle channel. With `pca9685` an **I²C address**
-   field appears — **0x41** for the reference build, 0x40 for a board with no sensor next
-   to it. The driver is built at startup, so save and use **Restart vehicle service**. The
-   *Auto-disarm on reconnect* checkbox is only a **fallback**; a connected ground station
-   pushes the setting matching the model type.
-2. **CSI camera module:** pick the sensor on the camera port. Only the official Raspberry
-   Pi cameras are auto-detected; anything else needs a device-tree overlay, read **only at
-   boot**. Selecting a module writes `camera_auto_detect` and `dtoverlay=` into
-   `/boot/firmware/config.txt` (one backup as `config.txt.yonderrc-bak`, competing lines
-   commented out) and the panel says *Reboot required* until it has booted. A Pi 4 has one
-   CSI connector, so this is one choice per vehicle; USB cameras are unaffected. A sensor
-   not in the list goes under *Other module*, accepted only if that `.dtbo` exists.
-3. **Cameras:** add a camera (type `rpicam` or `usb`, resolution/FPS/bitrate) → **Save &
-   apply**. go2rtc reloads.
+   `gpio-pwm`, pins in 2.8), check the throttle channel. Set the **I²C address** — **0x41**
+   for the reference build. Save, then **Restart vehicle service**.
+2. **CSI camera module:** pick the sensor on the camera port. The official Pi cameras are
+   found by themselves; for others (Arducam …) the page writes the boot setting and asks
+   for a **reboot**.
+3. **Cameras:** add a camera (`rpicam` for the ribbon cable, `usb` for USB; resolution,
+   FPS, bitrate) → **Save & apply**.
 
-   - **Mounted upside down?** Each camera has **Rotation** (0°/180°) plus horizontal and
-     vertical mirrors. On CSI the sensor applies them for free; USB gets an ffmpeg filter.
-     90°/270° are deliberately not offered — the sensor cannot do them and faking them
-     would put a transcode back into the pipeline.
-   - **No camera is a valid setup.** Remove every entry and the FPV area stays dark:
-     nothing retried, no error, OSD/telemetry/controls carry on.
-   - **`rpicam` stream black?** `rpicam-hello --list-cameras` is the ground truth. Bookworm
-     renamed the tools from `libcamera-*` to `rpicam-*`; YonderRC detects that itself. The
-     official OV5647 / IMX219 / IMX477 / IMX708 need only `camera_auto_detect=1`. Others —
-     **Arducam IMX519 / 64MP / Pivariety, OV64A40** — need `camera_auto_detect=0` plus an
-     explicit `dtoverlay=` and a reboot, which the **CSI camera module** panel does. If the
-     sensor's I²C address is silent too (`sudo i2cdetect -y 10`, needs `dtparam=i2c_vc=on`),
-     it is the ribbon cable:
-     contacts towards the HDMI side, **CAM** port, not DISPLAY.
-   - **Arducam 16 MP IMX519 — sharp picture.** Raspberry Pi's `imx519.json` has no `rpi.af`
-     algorithm, so libcamera answers every focus request with *no AF algorithm* and the
-     lens stays at rest — which looks like a soft lens. Set **Tuning file** to
-     `/var/lib/yonderrc/tuning/imx519-af.json` (shipped by `install.sh`) and pick a
-     **Focus** mode. On a moving model prefer `manual` at 0 dioptres; `continuous` hunts.
-4. **Telemetry:** source **`real`**, current sensor **`ina228`** (or `ina226`/`ina237`/
-   `ina238`) — picking it fills in the reference values. Correct `Shunt Ω` to what is
-   printed on your board and set **Max current A** to your model's real peak. The **I²C
-   address** field stays empty for the default 0x40. Add a voltage channel of the same kind
-   — the INA provides both. Enter the battery capacity, pick the display mode and what
-   drives the **battery %**, and leave **Charge counter** on `auto`. With more than one
-   voltage or current channel, mark the one measuring the pack as **primary**.
-   **Temperature channels** are optional (2.7).
+   - **Mounted upside down?** Each camera has **Rotation** (0°/180°) and mirroring.
+   - **No camera** is fine: the FPV area stays dark, everything else works.
+   - **Picture stays black?** `rpicam-hello --list-cameras` must list the camera. If not:
+     the ribbon cable — contacts towards the HDMI side, **CAM** port, not DISPLAY.
+   - **Arducam 16 MP IMX519 blurry?** Set **Tuning file** to
+     `/var/lib/yonderrc/tuning/imx519-af.json` and **Focus** to `manual` at 0 dioptres.
+4. **Telemetry:** source **`real`**, current sensor **`ina228`** (or another INA) — this
+   fills in the reference values. Set `Shunt Ω` to what is printed on your board and
+   **Max current A** to your model's peak. Add a voltage channel of the same kind (the INA
+   measures both), enter the battery capacity. With several channels, mark the one on the
+   pack as **primary**. Temperature channels are optional (2.7).
 5. **Security (optional):** set an **API secret** if the vehicle sits on a network you
    don't fully trust — see 6.1. Off by default.
 
@@ -515,109 +416,55 @@ the ground device on the same private network.
 ### 4.1 LTE stick
 
 1. Plug in the dongle and check `mmcli -L`.
-2. In Setup › **LTE**, enter the **APN** → **Connect**. It is saved and reconnects at boot
-   (`autoconnect`). Fill in the **SIM PIN** and **APN username/password** if needed — both
-   are stored on the vehicle and never shown again. Sticks that boot in "Zero-CD" mode are
-   handled by `usb-modeswitch`. You can also force **4G-only**, toggle **roaming**, change
-   or remove the **PIN lock**, and run **Diagnostics** (raw `mmcli`).
-3. The **uplink signal then shows in the OSD** (LTE % from ModemManager, otherwise Wi-Fi
-   RSSI from `iw dev wlan0 link`), marked weak below 25 %. A Wi-Fi interface that is not
-   `wlan0` leaves the Wi-Fi reading empty; LTE is unaffected.
+2. In Setup › **LTE**, enter the **APN** → **Connect**. It reconnects by itself after a
+   reboot. **SIM PIN** and APN user/password if your provider needs them. The panel can
+   also force **4G-only**, switch **roaming**, change the PIN and show diagnostics.
+3. The **signal** then shows in the OSD, marked weak below 25 %.
 
 ### 4.1.1 HiLink sticks (Huawei E3372h-320 and friends)
 
-Many Huawei sticks are **not modems**: they run their own router, appear as USB Ethernet
-with DHCP and dial by themselves. `mmcli -L` stays empty forever, so §4.1 does not apply —
-an empty LTE panel is expected, not broken.
+Many Huawei sticks are **not modems** but small routers: they dial by themselves, and
+`mmcli -L` stays empty — so the LTE panel stays empty too. That is expected.
 
-YonderRC reads them through their own API. **Setup › LTE stick (HiLink)** shows model,
-interface, state, operator, network type and signal, and the OSD shows the LTE percentage
-as it would for any modem.
-
-- The stick is located **through the routing table** (`ip route get 192.168.8.1`), never by
-  interface name — so a FritzBox on `eth0` and the stick on `eth1` can never be confused,
-  whichever order they come up in.
-- **APN, SIM PIN and network mode live in the stick.** The vehicle therefore **proxies the
-  stick's own config page on port 8081**: open `http://<vehicle>:8081/` from the hotspot,
-  the LAN or the VPN. With an API secret, open it once as `…:8081/?secret=YOUR_SECRET`.
-  Clearing the port field switches the proxy off.
-  > On an **open** hotspot, anyone who joins reaches the stick's admin page. Set a hotspot
-  > password or an API secret before the vehicle leaves the bench.
-- A raw API path in a browser returns `125002` — the stick wants a session, which its own
-  UI establishes. Expected; YonderRC fetches a session token first.
-- A **2G/3G-only stick** (E3131/E353, USB ID `12d1:14db`) is flagged: several countries,
-  Germany included, switched 3G off years ago.
+- **Setup › LTE stick (HiLink)** shows model, state, operator and signal; the OSD shows
+  the signal as for any modem.
+- **APN, PIN and network mode are set on the stick's own page.** The vehicle passes it
+  through on **port 8081**: open `http://<vehicle>:8081/` (with an API secret:
+  `…:8081/?secret=YOUR_SECRET`).
+  > On an **open** hotspot anyone who joins reaches that page. Set a hotspot password or an
+  > API secret before the vehicle leaves the bench.
+- A **2G/3G-only stick** (E3131/E353) is flagged: 3G is switched off in many countries.
 
 ### 4.1.2 Mobile data budget
 
-An FPV stream costs **0.5–1 GB per hour** and nothing announces that the plan is running
-out. **Setup › Mobile data budget** counts it and puts `⚠ DATA` in the OSD past a
-configured share.
+An FPV stream costs **0.5–1 GB per hour**. **Setup › Mobile data budget** counts the
+mobile data and shows `⚠ DATA` in the OSD past a set share of your plan.
 
-| Measured by | Sees | Survives a reboot |
-| --- | --- | --- |
-| **the vehicle** (default) | every metered interface: LTE stick, phone hotspot, tethered laptop | yes |
-| **the LTE stick** | only traffic through the stick | yes, in the stick's own flash |
-
-Deliberately not counted:
-
-- **The vehicle's own WiFi hotspot** — a ground station on it pulls the video stream for
-  free (~900 MB/h). The same radio in *client* mode is counted.
-- **VPN interfaces** (Tailscale, WireGuard, ZeroTier, OpenVPN) — their traffic leaves
-  again through the real uplink, so counting both counts every byte twice.
-
-Settings: **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (default 80), and
-optionally the **day of month** the plan resets. Otherwise reset with *Reset counter*.
-With a HiLink stick an empty allowance falls back to the limit the stick already holds.
-
-> The counter is saved every 5 minutes, every 20 MB and on shutdown — a hard power cut
-> can cost at most the last few minutes.
+- Enter the **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (default 80) and,
+  optionally, the **day of month** the plan resets.
+- Counted: LTE stick, phone hotspot, tethered laptop. Not counted: the vehicle's own
+  hotspot (free) and VPN interfaces (they would count every byte twice).
+- With a HiLink stick, its own counter can be used instead. Both survive a reboot.
 
 ### 4.2 Tailscale
 
-1. **Setup › Remote access** → **Tailscale** → **Bring up**, auth-key field empty. The
-   login link appears within a few seconds; open it and approve the device — it joins as
-   `yonderrc`. The link stays in the status, so a page reload does not lose it.
-2. Non-interactive instead: create an **auth key** (*Settings › Keys*), paste it in, press
-   **Bring up**.
-3. The vehicle's **Tailscale IP** then appears in the setup status.
-4. **Disable key expiry** for the vehicle (*Machines › yonderrc*), or it drops out of the
-   tailnet after ~180 days — reliably while you are standing in a field.
-
-> No link at all means no internet, or a wedged Tailscale. Over SSH,
-> `sudo tailscale up --hostname=yonderrc` prints it directly.
+1. **Setup › Remote access** → **Tailscale** → **Bring up**, leave the auth key empty. A
+   login link appears; open it and approve the device (it joins as `yonderrc`).
+2. Or create an **auth key** in Tailscale (*Settings › Keys*), paste it, **Bring up**.
+3. The vehicle's **Tailscale IP** appears in the status.
+4. **Disable key expiry** for the vehicle (*Machines › yonderrc*), or it drops out after
+   about 180 days.
 
 ### 4.3 Connect from the field
 
-- Put the ground device on the same tailnet.
+- Put the ground device into the same tailnet.
 - Use the **Tailscale IP** as the address: `ws://100.x.y.z:8080`. Video comes along over
-  the same address — nothing else to enter.
+  the same address.
 
-> For the lowest-latency WebRTC path over LTE you can later add your own **TURN server
-> (coturn)** on a cheap VPS. Tailscale alone already gives a working encrypted connection.
-
-#### What this actually measured (first field test)
-
-One afternoon, one carrier, one location — a data point, not a benchmark. Pi 4 with a
-**Huawei E3372h-320** on its **internal** antenna, Ethernet unplugged; ground a Fedora
-laptop on the same tailnet.
-
-| Reading | Value | Note |
-|---|---|---|
-| Tailscale path | **direct, IPv6** | 69 ms, no DERP relay |
-| Control round-trip | **110 ms** | scores 87/100 in the OSD's link health |
-| Video latency | **128 ms** | barely above the control path — the WebRTC leg is healthy |
-| Video bitrate | 444 kbps | auto-quality had stepped down for the weak signal |
-| LTE signal | **52 %** (≈ −106 dBm RSRP) | the limiting factor — OSD showed `⚠ SIGNAL` |
-
-Two things to take from it. The score **names its own bottleneck**: 52 was the signal, so
-the fix is an antenna, not a faster link (the E3372h-320 has two TS-9 sockets, worth
-10–20 dB). And switching the ground station from Wi-Fi to LTE mid-session **fired failsafe
-and cleared it again** — the watchdog doing its job.
-
-> A direct path is not guaranteed; it happened here because the carrier handed out a
-> routable **IPv6** address. Behind CGNAT-only IPv4 Tailscale may fall back to a relay —
-> check with `tailscale ping <vehicle>`.
+A first field test over LTE measured 110 ms control round-trip and 128 ms video latency
+(details: [`FEATURES.md`](FEATURES.md#measured-in-the-field)). A weak signal is the usual
+limit — an external antenna helps more than anything else. `tailscale ping <vehicle>`
+shows whether the connection is direct or goes through a relay.
 
 ### 4.4 Other remote-access methods (Setup › Remote access)
 
@@ -626,53 +473,34 @@ Pick **one** method:
 - **Tailscale** / **ZeroTier** — zero-config mesh VPNs, no server of your own. For
   ZeroTier: create a network at my.zerotier.com, enter the 16-hex **Network ID**, press
   *Bring up*, then authorize the Pi in ZeroTier Central.
-- **WireGuard (your own server / FritzBox)** — either **upload the exported `.conf`** or
-  **type the values** (private key, tunnel address, server public key, endpoint,
-  AllowedIPs). On a FritzBox: *Internet › Permit Access › VPN (WireGuard) › Add
-  connection*, download the config, upload it, *Bring up*. Keep **PersistentKeepalive at
-  25** — behind carrier NAT a tunnel without it works until the first idle minute. Comes
-  up automatically on the next boot.
-- **OpenVPN (your own server) — experimental.** Upload the **client profile** (`.ovpn`)
-  your server exports, **with the certificates inline** (one file with `<ca>`, `<cert>`,
-  `<key>` blocks); add username and password if the profile asks for them. The vehicle
-  runs it as the systemd unit `openvpn-client@yonderrc`, interface `tunyrc`. Before it is
-  written out, the profile is **sanitised**: lines that run programs or write files as root
-  (`up`, `down`, `script-security`, `plugin`, `log`, `management`, …) and Windows-only
-  options are commented out and listed in the panel, and a pushed `redirect-gateway` is
-  ignored unless *all traffic through the VPN* is ticked — the vehicle keeps its own
-  uplink, so a dropping VPN cannot take everything else with it. Built from the OpenVPN
-  documentation, **not yet verified on a vehicle** — test it on the bench and report
-  back.
+- **WireGuard (your own server / FritzBox)** — **upload the exported `.conf`** or type the
+  values in. On a FritzBox: *Internet › Permit Access › VPN (WireGuard) › Add connection*,
+  download the file, upload it, *Bring up*. Keep **PersistentKeepalive at 25** — without
+  it the tunnel dies behind the carrier's NAT.
+- **OpenVPN (your own server) — experimental.** Upload the client profile (`.ovpn`) **with
+  the certificates inside**; add username and password if it asks for them. Lines that
+  would run programs on the vehicle are disabled and listed. **Not yet tested on a
+  vehicle** — try it on the bench and report back.
 
-> ZeroTier/WireGuard/OpenVPN need their tools on the Pi (`zerotier-cli`,
-> `wireguard-tools`, `openvpn`); the installer adds them. Verify the method before relying
-> on it in the field.
+Test the method at home before you rely on it in the field.
 
 ---
 
 ## 5. Operate locally with no network (AP mode + phone)
 
-Unless its WiFi is joined to a network, the Pi starts its own hotspot **"YonderRC-setup"**
-shortly after boot (mode `always`, the default since v1.41.0) — **open, no password**, so
-the captive portal can put the page in front of you with nothing to type.
+Unless its Wi-Fi is joined to a network, the Pi starts its own hotspot
+**"YonderRC-setup"** shortly after boot — **open, no password**.
 
 1. Connect the phone to **"YonderRC-setup"**.
-2. The **captive portal** opens the page automatically; otherwise
-   `http://192.168.4.1:8080/`.
+2. The page opens by itself; otherwise open `http://192.168.4.1:8080/`.
 3. You get **both**: the control app and, under **Setup**, the full configuration.
 
-> **When the page does not open by itself — by design.** The portal resolves every name to
-> the Pi. If the vehicle has its own uplink, the hotspot **shares that internet** and
-> hijacking DNS would break it, so YonderRC leaves DNS alone and you open
-> `http://192.168.4.1:8080/` yourself. The Setup message says which happened. Phones pop
-> the page up reliably; laptops usually only show a "sign in to network" notification.
+> **The page does not open by itself** when the vehicle has its own internet (LTE): the
+> hotspot then shares it, and the page has to be opened by hand. Laptops usually only show
+> a "sign in to network" notice.
 
-> **The Wi-Fi radio has to be on first.** Raspberry Pi OS keeps it rfkill-blocked until a
-> **Wi-Fi country** is set, and NetworkManager then just calls the device "unavailable".
-> **Setup › WiFi › WiFi radio** shows the state and unblocks it in one button, country
-> pre-filled from the Pi's locale. Starting the hotspot repairs it automatically. The
-> country stays editable — it decides channels and transmit power. Over SSH:
-> `sudo raspi-config nonint do_wifi_country DE && sudo rfkill unblock wifi`.
+> **Wi-Fi does not work at all?** Raspberry Pi OS blocks the radio until a **Wi-Fi
+> country** is set. **Setup › WiFi › WiFi radio** fixes it with one button.
 
 ### 5.1 Put the Pi on your Wi-Fi from the phone
 
@@ -692,73 +520,39 @@ keeps it open) and chooses when it starts:
 
 | Mode | Behaviour |
 |---|---|
-| **always** (default) | Whenever the radio is free — **next to Ethernet or LTE too**. |
-| **auto** | Only with **no uplink at all** at boot (pre-v1.41.0 behaviour). |
+| **always** (default) | Whenever the radio is free — also next to Ethernet or LTE. |
+| **auto** | Only when there is no other connection at boot. |
 | **off** | Never starts on its own. |
 
-*Save* applies at the next start, *Save & start now* restarts immediately (dropping you if
-you are connected through it), *Stop hotspot* takes it down.
+> **Give it a password** once the vehicle leaves the bench. Open is only the default so the
+> first setup needs no typing — on an open hotspot anyone nearby reaches the setup page.
 
-> **Give it a password** once the vehicle leaves the bench. Open by default is deliberate —
-> it is what makes the captive portal work with nothing to type — but an open AP means
-> anyone nearby reaches the setup page and, if enabled, the LTE stick's admin page.
-
-> **One radio, one job.** The built-in WiFi can serve the hotspot **or** join a network,
-> not both. So `always` starts the hotspot next to **LTE**, but never while the Pi is a
-> WiFi client. For both at once, add a **second USB WiFi adapter**.
-
-> **What closes the hotspot:** joining a network from Setup › WiFi, *Stop hotspot*, or a
-> reboot with a working uplink while the mode is `auto`. A VPN or an LTE connection does
-> **not** — those ride on other interfaces.
-
-The vehicle serves the ground app itself and the app connects back to the same host,
-video included — self-sufficient in the field.
-
-> **Safety in AP mode** is unchanged: watchdog, arming and auto-disarm all apply, and the
-> ground app sets auto-disarm from the model type.
+> **One radio, one job.** The built-in Wi-Fi is either the hotspot **or** joined to a
+> network, never both. For both at once, add a USB Wi-Fi adapter.
 
 ---
 
 ## 6. What safety YonderRC adds
 
-- **Failsafe watchdog:** no valid control frames for longer than the configured time
-  (default **500 ms** since v1.70.0, 100–2000 ms, Setup › Sensors & outputs; applies on
-  Save) and every channel goes to its failsafe value. The defaults are
-  **vehicle-type aware and separate from disarming**: drone holds throttle **mid**,
-  car/boat **stop**, plane **motor off**. Adjustable per channel. The old default of 300 ms
-  tripped on ordinary WiFi/LTE jitter; a stored 300 from before v1.70.0 is treated as that
-  old default and runs at 500.
-- **Disarming ≠ failsafe:** deliberate disarming really switches the motor off,
-  independent of the failsafe value. A *disarmed* vehicle that loses its link keeps its
-  throttle off too — a drone's failsafe "hold" applies only while it is armed.
-- **Safe from the first moment:** the vehicle keeps the failsafe and disarmed values the
-  control app sent, and uses them right after every restart, before any ground station
-  has connected (since v1.70.1; before, every channel sat at 1500 µs until then).
-- **Nothing rather than something wrong:** while the control app is in the background
-  (another tab, minimised, phone screen off), or an armed gamepad model has lost its
-  controller, the app sends nothing and the vehicle holds its own failsafe. A gamepad
-  model does not arm without its controller.
-- **ESC calibration** is cancelled when the link is lost.
-- **Arming:** the throttle stays at idle while disarmed.
-- **Arming is per connection.** A new ground station is always disarmed. Whether an
-  *existing* arm survives a reconnect is **vehicle-type dependent**: car/boat disarm,
-  plane/drone do not — a brief link drop must not cut an aircraft's motors in flight. The
-  ground app pushes this; the setup checkbox is only the fallback. It can be forced to
-  always on/off under **Setup › Controls**.
-- **Pre-arm check:** refused while the throttle is not at its rest position — stop for a
-  car or boat, idle for a plane, with a reversed channel taken into account.
-- **Hold to arm** (1 s by default) for arming *and* disarming, on the button and on a
-  bound key or controller button. Hold time (0.5–10 s) and an off switch are in **Setup ›
-  Controls**. **Panic-disarm stays instant.**
-- **The speed limiter is comfort, not safety.** It scales the throttle command on the
-  ground side; failsafe, the disarmed value and the pre-arm check are untouched.
-- **Panic-disarm ships unbound.** It has no hold and no confirmation, so an accidental
-  press cuts the motors — on an aircraft that is a crash. Bind it to something you cannot
-  hit by accident.
-- **Driver fallback:** a hardware driver that fails to start leaves the service running in
-  sim with the setup UI reachable — and says so: the setup overview, the vehicle form and
-  the ground's status strip show the driver that is actually *running*, with the reason.
-- **systemd `Restart=always`.**
+- **Failsafe:** no control frames for **500 ms** (100–2000 ms, Setup › Sensors &
+  outputs) → every channel goes to its failsafe value: a drone holds **mid** throttle, a
+  car or boat **stops**, a plane cuts the **motor**. Adjustable per channel.
+- **Disarmed means off:** a disarmed vehicle keeps its motor off, also when the link
+  drops. The failsafe values hold from the moment the service starts, even before a ground
+  station connects.
+- **No frames rather than wrong ones:** in the background (another tab, phone screen
+  off) or with an armed gamepad model whose controller is gone, the app sends nothing and
+  the vehicle goes to failsafe. A gamepad model does not arm without its controller.
+- **Arming:** every new connection starts disarmed. After a reconnect, car and boat are
+  disarmed, aircraft stay armed — a short drop must not cut a motor in flight (changeable
+  in **Setup › Controls**).
+- **Pre-arm check:** arming is refused while the throttle is not at rest.
+- **Hold to arm** (1 s) for arming *and* disarming, on the button and a bound key.
+  **Panic-disarm** is instant and ships unbound — bind it to something you cannot hit by
+  accident.
+- The **speed limiter** is comfort, not safety. ESC calibration stops when the link drops.
+- A hardware driver that fails to start leaves the vehicle in the simulator, reachable,
+  and the page says why. The service restarts itself after a crash.
 
 ### 6.1 Trust model (who can control the vehicle)
 
@@ -770,30 +564,18 @@ vehicle must never lock you out — but it makes the network the security bounda
 - **The Pi's own hotspot:** WPA2 keeps strangers off the air.
 - **LTE:** with Tailscale/ZeroTier/WireGuard the vehicle is only reachable inside your
   private network, and CGNAT means no public IP anyway.
-- **Shared or public Wi-Fi:** set an **API secret** under *Setup › Security*. Mutating
-  `/api/*` calls then need the `x-yonderrc-secret` header (or `?secret=`), the control
-  WebSocket and the video need `?secret=`; a wrong one closes with code 4001. It can also come from
-  `YRC_API_SECRET`. Stored in plain text — treat it as a lock on the door, not encryption.
-- **A page from the internet cannot drive your vehicle**, even with no secret. Any site the
-  operator opens while on the vehicle's hotspot could otherwise POST to the setup API, or
-  open a control WebSocket, which ignores CORS entirely. So the vehicle checks where the
-  page came from: no `Origin` (curl, scripts), `file://` (desktop app), a private,
-  loopback, `.local` or Tailscale address, or the vehicle's own address are accepted; a
-  page from the public internet is refused (HTTP 403, WS close **4003**) unless it presents
-  the secret. This also defeats DNS rebinding.
-- **go2rtc is not reachable from the network** (since v1.70.1). Its API (port 1984) is full
-  control of go2rtc, which runs as root and can be told to run a command as a video
-  source; its RTSP server (8554) would take anyone's picture into a camera stream. Both
-  listen on the vehicle only. The control app gets video through the vehicle service
-  (`…:8080/video`) — only for the configured cameras, under the rules above. WebRTC media
-  still uses port 8555.
-- **Only one ground station is in control.** A second connection closes the older link with
-  code **4002** and says why. The newcomer always wins, which is what makes reconnecting
-  after a link loss work.
+- **Shared or public Wi-Fi:** set an **API secret** under *Setup › Security*. The control
+  app, the video and every change on the setup page then need it (enter it next to the
+  address). It is a lock on the door, not encryption.
+- **A web page from the internet cannot drive your vehicle**, even without a secret: the
+  vehicle only accepts pages from itself, the local network or a VPN.
+- **The video server is not reachable from the network**; video goes through the vehicle
+  service (`…:8080/video`) under the same rules. WebRTC media uses port 8555.
+- **Only one ground station is in control.** A new connection takes over and the old one
+  is told why.
 - A **factory reset** clears the secret along with everything else.
-- To narrow it further, bind to one address: `YRC_HOST=100.x.y.z` in the systemd unit. No
-  UI for it, and it locks you out of the hotspot/LAN path — only do this once remote access
-  provably works.
+- Tighter still: `YRC_HOST=100.x.y.z` in the systemd unit binds the service to one address
+  — but locks out the hotspot and the LAN, so only once remote access works.
 
 ---
 
@@ -818,3 +600,23 @@ vehicle must never lock you out — but it makes the network the security bounda
 | Controller does nothing / the wrong device is used | Press a button on it; *Setup › Controls › Game controller* lists every device and lets you pick ([TROUBLESHOOTING.md §3](TROUBLESHOOTING.md#3-the-game-controller-does-nothing)). |
 | Overview: "Output driver … failed to start" | The native module is missing or the address is wrong — the line says which (TROUBLESHOOTING.md §4). |
 | Anything else | *Setup › Diagnostics* → one file → GitHub issue ([TROUBLESHOOTING.md §1](TROUBLESHOOTING.md#1-reporting-a-problem-the-diagnostics-file)). |
+
+---
+
+## 8. Glossary
+
+| Term | Meaning |
+|---|---|
+| **Arm / disarm** | Arm = the motor may run. Disarmed, the vehicle holds its throttle off. |
+| **BEC / UBEC** | A small voltage regulator: makes 5 V for the Pi and the servos from the drive battery. |
+| **ESC** | Electronic speed controller — drives the motor; gets a servo signal like a servo. |
+| **Failsafe** | What every channel does when the link is lost (stop, hold, motor off). |
+| **FPV** | First-person view: driving by the camera picture. |
+| **I²C** | A two-wire bus (SDA, SCL) for the PCA9685 and the sensors; every chip has an address like `0x40`. |
+| **LTE / CGNAT** | Mobile internet. The vehicle gets no public address there, hence a VPN. |
+| **OSD** | On-screen display: the readings drawn over the video. |
+| **PCA9685** | A 16-channel board that makes the servo signals. |
+| **Shunt** | A tiny resistor the current sensor measures across; its value is printed on the board (`R002` = 0.002 Ω). |
+| **SSH** | Remote login to the Pi's command line. |
+| **Tailscale / WireGuard / ZeroTier** | VPNs: put the vehicle and your phone or laptop in one private network over the internet. |
+| **µs (microseconds)** | The servo signal: 1000 µs one end, 1500 µs centre, 2000 µs the other end. |

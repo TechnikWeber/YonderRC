@@ -56,8 +56,6 @@ in dieser Reihenfolge.
    | MCP9808 Temperatur | `0x18` | — |
    | BME280 / BMP280 | `0x76` / `0x77` | — |
 
-   Der PCA9685 antwortet außerdem auf **`0x70`** (seine All-Call-Adresse) — diese
-   Adresse freihalten; ein I²C-Multiplexer (TCA9548A) kommt genau auf `0x70`.
    Ohne Stromsensor kann der PCA9685 auf `0x40` bleiben.
 4. **Kamera:** Flachbandkabel in den **CAM**-Anschluss (nicht DISPLAY), Kontakte zur
    HDMI-Seite. Die offiziellen Pi-Kameras werden automatisch erkannt. Andere (Arducam
@@ -226,7 +224,8 @@ Dann, bevor das Fahrzeug die Werkbank verlässt: ein **Passwort für den Setup-H
    drücken** — Browser zeigen einen Controller erst danach. *Setup › Controls › Game
    controller* listet alle Geräte und welches benutzt wird; dort deines auswählen, falls
    die automatische Wahl falsch ist. Das Koppeln eines PS4/PS5-Controllers ist dort
-   erklärt.
+   erklärt. Ein RC-Sender oder ein anderer Controller mit *own layout*: einmal daneben
+   **Set up** drücken.
 4. Zurück zu **Drive**: folgt der Kanal-Monitor den Sticks? Dann **Arm 1 s halten**, und
    vorsichtig.
 

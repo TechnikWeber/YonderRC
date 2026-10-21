@@ -1771,7 +1771,7 @@ async function main() {
   // has since changed is exactly the person who cannot tell.
   {
     const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
-    for (const name of ['QUICKSTART', 'TROUBLESHOOTING']) {
+    for (const name of ['QUICKSTART', 'TROUBLESHOOTING', 'FEATURES']) {
       const en = readFileSync(`docs/${name}.md`, 'utf8');
       const de = readFileSync(`docs/${name}.de.md`, 'utf8');
       ok(`the same sections in both ${name} guides`, heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);

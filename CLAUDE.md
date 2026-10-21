@@ -22,7 +22,10 @@ Owner: Philipp Weber · GitHub: TechnikWeber/YonderRC · License: PolyForm Nonco
   binding editor, controls/safety panel.
 - `packages/desktop` — Electron shell + native SDL2 input, falls back to the browser
   gamepad API.
-- `docs/HARDWARE.md` — parts list + wiring + WLAN→LTE/Tailscale bring-up.
+- `README.md` — one screen: what it is, the highlights, where to start. The full feature
+  list is `docs/FEATURES.md`; new features go there, the README only when they change
+  the headline.
+- `docs/HARDWARE.md` — parts list + wiring + WLAN→LTE/Tailscale bring-up + glossary.
 - `docs/QUICKSTART.md` — first install for people new to Linux (Imager, SSH, copying, what
   the installer detects); `docs/TROUBLESHOOTING.md` — the diagnostics file and how to send
   it, failsafe flicker, controllers, servos, install errors.
@@ -319,7 +322,7 @@ Bump all five `package.json` to the same version and update `GROUND_VERSION` in
 page read the version from `package.json`** (`config.version`, since v1.45.1) — nothing to
 bump there, and the test suite fails if the ground masthead falls behind. Locally you can just commit + tag + `gh release create` —
 chained (`git commit … && git tag … && git push …`), so a commit that fails can never
-leave the tag on the previous commit (it did once, for v1.70.0). README describes the
+leave the tag on the previous commit (it did once, for v1.70.0). `docs/FEATURES.md` describes the
 current feature set; detailed history lives in `CHANGELOG.md` + releases.
 
 ## Open / next
@@ -442,7 +445,7 @@ in English**. Keep responses about verified-vs-needs-hardware honest.
 
 **Both language versions are edited in the same commit — always.** `README.md` /
 `README.de.md`, `docs/HARDWARE.md` / `.de.md`, `docs/QUICKSTART.md` / `.de.md`,
-`docs/TROUBLESHOOTING.md` / `.de.md`, `provisioning/README.md` / `.de.md`. A translation that lags is worse than
+`docs/TROUBLESHOOTING.md` / `.de.md`, `docs/FEATURES.md` / `.de.md`, `provisioning/README.md` / `.de.md`. A translation that lags is worse than
 none: it states as current something the project stopped doing, and the reader has no
 way to tell which of the two is the lie. The test suite fails if any of these pairs stops
 matching in structure (heading count), which catches the common case of adding a
