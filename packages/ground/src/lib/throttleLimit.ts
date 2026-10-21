@@ -6,11 +6,10 @@ import { throttleSafeUs } from './safety';
  * Throttle limiter — "three speeds" for the same model.
  *
  * The command is **scaled around the channel's rest position**, and the rest
- * position is exactly what the pre-arm check already derives from the channel's
- * detent:
- *   centre detent (car with reverse, drone) → 1500 → caps forward AND reverse
- *   low / free detent (plane, ratcheted)    → 1000 → idle stays put, only the
- *                                                    upper half is capped
+ * position is exactly what the pre-arm check uses (throttleSafeUs — the resting
+ * stick through the channel's own shaping, so reverse and endpoints count):
+ *   rests at centre (car, boat, drone)  → 1500 → caps forward AND reverse
+ *   rests at idle (plane, low detent)   → idle stays put, only the way up is capped
  * One formula, both behaviours, no special case.
  *
  * Scaling (not clipping) keeps the whole stick travel usable: at 50 % full
@@ -72,7 +71,7 @@ export function applyThrottleLimit(profile: Profile, channels: number[]): number
   for (const ch of chs) {
     if (ch < 0 || ch >= out.length) continue;
     const binding = profile.bindings.find((b) => b.channel === ch);
-    const rest = throttleSafeUs(binding);
+    const rest = throttleSafeUs(binding, profile.vehicleType);
     if (rest === null) continue;
     out[ch] = limitUs(out[ch], rest, pct);
   }

@@ -24,8 +24,13 @@ export interface VehicleCoreOptions {
    */
   failsafeUs?: number[];
   /**
-   * Channels that must be held at failsafe whenever the vehicle is disarmed
-   * (typically throttle). Prevents a motor spinning up on connect/boot.
+   * Per-channel values the throttle channels take while DISARMED (motor off / stop).
+   * Defaults to the failsafe values. Pushed from the ground like failsafeUs.
+   */
+  disarmedUs?: number[];
+  /**
+   * Channels that must be held at their disarmed value whenever the vehicle is
+   * disarmed (typically throttle). Prevents a motor spinning up on connect/boot.
    */
   throttleChannels?: number[];
   /**
@@ -33,6 +38,26 @@ export interface VehicleCoreOptions {
    * ground overrides this per vehicle type (false for aircraft) via a config frame.
    */
   disarmOnReconnect?: boolean;
+}
+
+/**
+ * The safety values a restarted service has to come back with — what the last ground
+ * pushed. Kept in the config file (`controlSafety`) and handed back to the constructor.
+ */
+export interface ControlSafety {
+  failsafeUs: number[];
+  disarmedUs: number[];
+  throttleChannels: number[];
+}
+
+/** `count` clamped channel values: from `src` where it holds a number, else from `fallback`. */
+function channelValues(src: readonly unknown[] | undefined, fallback: readonly number[], count: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const v = src?.[i];
+    out.push(typeof v === 'number' && Number.isFinite(v) ? clampChannelUs(v) : fallback[i] ?? CHANNEL_NEUTRAL_US);
+  }
+  return out;
 }
 
 /**
@@ -75,9 +100,10 @@ export class VehicleCore {
     this.driver = opts.driver;
     this.channelCount = opts.channelCount ?? CHANNEL_COUNT;
     this.watchdogTimeoutMs = opts.watchdogTimeoutMs ?? WATCHDOG_TIMEOUT_MS;
-    this.failsafeUs = (opts.failsafeUs ?? neutralChannels()).slice(0, this.channelCount);
-    this.disarmedUs = this.failsafeUs.slice();
-    this.throttleChannels = new Set(opts.throttleChannels ?? []);
+    this.failsafeUs = channelValues(opts.failsafeUs, neutralChannels(), this.channelCount);
+    this.disarmedUs = channelValues(opts.disarmedUs, this.failsafeUs, this.channelCount);
+    this.throttleChannels = new Set();
+    this.setThrottleChannels(opts.throttleChannels ?? []);
     this.disarmOnReconnect = opts.disarmOnReconnect ?? true;
     this.commanded = this.failsafeUs.slice();
   }
@@ -95,7 +121,7 @@ export class VehicleCore {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     // Leave outputs in a defined safe state on shutdown.
-    await this.driver.writeChannels(this.failsafeUs.slice());
+    await this.driver.writeChannels(this.safeOutput());
     await this.driver.close();
   }
 
@@ -112,6 +138,9 @@ export class VehicleCore {
    * exactly what it looked like: a connected vehicle that would not steer.
    */
   applyControl(msg: ControlMessage, session?: number, via: ControlVia = 'ws'): void {
+    // A frame without a sequence number or a channel list is not a frame — and reading
+    // `channels[i]` off a missing list threw inside the socket handler.
+    if (!Number.isFinite(msg.seq) || !Array.isArray(msg.channels)) return;
     if (session !== undefined && session !== this.controlSession) {
       this.link.dropped('superseded');
       return; // superseded ground
@@ -121,7 +150,7 @@ export class VehicleCore {
       return; // newest-wins, drop stale
     }
     this.lastSeq = msg.seq;
-    this.lastClientT = msg.t;
+    this.lastClientT = typeof msg.t === 'number' ? msg.t : 0;
     this.lastFrameAt = Date.now();
     this.link.frame(this.lastFrameAt, via);
     const incoming = msg.channels;
@@ -255,7 +284,16 @@ export class VehicleCore {
 
   /** Update which channels are forced safe while disarmed (typically throttle). */
   setThrottleChannels(channels: number[]): void {
-    this.throttleChannels = new Set(channels.filter((n) => Number.isInteger(n)));
+    this.throttleChannels = new Set(channels.filter((n) => Number.isInteger(n) && n >= 0 && n < this.channelCount));
+  }
+
+  /** The values a restart must come back with — see ControlSafety. */
+  safetyConfig(): ControlSafety {
+    return {
+      failsafeUs: this.failsafeUs.slice(),
+      disarmedUs: this.disarmedUs.slice(),
+      throttleChannels: [...this.throttleChannels].sort((a, b) => a - b),
+    };
   }
 
   /** Vehicle-type policy pushed from the ground: auto-disarm on a new connection? */
@@ -272,8 +310,24 @@ export class VehicleCore {
   }
 
   /**
+   * Failsafe on every channel — except that while DISARMED the throttle channels take
+   * their disarmed value. The two differ for aircraft: a drone's failsafe holds hover
+   * throttle for a link loss in flight, and that must not spin up a drone sitting
+   * disarmed on the bench when its ground goes away, or before one ever connected.
+   */
+  private safeOutput(): number[] {
+    const out = this.failsafeUs.slice();
+    if (!this.armed) {
+      for (const ch of this.throttleChannels) {
+        if (ch >= 0 && ch < out.length) out[ch] = this.disarmedUs[ch];
+      }
+    }
+    return out;
+  }
+
+  /**
    * Resolve the values actually sent to the driver, applying the safety rules:
-   *  1. link lost      → every channel to its failsafe value
+   *  1. link lost      → failsafe values (throttle at its disarmed value while disarmed)
    *  2. disarmed       → throttle channels forced to their DISARMED value (off/stop)
    *  3. armed + linked → commanded values
    */
@@ -281,25 +335,33 @@ export class VehicleCore {
     // Bench self-test: one channel driven, everything else safe. Highest priority
     // but gated on disarmed (setTestOverride refuses while armed).
     if (this.testOverride && !this.armed) {
-      const out = this.failsafeUs.slice();
+      const out = this.safeOutput();
       const { ch, us } = this.testOverride;
       if (ch >= 0 && ch < out.length) out[ch] = us;
       this.failsafeActive = false;
       return out;
     }
     // ESC calibration overrides everything: throttle channel gets the calibration
-    // value, every other channel is held at failsafe, and the vehicle is disarmed.
+    // value, every other channel is held safe, and the vehicle is disarmed — but only
+    // while the ground running it is still there. It used to ignore the link: a ground
+    // that went away in the MAX step left the ESC at full throttle until someone
+    // restarted the service.
     if (this.calibration.isActive) {
-      const out = this.failsafeUs.slice();
-      const ch = this.calibration.calibratedChannel;
-      const thr = this.calibration.throttleOutput();
-      if (thr !== null && ch >= 0 && ch < out.length) out[ch] = thr;
-      this.failsafeActive = false;
-      return out;
+      if (this.isLinkLost()) {
+        this.calibration.cancel();
+        console.warn('[calib] link lost — calibration cancelled, throttle back to its safe value');
+      } else {
+        const out = this.safeOutput();
+        const ch = this.calibration.calibratedChannel;
+        const thr = this.calibration.throttleOutput();
+        if (thr !== null && ch >= 0 && ch < out.length) out[ch] = thr;
+        this.failsafeActive = false;
+        return out;
+      }
     }
     if (this.isLinkLost()) {
       this.failsafeActive = true;
-      return this.failsafeUs.slice();
+      return this.safeOutput();
     }
     this.failsafeActive = false;
     const out = this.commanded.slice();

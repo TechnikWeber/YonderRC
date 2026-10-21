@@ -589,8 +589,8 @@ With a HiLink stick an empty allowance falls back to the limit the stick already
 ### 4.3 Connect from the field
 
 - Put the ground device on the same tailnet.
-- Use the **Tailscale IP** as the address: `ws://100.x.y.z:8080`. Video the same way over
-  `http://100.x.y.z:1984`.
+- Use the **Tailscale IP** as the address: `ws://100.x.y.z:8080`. Video comes along over
+  the same address — nothing else to enter.
 
 > For the lowest-latency WebRTC path over LTE you can later add your own **TURN server
 > (coturn)** on a cheap VPS. Tailscale alone already gives a working encrypted connection.
@@ -728,14 +728,24 @@ video included — self-sufficient in the field.
   tripped on ordinary WiFi/LTE jitter; a stored 300 from before v1.70.0 is treated as that
   old default and runs at 500.
 - **Disarming ≠ failsafe:** deliberate disarming really switches the motor off,
-  independent of the failsafe value.
+  independent of the failsafe value. A *disarmed* vehicle that loses its link keeps its
+  throttle off too — a drone's failsafe "hold" applies only while it is armed.
+- **Safe from the first moment:** the vehicle keeps the failsafe and disarmed values the
+  control app sent, and uses them right after every restart, before any ground station
+  has connected (since v1.70.1; before, every channel sat at 1500 µs until then).
+- **Nothing rather than something wrong:** while the control app is in the background
+  (another tab, minimised, phone screen off), or an armed gamepad model has lost its
+  controller, the app sends nothing and the vehicle holds its own failsafe. A gamepad
+  model does not arm without its controller.
+- **ESC calibration** is cancelled when the link is lost.
 - **Arming:** the throttle stays at idle while disarmed.
 - **Arming is per connection.** A new ground station is always disarmed. Whether an
   *existing* arm survives a reconnect is **vehicle-type dependent**: car/boat disarm,
   plane/drone do not — a brief link drop must not cut an aircraft's motors in flight. The
   ground app pushes this; the setup checkbox is only the fallback. It can be forced to
   always on/off under **Setup › Controls**.
-- **Pre-arm check:** refused while the throttle is not at its rest position.
+- **Pre-arm check:** refused while the throttle is not at its rest position — stop for a
+  car or boat, idle for a plane, with a reversed channel taken into account.
 - **Hold to arm** (1 s by default) for arming *and* disarming, on the button and on a
   bound key or controller button. Hold time (0.5–10 s) and an off switch are in **Setup ›
   Controls**. **Panic-disarm stays instant.**
@@ -760,8 +770,8 @@ vehicle must never lock you out — but it makes the network the security bounda
 - **LTE:** with Tailscale/ZeroTier/WireGuard the vehicle is only reachable inside your
   private network, and CGNAT means no public IP anyway.
 - **Shared or public Wi-Fi:** set an **API secret** under *Setup › Security*. Mutating
-  `/api/*` calls then need the `x-yonderrc-secret` header (or `?secret=`) and the control
-  WebSocket needs `?secret=`; a wrong one closes with code 4001. It can also come from
+  `/api/*` calls then need the `x-yonderrc-secret` header (or `?secret=`), the control
+  WebSocket and the video need `?secret=`; a wrong one closes with code 4001. It can also come from
   `YRC_API_SECRET`. Stored in plain text — treat it as a lock on the door, not encryption.
 - **A page from the internet cannot drive your vehicle**, even with no secret. Any site the
   operator opens while on the vehicle's hotspot could otherwise POST to the setup API, or
@@ -770,6 +780,12 @@ vehicle must never lock you out — but it makes the network the security bounda
   loopback, `.local` or Tailscale address, or the vehicle's own address are accepted; a
   page from the public internet is refused (HTTP 403, WS close **4003**) unless it presents
   the secret. This also defeats DNS rebinding.
+- **go2rtc is not reachable from the network** (since v1.70.1). Its API (port 1984) is full
+  control of go2rtc, which runs as root and can be told to run a command as a video
+  source; its RTSP server (8554) would take anyone's picture into a camera stream. Both
+  listen on the vehicle only. The control app gets video through the vehicle service
+  (`…:8080/video`) — only for the configured cameras, under the rules above. WebRTC media
+  still uses port 8555.
 - **Only one ground station is in control.** A second connection closes the older link with
   code **4002** and says why. The newcomer always wins, which is what makes reconnecting
   after a link loss work.

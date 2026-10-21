@@ -185,7 +185,8 @@ Touch-Stick.*
   startet in der Vergangenheit, und `git pull` scheitert dann mit einem
   Zertifikatsfehler, der die Zeit nie erwähnt.
 - **Von der Seite herunterfahren.** Strom mitten im Schreibvorgang zu ziehen ist, woran
-  SD-Karten sterben. Verweigert, solange geschärft.
+  SD-Karten sterben. Verweigert, solange geschärft — wie Dienst-Neustart, Reboot, Update
+  und Werksreset.
 - **Werksreset** für Fahrzeug und Boden-App.
 - **Autark im Feld**: der Pi startet seinen eigenen Hotspot, sobald das Funkmodul frei
   ist, und öffnet die Seite per **Captive Portal**.

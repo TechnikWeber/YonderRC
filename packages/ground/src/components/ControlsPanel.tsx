@@ -125,7 +125,7 @@ export function ControlsPanel({
           <input type="checkbox" checked={preArm} onChange={(e) => onPreArm(e.target.checked)} />
           Pre-arm check — refuse to arm unless throttle is at its rest position
         </label>
-        <p className="note">Uses each throttle channel's detent: centre for reverse-capable cars and drones, idle (min) for planes/boats. Prevents a lurch on arming.</p>
+        <p className="note">Uses each throttle channel's rest position — centre for cars, boats and drones, idle for planes; a reversed channel counts. Prevents a lurch on arming. Without a connected controller a gamepad model never arms.</p>
 
         <label className="opt big">
           <input type="checkbox" checked={hold.enabled} onChange={(e) => onHold({ ...hold, enabled: e.target.checked })} />

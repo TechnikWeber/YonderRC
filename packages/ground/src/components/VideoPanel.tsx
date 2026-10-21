@@ -20,7 +20,7 @@ import type { InputManager } from '../lib/input/inputManager';
 import { useRecorder } from '../lib/recorder';
 import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
-import { reconnectDelayMs, selectedCamera } from '../lib/videoLink';
+import { reconnectDelayMs, selectedCamera, whepUrl } from '../lib/videoLink';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend, signalScore, LINK_FAIR } from '../lib/linkHealth';
@@ -218,6 +218,7 @@ async function playWhep(
   baseUrl: string,
   src: string,
   onStream: (stream: MediaStream) => void,
+  secret = '',
 ): Promise<RTCPeerConnection> {
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   pc.addTransceiver('video', { direction: 'recvonly' });
@@ -230,8 +231,9 @@ async function playWhep(
   await pc.setLocalDescription(offer);
   await waitIceComplete(pc);
 
-  // go2rtc's WebRTC signaling endpoint: POST the SDP offer, receive the answer.
-  const res = await fetch(`${baseUrl}/api/webrtc?src=${encodeURIComponent(src)}`, {
+  // go2rtc's WebRTC signaling endpoint — reached through the vehicle's /video path:
+  // POST the SDP offer, receive the answer.
+  const res = await fetch(whepUrl(baseUrl, src, secret), {
     method: 'POST',
     headers: { 'content-type': 'application/sdp' },
     body: pc.localDescription?.sdp ?? '',
@@ -378,6 +380,7 @@ function TelemetryData({
 
 export function VideoPanel({
   videoBaseUrl,
+  videoSecret = '',
   cameras,
   linkState,
   controlPath,
@@ -406,6 +409,8 @@ export function VideoPanel({
   onStats,
 }: {
   videoBaseUrl: string | null;
+  /** The API secret, when video comes from the vehicle itself (videoSecretFor). */
+  videoSecret?: string;
   cameras: string[];
   linkState: LinkState;
   controlPath: ControlPath;
@@ -570,7 +575,7 @@ export function VideoPanel({
           if (v.srcObject !== stream) v.srcObject = stream;
           v.play().catch(() => {});
         };
-        const pc = await playWhep(videoBaseUrl!, camera, onStream);
+        const pc = await playWhep(videoBaseUrl!, camera, onStream, videoSecret);
         if (cancelled || myGen !== genRef.current) {
           pc.close();
           return;
@@ -666,7 +671,7 @@ export function VideoPanel({
     // backoff. That is why auto low→medium could sit in "reconnecting" until someone
     // picked a level by hand.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoBaseUrl, camera, linkState, quality, effectiveQuality]);
+  }, [videoBaseUrl, videoSecret, camera, linkState, quality, effectiveQuality]);
 
   // Fullscreen the whole stage (video + OSD overlays stay together).
   useEffect(() => {

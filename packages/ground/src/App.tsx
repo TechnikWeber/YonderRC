@@ -30,6 +30,7 @@ import { CalibrationPanel } from './components/CalibrationPanel';
 import { ControlsPanel } from './components/ControlsPanel';
 import { loadActions, saveActions, useActionHotkeys, type ActionBindings } from './lib/actions';
 import { preArmCheck } from './lib/safety';
+import { armBlockedByController, controlHold, controlHoldMessage, type ControlHold } from './lib/controlGate';
 import { loadBattery, saveBattery, evaluateBattery, packVoltage, type BatteryWarnCfg } from './lib/battery';
 import { beep } from './lib/beep';
 import { logToCsv, logToGpx, downloadText, sensorSnapshot, gpsSnapshot, fixCount, LOG_CAP, type LogRow } from './lib/logger';
@@ -56,11 +57,12 @@ import {
   diagnosticsUrlFromWs,
 } from './lib/diagnostics';
 import { assessPad } from './lib/input/gamepadPick';
+import { videoSecretFor } from './lib/videoLink';
 import { DiagnosticsPanel, type DiagnosticsExport } from './components/DiagnosticsPanel';
 import type { DiagnosticFinding } from '@yonderrc/protocol';
 
 /** Shown in the masthead and written into diagnostics files. Bumped with every release. */
-export const GROUND_VERSION = '1.70.0';
+export const GROUND_VERSION = '1.70.1';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -134,6 +136,11 @@ export function App() {
   const activeRef = useRef(active);
   activeRef.current = active;
   const liveChannelsRef = useRef<number[]>(neutralChannels());
+  // Whether control frames are held back right now, and why (lib/controlGate.ts). The
+  // loop reads the vehicle's armed state from a ref: it runs outside React's renders.
+  const [controlHeld, setControlHeld] = useState<ControlHold>(null);
+  const controlHeldRef = useRef<ControlHold>(null);
+  const armedRef = useRef(false);
 
   // Safety + action bindings.
   const [preArm, setPreArm] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('yonderrc.preArm.v1') !== 'off' : true));
@@ -209,6 +216,7 @@ export function App() {
         pushConfig(activeRef.current); // vehicle needs failsafe as soon as we connect
       },
       onStatus: (s) => {
+        armedRef.current = s.armed;
         setStatus(s);
         setLinkQuality((q) => foldLinkQuality(q, s));
       },
@@ -274,11 +282,11 @@ export function App() {
       const now = performance.now();
       const dt = now - last;
       last = now;
+      const hidden = typeof document !== 'undefined' && document.hidden;
+      const connectedNow = linkStateRef.current === 'connected';
       // How regularly frames really leave this app — the only place that can tell a
       // throttled background tab from a network that delivers late.
-      if (linkStateRef.current === 'connected') {
-        recordSendTick(sendLoopRef.current, dt, Date.now(), typeof document !== 'undefined' && document.hidden);
-      }
+      if (connectedNow) recordSendTick(sendLoopRef.current, dt, Date.now(), hidden);
 
       const name = input.pollGamepadName();
       setGamepad((prev) => (prev === name ? prev : name));
@@ -288,7 +296,25 @@ export function App() {
       const channels = engine.compute(activeRef.current, input.snapshot(), dt, buttonHoldRef.current);
       liveChannelsRef.current = channels;
       const sent = applyThrottleLimit(activeRef.current, channels);
-      linkRef.current?.sendControl(sent);
+
+      // Nothing at all rather than "sticks centred" or a frame a second — the vehicle's
+      // own failsafe takes over. See lib/controlGate.ts.
+      const hold = controlHold(activeRef.current, { hidden, padConnected: name !== null, armed: armedRef.current });
+      if (hold !== controlHeldRef.current) {
+        const prevHold = controlHeldRef.current;
+        controlHeldRef.current = hold;
+        setControlHeld(hold);
+        if (connectedNow) {
+          logEvent('control', hold ? `held: ${hold}` : `sending again (was ${prevHold})`);
+          if (hold === 'no-controller') beep(440, 400);
+          // Nobody saw the banner while the app was in the background — say it now.
+          if (prevHold === 'hidden' && hold === null) {
+            setPreArmMsg('The app was in the background — nothing was sent, the vehicle held failsafe.');
+            window.setTimeout(() => setPreArmMsg(null), 4000);
+          }
+        }
+      }
+      if (!hold) linkRef.current?.sendControl(sent);
 
       if (++n % 3 === 0) {
         setPreviewChannels(sent);
@@ -334,6 +360,14 @@ export function App() {
   // Arming goes through the pre-arm check (unless disabled); disarming is always
   // allowed. Panic disarms immediately, bypassing any check.
   const requestArm = (want: boolean) => {
+    // Not part of the optional pre-arm check: without its controller a gamepad model
+    // would be armed with "sticks centred" — half throttle on a plane.
+    const noPad = want ? armBlockedByController(activeRef.current, input.activeGamepad() !== null) : null;
+    if (noPad) {
+      setPreArmMsg(noPad);
+      window.setTimeout(() => setPreArmMsg(null), 3500);
+      return;
+    }
     if (want && preArm) {
       const r = preArmCheck(activeRef.current, liveChannelsRef.current);
       if (!r.ok) {
@@ -828,6 +862,7 @@ export function App() {
     <div className="app">
       {preArmMsg && <div className="prearm-toast">{preArmMsg}</div>}
       {authMsg && <div className="prearm-toast">{authMsg}</div>}
+      {connected && controlHeld === 'no-controller' && <div className="prearm-toast">{controlHoldMessage(controlHeld)}</div>}
       <header className="masthead">
         <h1>YonderRC</h1>
         <span className="ver">ground · v{GROUND_VERSION}</span>
@@ -903,6 +938,7 @@ export function App() {
           )}
           <VideoPanel
             videoBaseUrl={effectiveVideoBase(welcome?.videoBaseUrl, url)}
+            videoSecret={videoSecretFor(effectiveVideoBase(welcome?.videoBaseUrl, url), url, secret)}
             cameras={welcome?.cameras ?? []}
             vehicleQuality={welcome?.videoQuality ?? null}
             linkState={linkState}

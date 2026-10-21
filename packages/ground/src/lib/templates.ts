@@ -249,6 +249,18 @@ function offPosition(vehicleType: VehicleType): number {
 }
 
 /**
+ * Where a throttle stick rests, normalized: its detent where that says something
+ * (centre springs back to 0, low to -1), otherwise — a ratcheted ('free') or unset
+ * stick — the vehicle type's off position. A boat's ratcheted throttle rests at
+ * centre, which is stop; a plane's at idle.
+ */
+export function throttleRestStick(b: Pick<ChannelBinding, 'detent'> | undefined, vehicleType: VehicleType): number {
+  if (b?.detent === 'center') return 0;
+  if (b?.detent === 'low') return -1;
+  return offPosition(vehicleType);
+}
+
+/**
  * Value a throttle channel takes when DELIBERATELY disarmed (on the bench / landed).
  * This is NOT the failsafe value — a disarmed drone must have motors OFF, even
  * though its in-flight failsafe holds at centre.

@@ -12,6 +12,7 @@ import {
   stickModes,
   throttleChannelsOf,
   throttleFailsafeRisk,
+  throttleRestStick,
   withResolvedThrottle,
 } from '../lib/templates';
 import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
@@ -348,10 +349,10 @@ export function BindingEditor({
                   <Hint summary="How the steps scale around the rest position">
                     Switched while driving with the three buttons under the sticks (and a bindable
                     controller button). The command is scaled around this channel's rest position:
-                    with <b>rest {REST_LABEL[b.detent ?? 'center']}</b> that means{' '}
-                    {(b.detent ?? 'center') === 'center'
+                    it rests at <b>{throttleRestStick(b, profile.vehicleType) === 0 ? 'centre' : 'idle'}</b>, so{' '}
+                    {throttleRestStick(b, profile.vehicleType) === 0
                       ? 'forward and reverse are capped equally'
-                      : 'idle stays exactly at minimum and only the upper half is capped'}.
+                      : 'idle stays exactly where it is and only the way up is capped'}.
                     Endpoints, failsafe, the disarmed value and the pre-arm check are untouched.
                   </Hint>
                 </>

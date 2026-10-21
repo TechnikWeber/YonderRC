@@ -1346,14 +1346,14 @@ async function main() {
   const { neutralChannels } = await import('../packages/protocol/src/channels');
   const carP = buildProfile('car'); // throttle detent center → safe at 1500
   const cThr = carP.throttleChannels[0];
-  ok('car throttle safe = centre', throttleSafeUs(carP.bindings.find((b) => b.channel === cThr)) === 1500);
+  ok('car throttle safe = centre', throttleSafeUs(carP.bindings.find((b) => b.channel === cThr), 'car') === 1500);
   ok('car arms at centre throttle', preArmCheck(carP, neutralChannels()).ok);
   const pushed = neutralChannels();
   pushed[cThr] = 2000;
   ok('car blocked with throttle up', !preArmCheck(carP, pushed).ok);
   const planeP = buildProfile('plane'); // throttle detent free → safe at min
   const pThr = planeP.throttleChannels[0];
-  ok('plane throttle safe = min', throttleSafeUs(planeP.bindings.find((b) => b.channel === pThr)) === 1000);
+  ok('plane throttle safe = min', throttleSafeUs(planeP.bindings.find((b) => b.channel === pThr), 'plane') === 1000);
   ok('plane blocked at centre throttle', !preArmCheck(planeP, neutralChannels()).ok);
   const low = neutralChannels();
   low[pThr] = 1000;
@@ -1365,6 +1365,48 @@ async function main() {
   const idleOnSeven = neutralChannels();
   idleOnSeven[7] = 1000;
   ok('pre-arm passes at idle on the moved throttle', preArmCheck(movedPlane, idleOnSeven).ok);
+
+  // The rest position is the resting stick through the channel's own shaping — not the
+  // detent alone, which got two templates wrong.
+  {
+    const boatP = buildProfile('boat'); // ratcheted ('free') throttle, centre = stop
+    const bThr = boatP.throttleChannels[0];
+    ok('a boat throttle rests at centre — stop', throttleSafeUs(boatP.bindings.find((b) => b.channel === bThr), 'boat') === 1500);
+    ok('a boat arms with the throttle at stop', preArmCheck(boatP, neutralChannels()).ok);
+    const fullReverse = neutralChannels();
+    fullReverse[bThr] = 1000;
+    ok('and no longer only at full reverse', !preArmCheck(boatP, fullReverse).ok);
+    ok('the message names the centre', /centre/.test(preArmCheck(boatP, fullReverse).message ?? ''));
+    const boatLow = { ...boatP, throttleLimit: { steps: [40, 70, 100] as [number, number, number], step: 0 as const } };
+    const boatStop = neutralChannels();
+    ok('the limiter keeps a boat at stop', TL.applyThrottleLimit(boatLow, boatStop)[bThr] === 1500);
+    const boatFull = neutralChannels();
+    boatFull[bThr] = 2000;
+    ok('and caps it around stop, both ways', TL.applyThrottleLimit(boatLow, boatFull)[bThr] === 1700);
+    boatFull[bThr] = 1000;
+    ok('reverse included', TL.applyThrottleLimit(boatLow, boatFull)[bThr] === 1300);
+
+    // A reversed plane throttle: idle is 2000 µs.
+    const revPlane = {
+      ...planeP,
+      bindings: planeP.bindings.map((b) => (b.channel === pThr ? { ...b, shaping: { ...b.shaping, reverse: true } } : b)),
+    };
+    ok('a reversed throttle idles at max', throttleSafeUs(revPlane.bindings.find((b) => b.channel === pThr), 'plane') === 2000);
+    const revIdle = neutralChannels();
+    revIdle[pThr] = 2000;
+    ok('a reversed plane arms at idle', preArmCheck(revPlane, revIdle).ok);
+    const revFull = neutralChannels();
+    revFull[pThr] = 1000;
+    ok('and not at full throttle any more', !preArmCheck(revPlane, revFull).ok);
+    ok('the message says idle', /idle/.test(preArmCheck(revPlane, revFull).message ?? ''));
+    const revHalf = { ...revPlane, throttleLimit: { steps: [50, 70, 100] as [number, number, number], step: 0 as const } };
+    ok('the limiter leaves a reversed idle where it is', TL.applyThrottleLimit(revHalf, revIdle)[pThr] === 2000);
+    ok('and halves full throttle towards it', TL.applyThrottleLimit(revHalf, revFull)[pThr] === 1500);
+
+    // A throttle on a switch rests "off" — what the engine sends when it is released.
+    const switchThr = { ...carP.bindings.find((b) => b.channel === cThr)!, mode: 'momentary' as const, detent: 'low' as const };
+    ok('a switch throttle rests at its off end', throttleSafeUs(switchThr, 'car') === switchThr.shaping.minUs);
+  }
 
   // ---- the status strip stays a rectangle ----
   // The grid is four columns wide (two on a phone). Nine cells leaves one stranded on a
@@ -3130,6 +3172,370 @@ async function main() {
 
     rmSync(cfgPath, { force: true });
     if (envCfg === undefined) delete process.env.YRC_CONFIG; else process.env.YRC_CONFIG = envCfg;
+  }
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const restoreEnv = (name: string, value: string | undefined) => {
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  };
+
+  // ---- v1.70.1: one stray request or frame must not end the service ----
+  {
+    const { resolveGroundPath } = await import('../packages/vehicle/src/transport/staticServer');
+    const { failRequest } = await import('../packages/vehicle/src/transport/failRequest');
+    const dist = join(tmpdir(), 'yrc-dist');
+    // The request that took the vehicle down: decodeURIComponent threw out of the handler.
+    ok('a malformed escape is refused instead of thrown', resolveGroundPath(dist, '/%E0%A4%A') === null);
+    ok('a NUL byte is refused', resolveGroundPath(dist, '/index.html%00.png') === null);
+    ok('the root is the app', resolveGroundPath(dist, '/') === join(dist, 'index.html'));
+    ok('an asset resolves inside dist', resolveGroundPath(dist, '/assets/app.js') === join(dist, 'assets', 'app.js'));
+    const up = resolveGroundPath(dist, '/../../etc/passwd');
+    ok('a traversal stays inside dist', up !== null && up.startsWith(dist));
+    const encUp = resolveGroundPath(dist, '/..%2F..%2Fetc%2Fpasswd');
+    ok('an encoded one too', encUp === null || encUp.startsWith(dist));
+
+    const errs: string[] = [];
+    const origErr = console.error;
+    console.error = (...a: unknown[]) => { errs.push(a.join(' ')); };
+    const fresh = { headersSent: false, code: 0, destroyed: false, writeHead(c: number) { this.code = c; }, end() {}, destroy() { this.destroyed = true; } };
+    failRequest({ method: 'GET', url: '/api/x?secret=TOPSECRET' } as never, fresh as never, new Error('boom'));
+    const late = { ...fresh, headersSent: true, code: 0 };
+    failRequest({ method: 'GET', url: '/x' } as never, late as never, new Error('late'));
+    console.error = origErr;
+    ok('a failing request answers 500', fresh.code === 500);
+    ok('one that already started is cut off', late.destroyed && late.code === 0);
+    ok('and the log line never carries the secret', errs.length === 2 && !errs.join('\n').includes('TOPSECRET'));
+
+    const wsSrc = readFileSync('packages/vehicle/src/transport/wsServer.ts', 'utf8');
+    ok('the HTTP handler catches what it starts', wsSrc.includes('.catch((err) => failRequest(req, res, err))'));
+    ok('a WebSocket message cannot throw out of its handler', /handleClientMessage\(core, msg, session\);[\s\S]{0,500}\} catch \(err\)/.test(wsSrc));
+    const idxSrc = readFileSync('packages/vehicle/src/index.ts', 'utf8');
+    ok('an uncaught exception writes failsafe before the process goes', /process\.on\('uncaughtException'[\s\S]{0,700}liveCore\.stop\(\)/.test(idxSrc));
+    ok('a stray rejection is logged, not fatal', idxSrc.includes("process.on('unhandledRejection'"));
+    ok('shutdown writes the safe frame first', /shutting down, holding failsafe[\s\S]{0,300}await core\.stop\(\)/.test(idxSrc));
+
+    const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
+    const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
+    const core = new VehicleCore({ driver: new SimDriver() });
+    const s = core.beginControlSession();
+    let threw = false;
+    try {
+      core.applyControl({ type: 'control', seq: 1, t: 0, channels: null } as never, s);
+      core.applyControl({ type: 'control', t: 0, channels: [1800] } as never, s);
+      core.applyControl({ type: 'control', seq: 'x', t: 0, channels: [1800] } as never, s);
+    } catch {
+      threw = true;
+    }
+    ok('a frame without channels or a sequence does not throw', !threw);
+    ok('and changes nothing', core.readCommanded()[0] === 1500);
+    core.applyControl({ type: 'control', seq: 2, t: 0, channels: [1600] }, s);
+    ok('the next good frame still applies', core.readCommanded()[0] === 1600);
+
+    const { handleClientMessage } = await import('../packages/vehicle/src/transport/handleMessage');
+    const quiet = { log: console.log, warn: console.warn };
+    console.log = () => {};
+    console.warn = () => {};
+    handleClientMessage(core, { type: 'arm', armed: 'yes' } as never, s);
+    const armedByString = core.status().armed;
+    handleClientMessage(core, { type: 'calib', action: 'start', channel: 'x', minUs: 'a' } as never, s);
+    const calibOnGarbage = core.status().calibration;
+    let configThrew = false;
+    try {
+      handleClientMessage(core, { type: 'config', throttleChannels: 2, failsafeUs: 'abc' } as never, s);
+    } catch {
+      configThrew = true;
+    }
+    console.log = quiet.log;
+    console.warn = quiet.warn;
+    ok('only armed: true arms', armedByString === false);
+    ok('a calibration needs one of the 16 channels', calibOnGarbage === undefined);
+    ok('a config with lists that are not lists changes nothing and throws nothing', !configThrew && core.safetyConfig().throttleChannels.length === 0);
+  }
+
+  // ---- v1.70.1: safe values from the first tick, and after every restart ----
+  {
+    const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
+    const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
+    // A drone: its failsafe holds hover throttle on CH3, its disarmed value is motors off.
+    const fs = Array(16).fill(1500);
+    const dis = Array(16).fill(1500);
+    dis[2] = 1000;
+    const drv = new SimDriver();
+    const drone = new VehicleCore({ driver: drv, watchdogTimeoutMs: 100, failsafeUs: fs, disarmedUs: dis, throttleChannels: [2, 99, -1] });
+    await drone.start();
+    ok('a fresh start with no ground holds the throttle at its disarmed value', drv.readLast()[2] === 1000);
+    const sess = drone.beginControlSession();
+    drone.applyControl({ type: 'control', seq: 1, t: Date.now(), channels: Array(16).fill(1500) }, sess);
+    drone.setArmed(true);
+    await sleep(250);
+    ok('an ARMED drone that loses its link holds its failsafe', drv.readLast()[2] === 1500 && drone.status().failsafeActive);
+    drone.setArmed(false);
+    await sleep(60);
+    // The bug: a disarmed drone on the bench spun up to hover throttle when its ground went away.
+    ok('a DISARMED one that loses its link keeps its motors off', drv.readLast()[2] === 1000 && drone.status().failsafeActive);
+    const sc = drone.safetyConfig();
+    ok('the values a restart needs are reported', sc.disarmedUs[2] === 1000 && sc.failsafeUs[2] === 1500 && sc.throttleChannels.join() === '2');
+    await drone.stop();
+    ok('stopping a disarmed vehicle leaves its throttle off', drv.readLast()[2] === 1000);
+
+    // ESC calibration ignored the link: a ground that went away in the MAX step left the
+    // ESC at full throttle until the service was restarted.
+    const cdrv = new SimDriver();
+    const cc = new VehicleCore({ driver: cdrv, watchdogTimeoutMs: 100, throttleChannels: [2] });
+    await cc.start();
+    const cs = cc.beginControlSession();
+    let seq = 0;
+    const frame = () => cc.applyControl({ type: 'control', seq: ++seq, t: Date.now(), channels: Array(16).fill(1500) }, cs);
+    frame(); // a ground that is connected is sending
+    const feed = setInterval(frame, 20);
+    const log = console.log;
+    const warn = console.warn;
+    console.log = () => {};
+    console.warn = () => {};
+    cc.startCalibration(2, 1000, 2000);
+    await sleep(80);
+    const duringCal = cdrv.readLast()[2];
+    const activeCal = cc.status().calibration?.active === true;
+    clearInterval(feed);
+    await sleep(250);
+    console.log = log;
+    console.warn = warn;
+    ok('calibration drives MAX while the ground is there', duringCal === 2000 && activeCal);
+    ok('a lost link cancels it', cc.status().calibration === undefined);
+    ok('and the throttle leaves MAX', cdrv.readLast()[2] === 1500);
+    await cc.stop();
+
+    // Stored, and read back at the next start.
+    const C2 = await import('../packages/vehicle/src/config');
+    const p = join(tmpdir(), `yonderrc-safety-test-${process.pid}.json`);
+    writeFileSync(p, JSON.stringify({ vehicleName: 'Quad', videoBaseUrl: 'http://yonderrc.local:1984' }));
+    ok('the pushed values are stored', C2.persistControlSafety(p, sc) === true);
+    ok('the same values again are not written again', C2.persistControlSafety(p, sc) === false);
+    ok('other settings survive', C2.loadPersisted(p).vehicleName === 'Quad');
+    const envCfg = process.env.YRC_CONFIG;
+    process.env.YRC_CONFIG = p;
+    const cfg = C2.loadConfig();
+    restoreEnv('YRC_CONFIG', envCfg);
+    ok('the next start reads them back', cfg.controlSafety !== null && cfg.controlSafety.disarmedUs[2] === 1000 && cfg.controlSafety.throttleChannels.join() === '2');
+    ok('garbage is not trusted', C2.sanitiseControlSafety({ failsafeUs: ['x'] }) === null && C2.sanitiseControlSafety(null) === null && C2.sanitiseControlSafety('1500') === null);
+    const short = C2.sanitiseControlSafety({ failsafeUs: [1000, 9999], throttleChannels: [2, 40, -1, 1.5] });
+    ok('a short list is filled with neutral and clamped', !!short && short.failsafeUs.length === 16 && short.failsafeUs[1] === 2500 && short.failsafeUs[5] === 1500);
+    ok('throttle channels outside the 16 are dropped', short?.throttleChannels.join() === '2');
+    ok('disarmed values default to the failsafe ones', short?.disarmedUs[0] === 1000);
+    const idxSrc = readFileSync('packages/vehicle/src/index.ts', 'utf8');
+    ok('the service starts its core with them', /failsafeUs: safety\?\.failsafeUs/.test(idxSrc) && /disarmedUs: safety\?\.disarmedUs/.test(idxSrc));
+    const wsSrc = readFileSync('packages/vehicle/src/transport/wsServer.ts', 'utf8');
+    ok('and keeps what each ground pushes', wsSrc.includes("if (msg.type === 'config') persistControlSafety(config.configPath, core.safetyConfig())"));
+
+    // The setup page says which throttle channels are in force — and where they came from.
+    const { handleSetup } = await import('../packages/vehicle/src/transport/setupRouter');
+    const { SimSystem } = await import('../packages/vehicle/src/system/SimSystem');
+    const live = new VehicleCore({ driver: new SimDriver(), throttleChannels: cfg.controlSafety?.throttleChannels });
+    const ctx = {
+      config: cfg, core: live, system: new SimSystem(),
+      telemetry: { message: null }, gps: { message: null }, traffic: { usage: null }, applyCameras: async () => {},
+    } as unknown as Parameters<typeof handleSetup>[2];
+    const res = { code: 0, body: '', writeHead(c: number) { this.code = c; }, end(b?: string) { this.body = b ?? ''; }, setHeader() {} };
+    await handleSetup({ url: '/api/config', method: 'GET', headers: {}, async *[Symbol.asyncIterator]() {} } as never, res as never, ctx);
+    const body = JSON.parse(res.body);
+    ok('the setup page learns which throttle channels are in force', body.throttleFromGround === true && body.throttleChannelsActive.join() === '2');
+    ok('and sees a stored go2rtc address already moved over', body.videoBaseUrl === `http://yonderrc.local:${cfg.port}/video`);
+
+    // Anything that takes the outputs away and brings the vehicle back disarmed waits for a disarm.
+    live.setArmed(true);
+    const refused: Record<string, number> = {};
+    for (const u of ['/api/restart', '/api/reboot', '/api/update', '/api/factory-reset', '/api/shutdown']) {
+      const r2 = { code: 0, body: '', writeHead(c: number) { this.code = c; }, end(b?: string) { this.body = b ?? ''; }, setHeader() {} };
+      await handleSetup({ url: u, method: 'POST', headers: {}, async *[Symbol.asyncIterator]() {} } as never, r2 as never, ctx);
+      refused[u] = r2.code;
+    }
+    live.setArmed(false);
+    ok('restart, reboot, update, factory reset and shutdown are refused while armed', Object.values(refused).every((c) => c === 409), JSON.stringify(refused));
+    ok('and the refused factory reset kept the settings', C2.loadPersisted(p).vehicleName === 'Quad');
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('the setup page shows a refused reboot instead of announcing one', html.includes("r && r.ok === false"));
+    rmSync(p, { force: true });
+  }
+
+  // ---- v1.70.1: go2rtc's API is not on the network any more ----
+  {
+    const { generateGo2rtcYaml } = await import('../packages/vehicle/src/video/cameraManager');
+    const y = generateGo2rtcYaml([{ name: 'cam1', type: 'sim', width: 640, height: 480, fps: 25 }]);
+    ok('the go2rtc API listens on the vehicle only', /api:\n {2}listen: "127\.0\.0\.1:1984"/.test(y));
+    ok('so does RTSP — nobody nearby can publish into a stream', /rtsp:\n {2}listen: "127\.0\.0\.1:8554"/.test(y));
+    ok('no wildcard origin any more', !/origin:/.test(y));
+    ok('the WebRTC media port stays reachable', /webrtc:\n {2}listen: ":8555"/.test(y));
+
+    const VP = await import('../packages/vehicle/src/transport/videoProxy');
+    const api = 'http://127.0.0.1:1984';
+    const okT = VP.videoProxyTarget('POST', '/video/api/webrtc', 'src=cam1&secret=s&extra=1', ['cam1'], api);
+    ok('the WebRTC offer goes through, with nothing but the camera name', okT.ok && okT.upstream === 'http://127.0.0.1:1984/api/webrtc?src=cam1');
+    const execT = VP.videoProxyTarget('POST', '/video/api/webrtc', `src=${encodeURIComponent('exec:touch /tmp/pwned')}`, ['cam1'], api);
+    ok('a command as source is refused', !execT.ok && execT.status === 404);
+    ok('so is an unknown camera', !VP.videoProxyTarget('POST', '/video/api/webrtc', 'src=cam2', ['cam1'], api).ok);
+    ok('and no camera at all', !VP.videoProxyTarget('POST', '/video/api/webrtc', '', ['cam1'], api).ok);
+    const cfgT = VP.videoProxyTarget('POST', '/video/api/config', 'src=cam1', ['cam1'], api);
+    ok('the rest of the go2rtc API stays on the vehicle', !cfgT.ok && cfgT.status === 404);
+    ok('streams and restart included',
+      !VP.videoProxyTarget('GET', '/video/api/streams', 'src=cam1', ['cam1'], api).ok &&
+      !VP.videoProxyTarget('POST', '/video/api/restart', 'src=cam1', ['cam1'], api).ok);
+    const getT = VP.videoProxyTarget('GET', '/video/api/webrtc', 'src=cam1', ['cam1'], api);
+    ok('the wrong method is refused', !getT.ok && getT.status === 405);
+    const snapT = VP.videoProxyTarget('GET', '/video/api/frame.jpeg', 'src=cam1&t=1', ['cam1'], api);
+    ok('a snapshot goes through', snapT.ok && snapT.upstream === 'http://127.0.0.1:1984/api/frame.jpeg?src=cam1');
+
+    ok('an old go2rtc address moves to the vehicle', VP.migrateVideoUrl('http://localhost:1984', 8080) === 'http://localhost:8080/video');
+    ok('with its host kept', VP.migrateVideoUrl('http://100.64.1.2:1984/', 8080) === 'http://100.64.1.2:8080/video');
+    ok('a new address is left alone', VP.migrateVideoUrl('http://yonderrc.local:8080/video', 8080) === 'http://yonderrc.local:8080/video');
+    ok("so is someone else's server", VP.migrateVideoUrl('https://video.example.org/cam', 8080) === 'https://video.example.org/cam');
+    ok('and "no video"', VP.migrateVideoUrl(null, 8080) === null);
+
+    // End to end, against a stand-in for go2rtc.
+    const { createServer } = await import('node:http');
+    const seen: { url: string; body: string }[] = [];
+    const fake = createServer((rq, rs) => {
+      let b = '';
+      rq.on('data', (c) => (b += c));
+      rq.on('end', () => {
+        seen.push({ url: rq.url ?? '', body: b });
+        if ((rq.url ?? '').startsWith('/api/webrtc')) {
+          rs.writeHead(201, { 'content-type': 'application/sdp' });
+          rs.end('v=0 answer');
+        } else {
+          rs.writeHead(200, { 'content-type': 'image/jpeg' });
+          rs.end(Buffer.from([0xff, 0xd8, 0xff]));
+        }
+      });
+    });
+    await new Promise<void>((r) => fake.listen(0, '127.0.0.1', () => r()));
+    const fport = (fake.address() as { port: number }).port;
+    let secretNow: string | null = null;
+    const vctx = { apiUrl: `http://127.0.0.1:${fport}`, streams: () => ['cam1'], secret: () => secretNow };
+    const vcall = async (url: string, method = 'GET', headers: Record<string, string> = {}, body?: string) => {
+      const req = { url, method, headers, async *[Symbol.asyncIterator]() { if (body !== undefined) yield Buffer.from(body); } };
+      const res = {
+        code: 0, head: {} as Record<string, string>, body: Buffer.alloc(0),
+        writeHead(c: number, h?: Record<string, string>) { this.code = c; this.head = h ?? {}; },
+        end(b?: string | Buffer) { this.body = Buffer.from(b ?? ''); },
+      };
+      const handled = await VP.handleVideoProxy(req as never, res as never, vctx);
+      return { handled, code: res.code, head: res.head, body: res.body };
+    };
+    let r = await vcall('/video/api/webrtc?src=cam1', 'POST', { 'content-type': 'application/sdp' }, 'v=0 offer');
+    ok('the offer reaches go2rtc and its answer comes back', r.code === 201 && r.body.toString() === 'v=0 answer' && seen.at(-1)?.body === 'v=0 offer');
+    ok('upstream sees only the camera name', seen.at(-1)?.url === '/api/webrtc?src=cam1');
+    r = await vcall('/video/api/webrtc?src=exec%3Areboot', 'POST', {}, 'x');
+    ok('a command as source never reaches go2rtc', r.code === 404 && seen.length === 1);
+    r = await vcall('/video/api/frame.jpeg?src=cam1&t=5');
+    ok('a snapshot comes back as an image', r.code === 200 && r.head['content-type'] === 'image/jpeg' && r.body[0] === 0xff);
+    r = await vcall('/video/api/webrtc?src=cam1', 'POST', { origin: 'https://evil.example' }, 'x');
+    ok('a page from the internet is refused', r.code === 403);
+    secretNow = 'S3CRET';
+    r = await vcall('/video/api/webrtc?src=cam1', 'POST', {}, 'x');
+    ok('with an API secret set, video needs it too', r.code === 401);
+    r = await vcall('/video/api/webrtc?src=cam1&secret=S3CRET', 'POST', {}, 'v=0 offer');
+    ok('and works with it — which go2rtc never sees', r.code === 201 && !seen.at(-1)!.url.includes('S3CRET'));
+    secretNow = null;
+    ok("other paths are not the proxy's business", !(await vcall('/setup')).handled && !(await vcall('/videos')).handled);
+    r = await vcall('/video/api/webrtc?src=cam1', 'POST', {}, 'x'.repeat(300 * 1024));
+    ok('an oversized offer is refused', r.code === 413);
+    fake.closeAllConnections();
+    await new Promise<void>((done) => fake.close(() => done()));
+    const warn = console.warn;
+    console.warn = () => {};
+    r = await vcall('/video/api/webrtc?src=cam1', 'POST', {}, 'x');
+    console.warn = warn;
+    ok('a stopped go2rtc is a clear 502', r.code === 502 && /go2rtc/.test(r.body.toString()));
+
+    // Where the ground is sent for video.
+    const { loadConfig: lc3 } = await import('../packages/vehicle/src/config');
+    const pv = join(tmpdir(), `yonderrc-video-test-${process.pid}.json`);
+    const envC = process.env.YRC_CONFIG;
+    const envV = process.env.YRC_VIDEO_URL;
+    const envH = process.env.YRC_PUBLIC_HOST;
+    process.env.YRC_CONFIG = pv;
+    delete process.env.YRC_VIDEO_URL;
+    delete process.env.YRC_PUBLIC_HOST;
+    writeFileSync(pv, '{}');
+    let vc = lc3();
+    ok('by default the ground gets video from the vehicle itself', vc.videoBaseUrl === `http://localhost:${vc.port}/video` && vc.go2rtcApiUrl === 'http://127.0.0.1:1984');
+    writeFileSync(pv, JSON.stringify({ videoBaseUrl: 'http://localhost:1984' }));
+    vc = lc3();
+    ok('a stored go2rtc address is moved over', vc.videoBaseUrl === `http://localhost:${vc.port}/video`);
+    writeFileSync(pv, JSON.stringify({ videoBaseUrl: null }));
+    ok('"no video" stays no video', lc3().videoBaseUrl === null);
+    writeFileSync(pv, '{}');
+    process.env.YRC_VIDEO_URL = 'http://localhost:1984';
+    ok('an old compose file still gets video', lc3().videoBaseUrl === `http://localhost:${vc.port}/video`);
+    restoreEnv('YRC_CONFIG', envC);
+    restoreEnv('YRC_VIDEO_URL', envV);
+    restoreEnv('YRC_PUBLIC_HOST', envH);
+    rmSync(pv, { force: true });
+
+    const compose = readFileSync('docker/docker-compose.yml', 'utf8');
+    ok('the compose file does not point the ground at go2rtc', !/YRC_VIDEO_URL:.*1984/.test(compose));
+  }
+
+  // ---- v1.70.1: no frames rather than wrong frames ----
+  {
+    const G = await import('../packages/ground/src/lib/controlGate');
+    const padPlane = rebuildForMethod(buildProfile('plane'), 'gamepad');
+    const touchPlane = rebuildForMethod(buildProfile('plane'), 'touch');
+    ok('a gamepad model needs its pad, a touch model does not', G.needsGamepad(padPlane) && !G.needsGamepad(touchPlane));
+    ok('a hidden app sends nothing', G.controlHold(touchPlane, { hidden: true, padConnected: true, armed: false }) === 'hidden');
+    // The bug: a missing pad reads as sticks centred — half throttle on a plane, and the
+    // vehicle's watchdog never tripped because frames kept coming.
+    ok('an armed gamepad model without its pad sends nothing', G.controlHold(padPlane, { hidden: false, padConnected: false, armed: true }) === 'no-controller');
+    ok('a disarmed one still sends — bench work needs no controller', G.controlHold(padPlane, { hidden: false, padConnected: false, armed: false }) === null);
+    ok('a touch model never waits for a pad', G.controlHold(touchPlane, { hidden: false, padConnected: false, armed: true }) === null);
+    ok('with everything there it sends', G.controlHold(padPlane, { hidden: false, padConnected: true, armed: true }) === null);
+    ok('arming a gamepad model without its pad is refused',
+      G.armBlockedByController(padPlane, false) !== null && G.armBlockedByController(padPlane, true) === null && G.armBlockedByController(touchPlane, false) === null);
+    ok('every hold has words for the operator', !!G.controlHoldMessage('hidden') && !!G.controlHoldMessage('no-controller') && G.controlHoldMessage(null) === null);
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('the control loop asks before it sends', app.includes('if (!hold) linkRef.current?.sendControl(sent);') && !/^\s*linkRef\.current\?\.sendControl\(sent\);/m.test(app));
+    ok('and arming asks for the pad first', app.includes('armBlockedByController(activeRef.current'));
+
+    const VL = await import('../packages/ground/src/lib/videoLink');
+    ok("the secret goes to the vehicle's own video", VL.videoSecretFor('http://192.168.4.1:8080/video', 'ws://192.168.4.1:8080', 'k') === 'k');
+    ok('never to another host', VL.videoSecretFor('http://cams.example.org:8080/video', 'ws://192.168.4.1:8080', 'k') === '');
+    ok('nor to another port', VL.videoSecretFor('http://192.168.4.1:1984', 'ws://192.168.4.1:8080', 'k') === '');
+    ok('nothing to send without one', VL.videoSecretFor('http://192.168.4.1:8080/video', 'ws://192.168.4.1:8080', '') === '');
+    ok('the offer URL carries it only when given',
+      VL.whepUrl('http://v:8080/video', 'cam 1') === 'http://v:8080/video/api/webrtc?src=cam%201' &&
+      VL.whepUrl('http://v:8080/video', 'c', 'a&b') === 'http://v:8080/video/api/webrtc?src=c&secret=a%26b');
+  }
+
+  // ---- v1.70.1: a network name is not markup ----
+  {
+    const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    const fnSrc = (name: string) => {
+      const start = html.indexOf(`function ${name}(`);
+      if (start < 0) return '';
+      let depth = 0;
+      for (let i = html.indexOf('{', start); i < html.length; i++) {
+        if (html[i] === '{') depth++;
+        else if (html[i] === '}' && --depth === 0) return html.slice(start, i + 1);
+      }
+      return '';
+    };
+    const esc = new Function(`${fnSrc('esc')}; return esc;`)() as (v: unknown) => string;
+    const loginLink = new Function(`${fnSrc('esc')} ${fnSrc('loginLink')}; return loginLink;`)() as (u: unknown) => string;
+    ok('esc covers quotes, so it is safe inside an attribute', esc(`"><img src=x onerror=alert(1)>'`) === '&quot;&gt;&lt;img src=x onerror=alert(1)&gt;&#39;');
+    ok('a Tailscale login link stays a link', loginLink('https://login.tailscale.com/a/abc123').includes('href="https://login.tailscale.com/a/abc123"'));
+    ok('anything else is shown, never linked', !loginLink('javascript:alert(1)').includes('href') && !loginLink('https://x" onmouseover="alert(1)').includes('href'));
+    ok('no login URL lands in an href unchecked', !html.includes('href="${ts.loginUrl}"') && !html.includes('href="${s.loginUrl}"') && !html.includes('href="${r.loginUrl}"'));
+    // 32 bytes of SSID are enough for `<img src=x onerror=…>`, and a quote broke out of the onclick.
+    ok('the WiFi list is built from nodes, not from the SSID', !html.includes('onclick="pickWifi(') && html.includes('name.textContent = `${n.secured'));
+    ok('and a pick is matched exactly', html.includes('b.dataset.ssid === ssid'));
+    const rs = fnSrc('renderStatus');
+    ok('the status rows escape what the air and the devices say', rs.includes('${esc(k)}') && rs.includes('${esc(v)}') && !rs.includes('<span class="k">${k}</span>'));
+    ok('without escaping twice', !rs.includes("row('power', esc("));
+    const det = fnSrc('detectHw');
+    ok('so does the hardware probe', det.includes('${esc(x.hint)}') && det.includes('${esc(n)}') && det.includes('${esc(c)}'));
+    const snap = fnSrc('snapCameras');
+    ok('camera snapshots come through the vehicle, built from nodes', snap.includes('/video/api/frame.jpeg') && !snap.includes('1984') && !snap.includes('innerHTML = names'));
   }
 
   // ---- report ----

@@ -1,7 +1,16 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { LEGACY_WATCHDOG_TIMEOUT_MS, WATCHDOG_TIMEOUT_MS, clampWatchdogMs } from '@yonderrc/protocol';
+import {
+  CHANNEL_COUNT,
+  CHANNEL_NEUTRAL_US,
+  LEGACY_WATCHDOG_TIMEOUT_MS,
+  WATCHDOG_TIMEOUT_MS,
+  clampChannelUs,
+  clampWatchdogMs,
+} from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg, GpsConfig, UiTheme } from '@yonderrc/protocol';
+import type { ControlSafety } from './core/VehicleCore.js';
+import { GO2RTC_API_DEFAULT, VIDEO_PATH, migrateVideoUrl } from './transport/videoProxy.js';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';
@@ -28,12 +37,22 @@ export interface VehicleConfig {
    */
   driverError: string | null;
   watchdogTimeoutMs: number;
-  /** Channels treated as throttle: forced safe while disarmed. */
+  /**
+   * Channels treated as throttle: forced safe while disarmed. The setup page's value,
+   * used until a ground has connected once — after that `controlSafety` wins.
+   */
   throttleChannels: number[];
+  /** What the last ground pushed (failsafe, disarmed, throttle channels), or null. */
+  controlSafety: ControlSafety | null;
   /** Throttle SimDriver terminal logging (ms); 0 disables. */
   simLogEveryMs: number;
-  /** Base URL of the go2rtc video server, or null for pure sim without video. */
+  /**
+   * Where the ground gets video — the vehicle's own `/video` path (transport/videoProxy.ts)
+   * unless set otherwise — or null for no video at all.
+   */
   videoBaseUrl: string | null;
+  /** go2rtc's API, for the vehicle's own calls (reload, snapshots, the proxy). Never handed out. */
+  go2rtcApiUrl: string;
   /** Hardware-driver-specific options (I2C, GPIO pins, serial path). */
   driverOptions: DriverOptions;
   /** 'sim' (default) or 'real' networking (Pi). */
@@ -190,6 +209,50 @@ export interface PersistentConfig {
   pca9685?: { bus?: number; address?: number };
   /** 'light' (default) or 'dark' — applied to the setup page and pushed to the ground. */
   theme?: UiTheme;
+  /**
+   * The failsafe and disarmed values and the throttle channels the last ground pushed.
+   * Written by the vehicle, never by a form. Without it a restarted service drove
+   * 1500 µs on every channel until a ground connected again — half throttle for an
+   * aircraft ESC that was still powered.
+   */
+  controlSafety?: ControlSafety;
+}
+
+/**
+ * A stored `controlSafety` block, checked. It is read at every start and drives the
+ * outputs before any ground has connected, so what is not a plausible value is dropped
+ * rather than trusted. Null when there is nothing usable.
+ */
+export function sanitiseControlSafety(raw: unknown): ControlSafety | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const values = (v: unknown): number[] | null =>
+    Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'number' && Number.isFinite(x))
+      ? Array.from({ length: CHANNEL_COUNT }, (_, i) => clampChannelUs((v[i] as number | undefined) ?? CHANNEL_NEUTRAL_US))
+      : null;
+  const failsafeUs = values(r.failsafeUs);
+  if (!failsafeUs) return null;
+  const throttleChannels = Array.isArray(r.throttleChannels)
+    ? r.throttleChannels.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < CHANNEL_COUNT)
+    : [];
+  return { failsafeUs, disarmedUs: values(r.disarmedUs) ?? failsafeUs.slice(), throttleChannels };
+}
+
+/** go2rtc's API for the vehicle's own calls, or null when video is off altogether. */
+export function videoApiUrl(c: Pick<VehicleConfig, 'videoBaseUrl' | 'go2rtcApiUrl'>): string | null {
+  return c.videoBaseUrl ? c.go2rtcApiUrl : null;
+}
+
+/**
+ * Keep what a ground pushed, so the next start comes up with it. Writes only when
+ * something changed: the ground re-sends its config on every connect. Returns whether
+ * it wrote.
+ */
+export function persistControlSafety(path: string, next: ControlSafety): boolean {
+  const cur = loadPersisted(path).controlSafety;
+  if (cur && JSON.stringify(cur) === JSON.stringify(next)) return false;
+  savePersisted(path, { controlSafety: next });
+  return true;
 }
 
 /**
@@ -255,6 +318,7 @@ export function loadConfig(): VehicleConfig {
   const p = loadPersisted(configPath);
 
   const envDriver = process.env.YRC_DRIVER as DriverKind | undefined;
+  const port = num('YRC_PORT', 8080);
 
   return {
     // Persistent fields: file overrides env-default.
@@ -268,12 +332,17 @@ export function loadConfig(): VehicleConfig {
         .split(',')
         .map((s) => Number(s.trim()))
         .filter((n) => Number.isInteger(n)),
-    videoBaseUrl:
+    controlSafety: sanitiseControlSafety(p.controlSafety),
+    // An address on go2rtc's own port is from before v1.70.1 — see migrateVideoUrl.
+    videoBaseUrl: migrateVideoUrl(
       p.videoBaseUrl !== undefined
         ? p.videoBaseUrl
         : process.env.YRC_VIDEO_URL === ''
           ? null
-          : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:1984`,
+          : process.env.YRC_VIDEO_URL ?? `http://${publicHost()}:${port}${VIDEO_PATH}`,
+      port,
+    ),
+    go2rtcApiUrl: process.env.YRC_GO2RTC_API || GO2RTC_API_DEFAULT,
     // Migrate the old flat `apn` into the richer lte config if present.
     lte: p.lte ?? { apn: p.apn ?? process.env.YRC_APN ?? null },
     disarmOnReconnect: p.disarmOnReconnect ?? true,
@@ -309,7 +378,7 @@ export function loadConfig(): VehicleConfig {
 
     // Env-only fields (except the PCA9685 address/bus below, which the setup UI edits).
     host: process.env.YRC_HOST ?? '0.0.0.0',
-    port: num('YRC_PORT', 8080),
+    port,
     simLogEveryMs: num('YRC_SIM_LOG_MS', 0),
     systemKind: (process.env.YRC_SYSTEM as SystemKind) ?? 'sim',
     configPath,

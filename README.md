@@ -171,7 +171,7 @@ link, state, session, round-trip, link gaps, input, vehicle, telemetry.*
   only when it is wrong — a Pi with no battery-backed clock boots into the past and
   `git pull` then fails with a certificate error that never mentions the time.
 - **Shut down from the page.** Pulling power mid-write is how an SD card dies. Refused
-  while armed.
+  while armed — like a service restart, reboot, update or factory reset.
 - **Factory reset** for the vehicle and the ground app.
 - **Self-sufficient in the field**: the Pi starts its own hotspot whenever the radio is
   free and opens the page via a **captive portal**.

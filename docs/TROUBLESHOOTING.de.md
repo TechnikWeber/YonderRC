@@ -79,7 +79,7 @@ Frames schubweise ankommen.
 
 | Ursache | Woran man es erkennt | Was hilft |
 |---|---|---|
-| **Die Steuerseite war verdeckt oder ausgelastet** — anderer Tab vorne, Fenster minimiert, Handy-Bildschirm aus, langsames Handy | Diagnose: „control loop paused …", Ereignisse `page: hidden` | Die Steuerseite vorne und den Bildschirm an lassen. Browser bremsen Timer im Hintergrund absichtlich — das Fahrzeug hält dann an, und das ist richtig. |
+| **Die Steuerseite war verdeckt oder ausgelastet** — anderer Tab vorne, Fenster minimiert, Handy-Bildschirm aus, langsames Handy | Diagnose: „control loop paused …", Ereignisse `page: hidden`, `control: held: hidden` | Die Steuerseite vorne und den Bildschirm an lassen. Seit v1.70.1 sendet die App im Hintergrund gar nichts, das Fahrzeug hält also sauber seinen Failsafe, statt zwischen Kommando und Failsafe zu ruckeln — und beim Zurückkommen steht ein Hinweis da. |
 | **WLAN-Energiesparen am Pi** | Diagnose: „WiFi power saving is on"; am Pi: `iw dev wlan0 get power_save` | `sudo iw dev wlan0 set power_save off`; der Installer (ab v1.70.0) schaltet es dauerhaft ab — einmal laufen lassen. |
 | **Schwaches WLAN** | OSD/Diagnose: Signal unter etwa −70 dBm | Näherer Access Point, der Hotspot des Fahrzeugs, oder LTE. |
 | **Die Versorgung bricht ein** | ⚠ POWER im OSD, „under-voltage" in der Diagnose | 5,1 V / 3 A oder mehr, kurzes dickes Kabel, Servos nie vom Pi versorgen ([HARDWARE.de.md 2.3](HARDWARE.de.md#23-stromversorgung)). |
@@ -109,6 +109,10 @@ der Steuer-App eingestellt.
   schließen. **Steam** kann den Controller belegen, solange es läuft — schließen, wenn der
   Controller hier keine Eingaben zeigt.
 - Die **Eingabemethode** des Modells muss *gamepad* sein: Setup › Modell › Input method.
+- **„No controller" beim Armen** heißt genau das: ein Gamepad-Modell lässt sich ohne seinen
+  Controller nicht armen. Fällt der Controller im scharfen Zustand weg, sendet die App
+  nichts mehr, und das Fahrzeug geht in den Failsafe, bis er wieder da ist
+  („Controller lost").
 
 ## 4. Die Servos bewegen sich nicht
 

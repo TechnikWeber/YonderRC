@@ -21,7 +21,7 @@ Diese Seite beschreibt nur die Dateien selbst.
 | `install.sh` | alles, was der Pi braucht — siehe §2; nach jedem Update erneut ausführbar |
 | `diag.sh` | Diagnosedatei aus dem Terminal, wenn die Setup-Seite nicht erreichbar ist (§3) |
 | `onboard.sh` | Hotspot-Rückfallebene beim Booten, gestartet von `yonderrc-onboard.service` |
-| `systemd/` | `yonderrc-vehicle` (Steuerung + Setup-Seite, Port 8080), `go2rtc` (Video, Port 1984), `yonderrc-onboard` |
+| `systemd/` | `yonderrc-vehicle` (Steuerung, Setup-Seite und Video-Signalisierung, Port 8080), `go2rtc` (Video; API und RTSP antworten nur auf dem Pi, WebRTC-Medien über 8555), `yonderrc-onboard` |
 | `tuning/` | Kamera-Tuning-Dateien (Autofokus der Arducam IMX519), kopiert nach `/var/lib/yonderrc/tuning` |
 | `yonderrc.sudoers` | nur für den Betrieb des Dienstes als Nicht-root-Benutzer (§4) |
 

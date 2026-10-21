@@ -3,6 +3,86 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.70.1
+*Safety and security fixes from a review of the whole project. Worth installing soon: two
+of them let anything on the network reach further into the vehicle than it should.*
+
+**English**
+- **go2rtc is no longer open to the network.** Its API on port 1984 is full control of
+  go2rtc — which runs as root and can be told to run any command as a video source — and it
+  answered anyone on the network, API secret or not. Its RTSP port (8554) took anyone's
+  picture into a camera stream. Both now listen on the vehicle only; the control app gets
+  video through the vehicle service (`…:8080/video`), only for the configured cameras and
+  under the same rules as everything else, API secret included. Nothing to do: a stored
+  video address on port 1984 is moved over automatically. `http://<vehicle>:1984` no longer
+  opens; the WebRTC media port 8555 is unchanged.
+- **A stray request could stop the vehicle service** — `/%E0%A4%A` from any device on the
+  network, or a malformed control message — and the servo board kept its last value until
+  systemd restarted it. Such requests now get an error; an unexpected error writes the
+  failsafe frame before the service exits.
+- **No control frames rather than wrong ones.** With the control app in the background
+  (another tab, minimised, phone screen off) frames arrived once a second and the vehicle
+  jerked between command and failsafe. A disconnected controller read as "sticks centred" —
+  half throttle on a plane — and the watchdog never tripped. Now the app sends nothing in
+  both cases, the vehicle holds its own failsafe, and the app says so. A gamepad model no
+  longer arms without its controller.
+- **Safe values from the first moment.** The failsafe and disarmed values the control app
+  sends lived in memory only: after every restart all channels sat at 1500 µs until a ground
+  connected — half throttle for a plane ESC that was still powered. They are now stored on
+  the vehicle. A disarmed vehicle that loses its link keeps its throttle off; a drone's
+  "hold" applies only while armed.
+- **Pre-arm check and speed limiter use the real rest position.** A boat could only be
+  armed at full reverse, a reversed plane throttle only at full throttle, and the limiter's
+  Low step turned a boat's stop into 60 % reverse.
+- **ESC calibration is cancelled when the link is lost** — a ground that went away in the
+  MAX step left the ESC at full throttle.
+- **The setup page no longer runs a WiFi name as code.** An SSID — which anyone near the
+  vehicle can choose — went into the page as HTML; so did device names and the Tailscale
+  login link.
+- **Restart, reboot, update and factory reset wait for a disarm**, like shutdown always
+  did: each takes the outputs away and brings the vehicle back disarmed.
+- Also: changing the video quality uses the detected Pi camera program; arm, config and
+  calibration messages are checked before use.
+
+**Deutsch**
+- **go2rtc ist nicht mehr offen im Netz.** Seine API auf Port 1984 ist volle Kontrolle über
+  go2rtc — das als root läuft und sich jeden Befehl als Videoquelle unterschieben lässt —
+  und sie antwortete jedem im Netz, mit oder ohne API-Secret. Sein RTSP-Port (8554) nahm von
+  jedem ein Bild in einen Kamera-Stream an. Beide lauschen jetzt nur noch auf dem Fahrzeug;
+  die Steuer-App holt das Video über den Fahrzeugdienst (`…:8080/video`), nur für die
+  eingerichteten Kameras und nach denselben Regeln wie alles andere, API-Secret
+  eingeschlossen. Zu tun ist nichts: eine gespeicherte Video-Adresse auf Port 1984 wird
+  automatisch umgestellt. `http://<fahrzeug>:1984` öffnet sich nicht mehr; der
+  WebRTC-Medienport 8555 bleibt.
+- **Eine verirrte Anfrage konnte den Fahrzeugdienst beenden** — `/%E0%A4%A` von jedem Gerät
+  im Netz oder eine kaputte Steuernachricht —, und die Servoplatine hielt ihren letzten
+  Wert, bis systemd neu startete. Solche Anfragen bekommen jetzt einen Fehler; ein
+  unerwarteter Fehler schreibt erst den Failsafe, dann beendet sich der Dienst.
+- **Lieber keine Steuerframes als falsche.** Mit der Steuer-App im Hintergrund (anderer Tab,
+  minimiert, Handy-Bildschirm aus) kam ein Frame pro Sekunde an, und das Fahrzeug ruckte
+  zwischen Kommando und Failsafe. Ein getrennter Controller wurde als „Sticks in der Mitte"
+  gelesen — beim Flugzeug Halbgas —, und der Watchdog griff nie. Jetzt sendet die App in
+  beiden Fällen nichts, das Fahrzeug hält seinen eigenen Failsafe, und die App sagt es. Ein
+  Gamepad-Modell lässt sich ohne seinen Controller nicht mehr armen.
+- **Sichere Werte ab dem ersten Moment.** Die Failsafe- und Disarm-Werte der Steuer-App
+  lagen nur im Speicher: nach jedem Neustart standen alle Kanäle auf 1500 µs, bis sich eine
+  Bodenstation verband — Halbgas für einen noch bestromten Flugzeug-Regler. Jetzt werden
+  sie auf dem Fahrzeug gespeichert. Ein entschärftes Fahrzeug, das den Link verliert, lässt
+  das Gas aus; das „Halten" einer Drohne gilt nur, solange sie scharf ist.
+- **Pre-Arm-Check und Speed-Limiter nehmen die echte Ruhelage.** Ein Boot ließ sich nur bei
+  vollem Rückwärtsgas armen, ein umgekehrtes Flugzeug-Gas nur bei Vollgas, und die Stufe Low
+  des Limiters machte aus dem Stopp eines Boots 60 % rückwärts.
+- **Die Regler-Kalibrierung bricht bei Linkverlust ab** — eine Bodenstation, die im
+  MAX-Schritt wegfiel, ließ den Regler auf Vollgas.
+- **Die Setup-Seite führt keinen WLAN-Namen mehr als Code aus.** Eine SSID — die jeder in
+  der Nähe des Fahrzeugs frei wählen kann — landete als HTML in der Seite; ebenso
+  Gerätenamen und der Tailscale-Login-Link.
+- **Neustart, Reboot, Update und Werksreset warten aufs Entschärfen**, wie das
+  Herunterfahren schon immer: jedes davon nimmt die Ausgänge weg und bringt das Fahrzeug
+  entschärft zurück.
+- Außerdem: der Wechsel der Videoqualität nutzt das erkannte Pi-Kamera-Programm; Arm-,
+  Config- und Kalibrier-Nachrichten werden vor der Verwendung geprüft.
+
 ## v1.70.0
 **English**
 - **License is now PolyForm Noncommercial 1.0.0, still with the no-military-use

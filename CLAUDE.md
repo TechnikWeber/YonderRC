@@ -54,7 +54,34 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   failed real driver falls back to `sim` so a headless device stays reachable.
 - **Failsafe ≠ disarmed** and both are **vehicle-type aware** (see
   `ground/src/lib/profiles.ts`): drone failsafe = centre/hold, car/boat = stop,
-  plane = motor off; disarmed forces throttle safe. Don't collapse these.
+  plane = motor off; disarmed forces throttle safe. Don't collapse these. On the vehicle
+  (`VehicleCore.safeOutput`) a link loss while **disarmed** puts the throttle channels at
+  their *disarmed* value — the failsafe "hold" is for an armed aircraft only — and the
+  test override, ESC calibration and `stop()` use the same safe frame (v1.70.1).
+- **Safety values survive a restart** (v1.70.1): every ground `config` push is stored as
+  `controlSafety` in the vehicle config (only when it changed; `persistControlSafety`),
+  sanitised on load and handed to the core at boot — before, a restarted service drove
+  1500 µs everywhere until a ground connected. Once present it wins over the setup page's
+  "Throttle channels" field (shown as "In use: …"). The setup form must never apply that
+  field live: it sends it with every Save and would override the ground's channels.
+- **No frames rather than wrong frames** (`ground/src/lib/controlGate.ts`, v1.70.1): the
+  control loop sends nothing while the page is hidden (a throttled tab pulsed the vehicle
+  between command and failsafe) or while an ARMED gamepad model has no pad (a missing pad
+  reads as sticks centred). A disarmed vehicle still gets frames — bench work (servo test,
+  ESC calibration, which the core cancels on link loss) must not need the controller. A
+  gamepad model refuses to arm without its pad, independent of the pre-arm setting.
+- **The service must survive any request** (v1.70.1): `resolveGroundPath` refuses
+  malformed escapes, the HTTP handler ends in `.catch(failRequest)`, WebSocket messages are
+  handled inside try/catch and validated in `handleMessage.ts` (only `armed === true` arms).
+  `index.ts` logs unhandled rejections and, on an uncaught exception, writes the safe frame
+  before exiting. Never let a request path throw out of an event handler.
+- **go2rtc never listens on the network** (v1.70.1): API on `127.0.0.1:1984` (full control,
+  `exec:` sources, root) and RTSP on `127.0.0.1:8554` (accepts publishers). The ground and
+  the setup page reach video only through `transport/videoProxy.ts` (`/video/api/webrtc`,
+  `/video/api/frame.jpeg`; `src` must be a configured `safeStreamName`, origin + API secret
+  like everything else). `config.videoBaseUrl` is what the ground gets (default
+  `http://<host>:<port>/video`, old `:1984` values migrated by `migrateVideoUrl`);
+  `config.go2rtcApiUrl` is for the vehicle's own calls. Never hand out the go2rtc API URL.
 - **Channel µs**: nominal 1000–2000, absolute clamp 500–2500 (`protocol/channels.ts`,
   `clampChannelUs`). Endpoints are free within the absolute range; default stays
   1000–2000. This is the real servo range — don't widen without discussion.
@@ -76,8 +103,12 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   around the channel's rest position (`throttleSafeUs`), applied to what is SENT while
   the pre-arm check keeps seeing the raw command.
 - **Per-channel rest position** (`detent`: center/low/free) drives where hold-ramp /
-  momentary / toggle settle, and the **pre-arm check** (`ground/src/lib/safety.ts`)
-  uses the throttle channel's detent to know the safe rest (centre vs idle).
+  momentary / toggle settle. The throttle's safe rest for the **pre-arm check** and the
+  limiter is `throttleSafeUs(binding, vehicleType)` (`ground/src/lib/safety.ts`): the
+  resting stick (`throttleRestStick` — centre → 0, low → −1, free/unset → the type's off
+  position, so a boat rests at stop) run through the channel's own shaping, so reverse,
+  endpoints and trim count. Reading it off the detent alone armed boats only at full
+  reverse and reversed throttles only at full throttle (fixed in v1.70.1).
 - **Actions** (`ground/src/lib/actions.ts`): panic-disarm, arm, next-camera, record,
   snapshot — bindable to key+button, edited in Setup › Controls. Add new bindable
   features here rather than scattering hotkeys. **panic-disarm and toggle-arm ship
@@ -179,7 +210,9 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   Never report `this.latest` directly — `message` and `setHomeNow` go through `current`.
 - **Video** (`ground/src/components/VideoPanel.tsx`): self-healing WHEP player. The
   watchdog uses **refs, not stale state**; a fresh connect bumps `genRef` so a
-  superseded attempt can't attach a dead stream. Keep that invariant.
+  superseded attempt can't attach a dead stream. Keep that invariant. The offer goes to
+  `whepUrl(base, src, secret)`; the API secret is only added when the video URL is the
+  vehicle itself (`videoSecretFor`: same host and port as the control link).
 - **Telemetry channels**: voltages/currents/temperatures are lists; the one flagged
   `primary` (else index 0, see `protocol/telemetry.ts` `primaryIndex`) drives battery %,
   mAh/Wh, the low-battery warning and the blackbox. **`chargeSource: 'auto'` states a wish,
@@ -231,13 +264,18 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   (`YRC_GO2RTC_CONFIG` in `yonderrc-vehicle.service`, same path in `go2rtc.service`);
   the dev/docker default still resolves to `docker/go2rtc.yaml` in the repo. It is
   **generated**, so writing it inside the checkout dirtied every running vehicle and
-  blocked `git pull --ff-only` — keep generated state out of the working tree.
+  blocked `git pull --ff-only` — keep generated state out of the working tree. The
+  committed `docker/go2rtc.yaml` is still what the compose stack's go2rtc container
+  mounts, so a change to `generateGo2rtcYaml` must regenerate that file too (a dev run
+  rewrites it — `git checkout -- docker/go2rtc.yaml` afterwards).
 
 ## Release / packaging flow
 Bump all five `package.json` to the same version and update `GROUND_VERSION` in
 `ground/src/App.tsx` (masthead and diagnostics files read it), then add a `CHANGELOG.md` entry. The **vehicle banner and the setup
 page read the version from `package.json`** (`config.version`, since v1.45.1) — nothing to
-bump there, and the test suite fails if the ground masthead falls behind. Locally you can just commit + tag + `gh release create`. README describes the
+bump there, and the test suite fails if the ground masthead falls behind. Locally you can just commit + tag + `gh release create` —
+chained (`git commit … && git tag … && git push …`), so a commit that fails can never
+leave the tag on the previous commit (it did once, for v1.70.0). README describes the
 current feature set; detailed history lives in `CHANGELOG.md` + releases.
 
 ## Open / next

@@ -601,8 +601,8 @@ HiLink-Stick greift bei leerem Volumen das Limit, das im Stick schon gesetzt ist
 ### 4.3 Von unterwegs verbinden
 
 - Das Bodengerät ins selbe Tailnet holen.
-- Die **Tailscale-IP** als Adresse nutzen: `ws://100.x.y.z:8080`. Video genauso über
-  `http://100.x.y.z:1984`.
+- Die **Tailscale-IP** als Adresse nutzen: `ws://100.x.y.z:8080`. Das Video kommt über
+  dieselbe Adresse mit — sonst ist nichts einzutragen.
 
 > Für den latenzärmsten WebRTC-Pfad über LTE kannst du später einen eigenen **TURN-Server
 > (coturn)** auf einem günstigen VPS ergänzen. Tailscale allein liefert schon eine
@@ -743,14 +743,25 @@ zurück, Video eingeschlossen — autark im Feld.
   300 ms löste bei gewöhnlichem WLAN-/LTE-Jitter aus; ein gespeicherter Wert von 300 aus der
   Zeit vor v1.70.0 gilt als dieser alte Standard und läuft mit 500.
 - **Entschärfen ≠ Failsafe:** bewusstes Entschärfen schaltet den Motor wirklich ab,
-  unabhängig vom Failsafe-Wert.
+  unabhängig vom Failsafe-Wert. Ein *entschärftes* Fahrzeug, das den Link verliert, lässt
+  das Gas ebenfalls aus — das „Halten" einer Drohne gilt nur, solange sie scharf ist.
+- **Sicher ab dem ersten Moment:** das Fahrzeug behält die Failsafe- und Disarm-Werte, die
+  die Steuer-App geschickt hat, und nutzt sie direkt nach jedem Neustart, noch bevor sich
+  eine Bodenstation verbindet (seit v1.70.1; vorher standen bis dahin alle Kanäle auf
+  1500 µs).
+- **Lieber nichts als etwas Falsches:** solange die Steuer-App im Hintergrund ist (anderer
+  Tab, minimiert, Handy-Bildschirm aus) oder ein scharfes Gamepad-Modell seinen Controller
+  verloren hat, sendet die App nichts, und das Fahrzeug hält seinen eigenen Failsafe. Ein
+  Gamepad-Modell lässt sich ohne seinen Controller nicht armen.
+- **Die Regler-Kalibrierung** bricht bei Linkverlust ab.
 - **Armen:** der Gaskanal bleibt im Leerlauf, solange entschärft.
 - **Armen gilt pro Verbindung.** Eine neue Bodenstation ist immer entschärft. Ob ein
   *bestehendes* Armen einen Reconnect überlebt, ist **fahrzeugtyp-abhängig**: Auto/Boot
   entschärfen, Flugzeug/Drohne nicht — ein kurzer Verbindungsabriss darf einem Fluggerät
   nicht die Motoren abschalten. Die Boden-App schiebt das; die Checkbox im Setup ist nur
   der Fallback. Unter **Setup › Controls** auf immer an/aus erzwingbar.
-- **Pre-Arm-Check:** verweigert, solange das Gas nicht in Ruhelage steht.
+- **Pre-Arm-Check:** verweigert, solange das Gas nicht in Ruhelage steht — Stopp bei Auto
+  und Boot, Leerlauf beim Flugzeug, ein umgekehrter Kanal eingerechnet.
 - **Halten zum Armen** (Standard 1 s) für Armen *und* Entschärfen, am Button und an einer
   gebundenen Taste. Haltezeit (0,5–10 s) und Ausschalter unter **Setup › Controls**.
   **Panic-Disarm bleibt sofortig.**
@@ -777,7 +788,8 @@ headless Fahrzeug darf dich nie aussperren — macht aber das Netz zur Sicherhei
   erreichbar, und CGNAT bedeutet ohnehin keine öffentliche IP.
 - **Fremdes oder öffentliches WLAN:** ein **API-Secret** unter *Setup › Security* setzen.
   Verändernde `/api/*`-Aufrufe brauchen dann den Header `x-yonderrc-secret` (oder
-  `?secret=`), der Steuer-WebSocket `?secret=`; ein falsches schließt mit Code 4001. Es
+  `?secret=`), der Steuer-WebSocket und das Video `?secret=`; ein falsches schließt mit
+  Code 4001. Es
   kann auch aus `YRC_API_SECRET` kommen. Im Klartext gespeichert — ein Schloss an der Tür,
   keine Verschlüsselung.
 - **Eine Seite aus dem Internet kann dein Fahrzeug nicht fahren**, auch ohne Secret. Jede
@@ -788,6 +800,12 @@ headless Fahrzeug darf dich nie aussperren — macht aber das Netz zur Sicherhei
   Adresse des Fahrzeugs werden akzeptiert; eine Seite aus dem öffentlichen Internet wird
   abgelehnt (HTTP 403, WS-Close **4003**), außer sie zeigt das Secret. Das entschärft auch
   DNS-Rebinding.
+- **go2rtc ist aus dem Netz nicht erreichbar** (seit v1.70.1). Seine API (Port 1984) ist
+  volle Kontrolle über go2rtc, das als root läuft und sich einen Befehl als Videoquelle
+  unterschieben lässt; sein RTSP-Server (8554) würde von jedem ein Bild in einen
+  Kamera-Stream übernehmen. Beide lauschen nur noch auf dem Fahrzeug selbst. Die Steuer-App
+  holt das Video über den Fahrzeugdienst (`…:8080/video`) — nur für die eingerichteten
+  Kameras, nach den Regeln oben. Die WebRTC-Medien laufen weiter über Port 8555.
 - **Nur eine Bodenstation hat die Kontrolle.** Eine zweite Verbindung schließt die ältere
   mit Code **4002** und sagt warum. Die neue gewinnt immer — genau das macht das
   Wiederverbinden nach einem Abriss möglich.

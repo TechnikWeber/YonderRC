@@ -19,7 +19,9 @@ import type { SystemManager } from '../system/index.js';
 import type { TelemetryService } from '../sensors/TelemetryService.js';
 import type { GpsService } from '../sensors/GpsService.js';
 import { TrafficService } from '../system/TrafficService.js';
-import { loadPersisted } from '../config.js';
+import { loadPersisted, persistControlSafety, videoApiUrl } from '../config.js';
+import { handleVideoProxy, type VideoProxyContext } from './videoProxy.js';
+import { failRequest } from './failRequest.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { powerBadge } from '../system/power.js';
 import { serveGroundApp } from './staticServer.js';
@@ -82,7 +84,7 @@ export function startWsServer(
     core,
     traffic,
     applyCameras: (cams) =>
-      applyCameras(cams, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder, config.rpicamBin),
+      applyCameras(cams, config.go2rtcConfigPath, videoApiUrl(config), config.h264Encoder, config.rpicamBin),
     applyHilink,
     onConfigSaved: (patch) => {
       console.log('[setup] config saved:', Object.keys(patch).join(', '));
@@ -92,10 +94,20 @@ export function startWsServer(
       if (patch.theme) broadcastTheme(patch.theme);
     },
   };
+  // The ground's WebRTC offer and the setup page's snapshots — the only go2rtc calls
+  // that leave the vehicle (videoProxy.ts).
+  const videoCtx: VideoProxyContext = {
+    apiUrl: config.go2rtcApiUrl,
+    streams: () => config.cameras.map((c) => safeStreamName(c.name)),
+    secret: () => config.apiSecret,
+  };
   const http = createServer((req, res) => {
-    void handleSetup(req, res, setupCtx).then((handled) => {
-      if (!handled) handleHttp(req, res, core, config);
-    });
+    handleSetup(req, res, setupCtx)
+      .then(async (handled) => {
+        if (handled || (await handleVideoProxy(req, res, videoCtx))) return;
+        handleHttp(req, res, core, config);
+      })
+      .catch((err) => failRequest(req, res, err));
   });
   const wss = new WebSocketServer({ server: http });
   const broadcastTheme = (theme: UiTheme) => {
@@ -226,21 +238,33 @@ export function startWsServer(
       } catch {
         return;
       }
-      if (msg.type === 'rtc') {
-        void rtc.onSignal(msg);
-        return;
+      if (!msg || typeof msg !== 'object') return;
+      // A throw in here is a throw inside the socket's 'data' event: nothing catches it
+      // and it ends the process. One malformed frame must cost that frame, not the
+      // vehicle — the WebRTC path has always caught its own.
+      try {
+        if (msg.type === 'rtc') {
+          rtc.onSignal(msg).catch((err) => console.warn('[rtc] signaling failed:', (err as Error).message));
+          return;
+        }
+        if (msg.type === 'video') {
+          // Rescale all cameras for the requested quality and reload go2rtc.
+          videoQuality = msg.quality;
+          const scaled = config.cameras.map((c) => scaleCamera(c, msg.quality));
+          applyCameras(scaled, config.go2rtcConfigPath, videoApiUrl(config), config.h264Encoder, config.rpicamBin).catch(
+            (e) => console.error('[video] quality change failed:', (e as Error).message),
+          );
+          console.log(`[video] quality → ${msg.quality}`);
+          return;
+        }
+        handleClientMessage(core, msg, session);
+        // The ground pushes its failsafe and disarmed values on every connect. Keeping
+        // them means a restarted service comes back with this vehicle's safe values,
+        // not 1500 µs on every channel until a ground connects again.
+        if (msg.type === 'config') persistControlSafety(config.configPath, core.safetyConfig());
+      } catch (err) {
+        console.warn(`[link] "${String((msg as { type?: unknown }).type)}" message failed: ${(err as Error).message}`);
       }
-      if (msg.type === 'video') {
-        // Rescale all cameras for the requested quality and reload go2rtc.
-        videoQuality = msg.quality;
-        const scaled = config.cameras.map((c) => scaleCamera(c, msg.quality));
-        applyCameras(scaled, config.go2rtcConfigPath, config.videoBaseUrl, config.h264Encoder).catch((e) =>
-          console.error('[video] quality change failed:', (e as Error).message),
-        );
-        console.log(`[video] quality → ${msg.quality}`);
-        return;
-      }
-      handleClientMessage(core, msg, session);
     });
 
     ws.on('close', () => {

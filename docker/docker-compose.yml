@@ -15,7 +15,8 @@ services:
     environment:
       YRC_PORT: "8080"
       YRC_DRIVER: "sim" # → pca9685 | gpio-pwm | sbus on real hardware (M3)
-      YRC_VIDEO_URL: "http://localhost:1984"
+      # Video reaches the ground through this service (…:8080/video); go2rtc's own API
+      # answers on 127.0.0.1:1984 only, which host networking makes the same machine.
       YRC_CAMERAS: "test" # → "rpicam,usb0" once cameras are configured
     # devices:
     #   - "/dev/i2c-1:/dev/i2c-1"     # PCA9685

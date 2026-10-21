@@ -17,6 +17,7 @@ import { CSI_MODULES, moduleById, reconcileCameras } from '../system/bootConfig.
 import { secretOk, readSecretFromReq, originAllowed, originOf, secFetchSiteOf } from './auth.js';
 import { explainHealth } from '../system/health.js';
 import { groundAppAvailable } from './staticServer.js';
+import { migrateVideoUrl } from './videoProxy.js';
 import {
   HOTSPOT_DEFAULTS,
   redactRemoteConfig,
@@ -62,6 +63,18 @@ export interface SetupContext {
 function json(res: ServerResponse, code: number, body: unknown): void {
   res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
   res.end(JSON.stringify(body));
+}
+
+/**
+ * Refuse while armed. Restarting the service, rebooting or updating takes the outputs
+ * away for seconds and brings the vehicle back DISARMED — in the air that is a crash, on
+ * the road a stop nobody commanded. Shutdown always refused; the others now do too, and
+ * so does a factory reset, whose next restart would come back with defaults.
+ */
+function refusedWhileArmed(ctx: SetupContext, res: ServerResponse, what: string): boolean {
+  if (!ctx.core.status().armed) return false;
+  json(res, 409, { ok: false, message: `Disarm before ${what}.` });
+  return true;
 }
 
 async function readBody(req: IncomingMessage): Promise<unknown> {
@@ -227,6 +240,7 @@ export async function handleSetup(
   }
 
   if (url === '/api/update' && method === 'POST') {
+    if (refusedWhileArmed(ctx, res, 'updating')) return true;
     const r = await ctx.system.updateApply(
       ctx.config.update,
       loadPersisted(ctx.config.configPath).hardwareDeps ?? [],
@@ -258,6 +272,7 @@ export async function handleSetup(
   }
 
   if (url === '/api/restart' && method === 'POST') {
+    if (refusedWhileArmed(ctx, res, 'restarting the vehicle service')) return true;
     json(res, 200, await ctx.system.restartService());
     return true;
   }
@@ -279,8 +294,12 @@ export async function handleSetup(
       // A stored pre-v1.70.0 default is not shown as if someone had chosen it.
       watchdogTimeoutMs: resolveWatchdogMs(persisted.watchdogTimeoutMs, ctx.core.watchdogMs, persisted.watchdogChosen),
       throttleChannels: persisted.throttleChannels ?? c.throttleChannels,
+      // What the core forces safe right now. Once a ground has connected, its model's
+      // channels win over the field above, and are kept across restarts.
+      throttleChannelsActive: ctx.core.safetyConfig().throttleChannels,
+      throttleFromGround: !!persisted.controlSafety,
       cameras: c.cameras,
-      videoBaseUrl: persisted.videoBaseUrl !== undefined ? persisted.videoBaseUrl : c.videoBaseUrl,
+      videoBaseUrl: migrateVideoUrl(persisted.videoBaseUrl !== undefined ? persisted.videoBaseUrl : c.videoBaseUrl, c.port),
       apn: c.lte.apn,
       disarmOnReconnect: c.disarmOnReconnect,
       systemKind: c.systemKind,
@@ -305,6 +324,9 @@ export async function handleSetup(
     const patch = (await readBody(req)) as PersistentConfig;
     // Normalise an empty secret to null (= OFF) so clearing it is unambiguous.
     if (patch.apiSecret !== undefined) patch.apiSecret = patch.apiSecret || null;
+    // go2rtc's own port answers on the vehicle only since v1.70.1 — store the address
+    // that works instead of the one that was typed from an old note.
+    if (typeof patch.videoBaseUrl === 'string') patch.videoBaseUrl = migrateVideoUrl(patch.videoBaseUrl, ctx.config.port);
     // The watchdog is a safety setting: a typo must not become 50 ms (permanent
     // failsafe) or 50 s (no failsafe). Clamped, then applied at once — it is only a
     // comparison, so unlike the driver it needs no restart.
@@ -631,23 +653,22 @@ export async function handleSetup(
   }
 
   if (url === '/api/reboot' && method === 'POST') {
+    if (refusedWhileArmed(ctx, res, 'rebooting the vehicle')) return true;
     json(res, 200, await ctx.system.reboot());
     return true;
   }
 
   if (url === '/api/shutdown' && method === 'POST') {
-    // Refuse while armed. A reboot at least comes back; a shutdown with a live throttle
-    // leaves the vehicle powered down wherever it stopped, and the operator has to walk
-    // to it — which is the wrong moment to discover the motor was still enabled.
-    if (ctx.core.status().armed) {
-      json(res, 409, { ok: false, message: 'Disarm before shutting the vehicle down.' });
-      return true;
-    }
+    // A shutdown with a live throttle leaves the vehicle powered down wherever it
+    // stopped, and the operator has to walk to it — which is the wrong moment to
+    // discover the motor was still enabled.
+    if (refusedWhileArmed(ctx, res, 'shutting the vehicle down')) return true;
     json(res, 200, await ctx.system.shutdown());
     return true;
   }
 
   if (url === '/api/factory-reset' && method === 'POST') {
+    if (refusedWhileArmed(ctx, res, 'a factory reset')) return true;
     resetPersisted(ctx.config.configPath);
     // Drop the secret live so the operator isn't locked out after a reset; the rest
     // (driver, telemetry, cameras) reverts to defaults on the next restart.

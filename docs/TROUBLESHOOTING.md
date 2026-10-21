@@ -75,7 +75,7 @@ shows the longest wait. A link that *works* can still trip it, if frames arrive 
 
 | Cause | How to tell | What helps |
 |---|---|---|
-| **The control page was hidden or busy** — another tab in front, a minimised window, a phone screen that went dark, a slow phone | Diagnostics: "control loop paused …", events `page: hidden` | Keep the control page in front and the screen on. Browsers slow timers down in the background on purpose — the vehicle then stops, which is right. |
+| **The control page was hidden or busy** — another tab in front, a minimised window, a phone screen that went dark, a slow phone | Diagnostics: "control loop paused …", events `page: hidden`, `control: held: hidden` | Keep the control page in front and the screen on. Since v1.70.1 the app sends nothing at all while it is in the background, so the vehicle holds its failsafe cleanly instead of jerking between command and failsafe — and says so when you come back. |
 | **WiFi power saving on the Pi** | Diagnostics: "WiFi power saving is on"; on the Pi: `iw dev wlan0 get power_save` | `sudo iw dev wlan0 set power_save off`; the installer (v1.70.0+) switches it off for good — run it once. |
 | **Weak WiFi** | OSD/diagnostics: signal below about −70 dBm | Closer access point, the vehicle's own hotspot, or LTE. |
 | **The supply sags** | ⚠ POWER in the OSD, "under-voltage" in the diagnostics | 5.1 V / 3 A or more, a short thick cable, servos never powered from the Pi ([HARDWARE.md 2.3](HARDWARE.md#23-power-supply)). |
@@ -104,6 +104,9 @@ control app.
   offers an emulated Xbox pad — pick that, or close the tool. **Steam** can grab the
   controller while it runs — close it if the controller shows no input.
 - The model's **input method** must be *gamepad*: Setup › model › Input method.
+- **"No controller" when arming** means just that: a gamepad model does not arm without its
+  controller. If the controller drops out while armed, the app stops sending and the
+  vehicle goes to failsafe until it is back ("Controller lost").
 
 ## 4. The servos do not move
 

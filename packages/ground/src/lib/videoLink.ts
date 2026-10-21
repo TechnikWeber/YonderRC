@@ -32,3 +32,27 @@ export function reconnectDelayMs(attempt: number): number {
   if (attempt < 20) return 15000;
   return 30000; // gone for good: keep a slow pulse, stop hammering
 }
+
+/**
+ * The API secret for the video request, or '' — and only ever for the vehicle itself.
+ *
+ * Since v1.70.1 the ground asks the vehicle for video (its /video path) instead of
+ * talking to go2rtc directly, and a vehicle with an API secret wants it there too. A
+ * video URL pointed at some other machine must not be handed the secret, so it goes
+ * only where the control link goes: the same host and port.
+ */
+export function videoSecretFor(videoBase: string | null, wsUrl: string, secret: string): string {
+  if (!videoBase || !secret) return '';
+  try {
+    const v = new URL(videoBase);
+    const w = new URL(wsUrl.replace(/^ws/, 'http'));
+    return v.host === w.host ? secret : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Where the WebRTC offer for one camera goes. */
+export function whepUrl(baseUrl: string, src: string, secret = ''): string {
+  return `${baseUrl}/api/webrtc?src=${encodeURIComponent(src)}${secret ? `&secret=${encodeURIComponent(secret)}` : ''}`;
+}

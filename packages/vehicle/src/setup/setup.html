@@ -461,7 +461,7 @@
         <div class="eyebrow">Security (optional)</div>
         <details class="hint">
           <summary>Off by default — first connect and setup need nothing</summary>
-          <p>When set, saving settings here and the control link both require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted.</p>
+          <p>When set, saving settings here, the control link and the video all require it — in the ground app, enter it in the “secret” field next to the address; here you'll be prompted.</p>
         </details>
         <label>API secret<input id="apiSecret" type="password" placeholder="leave empty = off" autocomplete="new-password" /></label>
         <div class="btns">
@@ -591,8 +591,9 @@
 
         <div class="grid2">
           <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
-          <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:1984" /></label>
+          <label>Video base URL<input id="videoBaseUrl" placeholder="http://vehicle:8080/video" /></label>
         </div>
+        <div class="msg" id="throttle-active"></div>
         <label class="chk"><input type="checkbox" id="disarmOnReconnect" /> Auto-disarm on reconnect <span style="color:var(--muted)">— fallback only; the ground app sets this automatically from the vehicle type (car/boat = on, plane/drone = off). Used until a ground connects.</span></label>
         <div class="btns">
           <button class="btn primary" onclick="run(this, () => saveConfig())">Save</button>
@@ -912,7 +913,9 @@
         }
         $('lte-toggle').style.display = isHilink ? 'flex' : 'none';
         $('lte-fields').style.display = !isHilink || lteFieldsForced ? 'block' : 'none';
-        const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
+        // Escaped: the WiFi name, the operator and the modem model are strings from the
+        // air and from devices, not from this page.
+        const row = (k, v, cls) => `<div class="row"><span class="k">${esc(k)}</span><span class="v ${cls || ''}">${esc(v)}</span></div>`;
         const ts = s.tailscale, lte = s.lte, wifi = s.wifi;
         const sep = '<div class="sep"></div>';
         $('status').innerHTML =
@@ -920,7 +923,7 @@
           row('mode', s.kind === 'real' ? 'real (Pi)' : 'sim', s.kind === 'real' ? 'go' : 'warn') +
           // The firmware's own verdict on the 5 V rail. Silent while it is healthy —
           // a sagging supply is the one fault that looks like every other fault.
-          (s.power && s.power.message ? row('power', esc(s.power.message), s.power.underVoltageNow ? 'bad' : 'warn') : '') +
+          (s.power && s.power.message ? row('power', s.power.message, s.power.underVoltageNow ? 'bad' : 'warn') : '') +
           sep +
           row('LTE', lte.present ? (lte.connected ? 'connected' : (lte.state || 'idle')) : 'no modem', lte.connected ? 'go' : (lte.pinRequired ? 'bad' : (lte.present ? 'warn' : 'bad'))) +
           (lte.pinRequired ? row('· ⚠', 'SIM PIN required — enter it below', 'bad') : '') +
@@ -939,7 +942,7 @@
         // Keep this line honest: it used to hold whatever the last button press wrote,
         // so a stale "Starting…" could sit under a status row that already said Running.
         if (ts.loginUrl) {
-          $('ts-msg').innerHTML = `Login: <a href="${ts.loginUrl}" target="_blank" rel="noreferrer">${ts.loginUrl}</a>`;
+          $('ts-msg').innerHTML = loginLink(ts.loginUrl);
         } else if (remoteKindNow === 'tailscale' && ts.running) {
           $('ts-msg').innerHTML = `Up as <b class="mono">yonderrc</b>${ts.ip ? ` · <span class="mono">${esc(ts.ip)}</span>` : ''} — reach the vehicle at <span class="mono">http://yonderrc:${location.port || 8080}/</span>`;
         }
@@ -1168,6 +1171,12 @@
         renderDevices();
         $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 500;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
+        // Once a ground app has connected, its model decides — and the vehicle keeps
+        // those values across restarts. Say so, or the field looks like it is in charge.
+        const thrActive = (c.throttleChannelsActive || []).map((n) => 'CH ' + (n + 1)).join(', ') || 'none';
+        $('throttle-active').textContent = c.throttleFromGround
+          ? `In use: ${thrActive} — from the ground app's model, kept across restarts. The field above is only the starting value for a vehicle no ground app has connected to yet.`
+          : '';
         $('videoBaseUrl').value = c.videoBaseUrl || '';
         $('disarmOnReconnect').checked = c.disarmOnReconnect !== false;
         applyTheme(c.theme || 'light');
@@ -1230,8 +1239,12 @@
       }
       async function rebootNow() {
         if (!confirm('Reboot the vehicle now?')) return;
-        try { await post('/api/reboot', {}); } catch {}
-        $('serial-msg').textContent = 'Rebooting — the vehicle drops the connection, which is expected.';
+        let r = null;
+        try { r = await post('/api/reboot', {}); } catch {}
+        // Refused while armed — say so instead of announcing a reboot that is not coming.
+        $('serial-msg').textContent = r && r.ok === false
+          ? r.message || 'Reboot refused.'
+          : 'Rebooting — the vehicle drops the connection, which is expected.';
       }
       /**
        * Bytes and sentences arriving, shown separately from the fix. A receiver wired
@@ -1281,7 +1294,18 @@
 
       // ---- native driver modules (i2c-bus / pigpio / serialport) ----
       let hwDeps = [];
-      function esc(v) { return String(v == null ? '' : v).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+      // Quotes too, so the result is safe inside an attribute as well as between tags.
+      function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+      /**
+       * A login link from the vehicle (Tailscale). Only an https URL becomes a link —
+       * anything else is shown as text, never put into an href.
+       */
+      function loginLink(url) {
+        const u = String(url || '');
+        return /^https:\/\/[^\s"'<>]+$/.test(u)
+          ? `Login: <a href="${esc(u)}" target="_blank" rel="noreferrer">${esc(u)}</a>`
+          : `Login: ${esc(u)}`;
+      }
       /** Render `backticked` commands as monospace without trusting the string as HTML. */
       function fmtFix(v) { return esc(v).replace(/`([^`]+)`/g, '<span class="mono" style="color:var(--text)">$1</span>'); }
       function hwDepInstalled(name) { const d = hwDeps.find((x) => x.name === name); return !!(d && d.installed); }
@@ -1375,11 +1399,12 @@
         try {
           const d = await getJSON('/api/detect');
           lastDetect = d;
-          const i2c = (d.i2c || []).map((x) => `<div class="row"><span class="k">${x.address}</span><span class="v">${x.confirmed ? '✓ ' : ''}${x.hint}</span></div>`).join('') || '<div class="msg">no I²C devices</div>';
-          const cams = (d.cameras || []).length ? (d.cameras).map((c) => `<div class="row"><span class="k">camera</span><span class="v">${c}</span></div>`).join('') : '';
-          const serial = (d.serial || []).map((s) => `<div class="row"><span class="k">serial (GPS?)</span><span class="v">${s}</span></div>`).join('');
+          // Device names come from the devices themselves — escaped like everything else.
+          const i2c = (d.i2c || []).map((x) => `<div class="row"><span class="k">${esc(x.address)}</span><span class="v">${x.confirmed ? '✓ ' : ''}${esc(x.hint)}</span></div>`).join('') || '<div class="msg">no I²C devices</div>';
+          const cams = (d.cameras || []).length ? (d.cameras).map((c) => `<div class="row"><span class="k">camera</span><span class="v">${esc(c)}</span></div>`).join('') : '';
+          const serial = (d.serial || []).map((s) => `<div class="row"><span class="k">serial (GPS?)</span><span class="v">${esc(s)}</span></div>`).join('');
           const modem = `<div class="row"><span class="k">LTE modem</span><span class="v ${d.modemPresent ? 'go' : 'warn'}">${d.modemPresent ? 'present' : 'not found'}</span></div>`;
-          const notes = (d.notes || []).map((n) => `<div class="msg">• ${n}</div>`).join('');
+          const notes = (d.notes || []).map((n) => `<div class="msg">• ${esc(n)}</div>`).join('');
           // A detected I²C device is useless while the module that talks to it is
           // missing — say so here, where the operator is actually looking.
           const needI2c = (d.i2c || []).length && !hwDepInstalled('i2c-bus')
@@ -1602,11 +1627,26 @@
         try {
           const r = await post('/api/wifi/scan');
           const nets = r.networks || [];
-          $('wifi-list').innerHTML = nets.length
-            ? nets.map((n) => `<button class="btn wifi-row${n.ssid === pickedSsid ? ' primary' : ''}" onclick="pickWifi(${JSON.stringify(n.ssid).replace(/"/g, '&quot;')})">
-                 <span>${n.secured ? '🔒' : '🔓'} ${n.ssid}</span><span class="wifi-sig">${n.signal}%${n.active ? ' · connected' : ''}</span>
-               </button>`).join('')
-            : '<div class="msg">No networks found.</div>';
+          // Built from DOM nodes, not an HTML string: a network name is whatever anyone
+          // near the vehicle chooses to broadcast — `<img src=x onerror=…>` fits into
+          // the 32 bytes an SSID allows, and so does a quote that breaks out of an
+          // onclick attribute.
+          const list = $('wifi-list');
+          list.replaceChildren();
+          for (const n of nets) {
+            const b = document.createElement('button');
+            b.className = 'btn wifi-row' + (n.ssid === pickedSsid ? ' primary' : '');
+            b.dataset.ssid = n.ssid;
+            const name = document.createElement('span');
+            name.textContent = `${n.secured ? '🔒' : '🔓'} ${n.ssid}`;
+            const sig = document.createElement('span');
+            sig.className = 'wifi-sig';
+            sig.textContent = `${n.signal}%${n.active ? ' · connected' : ''}`;
+            b.append(name, sig);
+            b.addEventListener('click', () => pickWifi(n.ssid));
+            list.append(b);
+          }
+          if (!nets.length) list.innerHTML = '<div class="msg">No networks found.</div>';
           $('wifi-msg').textContent = `${nets.length} network(s).`;
         } catch (e) {
           $('wifi-msg').textContent = 'Scan failed.';
@@ -1616,7 +1656,7 @@
         pickedSsid = ssid;
         $('wifi-msg').textContent = `Selected "${ssid}".`;
         for (const b of document.querySelectorAll('.wifi-row')) {
-          b.classList.toggle('primary', b.textContent.includes(ssid));
+          b.classList.toggle('primary', b.dataset.ssid === ssid);
         }
       }
       async function connectWifi() {
@@ -1754,7 +1794,7 @@
         if (!s) return;
         remoteStatusNow = s;
         remoteKindNow = s.kind || remoteKindNow;
-        if (s.loginUrl) { $('ts-msg').innerHTML = `Login: <a href="${s.loginUrl}" target="_blank" rel="noreferrer">${s.loginUrl}</a>`; return; }
+        if (s.loginUrl) { $('ts-msg').innerHTML = loginLink(s.loginUrl); return; }
         $('ts-msg').textContent = `${s.kind}: ${s.running ? 'up' : 'down'}${s.address ? ' · ' + s.address : ''} · ${s.detail || ''}`;
       }
       async function remoteUp() {
@@ -1776,7 +1816,7 @@
         $('ts-msg').textContent = 'Starting…';
         const r = await post('/api/remote', body);
         $('ovpnPass').value = '';
-        if (r.loginUrl) $('ts-msg').innerHTML = `Login: <a href="${r.loginUrl}" target="_blank" rel="noreferrer">${r.loginUrl}</a>`;
+        if (r.loginUrl) $('ts-msg').innerHTML = loginLink(r.loginUrl);
         else $('ts-msg').textContent = r.message || '';
         setTimeout(loadRemote, 800);
         refresh();
@@ -1838,8 +1878,9 @@
       async function factoryReset() {
         if (!confirm('Factory reset: clear ALL saved vehicle settings (name, driver, cameras, telemetry, LTE APN, API secret)? Restart is needed to apply.')) return;
         const r = await post('/api/factory-reset');
-        // The secret was cleared on the vehicle — forget ours too so the UI isn't stuck on 401.
-        apiSecret = ''; sessionStorage.removeItem('yrc_secret');
+        // The secret was cleared on the vehicle — forget ours too so the UI isn't stuck on
+        // 401. Not when the reset was refused (armed): then the vehicle still wants it.
+        if (r.ok !== false) { apiSecret = ''; sessionStorage.removeItem('yrc_secret'); }
         $('sys-msg').textContent = r.message || 'Factory reset done.';
       }
 
@@ -2346,16 +2387,44 @@
       async function readSensors() {
         const t = await getJSON('/api/telemetry/live');
         if (t.ok === false) { $('test-sensors').innerHTML = '<div class="msg">No sensor data (source real without sensor, or telemetry off).</div>'; return; }
-        const v = (t.voltages || []).map((x) => `${x.label}: <b>${x.value} V</b>`).join(' · ');
-        const c = (t.currents || []).map((x) => `${x.label}: <b>${x.value} A</b>`).join(' · ');
-        $('test-sensors').innerHTML = `<div class="msg">Source: <b>${t.source}${t.ok ? '' : ' (no data)'}</b><br>${v}<br>${c}<br>${t.mah ?? 0} mAh${t.batteryPercent != null ? ' · ' + t.batteryPercent + '%' : ''}</div>`;
+        const v = (t.voltages || []).map((x) => `${esc(x.label)}: <b>${esc(x.value)} V</b>`).join(' · ');
+        const c = (t.currents || []).map((x) => `${esc(x.label)}: <b>${esc(x.value)} A</b>`).join(' · ');
+        $('test-sensors').innerHTML = `<div class="msg">Source: <b>${esc(t.source)}${t.ok ? '' : ' (no data)'}</b><br>${v}<br>${c}<br>${esc(t.mah ?? 0)} mAh${t.batteryPercent != null ? ' · ' + esc(t.batteryPercent) + '%' : ''}</div>`;
+      }
+      /** The stream name go2rtc knows a camera by — the vehicle's safeStreamName. */
+      function streamName(name) {
+        return String(name || '').replace(/[^A-Za-z0-9_-]/g, '_').replace(/^_+|_+$/g, '') || 'cam';
       }
       async function snapCameras() {
-        const base = ($('videoBaseUrl').value || 'http://' + location.hostname + ':1984').replace(/\/$/, '');
-        const names = cams.map((c) => c.name);
-        $('test-cams').innerHTML = names.length ? names.map((n) =>
-          `<div><div class="eyebrow2">${n}</div><img style="width:100%;border-radius:8px;border:1px solid var(--line)" src="${base}/api/frame.jpeg?src=${encodeURIComponent(n)}&t=${Date.now()}" onerror="this.parentNode.innerHTML='<div class=&quot;msg&quot;>${n}: no frame (is go2rtc running?)</div>'"/></div>`
-        ).join('') : '<div class="msg">Add a camera first.</div>';
+        // This vehicle's own cameras, through its own /video path: go2rtc's port answers
+        // on the vehicle only. Built from nodes — a camera name is not markup.
+        const box = $('test-cams');
+        box.replaceChildren();
+        if (!cams.length) { box.innerHTML = '<div class="msg">Add a camera first.</div>'; return; }
+        // An <img> cannot answer a secret prompt — without it every snapshot is a 401.
+        if (cfgNow && cfgNow.authRequired && !apiSecret) {
+          box.innerHTML = '<div class="msg">An API secret is set — enter it once (any Save here asks for it), then try again.</div>';
+          return;
+        }
+        for (const cam of cams) {
+          const n = streamName(cam.name);
+          const wrap = document.createElement('div');
+          const label = document.createElement('div');
+          label.className = 'eyebrow2';
+          label.textContent = n;
+          const img = document.createElement('img');
+          img.style.cssText = 'width:100%;border-radius:8px;border:1px solid var(--line)';
+          img.src = `/video/api/frame.jpeg?src=${encodeURIComponent(n)}&t=${Date.now()}` +
+            (apiSecret ? `&secret=${encodeURIComponent(apiSecret)}` : '');
+          img.addEventListener('error', () => {
+            const msg = document.createElement('div');
+            msg.className = 'msg';
+            msg.textContent = `${n}: no frame (is go2rtc running?)`;
+            img.replaceWith(msg);
+          });
+          wrap.append(label, img);
+          box.append(wrap);
+        }
       }
 
       showTab(location.hash.slice(1), { keepScroll: true });
