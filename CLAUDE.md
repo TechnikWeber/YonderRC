@@ -80,7 +80,9 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   the setup page reach video only through `transport/videoProxy.ts` (`/video/api/webrtc`,
   `/video/api/frame.jpeg`; `src` must be a configured `safeStreamName`, origin + API secret
   like everything else). `config.videoBaseUrl` is what the ground gets (default
-  `http://<host>:<port>/video`, old `:1984` values migrated by `migrateVideoUrl`);
+  `http://<host>:<port>/video`, old `:1984` values migrated by `migrateVideoUrl`). The
+  ground resolves a reported `VIDEO_PATH` (protocol) against its control link
+  (`effectiveVideoBase`, v1.70.2) — the stored host never decides where video goes;
   `config.go2rtcApiUrl` is for the vehicle's own calls. Never hand out the go2rtc API URL.
 - **Channel µs**: nominal 1000–2000, absolute clamp 500–2500 (`protocol/channels.ts`,
   `clampChannelUs`). Endpoints are free within the absolute range; default stays
@@ -212,7 +214,8 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   watchdog uses **refs, not stale state**; a fresh connect bumps `genRef` so a
   superseded attempt can't attach a dead stream. Keep that invariant. The offer goes to
   `whepUrl(base, src, secret)`; the API secret is only added when the video URL is the
-  vehicle itself (`videoSecretFor`: same host and port as the control link).
+  vehicle itself (`videoSecretFor`: same host and port as the control link). An offer
+  answered with an error is shown in words (`videoProblem`) — never retry in silence.
 - **Telemetry channels**: voltages/currents/temperatures are lists; the one flagged
   `primary` (else index 0, see `protocol/telemetry.ts` `primaryIndex`) drives battery %,
   mAh/Wh, the low-battery warning and the blackbox. **`chargeSource: 'auto'` states a wish,

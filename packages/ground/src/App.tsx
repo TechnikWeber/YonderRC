@@ -57,33 +57,14 @@ import {
   diagnosticsUrlFromWs,
 } from './lib/diagnostics';
 import { assessPad } from './lib/input/gamepadPick';
-import { videoSecretFor } from './lib/videoLink';
+import { effectiveVideoBase, videoSecretFor } from './lib/videoLink';
 import { DiagnosticsPanel, type DiagnosticsExport } from './components/DiagnosticsPanel';
 import type { DiagnosticFinding } from '@yonderrc/protocol';
 
 /** Shown in the masthead and written into diagnostics files. Bumped with every release. */
-export const GROUND_VERSION = '1.70.1';
+export const GROUND_VERSION = '1.70.2';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
-
-/**
- * If the vehicle reports its video URL as localhost but we connected to it
- * remotely (e.g. a phone → the Pi's AP), rewrite the video host to the host we're
- * actually talking to, so video works without the vehicle knowing its own address.
- */
-function effectiveVideoBase(reported: string | null | undefined, wsUrl: string): string | null {
-  if (!reported) return null;
-  try {
-    const v = new URL(reported);
-    if (v.hostname === 'localhost' || v.hostname === '127.0.0.1') {
-      const host = new URL(wsUrl.replace(/^ws/, 'http')).hostname;
-      if (host) v.hostname = host;
-    }
-    return v.toString().replace(/\/$/, '');
-  } catch {
-    return reported;
-  }
-}
 
 /** Auto-disarm override, per browser; 'auto' = the vehicle-type policy. */
 const AUTO_DISARM_KEY = 'yonderrc.autoDisarm.v1';

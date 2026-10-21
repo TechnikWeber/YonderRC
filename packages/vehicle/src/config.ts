@@ -4,13 +4,14 @@ import {
   CHANNEL_COUNT,
   CHANNEL_NEUTRAL_US,
   LEGACY_WATCHDOG_TIMEOUT_MS,
+  VIDEO_PATH,
   WATCHDOG_TIMEOUT_MS,
   clampChannelUs,
   clampWatchdogMs,
 } from '@yonderrc/protocol';
 import type { TelemetryConfig, CameraCfg, GpsConfig, UiTheme } from '@yonderrc/protocol';
 import type { ControlSafety } from './core/VehicleCore.js';
-import { GO2RTC_API_DEFAULT, VIDEO_PATH, migrateVideoUrl } from './transport/videoProxy.js';
+import { GO2RTC_API_DEFAULT, migrateVideoUrl } from './transport/videoProxy.js';
 import type { DriverKind, DriverOptions } from './drivers/index.js';
 import type { SystemKind } from './system/index.js';
 import type { RemoteAccessConfig, LteConfig, HotspotConfig } from './system/SystemManager.js';

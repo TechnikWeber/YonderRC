@@ -3507,6 +3507,47 @@ async function main() {
       VL.whepUrl('http://v:8080/video', 'c', 'a&b') === 'http://v:8080/video/api/webrtc?src=c&secret=a%26b');
   }
 
+  // ---- v1.70.2: video goes where control goes ----
+  {
+    const VL = await import('../packages/ground/src/lib/videoLink');
+    const { VIDEO_PATH } = await import('../packages/protocol/src/types/messages');
+    const base = VL.effectiveVideoBase;
+    const link = 'ws://192.168.4.1:8080';
+    ok('the default video URL follows the link', base('http://localhost:8080/video', link) === 'http://192.168.4.1:8080/video');
+    // The bug: a name the vehicle had stored for itself, not the one the ground used —
+    // the secret stayed at home and the vehicle refused the video.
+    ok('a stored name gives way to the address actually used', base('http://yonderrc.local:8080/video', link) === 'http://192.168.4.1:8080/video');
+    ok('so the secret goes along', VL.videoSecretFor(base('http://yonderrc.local:8080/video', link), link, 'k') === 'k');
+    ok('over Tailscale, video comes over Tailscale', base('http://192.168.1.50:8080/video', 'ws://100.101.102.103:8080') === 'http://100.101.102.103:8080/video');
+    ok('behind an HTTPS proxy, video is https on the same name', base('http://localhost:8080/video', 'wss://rover.tail1234.ts.net') === 'https://rover.tail1234.ts.net/video');
+    ok('an IPv6 link keeps its brackets', base('http://localhost:8080/video', 'ws://[fd7a:115c:a1e0::1]:8080') === 'http://[fd7a:115c:a1e0::1]:8080/video');
+    ok('a trailing slash changes nothing', base('http://localhost:8080/video/', 'ws://10.0.0.2:8080') === 'http://10.0.0.2:8080/video');
+    ok('an older vehicle still gets its go2rtc, loopback swapped for the link host', base('http://localhost:1984', link) === 'http://192.168.4.1:1984');
+    ok('and never the secret there', VL.videoSecretFor(base('http://localhost:1984', link), link, 'k') === '');
+    ok("an operator's own video server is used as reported, without the secret",
+      base('https://cams.example.org/go2rtc', link) === 'https://cams.example.org/go2rtc' &&
+      VL.videoSecretFor(base('https://cams.example.org/go2rtc', link), link, 'k') === '');
+    ok('video off stays off', base(null, link) === null && base('', link) === null);
+    ok('ground and vehicle share one video path', VIDEO_PATH === '/video');
+
+    ok('a refused secret is named', /API secret/.test(VL.videoProblem(401) ?? ''));
+    ok('a refused origin says what to do', /localhost/.test(VL.videoProblem(403) ?? ''));
+    const down = 'go2rtc is not answering on http://127.0.0.1:1984 — is it running?';
+    ok("the vehicle's own words come through", VL.videoProblem(502, down) === down);
+    ok('only their first line, and not forever',
+      VL.videoProblem(500, 'streams: exec failed\nmore') === 'streams: exec failed' && (VL.videoProblem(500, 'x'.repeat(500)) ?? '').length === 200);
+    ok('a bare error still says something', VL.videoProblem(500) === 'the vehicle answered HTTP 500 to the video request.');
+    ok('an answer is no problem', VL.videoProblem(201) === null);
+
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('the app uses the shared resolver', app.includes("import { effectiveVideoBase, videoSecretFor } from './lib/videoLink'") && !app.includes('function effectiveVideoBase'));
+    const panel = readFileSync('packages/ground/src/components/VideoPanel.tsx', 'utf8');
+    ok('the panel says why instead of retrying in silence',
+      panel.includes('throw new VideoRefused(res.status') && panel.includes('videoProblem(e.status, e.detail)') && panel.includes('`No video: ${problem}`'));
+    const proxy = readFileSync('packages/vehicle/src/transport/videoProxy.ts', 'utf8');
+    ok('the vehicle takes the path from the protocol', proxy.includes("import { VIDEO_PATH } from '@yonderrc/protocol'") && !proxy.includes('export const VIDEO_PATH'));
+  }
+
   // ---- v1.70.1: a network name is not markup ----
   {
     const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');

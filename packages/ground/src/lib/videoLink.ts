@@ -3,6 +3,8 @@
  * trying when there is nothing to show.
  */
 
+import { VIDEO_PATH } from '@yonderrc/protocol';
+
 /**
  * The stream that should be selected, given the vehicle's list and the current pick.
  *
@@ -55,4 +57,51 @@ export function videoSecretFor(videoBase: string | null, wsUrl: string, secret: 
 /** Where the WebRTC offer for one camera goes. */
 export function whepUrl(baseUrl: string, src: string, secret = ''): string {
   return `${baseUrl}/api/webrtc?src=${encodeURIComponent(src)}${secret ? `&secret=${encodeURIComponent(secret)}` : ''}`;
+}
+
+/**
+ * Where the ground asks for video: over the control link's own address, whenever the
+ * vehicle serves the video itself.
+ *
+ * Since v1.70.1 a vehicle serves video on its `/video` path, and reports it under
+ * whatever host it has stored for itself. That need not be the address the ground
+ * reached it on — `yonderrc.local` where the ground used the IP, a LAN address where it
+ * came over Tailscale, plain http behind an HTTPS proxy. Taken at its word, the video
+ * URL then missed the vehicle, or reached it under a name the API secret is not sent to
+ * (`videoSecretFor`), and the vehicle refused the video. So a reported `/video` path is
+ * resolved against the control link: same scheme, host and port. Video goes wherever
+ * control goes.
+ *
+ * Older vehicles report go2rtc itself (`http://localhost:1984`); there only a loopback
+ * host is swapped for the link's host, as before. Anything else is a video server of
+ * the operator's own and is used as reported.
+ */
+export function effectiveVideoBase(reported: string | null | undefined, wsUrl: string): string | null {
+  if (!reported) return null;
+  let v: URL;
+  let link: URL;
+  try {
+    v = new URL(reported);
+    link = new URL(wsUrl.replace(/^ws/, 'http'));
+  } catch {
+    return reported;
+  }
+  if (v.pathname.replace(/\/+$/, '') === VIDEO_PATH) return `${link.protocol}//${link.host}${VIDEO_PATH}`;
+  if ((v.hostname === 'localhost' || v.hostname === '127.0.0.1') && link.hostname) v.hostname = link.hostname;
+  return v.toString().replace(/\/$/, '');
+}
+
+/**
+ * What the operator reads when the video offer is answered with an error — instead of a
+ * panel that says "Reconnecting…" forever. `detail` is the answer's own text: the
+ * vehicle says what is wrong (go2rtc not running, no camera of that name), go2rtc says
+ * why a stream failed. Null when there is nothing better to say than retrying.
+ */
+export function videoProblem(status: number, detail = ''): string | null {
+  if (status === 401) return 'the vehicle wants its API secret for video — enter it next to the address.';
+  if (status === 403)
+    return 'the vehicle refused the video request. Desktop app and vehicle on the same computer: connect via the computer’s network address instead of localhost, or set an API secret.';
+  if (status < 400) return null;
+  const said = detail.trim().split('\n')[0].trim().slice(0, 200);
+  return said || `the vehicle answered HTTP ${status} to the video request.`;
 }

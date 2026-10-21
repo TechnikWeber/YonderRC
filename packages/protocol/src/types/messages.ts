@@ -115,7 +115,11 @@ export interface WelcomeMessage {
   driver: string;
   /** Echo of watchdog timeout so the ground can show/keepalive correctly. */
   watchdogTimeoutMs: number;
-  /** Base URL of the go2rtc video server, e.g. http://vehicle:1984 (or null in pure sim). */
+  /**
+   * Where video comes from, or null when video is off. Since v1.70.1 the vehicle's own
+   * `VIDEO_PATH` (`http://<vehicle>:8080/video`), which the ground resolves against its
+   * control link; older vehicles report go2rtc itself (`http://<vehicle>:1984`).
+   */
   videoBaseUrl: string | null;
   /** Names of available camera streams for switching, e.g. ["test"] or ["rpicam","usb0"]. */
   cameras: string[];
@@ -239,3 +243,6 @@ export interface RtcSignalMessage {
 }
 
 export const PROTOCOL_VERSION = 1;
+
+/** The path the vehicle serves video on, next to the control link (v1.70.1). */
+export const VIDEO_PATH = '/video';

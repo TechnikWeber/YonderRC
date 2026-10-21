@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { VIDEO_PATH } from '@yonderrc/protocol';
 import { originAllowed, originOf, readSecretFromReq, secFetchSiteOf, secretOk } from './auth.js';
 
 /**
@@ -15,9 +16,6 @@ import { originAllowed, originOf, readSecretFromReq, secFetchSiteOf, secretOk } 
 
 /** go2rtc's API on the vehicle itself. `YRC_GO2RTC_API` overrides it. */
 export const GO2RTC_API_DEFAULT = 'http://127.0.0.1:1984';
-
-/** Where the vehicle serves video to the ground: `http://<vehicle>:<port>/video`. */
-export const VIDEO_PATH = '/video';
 
 /** The go2rtc calls passed on, and nothing else. */
 const ROUTES: Record<string, { method: 'GET' | 'POST'; timeoutMs: number }> = {

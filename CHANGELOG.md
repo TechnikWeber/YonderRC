@@ -3,6 +3,35 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.70.2
+*Video follows the control link — whatever address the vehicle has stored for itself.*
+
+**English**
+- **Video comes over the address you connected to.** Since v1.70.1 the vehicle serves
+  video itself (`…:8080/video`), but the ground still took the host from the video address
+  the vehicle had stored. Where that differed from the address in the app — `yonderrc.local`
+  against the IP, a LAN address while connected over Tailscale — video missed the vehicle
+  or reached it without the API secret, and a vehicle with a secret refused it. The ground
+  now always asks the address of the control link, as the hardware guide already said
+  ("the video comes along over the same address"). Older vehicles that still report
+  go2rtc on port 1984 work as before.
+- **The video panel says why there is no picture** instead of "Reconnecting…" forever: the
+  vehicle's own answer (go2rtc not running, no camera of that name), a missing API secret,
+  or a refused request — each with what to do about it.
+
+**Deutsch**
+- **Das Video kommt über die Adresse, mit der du verbunden bist.** Seit v1.70.1 liefert das
+  Fahrzeug das Video selbst (`…:8080/video`), die Bodenstation nahm den Host aber noch aus
+  der Video-Adresse, die das Fahrzeug gespeichert hatte. Wich die von der Adresse in der App
+  ab — `yonderrc.local` statt der IP, eine LAN-Adresse bei Verbindung über Tailscale —,
+  verfehlte das Video das Fahrzeug oder kam ohne API-Secret an, und ein Fahrzeug mit Secret
+  lehnte es ab. Jetzt fragt die Bodenstation immer die Adresse der Steuerverbindung, wie es
+  die Hardware-Anleitung schon sagte („Das Video kommt über dieselbe Adresse mit“). Ältere
+  Fahrzeuge, die noch go2rtc auf Port 1984 melden, laufen wie bisher.
+- **Das Videofenster sagt, warum kein Bild kommt**, statt endlos „Reconnecting…“: die
+  Antwort des Fahrzeugs (go2rtc läuft nicht, keine Kamera dieses Namens), ein fehlendes
+  API-Secret oder eine abgelehnte Anfrage — jeweils mit dem, was zu tun ist.
+
 ## v1.70.1
 *Safety and security fixes from a review of the whole project. Worth installing soon: two
 of them let anything on the network reach further into the vehicle than it should.*

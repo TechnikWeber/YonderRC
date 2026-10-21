@@ -20,7 +20,7 @@ import type { InputManager } from '../lib/input/inputManager';
 import { useRecorder } from '../lib/recorder';
 import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
-import { reconnectDelayMs, selectedCamera, whepUrl } from '../lib/videoLink';
+import { reconnectDelayMs, selectedCamera, videoProblem, whepUrl } from '../lib/videoLink';
 import { throttleChannelsOf } from '../lib/templates';
 import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend, signalScore, LINK_FAIR } from '../lib/linkHealth';
@@ -214,6 +214,17 @@ async function readVideoStats(pc: RTCPeerConnection, prev: VideoStats | null, dt
 }
 
 /** Minimal WebRTC client for go2rtc: POST our offer, apply its answer. */
+/** The offer was answered, but with an error — the status and the answer's own words. */
+class VideoRefused extends Error {
+  status: number;
+  detail: string;
+  constructor(status: number, detail: string) {
+    super(`video offer: HTTP ${status}`);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 async function playWhep(
   baseUrl: string,
   src: string,
@@ -238,7 +249,7 @@ async function playWhep(
     headers: { 'content-type': 'application/sdp' },
     body: pc.localDescription?.sdp ?? '',
   });
-  if (!res.ok) throw new Error(`go2rtc webrtc ${res.status}`);
+  if (!res.ok) throw new VideoRefused(res.status, await res.text().catch(() => ''));
   const answer = await res.text();
   await pc.setRemoteDescription({ type: 'answer', sdp: answer });
   return pc;
@@ -453,6 +464,8 @@ export function VideoPanel({
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [camera, setCamera] = useState(cameras[0] ?? '');
   const [play, setPlay] = useState<PlayState>('idle');
+  /** Why the last offer failed, in words (videoProblem) — shown while retrying. */
+  const [problem, setProblem] = useState<string | null>(null);
   const [showOsd, setShowOsd] = useState(true);
   const [osdFields, setOsdFieldsState] = useState<OsdFields>(loadOsdFields);
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(loadHidden);
@@ -586,16 +599,19 @@ export function VideoPanel({
           const st = pc.connectionState;
           if (st === 'connected') {
             attemptRef.current = 0;
+            setProblem(null);
             setPlay('playing');
           } else if (st === 'failed' || st === 'disconnected' || st === 'closed') {
             if (!cancelled && wantVideo) scheduleReconnect();
           }
         };
-      } catch {
+      } catch (e) {
+        if (!cancelled) setProblem(e instanceof VideoRefused ? videoProblem(e.status, e.detail) : null);
         if (!cancelled && wantVideo) scheduleReconnect();
       }
     }
 
+    setProblem(null);
     if (!wantVideo) {
       setPlay('idle');
       setStats(null);
@@ -940,8 +956,8 @@ export function VideoPanel({
 
         {play !== 'playing' && (
           <div className="video-placeholder">
-            {play === 'connecting' && 'Connecting to camera…'}
-            {play === 'reconnecting' && 'Reconnecting…'}
+            {play === 'connecting' && (problem ? `No video: ${problem}` : 'Connecting to camera…')}
+            {play === 'reconnecting' && (problem ? `No video: ${problem}` : 'Reconnecting…')}
             {play === 'idle' &&
               (cameras.length === 0 && linkState === 'connected'
                 ? 'No camera configured — the screen stays dark. Add one under Setup › Cameras, or leave it: driving on sight over IP/WiFi is a valid setup.'
