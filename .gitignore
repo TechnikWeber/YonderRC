@@ -9,3 +9,7 @@ bin/
 # Written by the running vehicle service, not source
 yonderrc-config.json
 packages/*/yonderrc-config.json
+
+# Not tracked: every Pi runs npm install and writes its own, and a tracked one would
+# collide with it on `git pull` — the update button would stop working.
+package-lock.json
