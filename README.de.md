@@ -73,6 +73,9 @@ npm run dev
 Für Video `npm run dev:video` in einem zweiten Terminal im selben Ordner starten. Beim
 ersten Mal lädt es go2rtc nach `bin/`. Tests: `npm test`.
 
+Windows blockiert beim ersten Start eine Datei („Anwendungssteuerungsrichtlinie“)? Siehe
+[Fehlersuche §5](docs/TROUBLESHOOTING.de.md#5-probleme-bei-der-installation).
+
 ## Wie dieser Code entstanden ist
 
 YonderRC ist **mit KI-Unterstützung** entstanden: Der Großteil des Codes stammt von

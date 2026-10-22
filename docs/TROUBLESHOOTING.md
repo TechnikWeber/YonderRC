@@ -141,6 +141,7 @@ control app.
 | `curl: (6) Could not resolve host` | No internet on the Pi. WiFi set in Imager? Otherwise Ethernet, or copy the files (QUICKSTART Option B). |
 | `REMOTE HOST IDENTIFICATION HAS CHANGED` (SSH) | After re-flashing: on the PC `ssh-keygen -R yonderrc.local`. |
 | Certificate error during an update | The Pi's clock is wrong (it has no battery-backed clock). Give it internet; the setup page shows the clock next to the update button. |
+| Simulator on Windows: `Cannot find module @rollup/rollup-win32-…` with "An Application Control policy has blocked this file" (German Windows: "Eine Anwendungssteuerungsrichtlinie hat diese Datei blockiert") | Windows' **Smart App Control** checks new program files online and can block one right after `npm install`. Wait a few minutes and run `npm run dev` again; usually the file is allowed then. If it stays blocked, the way out is to switch it off: *Windows Security › App & browser control › Smart App Control settings › Off*. **Think first:** it protects you from unknown programs, and depending on the Windows version it can only be switched back on by reinstalling Windows. |
 
 More symptoms — no video, LTE, GPS, the data budget — are in
 [`HARDWARE.md` §7](HARDWARE.md#7-quick-troubleshooting).

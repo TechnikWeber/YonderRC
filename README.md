@@ -73,6 +73,9 @@ Open `http://localhost:5173`, press **Connect**, **hold Arm for 1 s** and drive 
 For video, run `npm run dev:video` in a second terminal in the same folder. The first
 time it downloads go2rtc into `bin/`. Tests: `npm test`.
 
+Windows blocks a file on the first start ("Application Control policy")? See
+[Troubleshooting §5](docs/TROUBLESHOOTING.md#5-installation-problems).
+
 ## How this code was written
 
 YonderRC is written **with AI assistance**: most of the code comes from Anthropic's Claude,

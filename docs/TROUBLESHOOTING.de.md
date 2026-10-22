@@ -147,6 +147,7 @@ der Steuer-App eingestellt.
 | `curl: (6) Could not resolve host` | Kein Internet am Pi. WLAN im Imager gesetzt? Sonst Ethernet, oder die Dateien kopieren (QUICKSTART Option B). |
 | `REMOTE HOST IDENTIFICATION HAS CHANGED` (SSH) | Nach dem Neubespielen: am PC `ssh-keygen -R yonderrc.local`. |
 | Zertifikatsfehler beim Update | Die Uhr des Pi stimmt nicht (er hat keine gepufferte Uhr). Ihm Internet geben; die Setup-Seite zeigt die Uhr neben dem Update-Knopf. |
+| Simulator unter Windows: `Cannot find module @rollup/rollup-win32-…` mit „Eine Anwendungssteuerungsrichtlinie hat diese Datei blockiert“ (englisches Windows: "An Application Control policy has blocked this file") | Die **intelligente App-Steuerung** von Windows prüft neue Programmdateien online und kann eine direkt nach `npm install` blockieren. Ein paar Minuten warten und `npm run dev` noch einmal starten; meist ist die Datei dann zugelassen. Bleibt sie blockiert, ist der Ausweg, sie abzuschalten: *Windows-Sicherheit › App- & Browsersteuerung › Einstellungen für intelligente App-Steuerung › Aus*. **Vorher überlegen:** Sie schützt vor unbekannten Programmen, und je nach Windows-Version lässt sie sich nur durch Neuinstallation von Windows wieder einschalten. |
 
 Weitere Symptome — kein Video, LTE, GPS, das Datenbudget — stehen in
 [`HARDWARE.de.md` §7](HARDWARE.de.md#7-schnelle-fehlersuche).
