@@ -36,6 +36,7 @@ The full list: [`docs/FEATURES.md`](docs/FEATURES.md).
 | build a vehicle, step by step | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) |
 | see parts, wiring, LTE and remote access | [`docs/HARDWARE.md`](docs/HARDWARE.md) |
 | fix something that does not work | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) |
+| control from a desktop program | [the desktop app](#desktop-app), below |
 
 On a Raspberry Pi with the hardware connected, one line installs everything:
 
@@ -75,6 +76,25 @@ time it downloads go2rtc into `bin/`. Tests: `npm test`.
 
 Windows blocks a file on the first start ("Application Control policy")? See
 [Troubleshooting §5](docs/TROUBLESHOOTING.md#5-installation-problems).
+
+## Desktop app
+
+The same control app as a program of its own, for Windows and Linux. It reads game
+controllers natively (SDL): worth it when the browser does not know your controller, or
+for rumble. Everything else is the same as in the browser.
+
+- **Download** from the [latest release](https://github.com/TechnikWeber/YonderRC/releases/latest):
+  `…-windows-setup.exe` (installs), `…-windows-portable.exe` (runs without installing) or
+  `…-linux-x86_64.AppImage`.
+- **Windows**: the files are **not signed**. SmartScreen warns — *More info › Run anyway*.
+  With Smart App Control on, Windows blocks them outright; then use the browser, or start
+  it from the source (below).
+- **Linux**: `chmod +x YonderRC-*.AppImage`, then start it. Ubuntu 22.04 and newer need
+  `libfuse2` (`sudo apt install libfuse2`; on 24.04 `libfuse2t64`). The AppImage is built
+  automatically and **not yet tested on a real Linux desktop** — if it does not start,
+  please open an issue.
+- **From the source**: with `npm run dev` running, start `npm run dev:desktop` in a second
+  terminal. More in [`packages/desktop`](packages/desktop/README.md).
 
 ## How this code was written
 

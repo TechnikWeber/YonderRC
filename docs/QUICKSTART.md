@@ -20,7 +20,7 @@ already in use.
 |---|---|---|
 | **Vehicle** | a Raspberry Pi in the model | install YonderRC on it — this guide |
 | **Ground station** | any browser (PC, phone, tablet) | nothing to install — the vehicle serves it at `http://yonderrc.local:8080/` |
-| Desktop app (optional) | Windows / Linux | `packages/desktop` — only if you want native controller support |
+| Desktop app (optional) | Windows / Linux | download from the release, see the [README](../README.md#desktop-app) — only if you want native controller support |
 
 In the repository, `provisioning/` is everything that only concerns the Pi (installer,
 services, hotspot). You never run anything from it on your PC.

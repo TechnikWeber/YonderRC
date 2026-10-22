@@ -1,0 +1,45 @@
+# Desktop installers for every release: Windows (setup + portable) and a Linux AppImage,
+# built on the matching OS and attached to the release that triggered the run.
+# Unsigned — see the README's "Desktop app" section for what that means on Windows.
+name: Desktop installers
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and attach to (e.g. v1.72.3)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build:desktop
+      - name: Attach to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd packages/desktop/release
+          shopt -s nullglob
+          files=(YonderRC-*-windows-*.exe YonderRC-*.AppImage)
+          ls -la "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber

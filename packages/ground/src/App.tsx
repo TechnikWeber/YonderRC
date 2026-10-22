@@ -64,7 +64,7 @@ import { DiagnosticsPanel, type DiagnosticsExport } from './components/Diagnosti
 import type { DiagnosticFinding } from '@yonderrc/protocol';
 
 /** Shown in the masthead and written into diagnostics files. Bumped with every release. */
-export const GROUND_VERSION = '1.72.2';
+export const GROUND_VERSION = '1.72.3';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 

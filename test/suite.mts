@@ -3940,6 +3940,28 @@ async function main() {
     ok('camera snapshots come through the vehicle, built from nodes', snap.includes('/video/api/frame.jpeg') && !snap.includes('1984') && !snap.includes('innerHTML = names'));
   }
 
+  // ---- v1.72.3: the installed desktop app ----
+  {
+    const { originAllowed } = await import('../packages/vehicle/src/transport/auth');
+    // What the installed app sends by itself (a file page) and after markRequestsAsLocal.
+    ok('a file page as Chromium labels it is refused — the 403 the app hit', originAllowed('null', false, 'localhost:8080', 'cross-site') === false);
+    ok("the app's own requests, relabelled, are let in", originAllowed('file://', false, 'localhost:8080', undefined) === true);
+    const main = readFileSync('packages/desktop/src/main.ts', 'utf8');
+    ok('the installed app relabels its requests as file://', main.includes('markRequestsAsLocal(win)') && main.includes("headers.Origin = 'file://'") && /sec-fetch-site/i.test(main));
+    ok('only on its own window, never on a file load', main.includes('details.webContentsId !== own') && main.includes("details.url.startsWith('file:')"));
+    const pkg = JSON.parse(readFileSync('packages/desktop/package.json', 'utf8'));
+    // An absolute /assets/… path is C:ssets\… in a file page: an empty window.
+    ok('the desktop renderer is built with relative paths', pkg.scripts['build-renderer'].includes('--base ./') && pkg.scripts.build.includes('build-renderer'));
+    const cfg = readFileSync('packages/desktop/electron-builder.config.cjs', 'utf8');
+    ok('electron-builder does not reinstall the workspace mid-build', cfg.includes('npmRebuild: false'));
+    ok('and finds the hoisted Electron', cfg.includes("require('electron/package.json')"));
+    const root = JSON.parse(readFileSync('package.json', 'utf8'));
+    ok('npm 11 may run the install scripts that fetch native parts', ['electron', 'esbuild', 'node-datachannel', '@kmamal/sdl'].every((n) => root.allowScripts?.[n] === true));
+    const wf = readFileSync('.github/workflows/desktop.yml', 'utf8');
+    ok('every release gets Windows and Linux installers', wf.includes('windows-latest') && wf.includes('ubuntu-latest') && wf.includes('gh release upload'));
+    ok('electron-builder never publishes on its own', pkg.scripts.build.includes('--publish never'));
+  }
+
   // ---- report ----
   console.log(`\n${'='.repeat(40)}`);
   console.log(`YonderRC test suite: ${pass} passed, ${fail} failed`);

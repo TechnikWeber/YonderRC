@@ -3,6 +3,40 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.72.3
+*The desktop app as a download: Windows installer, portable and Linux AppImage on every
+release — and the installed app now actually works.*
+
+**English**
+- **Desktop app downloads** on the release page from now on: `…-windows-setup.exe`,
+  `…-windows-portable.exe` and `…-linux-x86_64.AppImage`, built automatically for every
+  release. **Unsigned**: SmartScreen warns (*More info › Run anyway*), and with Smart App
+  Control on, Windows blocks them — then use the browser. The AppImage is not yet tested on
+  a real Linux desktop. How to: README › *Desktop app*.
+- **The installed app showed an empty window.** It looked for its files under `/assets`,
+  which in an installed app is `C:ssets`. It had only ever been run from the source.
+- **Video in the desktop app** works without an API secret, also with the vehicle on the
+  same PC. The installed app's requests looked like a page from the internet and the
+  vehicle refused them (403). Works with every vehicle, nothing to update there.
+- **`npm install` with npm 11** fetches Electron, esbuild and the WebRTC module again:
+  newer npm skips install scripts that a project has not allowed.
+
+**Deutsch**
+- **Desktop-App zum Herunterladen** ab jetzt auf der Release-Seite: `…-windows-setup.exe`,
+  `…-windows-portable.exe` und `…-linux-x86_64.AppImage`, für jedes Release automatisch
+  gebaut. **Nicht signiert**: SmartScreen warnt (*Weitere Informationen › Trotzdem
+  ausführen*), und mit eingeschalteter intelligenter App-Steuerung blockiert Windows sie —
+  dann den Browser nehmen. Das AppImage ist noch nicht auf einem echten Linux-Desktop
+  getestet. Anleitung: README › *Desktop-App*.
+- **Die installierte App zeigte ein leeres Fenster.** Sie suchte ihre Dateien unter
+  `/assets`, was in einer installierten App `C:ssets` ist. Sie war bisher nur aus dem
+  Quellcode gestartet worden.
+- **Video in der Desktop-App** geht ohne API-Secret, auch mit dem Fahrzeug auf demselben
+  PC. Die Anfragen der installierten App sahen aus wie eine Seite aus dem Internet, und das
+  Fahrzeug lehnte sie ab (403). Geht mit jedem Fahrzeug, dort ist kein Update nötig.
+- **`npm install` mit npm 11** holt Electron, esbuild und das WebRTC-Modul wieder: neuere
+  npm-Versionen überspringen Installationsskripte, die ein Projekt nicht freigegeben hat.
+
 ## v1.72.2
 *Setup › Controls keeps one group open at a time.*
 

@@ -39,8 +39,34 @@ async function createWindow(): Promise<void> {
     await win.loadURL('http://localhost:5173');
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
+    markRequestsAsLocal(win);
     await win.loadFile(join(__dirname, '../renderer/index.html'));
   }
+}
+
+/**
+ * The installed app loads the ground from a file, so Chromium labels every request it
+ * makes to a vehicle `Sec-Fetch-Site: cross-site` with `Origin: null` — exactly what a
+ * page from the internet looks like, and the vehicle refuses it (403 on video and on
+ * setup). Its control WebSocket already says `Origin: file://`, which the vehicle knows
+ * as local. Say the same on this window's own requests, so the app works with every
+ * vehicle, old ones included, without weakening the vehicle's check for browsers —
+ * no web page can send `Origin: file://`.
+ */
+function markRequestsAsLocal(win: BrowserWindow): void {
+  const own = win.webContents.id;
+  win.webContents.session.webRequest.onBeforeSendHeaders((details, done) => {
+    if (details.webContentsId !== own || details.url.startsWith('file:')) {
+      done({ requestHeaders: details.requestHeaders });
+      return;
+    }
+    const headers = { ...details.requestHeaders };
+    for (const name of Object.keys(headers)) {
+      if (/^(origin|sec-fetch-site)$/i.test(name)) delete headers[name];
+    }
+    headers.Origin = 'file://';
+    done({ requestHeaders: headers });
+  });
 }
 
 app.whenReady().then(createWindow);

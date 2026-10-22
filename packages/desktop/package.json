@@ -1,14 +1,14 @@
 {
   "name": "@yonderrc/desktop",
-  "version": "1.72.2",
+  "version": "1.72.3",
   "private": true,
   "description": "YonderRC desktop shell (Electron) with native SDL2 controller input and rumble.",
   "main": "dist/main.js",
   "scripts": {
     "compile": "tsc -p tsconfig.json",
     "dev": "npm run compile && cross-env YRC_DEV=1 electron .",
-    "copy-renderer": "node scripts/copy-renderer.mjs",
-    "build": "npm run compile && npm --prefix ../ground run build && npm run copy-renderer && electron-builder",
+    "build-renderer": "vite build ../ground --base ./ --outDir ../desktop/renderer --emptyOutDir",
+    "build": "npm run compile && npm run build-renderer && electron-builder --config electron-builder.config.cjs --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {},

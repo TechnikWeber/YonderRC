@@ -20,7 +20,7 @@ du sie vor der Installation angeschlossen hast — Servo-Board und Kamera schon 
 |---|---|---|
 | **Fahrzeug** | ein Raspberry Pi im Modell | YonderRC darauf installieren — diese Anleitung |
 | **Bodenstation** | jeder Browser (PC, Handy, Tablet) | nichts installieren — das Fahrzeug liefert sie unter `http://yonderrc.local:8080/` aus |
-| Desktop-App (optional) | Windows / Linux | `packages/desktop` — nur für native Controller-Unterstützung |
+| Desktop-App (optional) | Windows / Linux | Download im Release, siehe [README](../README.de.md#desktop-app) — nur für native Controller-Unterstützung |
 
 Im Repository ist `provisioning/` alles, was nur den Pi betrifft (Installer, Dienste,
 Hotspot). Daraus wird auf dem PC nie etwas ausgeführt.

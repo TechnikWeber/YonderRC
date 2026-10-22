@@ -36,6 +36,7 @@ Die vollständige Liste: [`docs/FEATURES.de.md`](docs/FEATURES.de.md).
 | ein Fahrzeug aufbauen, Schritt für Schritt | [`docs/QUICKSTART.de.md`](docs/QUICKSTART.de.md) |
 | Teile, Verkabelung, LTE und Fernzugriff sehen | [`docs/HARDWARE.de.md`](docs/HARDWARE.de.md) |
 | etwas reparieren, das nicht geht | [`docs/TROUBLESHOOTING.de.md`](docs/TROUBLESHOOTING.de.md) |
+| aus einem eigenen Programm steuern | [die Desktop-App](#desktop-app), unten |
 
 Auf einem Raspberry Pi mit angeschlossener Hardware installiert eine Zeile alles:
 
@@ -75,6 +76,25 @@ ersten Mal lädt es go2rtc nach `bin/`. Tests: `npm test`.
 
 Windows blockiert beim ersten Start eine Datei („Anwendungssteuerungsrichtlinie“)? Siehe
 [Fehlersuche §5](docs/TROUBLESHOOTING.de.md#5-probleme-bei-der-installation).
+
+## Desktop-App
+
+Dieselbe Steuer-App als eigenes Programm, für Windows und Linux. Sie liest Gamecontroller
+direkt (SDL): lohnt sich, wenn der Browser deinen Controller nicht kennt, oder für
+Vibration. Alles andere ist wie im Browser.
+
+- **Download** im [neuesten Release](https://github.com/TechnikWeber/YonderRC/releases/latest):
+  `…-windows-setup.exe` (installiert), `…-windows-portable.exe` (läuft ohne Installation)
+  oder `…-linux-x86_64.AppImage`.
+- **Windows**: Die Dateien sind **nicht signiert**. SmartScreen warnt — *Weitere
+  Informationen › Trotzdem ausführen*. Ist die intelligente App-Steuerung an, blockiert
+  Windows sie ganz; dann den Browser nehmen oder die App aus dem Quellcode starten (unten).
+- **Linux**: `chmod +x YonderRC-*.AppImage`, dann starten. Ab Ubuntu 22.04 braucht es
+  `libfuse2` (`sudo apt install libfuse2`; unter 24.04 `libfuse2t64`). Das AppImage wird
+  automatisch gebaut und ist **noch nicht auf einem echten Linux-Desktop getestet** — wenn
+  es nicht startet, bitte ein Issue aufmachen.
+- **Aus dem Quellcode**: Während `npm run dev` läuft, `npm run dev:desktop` in einem
+  zweiten Terminal starten. Mehr in [`packages/desktop`](packages/desktop/README.md).
 
 ## Wie dieser Code entstanden ist
 

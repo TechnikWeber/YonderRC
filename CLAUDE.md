@@ -142,6 +142,16 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   are renumbered once by `migratePadLayout` (`lib/padLayout.ts`, called in `main.tsx`
   before the first render); the mark is set whatever happens — renumbering twice would move
   every button on again.
+- **Installed desktop app** (v1.72.3; before, it had only ever run in dev): the renderer
+  is built with `--base ./` into `desktop/renderer/` (absolute `/assets` is `C:ssets` in a
+  file page — an empty window); `markRequestsAsLocal` (`desktop/src/main.ts`) relabels the
+  window's own requests `Origin: file://` without `Sec-Fetch-Site`, because a file page
+  is `cross-site`/`null` and every vehicle refuses that (video, setup) — do not loosen the
+  vehicle's check instead, a sandboxed iframe on any site is `null` too.
+  `electron-builder.config.cjs` sets `npmRebuild: false` (its production install wipes
+  the workspace's dev tools mid-build) and reads the hoisted Electron's version. npm 11
+  skips install scripts not in the root `allowScripts` — add any new native dependency
+  there. Installers come from `.github/workflows/desktop.yml` on every published release.
 - **Output names** (v1.71): `OutputDriver.outputLabel(ch)` → `VehicleCore.outputLabels()`
   → `welcome.outputs` (undefined on sim) → `channelName(ch, outputs)` in the ground:
   `CH03 · out 2`. The app keeps counting from 1.
