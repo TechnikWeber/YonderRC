@@ -3011,8 +3011,11 @@ async function main() {
     ok('and automatic forgets it', GP.loadPadPref(store) === null);
     ok('unreadable storage is not fatal', GP.loadPadPref({ getItem: () => { throw new Error('denied'); }, setItem: () => {} }) === null);
     const picker = readFileSync('packages/ground/src/components/ControllerPicker.tsx', 'utf8');
-    ok('the controller group folds and starts closed like the others', /<details className="group" onToggle=/.test(picker) && !/<details className="group"[^>]*\bopen\b/.test(picker));
+    ok('the controller group folds and starts closed like the others', /<details className="group" name="controls-groups" onToggle=/.test(picker) && !/<details className="group"[^>]*\bopen\b/.test(picker));
     ok('and sits in Setup › Controls', readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8').includes('<ControllerPicker input={input} profiles={padProfiles}'));
+    // One accordion: opening a group folds the others, so the panel stays short.
+    const groups = [...readFileSync('packages/ground/src/components/ControlsPanel.tsx', 'utf8').matchAll(/<details className="group"([^>]*)>/g)];
+    ok('every Controls group is in the one accordion', groups.length === 8 && groups.every((g) => g[1].includes('name="controls-groups"')), `${groups.length} groups`);
   }
 
   // ---- OpenVPN (experimental): an uploaded profile must not be a way to run code ----

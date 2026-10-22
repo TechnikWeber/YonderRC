@@ -3,6 +3,28 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
 
+## v1.72.2
+*Setup › Controls keeps one group open at a time.*
+
+**English**
+- **One group open at a time** in Setup › Controls: opening Safety, Return-home budget,
+  Stick feedback, Voice callouts, Auto-disarm, Game controller, Action bindings,
+  Low-battery warning or Blackbox logging folds the one that was open, so the page stays
+  short. The small hints inside a group open and close as before. A browser too old for
+  this simply lets several stay open.
+- Troubleshooting §5: Windows' Smart App Control can block a file of the simulator right
+  after `npm install` — wait and start again, and the way out if it stays blocked.
+
+**Deutsch**
+- **Immer nur eine Gruppe offen** in Setup › Controls: Wer Safety, Return-home budget,
+  Stick feedback, Voice callouts, Auto-disarm, Game controller, Action bindings,
+  Low-battery warning oder Blackbox logging aufklappt, klappt die bisher offene zu — die
+  Seite bleibt kurz. Die kleinen Hinweise in einer Gruppe klappen wie bisher. Ein zu alter
+  Browser lässt einfach mehrere offen.
+- Fehlersuche §5: Die intelligente App-Steuerung von Windows kann direkt nach
+  `npm install` eine Datei des Simulators blockieren — warten und neu starten, und der
+  Ausweg, wenn sie blockiert bleibt.
+
 ## v1.72.1
 *The simulator on Windows and macOS, with video; go2rtc on 32-bit Pi OS.*
 

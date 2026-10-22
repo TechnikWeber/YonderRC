@@ -164,8 +164,11 @@ export function ControlsPanel({
     <section className="panel controls-panel">
       {/* Closed by default: three settings you set once per model and then leave
           alone, sitting on top of the six groups below. The heading stays the
-          eyebrow the other groups use, so the panel keeps its rhythm. */}
-      <details className="group">
+          eyebrow the other groups use, so the panel keeps its rhythm.
+          Every group shares name="controls-groups" (Game controller in ControllerPicker
+          too): the browser keeps at most one open, so opening one folds the others.
+          A browser without it simply lets several stay open. */}
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Safety</summary>
         <label className="opt big">
           <input type="checkbox" checked={preArm} onChange={(e) => onPreArm(e.target.checked)} />
@@ -228,7 +231,7 @@ export function ControlsPanel({
         </Hint>
       </details>
 
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Return-home budget</summary>
         <label className="opt big">
           <input
@@ -281,7 +284,7 @@ export function ControlsPanel({
         </Hint>
       </details>
 
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Stick feedback</summary>
         <label className="opt big">
           <input
@@ -338,7 +341,7 @@ export function ControlsPanel({
         </Hint>
       </details>
 
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Voice callouts</summary>
         <label className="opt big">
           <input
@@ -391,7 +394,7 @@ export function ControlsPanel({
 
       {/* The two ⚠ notes below stay OUTSIDE the fold: a warning you have to
           open is not a warning. */}
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Auto-disarm on reconnect{' '}
           <span className={`group-badge ${autoDisarm ? 'go' : 'idle'}`}>{autoDisarm ? 'ON' : 'OFF'}</span>
         </summary>
@@ -433,7 +436,7 @@ export function ControlsPanel({
 
       <ControllerPicker input={input} profiles={padProfiles} onProfiles={onPadProfiles} locked={armed} />
 
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Action bindings</summary>
         <Hint summary="Panic-disarm ships unbound, and why">
           Assign any action to a keyboard key and/or a controller button. Panic disarms immediately over
@@ -523,7 +526,7 @@ export function ControlsPanel({
         </p>
       </details>
 
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Low-battery warning</summary>
         <div className="batt-mode">
           {(['auto', 'on', 'off'] as const).map((m) => (
@@ -566,7 +569,7 @@ export function ControlsPanel({
         </Hint>
       </details>
 
-      <details className="group">
+      <details className="group" name="controls-groups">
         <summary className="eyebrow">Blackbox logging {logging && <span className="group-badge go">recording</span>}</summary>
         <label className="opt big">
           <input type="checkbox" checked={logging} onChange={(e) => onLogging(e.target.checked)} />

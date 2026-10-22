@@ -73,7 +73,7 @@ export function ControllerPicker({
   const absentSetUp = Object.keys(profiles).filter((id) => isSetUp(id) && !pads.some((p) => p.id === id));
 
   return (
-    <details className="group" onToggle={(e) => setOpen(e.currentTarget.open)}>
+    <details className="group" name="controls-groups" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="eyebrow">
         Game controller{' '}
         <span className={`group-badge ${active ? 'go' : 'idle'}`}>{active ? 'connected' : 'none'}</span>
