@@ -3,6 +3,7 @@
 <p>
   <img alt="Status: stable" src="https://img.shields.io/badge/status-stable-brightgreen">
   <a href="https://github.com/TechnikWeber/YonderRC/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/TechnikWeber/YonderRC?include_prereleases&label=release"></a>
+  <a href="https://github.com/TechnikWeber/YonderRC/actions/workflows/ci.yml"><img alt="tests" src="https://img.shields.io/github/actions/workflow/status/TechnikWeber/YonderRC/ci.yml?branch=main&label=tests"></a>
   <img alt="Platform: Raspberry Pi | browser | Windows | Linux" src="https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20browser%20%7C%20Windows%20%7C%20Linux-blue">
   <img alt="UI: English" src="https://img.shields.io/badge/UI-English-informational">
   <a href="LICENSE"><img alt="License: PolyForm NC 1.0.0 + no military" src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0%20%2B%20no%20military-lightgrey"></a>
