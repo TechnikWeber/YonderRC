@@ -1,5 +1,13 @@
 # YonderRC
 
+<p>
+  <img alt="Status: stable" src="https://img.shields.io/badge/status-stable-brightgreen">
+  <a href="https://github.com/TechnikWeber/YonderRC/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/TechnikWeber/YonderRC?include_prereleases&label=release"></a>
+  <img alt="Platform: Raspberry Pi | browser | Windows | Linux" src="https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20browser%20%7C%20Windows%20%7C%20Linux-blue">
+  <img alt="UI: English" src="https://img.shields.io/badge/UI-English-informational">
+  <a href="LICENSE"><img alt="License: PolyForm NC 1.0.0 + no military" src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0%20%2B%20no%20military-lightgrey"></a>
+</p>
+
 Remote control over the internet for RC cars, boats, planes and drones — with live video,
 telemetry and settings in the browser. A Raspberry Pi in the vehicle, a browser, phone or
 desktop app on the ground. Built for LTE.
