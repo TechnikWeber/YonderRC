@@ -1,5 +1,3 @@
-**English** · [Deutsch](FEATURES.de.md)
-
 # What YonderRC does
 
 The full feature list. The short version is in the [README](../README.md).

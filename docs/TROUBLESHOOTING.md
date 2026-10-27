@@ -1,5 +1,3 @@
-**English** · [Deutsch](TROUBLESHOOTING.de.md)
-
 # YonderRC — Troubleshooting and reporting a problem
 
 The short version: when something goes wrong, **make a diagnostics file right away and

@@ -1,5 +1,3 @@
-**English** · [Deutsch](README.de.md)
-
 # YonderRC vehicle provisioning (Raspberry Pi, headless)
 
 Everything in this folder runs **on the Pi** — nothing here is meant for your PC. It turns

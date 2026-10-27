@@ -340,10 +340,10 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   When set it gates mutating `/api/*` POSTs (`x-yonderrc-secret` / `?secret=`) and the
   control WS (`?secret=`, close 4001 on mismatch). Pure check in `vehicle/transport/auth.ts`
   (`secretOk`). Ground has a secret field; setup UI has a Security panel + 401 prompt.
-  The trust model is documented in `HARDWARE.md` §6.1 (both languages). Still open: a
+  The trust model is documented in `HARDWARE.md` §6.1. Still open: a
   UI for a bind-to-localhost/Tailscale-only mode — the env var `YRC_HOST` already works.
-- **English-first docs — DONE (v1.17.0)**: `README.md`/`docs/HARDWARE.md` are English,
-  German in `README.de.md`/`docs/HARDWARE.de.md` with switchers. GitHub "About" +
+- **English-first docs — DONE (v1.17.0)**: `README.md`/`docs/*` are English (the German
+  copies were dropped in 2026-10). GitHub "About" +
   topics are set. The setup page is fully English since v1.21.1. Still open: UI-copy
   i18n (the ground app + setup page are English-only, no language switch).
 - **LTE/WiFi signal in the OSD — DONE (v1.19.0)**: `RealSystem.linkSignal()` prefers the
@@ -453,10 +453,4 @@ gateway backends, a localhost/Tailscale-only bind mode, auto WS↔WebRTC switch 
 German UI copy is fine in chat with the owner; **code, comments and identifiers stay
 in English**. Keep responses about verified-vs-needs-hardware honest.
 
-**Both language versions are edited in the same commit — always.** `README.md` /
-`README.de.md`, `docs/HARDWARE.md` / `.de.md`, `docs/QUICKSTART.md` / `.de.md`,
-`docs/TROUBLESHOOTING.md` / `.de.md`, `docs/FEATURES.md` / `.de.md`, `provisioning/README.md` / `.de.md`. A translation that lags is worse than
-none: it states as current something the project stopped doing, and the reader has no
-way to tell which of the two is the lie. The test suite fails if any of these pairs stops
-matching in structure (heading count), which catches the common case of adding a
-section to one of them.
+Docs are **English only** — no `.de.md` copies (browsers translate; a second language only drifts). A test fails if a German copy comes back.

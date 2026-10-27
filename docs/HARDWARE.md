@@ -1,5 +1,3 @@
-**English** · [Deutsch](HARDWARE.de.md)
-
 # YonderRC — Hardware guide (parts list, wiring, setup)
 
 From pure simulation to real hardware: a Raspberry Pi as the vehicle computer, a PCA9685

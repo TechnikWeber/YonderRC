@@ -11,7 +11,7 @@ import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -1739,55 +1739,21 @@ async function main() {
 
   ok('hotspot default is open', HOTSPOT_DEFAULTS.password === null);
 
-  // ---- the two READMEs must not drift apart ----
-  // A translation that lags is worse than none: it states as current something the
-  // project stopped doing, and the reader cannot tell which of the two is the lie. This
-  // will not catch a bad translation, but it catches the case that actually happens —
-  // a section added to one of them and not the other.
+  // ---- English only ----
+  // The docs are English only; browsers translate. A German copy that comes back would
+  // drift from the English one, so the tests keep it out.
   {
-    const en = readFileSync('README.md', 'utf8');
-    const de = readFileSync('README.de.md', 'utf8');
-    const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
-    ok('both READMEs exist', en.length > 0 && de.length > 0);
-    ok('each points at the other', en.includes('[Deutsch](README.de.md)') && de.includes('[English](README.md)'));
-    ok('the same sections in both', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
-    ok('the German README links the German hardware guide', de.includes('docs/HARDWARE.de.md'));
-    ok('and CLAUDE.md says both are edited together',
-      readFileSync('CLAUDE.md', 'utf8').includes('Both language versions are edited in the same commit'));
+    const gone = ['README.de.md', 'docs/HARDWARE.de.md', 'docs/QUICKSTART.de.md',
+      'docs/TROUBLESHOOTING.de.md', 'docs/FEATURES.de.md', 'provisioning/README.de.md'];
+    ok('no German copies of the docs', gone.every((f) => !existsSync(f)), gone.filter((f) => existsSync(f)).join(', '));
   }
 
-  // ---- the two hardware guides must not drift apart either ----
-  // Same rule as the READMEs, and the guide is where the wiring lives: a German
-  // reader following a section the English one has since corrected is the worst case.
+  // ---- the quick start and the troubleshooting guide ----
+  // Written for people new to Linux, so the README has to point there.
   {
-    const en = readFileSync('docs/HARDWARE.md', 'utf8');
-    const de = readFileSync('docs/HARDWARE.de.md', 'utf8');
-    const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
-    ok('the same sections in both hardware guides', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
-  }
-
-  // ---- …nor the quick start and the troubleshooting guide ----
-  // Written for people new to Linux; a German reader following steps the English guide
-  // has since changed is exactly the person who cannot tell.
-  {
-    const heads = (t: string) => (t.match(/^#{2,3} /gm) ?? []).length;
-    for (const name of ['QUICKSTART', 'TROUBLESHOOTING', 'FEATURES']) {
-      const en = readFileSync(`docs/${name}.md`, 'utf8');
-      const de = readFileSync(`docs/${name}.de.md`, 'utf8');
-      ok(`the same sections in both ${name} guides`, heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
-      ok(`${name} links its translation both ways`, en.includes(`[Deutsch](${name}.de.md)`) && de.includes(`[English](${name}.md)`));
-    }
-    {
-      const en = readFileSync('provisioning/README.md', 'utf8');
-      const de = readFileSync('provisioning/README.de.md', 'utf8');
-      ok('the same sections in both provisioning READMEs', heads(en) === heads(de), `${heads(en)} vs ${heads(de)}`);
-    }
     const readme = readFileSync('README.md', 'utf8');
-    const readmeDe = readFileSync('README.de.md', 'utf8');
-    ok('the READMEs point newcomers at the quick start',
-      readme.includes('docs/QUICKSTART.md') && readmeDe.includes('docs/QUICKSTART.de.md'));
-    ok('and at the troubleshooting guide',
-      readme.includes('docs/TROUBLESHOOTING.md') && readmeDe.includes('docs/TROUBLESHOOTING.de.md'));
+    ok('the README points newcomers at the quick start', readme.includes('docs/QUICKSTART.md'));
+    ok('and at the troubleshooting guide', readme.includes('docs/TROUBLESHOOTING.md'));
     const qs = readFileSync('docs/QUICKSTART.md', 'utf8');
     // The two things the user report asked for explicitly.
     ok('the quick start says to address the I²C chips before installing', /0x41/.test(qs) && qs.indexOf('0x41') < qs.indexOf('## 6.'));

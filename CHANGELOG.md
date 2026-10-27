@@ -1,13 +1,12 @@
 # Changelog
 
 All notable changes to YonderRC. Each release is the full project; every zip is
-self-contained. Entries from v1.17.0 on are bilingual (English / Deutsch).
+self-contained.
 
 ## v1.72.3
 *The desktop app as a download: Windows installer, portable and Linux AppImage on every
 release — and the installed app now actually works.*
 
-**English**
 - **Desktop app downloads** on the release page from now on: `…-windows-setup.exe`,
   `…-windows-portable.exe` and `…-linux-x86_64.AppImage`, built automatically for every
   release. **Unsigned**: SmartScreen warns (*More info › Run anyway*), and with Smart App
@@ -21,26 +20,9 @@ release — and the installed app now actually works.*
 - **`npm install` with npm 11** fetches Electron, esbuild and the WebRTC module again:
   newer npm skips install scripts that a project has not allowed.
 
-**Deutsch**
-- **Desktop-App zum Herunterladen** ab jetzt auf der Release-Seite: `…-windows-setup.exe`,
-  `…-windows-portable.exe` und `…-linux-x86_64.AppImage`, für jedes Release automatisch
-  gebaut. **Nicht signiert**: SmartScreen warnt (*Weitere Informationen › Trotzdem
-  ausführen*), und mit eingeschalteter intelligenter App-Steuerung blockiert Windows sie —
-  dann den Browser nehmen. Das AppImage ist noch nicht auf einem echten Linux-Desktop
-  getestet. Anleitung: README › *Desktop-App*.
-- **Die installierte App zeigte ein leeres Fenster.** Sie suchte ihre Dateien unter
-  `/assets`, was in einer installierten App `C:ssets` ist. Sie war bisher nur aus dem
-  Quellcode gestartet worden.
-- **Video in der Desktop-App** geht ohne API-Secret, auch mit dem Fahrzeug auf demselben
-  PC. Die Anfragen der installierten App sahen aus wie eine Seite aus dem Internet, und das
-  Fahrzeug lehnte sie ab (403). Geht mit jedem Fahrzeug, dort ist kein Update nötig.
-- **`npm install` mit npm 11** holt Electron, esbuild und das WebRTC-Modul wieder: neuere
-  npm-Versionen überspringen Installationsskripte, die ein Projekt nicht freigegeben hat.
-
 ## v1.72.2
 *Setup › Controls keeps one group open at a time.*
 
-**English**
 - **One group open at a time** in Setup › Controls: opening Safety, Return-home budget,
   Stick feedback, Voice callouts, Auto-disarm, Game controller, Action bindings,
   Low-battery warning or Blackbox logging folds the one that was open, so the page stays
@@ -49,20 +31,9 @@ release — and the installed app now actually works.*
 - Troubleshooting §5: Windows' Smart App Control can block a file of the simulator right
   after `npm install` — wait and start again, and the way out if it stays blocked.
 
-**Deutsch**
-- **Immer nur eine Gruppe offen** in Setup › Controls: Wer Safety, Return-home budget,
-  Stick feedback, Voice callouts, Auto-disarm, Game controller, Action bindings,
-  Low-battery warning oder Blackbox logging aufklappt, klappt die bisher offene zu — die
-  Seite bleibt kurz. Die kleinen Hinweise in einer Gruppe klappen wie bisher. Ein zu alter
-  Browser lässt einfach mehrere offen.
-- Fehlersuche §5: Die intelligente App-Steuerung von Windows kann direkt nach
-  `npm install` eine Datei des Simulators blockieren — warten und neu starten, und der
-  Ausweg, wenn sie blockiert bleibt.
-
 ## v1.72.1
 *The simulator on Windows and macOS, with video; go2rtc on 32-bit Pi OS.*
 
-**English**
 - **`npm run dev:video` runs on Windows, Linux and macOS.** It is a Node script now and
   downloads the go2rtc build for your system. Before, it was a bash script that always
   fetched the Linux binary, so video in the simulator only worked on Linux.
@@ -72,21 +43,10 @@ release — and the installed app now actually works.*
   (`go2rtc_linux_armv7`) and stopped. It now fetches `go2rtc_linux_arm`, or `_armv6` on a
   Pi Zero / Pi 1.
 
-**Deutsch**
-- **`npm run dev:video` läuft unter Windows, Linux und macOS.** Es ist jetzt ein
-  Node-Skript und lädt das go2rtc für dein System. Vorher war es ein Bash-Skript, das
-  immer die Linux-Version holte; Video im Simulator ging also nur unter Linux.
-- **Das README erklärt, wie man den Simulator startet**: was unter Windows, Debian/Ubuntu,
-  Fedora und macOS zu installieren ist, dann klonen, `npm install`, `npm run dev`.
-- **Installation auf 32-Bit-Pi-OS**: Der Installer wollte eine go2rtc-Datei, die es nicht
-  gibt (`go2rtc_linux_armv7`), und brach ab. Jetzt holt er `go2rtc_linux_arm`, bzw.
-  `_armv6` auf einem Pi Zero / Pi 1.
-
 ## v1.72.0
 *One setup per controller: a controller with a layout of its own is shown once where its
 sticks and buttons are, and every controller can have its own action buttons.*
 
-**English**
 - **Set up a controller once, use it with every model.** A device the browser reports with
   a layout of its own — an RC transmitter in joystick mode, a pad it does not know — gets a
   **Set up** button in Setup › Controls › Game controller. Move each stick, press or flip
@@ -111,39 +71,11 @@ sticks and buttons are, and every controller can have its own action buttons.*
 - The diagnostics file says whether an own-layout controller in use is set up, and carries
   the setups.
 
-**Deutsch**
-- **Einen Controller einmal einrichten, mit jedem Modell nutzen.** Ein Gerät, das der
-  Browser mit eigenem Layout meldet — ein RC-Sender im Joystick-Modus, ein Pad, das er nicht
-  kennt —, bekommt in Setup › Controls › Game controller einen **Set up**-Knopf. Jeden Stick
-  bewegen, drücken oder umlegen, was A … Home sein soll: Die App lernt, wo die
-  Standard-Bedienelemente an ihm sind. Modelle sprechen weiter das Standard-Layout (linker
-  Stick, R2/L2, Start), deshalb funktioniert jedes Modell damit, aus der Vorlage oder nicht —
-  kein zweites Modell für den Sender. Ein Schalter, der als Achse kommt, geht als Taste, und
-  ein Stick in eine Richtung kann einen Trigger ersetzen. Gesperrt, solange das Fahrzeug
-  scharf ist. Getestet mit simulierten Controllern, nicht mit einem echten Sender: Verhält
-  sich deiner anders, bitte ein Issue aufmachen.
-- **Aktionstasten pro Controller.** Setup › Controls › Action bindings › *Controller
-  buttons for*: einem Controller eigene Tasten für Arm, Panic, Trims … geben; einer ohne
-  eigene benutzt die gemeinsamen, wie bisher jeder Controller. Tastatur-Tasten bleiben
-  gemeinsam — es gibt eine Tastatur. Es ändert sich nichts, bis du das einstellst.
-- **Nichts umzurechnen.** Seit v1.71 nutzen die Modelle im Browser und in der Desktop-App
-  dasselbe Standard-Layout, deshalb bleiben gespeicherte Modelle genau so, wie sie sind, und
-  ein Standard-Pad braucht keine Einrichtung. Ein Kanal, der mit einem Controller mit
-  eigenem Layout gelernt wurde, bevor dieser eingerichtet war, kann danach auf ein anderes
-  Bedienelement zeigen — dort einmal Learn drücken.
-- **Der Kanal-Editor nennt den Stick**: `left stick ↑` statt `axis:1:inv`. Und Learn nimmt
-  für einen proportionalen Kanal einen Stick und für einen Schalter eine Taste. Vorher nahm
-  es beides — ein Stick-Kanal auf einer Taste las dann nur die Mitte, und ein Schalter auf
-  einer Achse las die Taste mit derselben Nummer.
-- Die Diagnosedatei sagt, ob ein Controller mit eigenem Layout eingerichtet ist, und enthält
-  die Einrichtungen.
-
 ## v1.71.0
 *Controller and channel wishes from users: two buttons as one axis, trim on buttons,
 follower channels, the board's own output numbers — and one button layout in the browser
 and the desktop app.*
 
-**English**
 - **Two buttons as one axis.** A gamepad channel can be driven by two buttons — RT/R2
   forward, LT/L2 back, each by how far it is pulled. It rests in the middle, so it is
   offered for steering and for a car's or boat's throttle; on a throttle that rests at
@@ -172,42 +104,9 @@ and the desktop app.*
   input: a space now reaches a label, and on a keyboard model a "w" typed into the
   vehicle address is no longer throttle.
 
-**Deutsch**
-- **Zwei Tasten als eine Achse.** Ein Gamepad-Kanal lässt sich mit zwei Tasten steuern —
-  RT/R2 vorwärts, LT/L2 zurück, jeweils so weit, wie sie gezogen sind. Die Ruhelage ist die
-  Mitte; angeboten wird das deshalb für die Lenkung und das Gas von Auto und Boot. Bei
-  einem Gas, das im Leerlauf ruht, lehnt der Editor es ab.
-- **Trimmung auf Tasten.** Zwei neue Aktionen, Trim − und Trim +, für eine Taste oder
-  einen Controller-Knopf (Setup › Controls › Action bindings, standardmäßig unbelegt).
-  5 µs pro Druck, auf der Lenkung, solange das Modell keinen anderen Kanal nennt (Setup ›
-  Modell › Trim buttons). Ein Klick pro Schritt, ein tieferer Ton zurück in der Mitte.
-- **Folgekanäle** für ein zweites Lenkservo (Traxxas Revo) oder einen zweiten Regler: Add
-  channel › Source › *follow another channel*. Er kopiert den fertigen Wert des anderen
-  Kanals — Trimmung und Speed-Limiter eingeschlossen — mit eigenem Versatz, Reverse und
-  Endpunkten. Failsafe- und Disarm-Wert folgen mit, damit zwei Regler sich nie uneins
-  sind, was Stopp heißt.
-- **Reverse steht in der Kanalzeile.** Es war immer da, nur versteckt in den eingeklappten
-  Details.
-- **Die Nummern der Hardware.** Verbunden zeigt jeder Kanal, woran er hängt:
-  `CH03 · out 2` am PCA9685-Board (das ab 0 zählt), der GPIO-Pin oder der SBUS-Kanal. Auch
-  die Regler-Kalibrierung nennt den Ausgang.
-- **Ein Tastenlayout.** Die Desktop-App nummerierte Controller-Tasten anders als der
-  Browser (Start war dort 7, hier 9; die Trigger waren Achsen). Sie meldet jetzt das
-  Standard-Layout des Browsers, und was sie gespeichert hatte, wird einmal automatisch
-  umgerechnet — jede Belegung behält ihre echte Taste. Die Standard-Vorlagen waren nie
-  betroffen. Getestet mit aufgezeichneten Controller-Daten, nicht mit einem echten Pad in
-  der Desktop-App: Landet dort eine Taste woanders, bitte ein Issue aufmachen.
-- **Änderungen an einem Stick-Kanal bleiben.** Bekam ein Vorlagen-Stick eine andere
-  Eingabe — andere Tasten, eine andere Achse, zwei Tasten —, war das beim nächsten Laden
-  wieder weg.
-- **Tippen ist nicht Fahren.** Tasten, die in ein Textfeld getippt werden, zählen nicht
-  mehr als Steuereingabe: Ein Leerzeichen kommt jetzt im Namen an, und bei einem
-  Tastatur-Modell ist ein „w" in der Fahrzeugadresse kein Gas mehr.
-
 ## v1.70.2
 *Video follows the control link — whatever address the vehicle has stored for itself.*
 
-**English**
 - **Video comes over the address you connected to.** Since v1.70.1 the vehicle serves
   video itself (`…:8080/video`), but the ground still took the host from the video address
   the vehicle had stored. Where that differed from the address in the app — `yonderrc.local`
@@ -220,24 +119,10 @@ and the desktop app.*
   vehicle's own answer (go2rtc not running, no camera of that name), a missing API secret,
   or a refused request — each with what to do about it.
 
-**Deutsch**
-- **Das Video kommt über die Adresse, mit der du verbunden bist.** Seit v1.70.1 liefert das
-  Fahrzeug das Video selbst (`…:8080/video`), die Bodenstation nahm den Host aber noch aus
-  der Video-Adresse, die das Fahrzeug gespeichert hatte. Wich die von der Adresse in der App
-  ab — `yonderrc.local` statt der IP, eine LAN-Adresse bei Verbindung über Tailscale —,
-  verfehlte das Video das Fahrzeug oder kam ohne API-Secret an, und ein Fahrzeug mit Secret
-  lehnte es ab. Jetzt fragt die Bodenstation immer die Adresse der Steuerverbindung, wie es
-  die Hardware-Anleitung schon sagte („Das Video kommt über dieselbe Adresse mit“). Ältere
-  Fahrzeuge, die noch go2rtc auf Port 1984 melden, laufen wie bisher.
-- **Das Videofenster sagt, warum kein Bild kommt**, statt endlos „Reconnecting…“: die
-  Antwort des Fahrzeugs (go2rtc läuft nicht, keine Kamera dieses Namens), ein fehlendes
-  API-Secret oder eine abgelehnte Anfrage — jeweils mit dem, was zu tun ist.
-
 ## v1.70.1
 *Safety and security fixes from a review of the whole project. Worth installing soon: two
 of them let anything on the network reach further into the vehicle than it should.*
 
-**English**
 - **go2rtc is no longer open to the network.** Its API on port 1984 is full control of
   go2rtc — which runs as root and can be told to run any command as a video source — and it
   answered anyone on the network, API secret or not. Its RTSP port (8554) took anyone's
@@ -274,47 +159,7 @@ of them let anything on the network reach further into the vehicle than it shoul
 - Also: changing the video quality uses the detected Pi camera program; arm, config and
   calibration messages are checked before use.
 
-**Deutsch**
-- **go2rtc ist nicht mehr offen im Netz.** Seine API auf Port 1984 ist volle Kontrolle über
-  go2rtc — das als root läuft und sich jeden Befehl als Videoquelle unterschieben lässt —
-  und sie antwortete jedem im Netz, mit oder ohne API-Secret. Sein RTSP-Port (8554) nahm von
-  jedem ein Bild in einen Kamera-Stream an. Beide lauschen jetzt nur noch auf dem Fahrzeug;
-  die Steuer-App holt das Video über den Fahrzeugdienst (`…:8080/video`), nur für die
-  eingerichteten Kameras und nach denselben Regeln wie alles andere, API-Secret
-  eingeschlossen. Zu tun ist nichts: eine gespeicherte Video-Adresse auf Port 1984 wird
-  automatisch umgestellt. `http://<fahrzeug>:1984` öffnet sich nicht mehr; der
-  WebRTC-Medienport 8555 bleibt.
-- **Eine verirrte Anfrage konnte den Fahrzeugdienst beenden** — `/%E0%A4%A` von jedem Gerät
-  im Netz oder eine kaputte Steuernachricht —, und die Servoplatine hielt ihren letzten
-  Wert, bis systemd neu startete. Solche Anfragen bekommen jetzt einen Fehler; ein
-  unerwarteter Fehler schreibt erst den Failsafe, dann beendet sich der Dienst.
-- **Lieber keine Steuerframes als falsche.** Mit der Steuer-App im Hintergrund (anderer Tab,
-  minimiert, Handy-Bildschirm aus) kam ein Frame pro Sekunde an, und das Fahrzeug ruckte
-  zwischen Kommando und Failsafe. Ein getrennter Controller wurde als „Sticks in der Mitte"
-  gelesen — beim Flugzeug Halbgas —, und der Watchdog griff nie. Jetzt sendet die App in
-  beiden Fällen nichts, das Fahrzeug hält seinen eigenen Failsafe, und die App sagt es. Ein
-  Gamepad-Modell lässt sich ohne seinen Controller nicht mehr armen.
-- **Sichere Werte ab dem ersten Moment.** Die Failsafe- und Disarm-Werte der Steuer-App
-  lagen nur im Speicher: nach jedem Neustart standen alle Kanäle auf 1500 µs, bis sich eine
-  Bodenstation verband — Halbgas für einen noch bestromten Flugzeug-Regler. Jetzt werden
-  sie auf dem Fahrzeug gespeichert. Ein entschärftes Fahrzeug, das den Link verliert, lässt
-  das Gas aus; das „Halten" einer Drohne gilt nur, solange sie scharf ist.
-- **Pre-Arm-Check und Speed-Limiter nehmen die echte Ruhelage.** Ein Boot ließ sich nur bei
-  vollem Rückwärtsgas armen, ein umgekehrtes Flugzeug-Gas nur bei Vollgas, und die Stufe Low
-  des Limiters machte aus dem Stopp eines Boots 60 % rückwärts.
-- **Die Regler-Kalibrierung bricht bei Linkverlust ab** — eine Bodenstation, die im
-  MAX-Schritt wegfiel, ließ den Regler auf Vollgas.
-- **Die Setup-Seite führt keinen WLAN-Namen mehr als Code aus.** Eine SSID — die jeder in
-  der Nähe des Fahrzeugs frei wählen kann — landete als HTML in der Seite; ebenso
-  Gerätenamen und der Tailscale-Login-Link.
-- **Neustart, Reboot, Update und Werksreset warten aufs Entschärfen**, wie das
-  Herunterfahren schon immer: jedes davon nimmt die Ausgänge weg und bringt das Fahrzeug
-  entschärft zurück.
-- Außerdem: der Wechsel der Videoqualität nutzt das erkannte Pi-Kamera-Programm; Arm-,
-  Config- und Kalibrier-Nachrichten werden vor der Verwendung geprüft.
-
 ## v1.70.0
-**English**
 - **License is now PolyForm Noncommercial 1.0.0, still with the no-military-use
   restriction.** Modified versions may now be made and shared, so forks and pull
   requests are possible; commercial and military use stay excluded. Notes that are not
@@ -366,65 +211,7 @@ newcomer has.*
   data budget — twice, with the uplink. Shell scripts now keep LF line endings on a
   Windows checkout (`.gitattributes`).
 
-**Deutsch**
-- **Die Lizenz ist jetzt PolyForm Noncommercial 1.0.0, weiterhin mit dem Verbot
-  militärischer Nutzung.** Veränderte Fassungen dürfen jetzt erstellt und weitergegeben
-  werden, Forks und Pull Requests sind damit möglich; kommerzielle und militärische
-  Nutzung bleiben ausgeschlossen. Hinweise, die keine Lizenzbedingungen sind, stehen
-  jetzt in `NOTICE.md`.
-
-*Aus dem Bericht eines Nutzers nach der ersten Woche: ein Fahrzeug, das in den Failsafe
-flackert, ein Browser, der ein Headset für den Joystick hält, und eine Erstinstallation, die
-mehr Linux voraussetzte, als ein Einsteiger mitbringt.*
-
-- **Der Failsafe-Watchdog steht auf 500 ms** (vorher 300). 300 ms waren enger als der
-  Jitter der Verbindungen, über die das läuft — 13 Lücken über 300 ms pro Minute auf LTE bei
-  0 % Verlust, und ein Pi im WLAN mit Energiesparen hält Pakete einige hundert ms zurück —,
-  also stotterte ein funktionierender Link in den Failsafe. Ein gespeicherter Wert von 300 aus
-  der Zeit davor gilt als alter Standard (das Setup-Formular hat ihn bei jedem Speichern
-  mitgeschickt); ein bewusst eingetragener Wert bleibt. Jetzt 100–2000 ms, wirkt beim
-  Speichern ohne Neustart.
-- **Das WLAN-Energiesparen wird abgeschaltet** vom Installer — die klassische Ursache dieses
-  Stotterns bei einem Pi als WLAN-Client.
-- **Ein Problembericht ist eine Datei.** *Setup › Diagnostics* in der Steuer-App lädt beide
-  Hälften herunter: wie regelmäßig die App wirklich gesendet hat (mit den Momenten, in denen
-  die Seite verdeckt war — ein Browser bremst einen Hintergrund-Tab), die Lücken zwischen
-  den Frames, die das Fahrzeug empfangen hat, jede Failsafe-Episode und über welchen
-  Transport, WLAN-Energiesparen und Signal, Versorgung, Last, Log und Journal des
-  Fahrzeugs. Danach sagt sie in Klartext, was auffällt — z. B. „ein Failsafe, den kein Netz
-  verursacht hat". Die Setup-Seite hat die Fahrzeug-Hälfte (*Overview › Problem report*),
-  `provisioning/diag.sh` deckt ein Fahrzeug ab, dessen Seite sich nicht öffnet. Passwörter,
-  PINs, VPN-Schlüssel, das API-Secret, ein offener Tailscale-Login und die GPS-Position
-  werden entfernt. Wie man sie schickt: `docs/TROUBLESHOOTING.de.md`, dazu eine
-  Issue-Vorlage.
-- **Der richtige Gamecontroller.** Die Bodenstation las das erste Gerät, das der Browser
-  meldete — oft ein Headset. Jetzt wird jedes Gerät mit einer Einschätzung gelistet
-  (Standard-Layout, eigenes Layout, kein Controller) und mit einer Live-Anzeige für
-  Eingaben; ein Headset oder die Linux-Bewegungssensoren eines PS4-Pads werden nie
-  automatisch gewählt; die Wahl wird pro Browser gemerkt (*Setup › Controls › Game
-  controller*), mit Hinweisen zum Koppeln von PS4/PS5. **Learn** nimmt keinen Trigger mehr,
-  der bei −1 ruht.
-- **Der Installer richtet die gefundene Hardware ein**: ein PCA9685 wird zum Ausgabetreiber
-  (und `i2c-bus` wird gebaut), eine CSI-Kamera ersetzt das Testbild. Nur Einstellungen, die
-  nie gespeichert wurden; Sensoren werden genannt, nicht eingerichtet. Außerdem verweigert er
-  den Start ohne sudo und verschiebt eine anderswo abgelegte Kopie selbst nach
-  `/opt/yonderrc`.
-- **„sim" versteckt sich nicht mehr**: nach einem Hardware-Treiber, der nicht starten
-  konnte, zeigen Setup-Übersicht, Fahrzeugformular und die Statusleiste der Bodenstation den
-  Treiber, der tatsächlich läuft, mit Grund.
-- **OpenVPN (experimentell)** als vierte Fernzugriffs-Methode: `.ovpn` hochladen, optional
-  Benutzer/Passwort. Skript-Hooks und dateischreibende Direktiven im Profil werden entfernt
-  und aufgelistet, das Fahrzeug behält seinen eigenen Uplink, solange *gesamter Verkehr
-  durchs VPN* nicht angehakt ist. Auf einem Fahrzeug noch nicht verifiziert.
-- **Schnellstart für Einsteiger** (`docs/QUICKSTART.de.md`): Imager, den Pi finden, SSH unter
-  Windows/macOS/Linux, Plan B ohne Imager (`ssh` + `userconf.txt`), Kopieren mit
-  WinSCP/FileZilla ohne root, I²C-Adressen *vor* der Installation.
-- Behoben: die eigene WireGuard-Schnittstelle des Fahrzeugs (`yonderrc`) wurde beim
-  mobilen Datenbudget mitgezählt — doppelt, zusammen mit dem Uplink. Shell-Skripte behalten
-  bei einem Windows-Checkout ihre LF-Zeilenenden (`.gitattributes`).
-
 ## v1.69.0
-**English**
 - **The OSD stopped blinking during the first real drive.** Home symbol, home arrow,
   odometer and speed vanished for a few seconds at a time and came back — with 8
   satellites and a solid fix. The receiver was fine: a fix is spread over several NMEA
@@ -443,46 +230,16 @@ mehr Linux voraussetzte, als ein Einsteiger mitbringt.*
   position the vehicle left minutes ago is worse than no position: the home arrow keeps
   pointing, confidently, at nothing.
 
-**Deutsch**
-- **Das OSD blinkt bei der ersten echten Probefahrt nicht mehr.** Haussymbol, Heimatpfeil,
-  Kilometerzähler und Geschwindigkeit verschwanden für ein paar Sekunden und kamen wieder
-  — bei 8 Satelliten und stehendem Fix. Der Empfänger war in Ordnung: ein Fix verteilt
-  sich über mehrere NMEA-Sätze (GGA bringt Position und Satelliten, RMC Geschwindigkeit
-  und Kurs, GSA den 2D/3D-Modus), und das Fahrzeug baute den kompletten Fix jede Sekunde
-  neu aus genau einem Parse-Fenster. Ein Satz-Burst, den die Fenstergrenze zerschnitt,
-  ergab einen Fix mit Löchern — und für einen fehlenden Wert zeichnet das OSD nichts.
-  Sekundenlang deshalb, weil die 1 Hz des Empfängers und unsere gegeneinander driften.
-- **Ein fehlender Satz ist jetzt eine Lücke, kein Verlust.** Werte werden bis zu 3 s
-  weitergetragen (`mergeFix`), ein zerschnittener Burst fällt damit nicht mehr auf. Ein
-  gemeldeter Fix-Verlust wird nie gehalten — das ist eine echte Information und fällt
-  sofort durch.
-- **Der halbe Satz an der Fenstergrenze wird nicht mehr vernichtet.** Der Puffer wird an
-  der letzten vollständigen Zeile getrennt, der Rest wartet aufs nächste Fenster; vorher
-  ging pro Sekunde genau ein Satz verloren, und welcher, entschied die Phase.
-- **Ein verstummter Empfänger meldet jetzt nach 5 s keinen Fix**, statt den letzten
-  einzufrieren. Eine Position, die das Fahrzeug vor Minuten verlassen hat, ist schlimmer
-  als gar keine: der Heimatpfeil zeigt weiter — überzeugt — ins Nichts.
-
 ## v1.68.3
 Documentation only — no code changes.
 
-**English**
 - **README and hardware guide cut down**, both languages: README −41 %, hardware guide
   −30 % by word count. Feature lists are bullets now, prose only where it earns its place.
   Tables, wiring, pin maps and commands are untouched — that is the part people come for.
 - The project was getting hard to enter for a beginner. Every fact is still there; the
   paragraphs around it are not.
 
-**Deutsch**
-- **README und Hardware-Guide gekürzt**, beide Sprachen: README −41 %, Hardware-Guide
-  −30 % nach Wortzahl. Feature-Listen sind jetzt Stichpunkte, Fließtext nur noch da, wo er
-  etwas bringt. Tabellen, Verkabelung, Pinbelegungen und Befehle bleiben unangetastet —
-  deswegen kommt man ja her.
-- Für Einsteiger war das Projekt zu überladen geworden. Jeder Fakt steht noch drin, die
-  Absätze drumherum nicht mehr.
-
 ## v1.68.2
-**English**
 - **An unset allowance now falls back to the LTE stick's own limit.** With `Measured by:
   the LTE stick` the plan is already in the stick and enforced by it — retyping it here
   was busywork, and until you did, nothing could warn.
@@ -490,16 +247,7 @@ Documentation only — no code changes.
   was working, while no threshold existed and the OSD could never fire. Now stated in the
   panel and flagged amber on the overview.
 
-**Deutsch**
-- **Ohne eingetragenes Volumen gilt jetzt das Limit des LTE-Sticks.** Bei `Measured by:
-  the LTE stick` steht der Tarif ohnehin im Stick und wird von ihm durchgesetzt — ihn hier
-  abzutippen war Doppelarbeit, und bis dahin konnte nichts warnen.
-- **Ein Zähler ohne Volumen sagt das jetzt.** Er zeigte `Used: 2.24 GB` und sah nach
-  Funktion aus, während es gar keine Schwelle gab und das OSD nie auslösen konnte. Jetzt
-  im Panel benannt und in der Übersicht gelb markiert.
-
 ## v1.68.1
-**English**
 - **The data counter now survives a clean restart.** It was written at most every 5
   minutes and nothing flushed it on shutdown, so every `systemctl restart` — which every
   update does — threw away what had been counted since the last write. Now saved on
@@ -507,16 +255,7 @@ Documentation only — no code changes.
 - **Mobile data is on the overview**, with usage, percent and which source counted it.
   It was only in the Network tab, four panels down.
 
-**Deutsch**
-- **Der Datenzähler übersteht jetzt einen sauberen Neustart.** Er wurde höchstens alle 5
-  Minuten geschrieben und beim Herunterfahren gar nicht, also warf jeder
-  `systemctl restart` — den jedes Update macht — den Stand seit dem letzten Schreiben weg.
-  Jetzt wird auch beim Beenden gespeichert.
-- **Mobile Daten stehen in der Übersicht**, mit Verbrauch, Prozent und Quelle. Bisher nur
-  im Network-Tab, vier Panels weiter unten.
-
 ## v1.68.0
-**English**
 - **Mobile-data budget** (Setup › Network). Set the plan's allowance; the OSD shows
   **⚠ DATA** past the configured share. An FPV stream costs 0.5–1 GB/h.
 - Two sources: **the vehicle** (default, sums every metered interface — works with a phone
@@ -529,22 +268,7 @@ Documentation only — no code changes.
   instead of 13) — `input { width: 100% }` inherited by a checkbox in a row-flex label.
 - Status strip: **Vehicle** and **Driver** merged into one cell, so the grid is 4×2 again.
 
-**Deutsch**
-- **Datenvolumen-Budget** (Setup › Network). Vertragsvolumen eintragen; das OSD zeigt
-  **⚠ DATA** ab dem eingestellten Anteil. Ein FPV-Stream kostet 0,5–1 GB/h.
-- Zwei Quellen: **das Fahrzeug** (Standard, summiert jede kostenpflichtige Schnittstelle —
-  auch Handy-Hotspot) oder **der Abrechnungsmonat des LTE-Sticks** (nur HiLink, übersteht
-  Neustarts).
-- Nicht gezählt: der eigene Hotspot des Fahrzeugs (kostenlos, ~900 MB/h) und
-  VPN-Schnittstellen (Tailscale/WireGuard/ZeroTier — sie gehen erneut über die echte
-  Verbindung raus und würden doppelt zählen).
-- Der Zähler übersteht Neustarts; Reset von Hand oder am Tarif-Stichtag.
-- **Behoben:** Jede Checkbox der Setup-Seite war über ihr Label gestreckt (194–477 px
-  statt 13) — `input { width: 100% }`, von einer Checkbox im Row-Flex-Label geerbt.
-- Statusleiste: **Vehicle** und **Driver** zu einer Kachel zusammengefasst, Raster wieder 4×2.
-
 ## v1.67.0
-**English**
 - Status strip: **Link gaps** — failsafe episodes since the connection began, plus the
   longest the vehicle ever waited for a control frame. A watchdog trip lasts one control
   tick and the bars snap back unread; the 2 Hz blackbox misses it too.
@@ -554,19 +278,7 @@ Documentation only — no code changes.
 - Measured indoors over LTE: 13 gaps past 300 ms per minute at 0 % packet loss. Latency
   was fine, jitter was not, and nothing said so.
 
-**Deutsch**
-- Statusleiste: **Link gaps** — Failsafe-Episoden seit Verbindungsbeginn und die längste
-  Wartezeit des Fahrzeugs auf einen Steuerframe. Ein Watchdog-Auslöser dauert einen
-  Steuertakt, die Balken sind zurück, bevor man sie liest; die 2-Hz-Blackbox verpasst ihn
-  ebenfalls.
-- Gelb, sobald die schlechteste Lücke 60 % des Watchdog-Timeouts überschreitet, rot nach
-  einer echten Episode. Gezählt werden Flanken, keine Ticks; der Verbindungsaufbau (noch
-  kein Frame angenommen) zählt nicht.
-- Indoor über LTE gemessen: 13 Lücken über 300 ms pro Minute bei 0 % Paketverlust. Die
-  Latenz war in Ordnung, der Jitter nicht — und nichts hat es gesagt.
-
 ## v1.66.1
-**English**
 - Setup › Sensors now shows **which charge counter is actually running**. `auto` states a
   wish: it silently falls back to Pi integration when the primary current channel is not
   an INA228, and the mAh keep coming either way — only their accuracy changes. Also on the
@@ -576,18 +288,7 @@ Documentation only — no code changes.
   PCA9685 + GPS, motor stopped = **0.7–1.0 A at 7.2 V**, i.e. 1.4–2 A behind a 5 V
   regulator. "5 V / 3 A" is the floor, not headroom.
 
-**Deutsch**
-- Setup › Sensors zeigt jetzt, **welcher Ladungszähler tatsächlich läuft**. `auto` ist ein
-  Wunsch: Es fällt still auf die Pi-Integration zurück, wenn der primäre Stromkanal kein
-  INA228 ist — die mAh laufen in beiden Fällen weiter, nur ihre Genauigkeit ändert sich.
-  Auch in der Übersicht als Zeile `· counter`. Bisher nur in einem OSD-Tooltip und einer
-  Startlog-Zeile sichtbar.
-- **Gemessener Leerlaufstrom** dokumentiert (`HARDWARE.de.md` §2.3): Pi 4B + CSI-Kamera +
-  LTE-Stick + PCA9685 + GPS, Motor steht = **0,7–1,0 A bei 7,2 V**, also 1,4–2 A hinter
-  einem 5-V-Regler. „5 V / 3 A" ist die Untergrenze, nicht die Reserve.
-
 ## v1.66.0
-**English**
 - **The vehicle reports its own condition**, ported from YonderGate and trimmed to what a
   vehicle can act on: SoC **temperature**, **load**, **uptime** and **free card space**,
   on the overview under the system status. Each is there because it explains a failure
@@ -607,31 +308,7 @@ Documentation only — no code changes.
   not NaN, so an empty temperature file came back as 0 °C, an empty loadavg as an idle
   0.00, and an empty uptime as a box that booted this instant. Fixed in both projects.
 
-**Deutsch**
-- **Das Fahrzeug meldet seinen eigenen Zustand**, portiert aus YonderGate und auf das
-  gekürzt, womit ein Fahrzeug etwas anfangen kann: SoC-**Temperatur**, **Last**,
-  **Laufzeit** und **freier Platz auf der Karte**, in der Übersicht unter dem
-  Systemstatus. Jeder Wert steht dort, weil er einen Fehler erklärt, der sonst wie ein Bug
-  in dieser Software aussieht — der Pi encodiert H.264 in einem geschlossenen Rumpf, und
-  ab 80 °C drosselt die Firmware den Takt, Video und Steuerung werden also *gemeinsam*
-  schlechter; die Steuerschleife teilt sich die CPU, eine Lastspitze ist damit die
-  ehrliche Ursache für Zittern in der Umlaufzeit; eine volle Karte nimmt kein Update an.
-- **Die Uhr steht dort, wo sie tatsächlich etwas kaputt macht.** Ein Pi hat keine
-  gepufferte Uhr: ohne Netz beim Start läuft er in der Vergangenheit los, und `git pull`
-  scheitert dann an einem **Zertifikatsfehler, der die Zeit mit keinem Wort erwähnt**.
-  Diese Zeile steht jetzt über *Check for updates*, mit der Uhr des Fahrzeugs im Vergleich
-  zu deiner — und sie erscheint nur, wenn etwas mit ihr nicht stimmt. Kein DS3231 und kein
-  NTP-Server-Editor: Zeit braucht das Fahrzeug nur, wenn es ohnehin Internet hat, und dann
-  funktioniert NTP von selbst.
-- Die Werte liegen auf `/api/health` mit 30-s-Abfrage, nicht im 3-s-Status — jede Messung
-  kostet eine Datei oder einen Prozess auf einer Box, die nebenbei Servos treibt.
-- **Beim Portieren behoben: ein unlesbarer Sensor las sich wie ein gesunder.**
-  `Number('')` ist 0, nicht NaN — eine leere Temperaturdatei kam also als 0 °C zurück, ein
-  leerer loadavg als entspannte 0,00 und eine leere Laufzeit als gerade gebootete Box. In
-  beiden Projekten behoben.
-
 ## v1.65.3
-**English**
 - **Fixed: current and mAh were near-invisible in the OSD under the light theme.** The
   video stage keeps the dark palette in both themes, but it only ever re-declared the
   tokens — and CSS inheritance passes the **computed** colour down, not the `var()` that
@@ -642,19 +319,7 @@ Documentation only — no code changes.
   Nothing changes in the dark theme, where the two colours were identical.
 - README screenshots retaken with the fix in them.
 
-**Deutsch**
-- **Behoben: Strom und mAh waren im OSD unter dem hellen Theme kaum zu sehen.** Die
-  Video-Fläche behält in beiden Themes die dunkle Palette — aber sie hat die Tokens nur
-  neu deklariert, und CSS-Vererbung reicht die **berechnete** Farbe weiter, nicht das
-  `var()`, aus dem sie entstand. Die OSD-Spans ohne eigene Klasse (Strom, mAh) kamen
-  deshalb mit der Tinte der Seite an, die im hellen Theme dunkel ist, und lagen dunkel
-  auf dunkel über dem Video; Spannung und Temperatur sahen nur deshalb richtig aus, weil
-  sie ihre Farbe fest verdrahten. Die Fläche setzt ihre Textfarbe jetzt selbst, statt sie
-  zu erben. Im dunklen Theme ändert sich nichts — dort waren beide Farben identisch.
-- README-Screenshots mit dem Fix darin neu aufgenommen.
-
 ## v1.65.2
-**English**
 - **All eight groups of Setup › Controls now start folded**, not just Safety: return-home
   budget, stick feedback, voice callouts, auto-disarm, action bindings, low-battery
   warning and blackbox logging, each with its explanation. The panel is eight headings
@@ -664,32 +329,13 @@ Documentation only — no code changes.
   runs, and the two ⚠ notes about a forced auto-disarm sit outside their group — a
   warning you have to unfold is not a warning.
 
-**Deutsch**
-- **Alle acht Gruppen unter Setup › Controls starten jetzt zugeklappt**, nicht nur Safety:
-  Heimkehr-Budget, Stick-Feedback, Sprachansagen, Auto-Disarm, Aktions-Belegung,
-  Akku-Warnung und Blackbox-Logging, jeweils samt Erklärung. Das Panel sind acht
-  Überschriften statt sechs Bildschirmen; das Panel *Ground app* darunter bleibt, wie es war.
-- **Zuklappen versteckt weder Zustand noch Warnung.** *Auto-disarm on reconnect* trägt sein
-  ON/OFF als Abzeichen in der Überschrift, das Blackbox-Logging zeigt dort *recording*,
-  solange es läuft, und die beiden ⚠-Hinweise zum erzwungenen Auto-Disarm stehen außerhalb
-  ihrer Gruppe — eine Warnung, die man aufklappen muss, ist keine.
-
 ## v1.65.1
-**English**
 - **Setup › Safety starts collapsed** in the ground app. Three settings you pick once per
   model sat on top of the six groups below them; folded away, the whole Controls panel
   fits on one screen. The heading stays the eyebrow the other groups use, so nothing
   looks out of place — it is the same heading, now with a chevron.
 
-**Deutsch**
-- **Setup › Safety startet eingeklappt** in der Ground-App. Drei Einstellungen, die man
-  einmal pro Modell wählt, standen über den sechs Gruppen darunter; zugeklappt passt das
-  ganze Controls-Panel auf einen Bildschirm. Die Überschrift bleibt dieselbe wie bei den
-  anderen Gruppen, es wirkt also nichts fehl am Platz — gleiche Überschrift, jetzt mit
-  einem Pfeil.
-
 ## v1.65.0
-**English**
 - **Light is now the default.** Dark is still one click away in Setup › Design, and both
   the setup page and the ground app stamp the choice before their first paint, so nothing
   flashes the wrong palette on the way.
@@ -704,24 +350,7 @@ Documentation only — no code changes.
   you can unfold. The takeaway stays visible, the reasoning is a click away, and the short
   one-liners were left alone.
 
-**Deutsch**
-- **Hell ist jetzt Standard.** Dunkel bleibt einen Klick entfernt unter Setup › Design, und
-  Setup-Seite wie Ground-App setzen die Wahl noch vor dem ersten Rendern — es blitzt also
-  nichts in der falschen Palette auf.
-- **Die Reiterleiste bricht um, statt zu scrollen.** Sieben Reiter sind breiter als die
-  640-px-Spalte, und ein Mausrad scrollt keine horizontale Box — am PC war der Reiter
-  **Design** schlicht nicht erreichbar. Jetzt bricht die Leiste in eine zweite Zeile um;
-  nur unter 520 px, wo das Wischen funktioniert und die Höhe knapp ist, bleibt es eine
-  scrollende Zeile.
-- **Das Setup der Ground-App hat dieselben ausklappbaren Hinweise wie das Fahrzeug.** Elf
-  lange Erklärungen — Endpoint-Sammelschreibung, beide Haltezeiten, das Heimkehr-Budget,
-  Stick-Feedback, Sprachansagen, Auto-Disarm, Aktions-Belegung, die Akku-Schwellen, das
-  Blackbox-Logging, der Kurven-Editor und die OSD-Sensorliste — sind jetzt einzeilige
-  Zusammenfassungen zum Aufklappen. Die Kernaussage bleibt sichtbar, die Begründung ist
-  einen Klick entfernt, und die kurzen Einzeiler blieben, wie sie waren.
-
 ## v1.64.0
-**English**
 - **A light theme, chosen on the vehicle.** Setup › **Design** offers exactly two looks —
   dark (the default, and what you want next to live video) and light for a bright bench.
   The choice lives on the vehicle and is pushed down the control link, so the setup page
@@ -739,26 +368,7 @@ Documentation only — no code changes.
   instead of turning red. Found while building the second palette; the test suite now
   fails if any token the stylesheet uses is undefined.
 
-**Deutsch**
-- **Ein helles Design, gewählt am Fahrzeug.** Setup › **Design** bietet genau zwei
-  Looks — dunkel (Standard, und das, was man neben Live-Video will) und hell für die
-  helle Werkbank. Die Wahl liegt am Fahrzeug und wird über die Steuerverbindung
-  geschoben: Setup-Seite und Ground-App können also nie auseinanderlaufen, und ein
-  **verbundenes** Steuergerät färbt sich innerhalb einer Sekunde um, statt auf die
-  nächste Neuverbindung zu warten. Die Ground-App hat bewusst keinen eigenen Schalter;
-  sie merkt sich nur die letzte Antwort, damit ein Kaltstart nicht kurz falsch aussieht.
-- **Das Video-Overlay bleibt in beiden hell auf dunkel.** Das OSD liegt auf dem Bild,
-  nicht auf der Seite: die dunkleren Farben des hellen Themes sind für Kontrast gegen
-  Weiß gewählt und lägen über Video bei 3:1 — das FAILSAFE-Abzeichen wäre das erste, was
-  verschwindet. Die Video-Fläche behält deshalb die dunkle Palette als eigene Insel.
-- **Behoben: `--bad` und `--go` wurden an acht Stellen benutzt und nirgends definiert.**
-  Ein nicht auflösbares `var()` ist „invalid at computed-value time", also hatte das
-  „NO SENSOR"-Abzeichen keinen Hintergrund, REC-Badge und -Toast verloren ihren, und
-  `.osd-warn` erbte seine Farbe, statt rot zu werden. Beim Bau der zweiten Palette
-  gefunden; die Testsuite schlägt jetzt fehl, wenn ein benutztes Token undefiniert ist.
-
 ## v1.63.0
-**English**
 - **The setup page is six tabs instead of one long column.** Fourteen panels stacked on
   top of each other meant everything was on screen at once and nothing was findable:
   **Overview · Network · Remote access · Sensors & outputs · Camera · GPS**. Each tab is
@@ -774,52 +384,19 @@ Documentation only — no code changes.
   their fields are now one-line summaries you can unfold: the takeaway stays visible, the
   detail is a click away. Nothing was deleted.
 
-**Deutsch**
-- **Die Setup-Seite hat sechs Reiter statt einer langen Spalte.** Vierzehn Panels
-  untereinander hießen: alles gleichzeitig auf dem Schirm und nichts auffindbar.
-  **Overview · Network · Remote access · Sensors & outputs · Camera · GPS**. Jeder Reiter
-  ist eine URL (`…/setup#gps`) — ein Schritt in der Hardware-Anleitung lässt sich also auf
-  das Panel verlinken, um das es geht, und der Reiter überlebt den Reload nach einem
-  Neustart des Dienstes.
-- **Overview beantwortet „ist alles da?" auf einem Schirm.** Neben dem Systemstatus steht
-  dort jetzt je eine Zeile für **Sensorik** (Quelle, Kanalzahl, aktueller Messwert,
-  verbrauchte mAh), **GPS** (Quelle, Fix und die Sentence-Zahl, die einen Empfänger auch
-  drinnen belegt, wo es nie einen Fix geben wird) und **Kameras** (wie viele, und welche).
-  Jede dieser Zeilen springt in ihren Reiter. Das Urteil der Firmware über die **5-V-
-  Schiene** steht ebenfalls dort — stillschweigend, solange sie gesund ist.
-- **Die langen Erklärungen sind eingeklappt.** Zwanzig Absätze, die bisher offen unter
-  ihren Feldern standen, sind jetzt einzeilige Zusammenfassungen zum Aufklappen: die
-  Kernaussage bleibt sichtbar, das Detail ist einen Klick entfernt. Gelöscht wurde nichts.
-
 ## v1.62.2
-**English**
 - **The demo boat goes single-stick as well** (mode 2): rudder and throttle under one
   thumb, same as the car. Its throttle stays **ratcheted** on that shared stick — the
   detent travels with the binding, so moving the axis does not quietly turn a boat's
   hold-position throttle into a spring-centred one. There is now a test for exactly that.
 
-**Deutsch**
-- **Auch das Demo-Boot fährt jetzt einstickig** (Modus 2): Ruder und Gas unter einem
-  Daumen, wie beim Auto. Sein Gas **rastet** auf diesem gemeinsamen Stick weiterhin — der
-  Detent wandert mit dem Binding mit, das Verschieben der Achse macht aus dem
-  Haltegas eines Boots also nicht stillschweigend ein mittenzentriertes. Dafür gibt es
-  jetzt einen Test.
-
 ## v1.62.1
-**English**
 - **The demo boat starts on the on-screen pad too.** Same reason as the car in v1.62.0:
   the first connection to a new vehicle is a phone on its hotspot. It keeps stick mode 1,
   though — a boat's throttle is ratcheted (free detent), so rudder and throttle stay on
   separate sticks rather than sharing the car's single-stick layout.
 
-**Deutsch**
-- **Auch das Demo-Boot startet auf dem Bildschirm-Pad.** Gleicher Grund wie beim Auto in
-  v1.62.0: die erste Verbindung zu einem neuen Fahrzeug ist ein Handy in dessen Hotspot.
-  Es behält aber Stick-Modus 1 — das Gas eines Boots rastet (Detent „frei"), Ruder und
-  Gas bleiben deshalb auf getrennten Sticks statt auf dem Ein-Stick-Layout des Autos.
-
 ## v1.62.0
-**English**
 - **The demo car starts on the on-screen pad.** Its default was keyboard, so the first
   thing anyone does with a new vehicle — join its hotspot from a phone and try to drive —
   led to an empty control surface and a trip through the binding editor. Both axes sit on
@@ -841,31 +418,7 @@ Documentation only — no code changes.
 - The test suite now checks that the two hardware guides keep the same structure, the way
   it already did for the two READMEs.
 
-**Deutsch**
-- **Das Demo-Auto startet auf dem Bildschirm-Pad.** Sein Default war Tastatur — das Erste,
-  was man mit einem neuen Fahrzeug tut (Hotspot mit dem Handy joinen und losfahren
-  wollen), führte also auf eine leere Bedienfläche und in den Binding-Editor. Beide Achsen
-  liegen auf einem Stick (Modus 2), mehr braucht ein Auto nicht.
-- **Die Auswahl eines Sensors füllt jetzt Werte aus statt leerer Felder.** `ina228`
-  wählen, und Shunt (0,002 Ω — womit die verbreiteten 85-V-Breakouts bestückt sind,
-  Aufdruck `R002`), Max current (20 A) und Shunt-Bereich kommen mit. Nur dort, wo noch
-  nichts eingetragen ist, Getipptes wird also nie überschrieben. Für die übrigen INA-Teile
-  genauso, mit den 0,1 Ω der kleinen INA219-/3221-Module.
-- **Der Hardware-Leitfaden dokumentiert einen Referenzaufbau** statt einer Auswahlliste:
-  INA228 auf 0x40, PCA9685 auf 0x41 verschoben, 2 mΩ Shunt, GPS auf `/dev/serial0`,
-  Touch-Bedienung — die Konfiguration, gegen die dieses Projekt tatsächlich getestet wird,
-  mit der Begründung für jede Entscheidung. GPS bekommt einen Eintrag unter *Optional*
-  (Adafruit Ultimate GPS v3 als Referenzempfänger), und beide READMEs sagen, dass das
-  Demo-Auto Touch-first ist.
-- **Das Shunt-Feld ist als Kalibrierfaktor dokumentiert**, nicht als Datenblattwert:
-  Shunt-Toleranz und Klemmenwiderstand landen in der Messung, also bekannten Strom
-  einspeisen und `alter Shunt × Anzeige / echter Strom` eintragen. Im Referenzaufbau
-  wurden aus nominal 0,002 Ω so 0,00206 Ω — 3 % Fehler, die keine Auflösung gefunden hätte.
-- Die Testsuite prüft jetzt auch, dass die beiden Hardware-Leitfäden strukturgleich
-  bleiben — so wie bisher schon die beiden READMEs.
-
 ## v1.61.1
-**English**
 - **The other silent serial trap: `/dev/ttyAMA0`.** On a Pi 3/4/5 that is the PL011, and
   it belongs to the Bluetooth chip — a GPS configured there opens without an error and
   never delivers a byte, which looks exactly like bad wiring. Setup › GPS now resolves
@@ -874,18 +427,7 @@ Documentation only — no code changes.
   `/dev/serial0`; existing ones are warned about rather than silently rewritten, because
   a Pi with `dtoverlay=disable-bt` genuinely does use ttyAMA0.
 
-**Deutsch**
-- **Die zweite stille Serial-Falle: `/dev/ttyAMA0`.** Auf einem Pi 3/4/5 ist das der
-  PL011, und der gehört dem Bluetooth-Chip — ein dort konfiguriertes GPS lässt sich
-  fehlerfrei öffnen und liefert nie ein Byte, was exakt wie ein Verdrahtungsfehler
-  aussieht. Setup › GPS löst jetzt auf, worauf `/dev/serial0` tatsächlich zeigt, sagt es,
-  wenn das eingestellte Device ein anderer UART ist, und bietet einen Knopf **Use
-  /dev/serial0**. Neue Konfigurationen stehen auf `/dev/serial0`; bestehende werden
-  gewarnt statt still umgeschrieben — ein Pi mit `dtoverlay=disable-bt` benutzt ttyAMA0
-  nämlich zu Recht.
-
 ## v1.61.0
-**English**
 - **A wired GPS no longer needs a terminal.** Raspberry Pi OS pins a login console to the
   very UART a GPS receiver wants, and `install.sh` only ever enabled the hardware — so
   every wired receiver shared its line with kernel messages and delivered shredded
@@ -904,30 +446,7 @@ Documentation only — no code changes.
 - Serial device default is **/dev/serial0** everywhere now: the alias always points at the
   UART that is actually on the header, whichever one the firmware mapped there.
 
-**Deutsch**
-- **Ein verkabeltes GPS braucht kein Terminal mehr.** Raspberry Pi OS legt eine
-  Login-Konsole auf genau den UART, den ein GPS-Empfänger will, und `install.sh` schaltete
-  bisher nur die Hardware frei — jeder verkabelte Empfänger teilte sich also seine Leitung
-  mit Kernel-Meldungen und lieferte zerhackte Sätze, ununterscheidbar von einem
-  Verdrahtungsfehler. Setup › GPS prüft jetzt beide Bedingungen und bietet **Free the
-  serial port for GPS**: schreibt `enable_uart=1`, entfernt das Konsolen-Token aus
-  cmdline.txt (Backups als `*.yonderrc-bak`), stoppt den Getty und sagt, dass ein Neustart
-  fällig ist. Reine Textverarbeitung in `system/serial.ts`, unit-getestet — cmdline.txt
-  entscheidet, ob der Pi überhaupt bootet, deshalb wird sie tokenweise bearbeitet und nie
-  neu geschrieben.
-- Der Installer macht dasselbe bei einer Neuinstallation (`do_serial_cons 1` plus
-  Abschalten der Getty-Units), mit Hinweis-Fallback für raspi-config-Versionen ohne
-  diesen Aufruf.
-- **Die GPS-Inbetriebnahme funktioniert jetzt auch im Haus.** Das Panel zählt die
-  ankommenden NMEA-Sätze und zeigt die Satelliten *in Sicht*, getrennt vom Fix — denn ein
-  am Schreibtisch verkabelter Empfänger bekommt nie einen Fix, und „kein Fix" sagt dann
-  nichts über die Verdrahtung. Steigende Satzzahlen bei 0 Satelliten in Sicht heißen:
-  Kabel, Baudrate und Port stimmen. `GET /api/gps` liefert das als `link`.
-- Das Standard-Device ist überall **/dev/serial0**: der Alias zeigt immer auf den UART,
-  der tatsächlich am Header liegt, egal welchen die Firmware dorthin gemappt hat.
-
 ## v1.60.2
-**English**
 - **A running PCA9685 made itself unidentifiable.** The driver's init wrote a bare 0x00
   to MODE1, which also clears the ALLCALL bit — so the chip stopped answering on 0x70,
   and 0x70 is the only signature it has (no ID register). *Detect hardware* named it
@@ -939,21 +458,7 @@ Documentation only — no code changes.
   the guess says which PWM frequency it is running at. Explicitly unconfirmed — it is a
   family resemblance, not an ID.
 
-**Deutsch**
-- **Ein laufender PCA9685 machte sich selbst unidentifizierbar.** Der Init des Treibers
-  schrieb ein blankes 0x00 in MODE1, was auch das ALLCALL-Bit löscht — der Chip
-  antwortete danach nicht mehr auf 0x70, und 0x70 ist die einzige Signatur, die er hat
-  (kein ID-Register). *Detect hardware* benannte ihn vor dem Start des Treibers und
-  zeigte danach ein leeres „unknown device", ausgerechnet auf dem Fahrzeug, auf dem er
-  lief. Der Treiber lässt All-Call jetzt eingeschaltet — das ist ohnehin die
-  Reset-Vorgabe des Chips.
-- **Dazu ein Rückfallweg für Chips, deren All-Call etwas anderes gelöscht hat**: die
-  reservierten Bits in MODE2 plus ein gültiger PRE_SCALE reichen, um einen PCA9685 zu
-  benennen, und die Vermutung sagt gleich dazu, mit welcher PWM-Frequenz er läuft.
-  Ausdrücklich unbestätigt — das ist eine Familienähnlichkeit, kein Ausweis.
-
 ## v1.60.1
-**English**
 - **The setup form showed the running driver, not the saved one.** `GET /api/config`
   answered from the live config, but driver, address, bus, name, watchdog and throttle
   channels are only read at startup — so reloading the page after saving showed the old
@@ -963,19 +468,7 @@ Documentation only — no code changes.
   real vehicle: a PCA9685 physically moved to 0x41 while the driver still addressed 0x40 —
   which means the servo driver was writing onto the current sensor.
 
-**Deutsch**
-- **Das Setup-Formular zeigte den laufenden Treiber, nicht den gespeicherten.**
-  `GET /api/config` antwortete aus der Live-Konfiguration, aber Treiber, Adresse, Bus,
-  Name, Watchdog und Throttle-Kanäle werden nur beim Start gelesen — ein Neuladen der
-  Seite nach dem Speichern zeigte also wieder die alten Werte, genau so, als wäre das
-  Speichern verlorengegangen. Jetzt antwortet sie mit dem Gespeicherten, meldet den
-  laufenden Treiber separat und sagt es in einer Zeile: *„Saved, not applied: the vehicle
-  is still running driver X @ 0x40. Restart to apply."* Am echten Fahrzeug gefunden: ein
-  PCA9685 physisch auf 0x41 umgezogen, während der Treiber weiter 0x40 adressierte — der
-  Servotreiber schrieb damit auf den Stromsensor.
-
 ## v1.60.0
-**English**
 - **The I²C scan now asks the chips what they are.** 0x40 is the factory address of the
   PCA9685 *and* of every INA2xx, so "0x40 — PCA9685 or INA2xx" was the best the setup page
   could say. It now reads the ID registers (`i2ctransfer`, pure parsing + identification in
@@ -999,33 +492,7 @@ Documentation only — no code changes.
   with the INA breakout's logic side (VCC on 3V3, ALE unconnected) as a table, how to read
   the shunt off the board (`R001` = 0.001 Ω) and what it caps the measurement at.
 
-**Deutsch**
-- **Der I²C-Scan fragt die Chips jetzt, was sie sind.** 0x40 ist die Werksadresse des
-  PCA9685 *und* jedes INA2xx — „0x40 — PCA9685 oder INA2xx" war das Beste, was die
-  Setup-Seite sagen konnte. Sie liest nun die ID-Register (`i2ctransfer`, reine Auswertung
-  und Erkennung in `system/detect.ts`) und benennt das Bauteil: INA228/229/237/238 und
-  INA226/260/3221 über Hersteller + Die-ID, MCP9808, TMP117, BMP280/BME280 über ihre
-  Chip-IDs, und den PCA9685 — der gar kein ID-Register hat — über seine All-Call-Adresse
-  0x70. Ein ✓ markiert, was ausgelesen wurde; alles andere bleibt eine ehrliche Vermutung
-  aus der Adresse.
-- **Zwei Chips auf einer Adresse werden benannt**, statt stillschweigend Unsinn an den zu
-  liefern, der zuerst fragt.
-- **Die Adresse des PCA9685 ist im Browser änderbar.** Bisher ging das nur über
-  `YRC_I2C_ADDR` — eine Env-Variable in einer systemd-Unit, also eine SSH-Sitzung auf einem
-  Fahrzeug, das womöglich nur über den eigenen Hotspot erreichbar ist. Jetzt ist es eine
-  gespeicherte Einstellung mit Feld unter *Vehicle configuration* und einem Button
-  **Restart vehicle service** daneben, denn der Treiber wird beim Start gebaut.
-- **Spannungs- und Stromkanäle haben ihr I²C-Adressfeld bekommen** — das eine, das dem
-  Telemetrie-Formular fehlte: der Reader nahm immer 0x40 und man konnte ihm nichts anderes
-  sagen, ein Sensor auf einer anderen Adresse war damit schlicht unsichtbar.
-- **Use these addresses** trägt das Erkannte in die Treiber- und Telemetrieformulare ein —
-  und speichert nichts, eine falsche Vermutung kostet also einen Tastendruck.
-- Hardware-Leitfaden: INA auf **0x40**, PCA9685 auf **0x41** ist jetzt die dokumentierte
-  Paarung, dazu die Logikseite des INA-Breakouts als Tabelle (VCC an 3V3, ALE offen), wie
-  man den Shunt vom Board abliest (`R001` = 0,001 Ω) und was er als Messbereich vorgibt.
-
 ## v1.59.0
-**English**
 - **Fresh screenshots.** The four in the READMEs were from v1.20.4 and v1.3x — old enough
   to show an OSD and an arm button that no longer exist. Retaken against the simulator with
   the current build: the FPV overview with the full OSD, the touch pad, the channel monitor
@@ -1042,25 +509,7 @@ Documentation only — no code changes.
   presents as a software crash, not as a power problem. Plus what a real supply looks like,
   and that the vehicle now checks this itself.
 
-**Deutsch**
-- **Neue Screenshots.** Die vier in den READMEs stammten aus v1.20.4 und v1.3x — alt genug,
-  um ein OSD und einen Arm-Button zu zeigen, die es nicht mehr gibt. Neu aufgenommen gegen
-  den Simulator mit dem aktuellen Stand: die FPV-Übersicht mit vollem OSD, das Touch-Pad,
-  der Kanal-Monitor und die Setup-Seite. Das Handy-Bild bleibt, wie es ist — es ist ein
-  echtes Foto eines echten Telefons und headless nicht reproduzierbar.
-- Der Touch-Screenshot zeigt jetzt, was wirklich passiert: ein Auto in Stick-Modus 2 fährt
-  mit **einem großen Stick**, nicht mit zwei kleinen, und die Bildunterschrift sagt warum.
-- **Die READMEs waren hinter dem Code zurückgeblieben.** Nichts über die Auswahl des
-  CSI-Kameramoduls, Rotation und Spiegelung, Fokus und Tuning-Dateien, „keine Kamera" als
-  unterstützte Betriebsart, den Videostart auf Low, die Stick-Rückmeldung, die
-  Strom-Warnung oder den Shutdown-Knopf. Das steht jetzt drin, in beiden Sprachen.
-- **Der Hardware-Leitfaden sagt, was einen Tag gekostet hat.** Servo-V+ gehört nicht an die
-  5-V-Pins des Pi — die hängen ohne Sicherung am Eingangsrail, und der folgende Brownout
-  tritt als Softwareabsturz auf, nicht als Stromproblem. Dazu, wie ein ordentliches
-  Netzteil aussieht, und dass das Fahrzeug das inzwischen selbst prüft.
-
 ## v1.58.3
-**English**
 - **The setup page's panel headings had no space beneath them.** It only showed under
   *System*, where the heading is followed straight by a row of buttons — everywhere else a
   label or a `.msg` follows, and those bring their own margin, which hid it. Fixed on
@@ -1068,16 +517,7 @@ Documentation only — no code changes.
   have had the same problem. It collapses with the following margin where there is one, so
   no other panel moves.
 
-**Deutsch**
-- **Den Panel-Überschriften der Setup-Seite fehlte der Abstand nach unten.** Sichtbar wurde
-  es nur unter *System*, wo direkt eine Knopfreihe folgt — überall sonst kommt ein Label
-  oder ein `.msg`, und die bringen einen eigenen Abstand mit, der es verdeckt hat. Behoben
-  an `.eyebrow` statt an der Knopfreihe: der nächste Block unter einer Überschrift hätte
-  dasselbe Problem gehabt. Wo schon ein Abstand folgt, fällt er mit diesem zusammen — es
-  verschiebt sich also kein anderes Panel.
-
 ## v1.58.2
-**English**
 - **Text selection is off by default in the ground app now, instead of being switched off
   one element at a time.** v1.58.1 stopped the Light button from highlighting the "Speed"
   caption below it — and double-tapping Horn then reached past the whole pad to select
@@ -1091,22 +531,7 @@ Documentation only — no code changes.
   opt-in and every input. Nothing that should be readable, copyable or typeable stopped
   being so.
 
-**Deutsch**
-- **Textmarkierung ist in der Bodenstation jetzt standardmäßig aus, statt Element für
-  Element abgeschaltet zu werden.** v1.58.1 hat den Light-Knopf davon abgehalten, die
-  Beschriftung „Speed" darunter zu markieren — und ein Doppeltipp auf Horn griff daraufhin
-  am ganzen Pad vorbei auf „Control via WebRTC data channel" darunter. Das ist die Form
-  des Fehlers: iOS hält an einem `user-select: none`-Element nicht an, sondern beginnt die
-  Markierung im nächstgelegenen markierbaren Text *daneben* — jede Korrektur, die ein
-  weiteres Element benennt, verliert also auf dieselbe Weise. Der Standard ist jetzt für
-  die ganze App umgedreht: das hier ist eine Steuerfläche für Daumen, kein Dokument.
-- Wieder eingeschaltet für die zwei Dinge, bei denen es zählt: **Fließtext** (`.note` — die
-  Erklärungsabsätze) und **Werte, die man in ein Terminal kopiert** (`.mono`), dazu ein
-  `.selectable`-Opt-in und alle Eingabefelder. Nichts, was lesbar, kopierbar oder tippbar
-  sein soll, hat aufgehört es zu sein.
-
 ## v1.58.1
-**English**
 - **Holding a pad button no longer highlights the label underneath on iOS.** The buttons
   themselves were already marked non-selectable, which is not enough: iOS does not stop at
   a `user-select: none` element — a long press there starts a selection in the nearest
@@ -1116,19 +541,7 @@ Documentation only — no code changes.
   selecting — it is all button captions. Inputs are excluded, so nothing that should be
   typeable stops being typeable.
 
-**Deutsch**
-- **Einen Pad-Knopf zu halten markiert unter iOS nicht mehr die Beschriftung darunter.**
-  Die Knöpfe selbst waren bereits als nicht markierbar gekennzeichnet, was nicht reicht:
-  iOS hält bei einem `user-select: none`-Element nicht an — ein langer Druck darauf startet
-  eine Markierung im nächstgelegenen markierbaren Text *daneben*. **Light** für die
-  Haltedauer zu drücken markierte deshalb die Beschriftung **Speed** darunter, samt
-  Kontextmenü. Die gesamte Steuerfläche ist jetzt nicht markierbar (`.controlpad`), denn in
-  diesem Panel gibt es nichts, was man markieren wollte — es sind ausschließlich
-  Knopfbeschriftungen. Eingabefelder sind ausgenommen, es hört also nichts auf, tippbar zu
-  sein.
-
 ## v1.58.0
-**English**
 - **Shut down vehicle**, next to Reboot in Setup › System. Pulling the plug on a Pi is how
   an SD card ends up unreadable; this parks it first. The confirmation says the part that
   matters — nothing brings it back but a power cycle, so do it when you can reach the
@@ -1137,18 +550,7 @@ Documentation only — no code changes.
   throttle leaves the vehicle powered down wherever it stopped, and walking out to it is
   the wrong moment to find out the motor was still enabled.
 
-**Deutsch**
-- **Shut down vehicle**, neben Reboot unter Setup › System. Einem Pi den Stecker zu ziehen
-  ist der Weg, auf dem eine SD-Karte unlesbar wird; das hier fährt ihn vorher sauber
-  herunter. Die Rückfrage sagt das Entscheidende: von allein kommt er nicht wieder, es
-  braucht einen Stromzyklus — also nur machen, wenn man ans Fahrzeug kommt.
-- **Abgelehnt, solange scharfgeschaltet.** Ein Reboot kommt wenigstens von selbst zurück;
-  ein Shutdown mit lebendigem Gas lässt das Fahrzeug stromlos dort stehen, wo es gerade
-  war — und der Weg dorthin ist der falsche Moment, um zu merken, dass der Motor noch
-  freigegeben war.
-
 ## v1.57.1
-**English**
 - **The power warning is a badge now, not a banner**, and it clears itself. It sat in the
   big overlay next to BATTERY LOW, which is too loud for something you may be looking at
   for a whole drive. It is now a red `⚠ POWER` in the top badge row, next to the timer and
@@ -1166,27 +568,7 @@ Documentation only — no code changes.
   continuously, and the kernel log alternating *Undervoltage detected* / *Voltage
   normalised*. The reading was right — the supply itself is the problem, not the servo.
 
-**Deutsch**
-- **Die Strom-Warnung ist jetzt ein Abzeichen statt eines Banners** und verschwindet von
-  selbst. Sie saß im großen Overlay neben BATTERY LOW — zu laut für etwas, das man
-  womöglich eine ganze Fahrt lang vor sich hat. Jetzt ist es ein rotes `⚠ POWER` in der
-  oberen Abzeichenreihe neben Timer und GPS, das nur blinkt, solange der Fehler aktiv ist.
-- **Ein aktiver Fehler verschwindet, sobald sich die Schiene erholt** — nichts zu
-  quittieren, kein Neuladen. Das funktionierte schon, wurde aber vom zweiten Problem
-  verdeckt:
-- **Das Sticky-Bit machte sie dauerhaft.** Die Firmware führt ein separates
-  „Unterspannung ist seit dem Booten aufgetreten"-Bit, das sie bis zum nächsten Neustart
-  nie zurücksetzt, und das Banner reagierte darauf mit. Selbst ein Fahrzeug mit wieder
-  gesunder Versorgung warnte also endlos — und genau so hört man auf, eine Warnung zu
-  lesen. Dieses Bit bekommt jetzt ein **20-Sekunden-Fenster** ab dem ersten Auftreten:
-  lang genug, um einen Einbruch nicht zu verpassen, während man auf die Strecke schaut,
-  dann weg. Die ausführliche Erklärung bleibt im Tooltip und in Detect hardware.
-- Beim Schreiben am Pi gemessen, mit allem abgezogen: `throttled=0x50005` durchgehend, und
-  im Kernel-Log abwechselnd *Undervoltage detected* / *Voltage normalised*. Die Anzeige
-  hatte also recht — das Problem ist die Versorgung selbst, nicht der Servo.
-
 ## v1.57.0
-**English**
 - **Video starts on `low`.** What matters in the first seconds of a drive is a fluid
   picture with the least latency, not the most pixels — starting high and discovering the
   link cannot carry it costs you exactly the seconds you spend working out where the
@@ -1205,28 +587,7 @@ Documentation only — no code changes.
 - A stored preference still wins over the new default — this changes what a fresh browser
   does, not what you have already chosen.
 
-**Deutsch**
-- **Video startet auf `low`.** In den ersten Sekunden einer Fahrt zählt ein flüssiges Bild
-  mit möglichst wenig Latenz, nicht die höchste Auflösung — hoch zu starten und dann
-  festzustellen, dass die Verbindung das nicht trägt, kostet genau die Sekunden, in denen
-  man herausfindet, wohin das Fahrzeug zeigt. Hochstellen bleibt eine bewusste Handlung.
-  **Auto** startet ebenfalls niedrig und steigt, sobald die Verbindung zeigt, dass sie mehr
-  trägt, statt in voller Auflösung zu öffnen und erst nach dem Ruckeln herunterzuschalten.
-- **…und die Auswahl wird jetzt auch angewandt.** Sie wurde nur dann ans Fahrzeug
-  geschickt, wenn jemand das Dropdown anfasste — nach einem Neuladen konnte das Panel also
-  „low" behaupten, während das Fahrzeug in voller Auflösung sendete. Die Einstellung war
-  Kosmetik, bis man sie einmal weg und wieder zurück stellte. Die Welcome-Nachricht trägt
-  jetzt die Stufe, die das Fahrzeug tatsächlich bedient, und die Bodenstation schickt ihre
-  eigene nur, wenn beide voneinander abweichen — eine passende Stufe kostet damit keinen
-  go2rtc-Neustart.
-- `VideoQuality` ist in das Protokoll gewandert. Die Union stand von Hand ausgeschrieben im
-  Fahrzeug *und* in der Bodenstation — genau deshalb konnten sich die beiden über eine
-  Stufe überhaupt uneinig werden.
-- Eine gespeicherte Vorliebe gewinnt weiterhin über den neuen Standard: das ändert, was ein
-  frischer Browser tut, nicht was du schon gewählt hast.
-
 ## v1.56.0
-**English**
 - **The vehicle now says when its own power is failing.** `vcgencmd get_throttled` is the
   firmware's verdict on the 5 V rail, and it was going unread. A brownout mid-drive is a
   reset mid-drive, and from the ground that is indistinguishable from a software crash —
@@ -1254,40 +615,7 @@ Documentation only — no code changes.
   new ground takes over the previous one stops being able to move anything. Two separate
   guards is how this was missed in the first place; there is now one rule in the core.
 
-**Deutsch**
-- **Das Fahrzeug sagt jetzt, wenn seine eigene Versorgung zusammenbricht.**
-  `vcgencmd get_throttled` ist das Urteil der Firmware über die 5-V-Schiene, und es wurde
-  nicht gelesen. Ein Brownout während der Fahrt ist ein Reset während der Fahrt, und von
-  der Bodenstation aus ist das von einem Softwareabsturz nicht zu unterscheiden — genau so
-  trat es auf: Video läuft, dann Freeze und eine Minute „reconnecting", sobald sich ein
-  Servo bewegen sollte. Am echten Pi gemessen: `throttled=0x50005`, durchgehend, im
-  Leerlauf.
-- Das reine `vehicle/system/power.ts` dekodiert die Maske und **benennt vor allem die
-  Abhilfe**: Unterspannung verweist auf Servo-V+ an der Pi-Schiene und ein 5,1-V/3-A-Netzteil;
-  eine thermische Drosselung verweist auf Luftstrom, denn das ist ein anderes Problem und
-  darf nicht als Versorgungsproblem beschrieben werden. Ein vergangenes Ereignis bekommt
-  weiterhin eine leisere Warnung — fehlende Reserve behebt man vor der nächsten Fahrt, nicht
-  nach dem Absturz.
-- Angezeigt als **⚠ POWER** im OSD neben der Akkuwarnung, mit dem Statusframe neben dem
-  Uplink-Signal übertragen, und **ganz oben** in Detect hardware — auf einem Pi, der
-  brownt, ist auf dieser Seite ohnehin nichts anderes vertrauenswürdig.
-
-- **Eine verdrängte Bodenstation konnte die neue am Steuern hindern.** Verbindet man das
-  Handy, während der PC verbunden ist, wird der PC korrekt hinausgeworfen — aber die erste
-  Sitzung des Handys lenkte nicht, bis man einmal trennte und neu verband. Steuerframes
-  laufen über den **WebRTC-Datenkanal**, dessen Abbau Sekunden dauert, viel länger als der
-  des WebSockets. Die alte Bodenstation sendete in diesem Fenster weiter, ihre hohe
-  Sequenznummer landete, nachdem die neue Sitzung den Zähler auf −1 zurückgesetzt hatte,
-  und jedes Frame der neuen Bodenstation galt danach als „veraltet". Arm und Konfiguration
-  funktionierten weiter, weil die über den zuverlässigen WebSocket gehen: ein verbundenes
-  Fahrzeug, das nicht lenkt.
-- `beginControlSession()` vergibt ein Token, das **beide** Transportwege mitführen — sobald
-  eine neue Bodenstation übernimmt, kann die vorherige nichts mehr bewegen. Zwei getrennte
-  Absicherungen sind der Grund, warum das durchgerutscht ist; jetzt gibt es eine Regel im
-  Kern.
-
 ## v1.55.0
-**English**
 - **A radio's percentage is not a quality score** — and treating it as one put a permanent
   ⚠ SIGNAL on a link that was fine. The health model fed the signal percentage straight in
   as a 0–100 sub-score, while round-trip and packet loss each went through a curve with a
@@ -1305,28 +633,7 @@ Documentation only — no code changes.
 - A genuinely weak radio is still caught and still named — only the definition of weak
   changed. Measured on the real stick: RSRP −101 dBm, RSRQ −7.0 dB, SINR 19 dB, 4 of 5 bars.
 
-**Deutsch**
-- **Die Prozentzahl eines Funkmoduls ist kein Qualitätswert** — sie als solchen zu behandeln
-  hat einer völlig intakten Verbindung ein dauerhaftes ⚠ SIGNAL verpasst. Das
-  Gesundheitsmodell nahm die Signalprozente direkt als 0–100-Teilwert, während Laufzeit und
-  Paketverlust jeweils durch eine Kurve mit sinnvollem „gut"- und „unbrauchbar"-Punkt gehen.
-  Ein HiLink-Stick leitet seine Prozente aus RSRP über −140…−75 dBm ab, ein absolut
-  brauchbares **−101 dBm ergibt also 62 %** — und 62 lag unter den 70, die „gut" bedeuten.
-  Damit war das Funkmodul der benannte Schuldige einer Verbindung mit **19 dB SINR** und
-  ohne Verlust.
-- `signalScore(pct, kind)` gibt jeder Funkart eine eigene Kurve, denn die beiden
-  Prozentzahlen stammen von verschiedenen Skalen: **LTE** volle Punktzahl ab 60 %
-  (RSRP ≈ −101 dBm), null bei 30 % (≈ −120 dBm, Rand der Versorgung); **WLAN** volle
-  Punktzahl ab 60 % (−70 dBm, die übliche Verlässlichkeitsmarke), null bei 25 % (−87 dBm).
-  Ein Kabel hat kein Signalproblem.
-- Die Schwachstellen-Warnung im OSD und das Signal-Label nutzen jetzt dieselbe Kurve statt
-  einer starren 25 % — Abzeichen und Warnung können sich also nicht mehr widersprechen.
-- Ein wirklich schwaches Funkmodul wird weiterhin erkannt und benannt; geändert hat sich
-  nur, was „schwach" heißt. Am echten Stick gemessen: RSRP −101 dBm, RSRQ −7,0 dB,
-  SINR 19 dB, 4 von 5 Balken.
-
 ## v1.54.2
-**English**
 - **Auto quality could freeze the picture into a permanent "reconnecting".** Stepping the
   level makes the vehicle rescale the camera and reload go2rtc, which kills the current
   WebRTC stream — the connection has to be rebuilt either way. A **manual** change got
@@ -1345,28 +652,7 @@ Documentation only — no code changes.
 - Verified by reasoning and by the manual path already being known-good, **not** by a
   test — this is a React effect dependency, not a pure function.
 
-**Deutsch**
-- **Auto-Qualität konnte das Bild dauerhaft in „reconnecting" einfrieren.** Ein
-  Stufenwechsel lässt das Fahrzeug die Kamera neu skalieren und go2rtc neu laden, was den
-  laufenden WebRTC-Stream beendet — die Verbindung muss also ohnehin neu aufgebaut werden.
-  Ein **manueller** Wechsel bekam das geschenkt, weil er den Zustand `quality` ändert, von
-  dem der Verbindungs-Effekt abhängt: kompletter Abbau, Versuchszähler auf null, frischer
-  Verbindungsaufbau. Ein **automatischer** Wechsel änderte nur `effectiveQuality`, wovon
-  der Effekt *nicht* abhing — es baute also nichts neu auf. Der tote Stream blieb dem
-  4-Sekunden-Frame-Watchdog überlassen, der mit dem angesammelten Fehlversuchszähler und
-  dessen wachsendem Backoff neu verbindet. Und einmal eingefroren kann sich die
-  Auto-Qualität auch nicht selbst befreien, weil sie nur schaltet, solange das Bild läuft.
-  Eine Stufe von Hand zu wählen durchbrach die Schleife — genau das war zu beobachten.
-- `effectiveQuality` gehört jetzt zum Verbindungs-Effekt, ein automatischer Schritt nimmt
-  damit exakt denselben Weg wie ein manueller.
-- Die Fahrzeugseite wurde zuerst ausgeschlossen: die Medium-Skalierung einer
-  1280×720-Kamera (844×476 bei 1200 kbps) wurde am echten Pi angewandt und lieferte ein
-  Bild.
-- Belegt durch Herleitung und dadurch, dass der manuelle Weg nachweislich funktioniert —
-  **nicht** durch einen Test: das ist eine React-Effect-Abhängigkeit, keine reine Funktion.
-
 ## v1.54.1
-**English**
 - **The camera row stopped talking about the IMX519 under every other sensor.** The
   tuning-file placeholder and the note underneath were hardcoded, so an OV5647 was still
   offered an Arducam's file path and told about an autofocus algorithm it has no motor
@@ -1380,24 +666,7 @@ Documentation only — no code changes.
 - The camera rows re-render when the module selection changes, so the two follow each
   other without a page reload.
 
-**Deutsch**
-- **Die Kamerazeile redet nicht mehr unter jedem anderen Sensor von der IMX519.** Der
-  Platzhalter für die Tuning-Datei und der Hinweis darunter waren hartkodiert — einer
-  OV5647 wurde also der Dateipfad einer Arducam angeboten und von einem
-  Autofokus-Algorithmus erzählt, für den sie keinen Motor hat. Beides folgt jetzt dem
-  gewählten CSI-Modul: der Platzhalter ist dessen Tuning-Datei (oder „none needed for
-  this module"), und der Hinweis nennt das Modul, um das es geht.
-- **Fokus-Bedienelemente nur dort, wo es eine Linse zu bewegen gibt.** Ein Modul, das
-  genau einen Sensor ohne Aktuator benennt, sagt das, statt ein Focus-Dropdown
-  anzubieten, das nichts tut; bei Auto-Detect und einem eigenen Overlay bleiben die
-  Bedienelemente, weil dort auch eine IMX708 auftauchen kann. Eine bereits gespeicherte
-  Fokus-Einstellung bleibt sichtbar und änderbar, statt versteckt zu werden, während ihr
-  Wert in der Konfiguration steht.
-- Die Kamerazeilen werden neu gezeichnet, wenn die Modulauswahl wechselt — beides folgt
-  einander also ohne Neuladen der Seite.
-
 ## v1.54.0
-**English**
 - **Rotation and mirroring per camera** (Setup › Cameras): 0° / 180° plus independent
   horizontal and vertical mirrors, for CSI and USB alike. A camera bolted in upside down
   is the normal case, not an exception.
@@ -1412,24 +681,7 @@ Documentation only — no code changes.
   sensor cannot do the others — and faking them would mean putting a transcode back into
   a pipeline that was rebuilt in v1.47.0 specifically to avoid one.
 
-**Deutsch**
-- **Rotation und Spiegelung pro Kamera** (Setup › Cameras): 0° / 180° plus unabhängige
-  horizontale und vertikale Spiegelung, für CSI und USB gleichermaßen. Eine über Kopf
-  verbaute Kamera ist der Normalfall, keine Ausnahme.
-- **Es ist eine Transformation, nicht drei Optionen.** Eine 180°-Drehung *ist* eine
-  horizontale plus eine vertikale Spiegelung, also fallen alle drei Einstellungen in zwei
-  Booleans zusammen, bevor irgendetwas erzeugt wird. Deshalb hebt sich „180° und
-  zusätzlich horizontal gespiegelt" auf dieser Achse auf, statt davon abzuhängen, in
-  welcher Reihenfolge ein Kamera-Stack zwei getrennte Flags anwendet.
-- Auf dem CSI-Pfad macht das der Sensor (`rpicam-vid --hflip/--vflip`), es ist also
-  kostenlos; der V4L2-Pfad bekommt einen ffmpeg-`-vf`-Filter, geschrieben ohne
-  Leerzeichen, weil go2rtc eine `exec:`-Zeile an Leerzeichen trennt.
-- **90° und 270° fehlen bewusst.** `rpicam-vid` bietet nur 0 und 180 — der Sensor kann
-  die anderen nicht — und sie nachzubilden hieße, einen Transcode in eine Pipeline
-  zurückzuholen, die in v1.47.0 genau dafür umgebaut wurde, ohne auszukommen.
-
 ## v1.53.0
-**English**
 - **Switching camera module now cleans up after the previous one.** A tuning file is a
   *sensor* calibration, not a preference: swapping an Arducam IMX519 for a Raspberry Pi
   OV5647 left `imx519-af.json` on the camera entry, which hands the new sensor another
@@ -1444,24 +696,7 @@ Documentation only — no code changes.
 - Found by walking into it: a working IMX519 was replaced with an OV5647, and the stale
   tuning file came along for the ride.
 
-**Deutsch**
-- **Ein Modulwechsel räumt jetzt hinter dem vorherigen auf.** Eine Tuning-Datei ist eine
-  *Sensor*-Kalibrierung, keine Vorliebe: tauscht man eine Arducam IMX519 gegen eine
-  Raspberry Pi OV5647, blieb `imx519-af.json` am Kameraeintrag stehen und gibt dem neuen
-  Sensor das Farb- und Belichtungsmodell eines fremden — stillschweigend, mit einem Bild,
-  das plausibel aussieht. Dasselbe gilt für einen Fokusmodus an einer Kamera ohne
-  Fokusmotor. `reconcileCameras` läuft jetzt bei jeder Modulauswahl: es trägt die
-  Tuning-Datei des Moduls ein, entfernt die des vorherigen und löscht einen Fokusmodus,
-  den das neue Modul nicht nutzen kann. Angefasst wird nur, was der Katalog selbst
-  gesetzt hat — ein von Hand eingetragener Pfad gehört dem Betreiber und bleibt.
-  USB-Kameras bleiben unberührt.
-- Der Abgleich liegt im Fahrzeug statt in der Setup-Seite, gilt also unabhängig davon, wer
-  die Änderung macht; die Seite übernimmt die Kameraliste einfach aus der Antwort.
-- Gefunden, indem ich hineingelaufen bin: eine laufende IMX519 wurde durch eine OV5647
-  ersetzt, und die alte Tuning-Datei ist mitgefahren.
-
 ## v1.52.1
-**English**
 - **Deleting every camera is now a supported way to run YonderRC**, not a broken state.
   It was broken: emptying the list left the panel holding the id of a stream that no
   longer existed, so it kept asking the vehicle for it every few seconds, forever. The
@@ -1485,35 +720,7 @@ Documentation only — no code changes.
   apply" although the reload had happened. It now asks go2rtc what it is serving before
   claiming anything, and only says that when the streams really did not change.
 
-**Deutsch**
-- **Alle Kameras zu löschen ist jetzt eine unterstützte Betriebsart**, kein kaputter
-  Zustand. Kaputt war es: beim Leeren der Liste behielt das Panel die ID eines Streams,
-  den es nicht mehr gab, und fragte das Fahrzeug alle paar Sekunden danach — dauerhaft.
-  Die Auswahl wird jetzt geleert, wenn die Liste leer ist (`selectedCamera`), womit der
-  gesamte Videopfad abgeschaltet ist: keine Anfragen, keine Reconnects, kein Fehlertext.
-  Die FPV-Fläche bleibt dunkel, OSD, Telemetrie, Scharfschaltung und Steuerung laufen
-  normal weiter. Genau so konfiguriert man es, wenn man einen reinen
-  IP/WLAN/AP-Empfänger will und auf Sicht fährt.
-- Der Platzhalter sagt das auch, statt go2rtc zu verdächtigen, und Record/Snapshot sind
-  ohne Kamera ausgegraut, statt einen Knopf anzubieten, der nur scheitern kann.
-- **Eine endgültig verschwundene Kamera wird nicht mehr gehämmert.** Der Reconnect-Backoff
-  hörte bei 5 s auf zu wachsen — eine abgezogene Kamera bedeutete also eine komplette
-  RTCPeerConnection samt ICE alle fünf Sekunden, solange die App offen war; am Handy
-  konkurriert das mit dem 20-ms-Regeltakt. Jetzt bleibt es für die ersten vier Versuche
-  schnell (ein Aussetzer ist damit abgedeckt), hält eine gute halbe Minute bei 5 s und
-  weitet sich dann auf 15 s und 30 s. Die Erholung nach einem echten Aussetzer ist
-  unverändert.
-- Das Fahrzeug-Banner sagt `no cameras (fine — the ground station just stays dark)`
-  statt eine leere Liste zu drucken.
-- **Das Reload-Log lügt nicht mehr.** go2rtc startet sich auf `POST /api/restart`
-  *selbst* neu und legt dabei oft die Verbindung, bevor es antwortet — der Fetch schlägt
-  fehl, und das Fahrzeug schrieb daraufhin „wrote go2rtc.yaml; start/restart go2rtc to
-  apply", obwohl der Reload längst passiert war. Jetzt wird zuerst nachgefragt, was
-  go2rtc tatsächlich ausliefert, und die Meldung kommt nur noch, wenn sich die Streams
-  wirklich nicht geändert haben.
-
 ## v1.51.0
-**English**
 - **The on-screen stick gets the space it deserves.** Stick modes 2 and 3 put both axes
   on one stick, which left the other half of the row empty while the stick you actually
   use stayed 128 px. It now grows to `clamp(128px, 62vw, 300px)` whenever only one stick
@@ -1535,32 +742,7 @@ Documentation only — no code changes.
   `vibrationActuator`. The click is deliberately separate from `beep.ts`, whose tones are
   alerts meant to be heard over wind and must not be competed with.
 
-**Deutsch**
-- **Der Bildschirm-Stick bekommt den Platz, der da ist.** Die Stick-Modi 2 und 3 legen
-  beide Achsen auf einen Stick — die andere Hälfte der Reihe blieb leer, während der Stick,
-  den man tatsächlich benutzt, 128 px klein blieb. Er wächst jetzt auf
-  `clamp(128px, 62vw, 300px)`, sobald nur ein Stick angezeigt wird: am Handy grob der
-  doppelte Weg für denselben Daumen, also der Unterschied zwischen Daumenspitzen- und
-  Daumenbreiten-Genauigkeit. Im Querformat am Handy skaliert er über die Höhe, weil dort
-  die knapp ist. Basis, Knopf und Weg kommen aus einer einzigen Variable `--joy-size` —
-  es ist derselbe Stick, nur größer; der Weg des Knopfes war vorher fest auf 44 px
-  verdrahtet und passte nur zur 128-px-Basis.
-- Ausschlaggebend ist, **wie viele Sticks angezeigt werden**, nicht die Modusnummer — eine
-  eigene Belegung, die eine Seite frei lässt, profitiert genauso.
-- **Rückmeldung an Mitte und Rand** (Setup › Controls, standardmäßig aus). Jede Grenze
-  löst einmal pro Überschreitung aus, mit Hysterese in beide Richtungen — den Stick am
-  Anschlag zu halten bleibt still statt zu rattern.
-- **Ein iPhone kann von einer Webseite aus nicht vibrieren.** Safari hat keine
-  Vibration-API, und keine Einstellung ändert das — ein reines „Rumble" am Telefon lässt
-  sich also nicht bauen. Was unter iOS funktioniert, ist ein sehr kurzer Web-Audio-Klick,
-  und der ist der Standardkanal; Vibration wird angeboten, wo der Browser sie wirklich hat
-  (Android), und ist sonst ausgegraut, statt ein Schalter zu sein, der stillschweigend
-  nichts tut. Ein verbundenes Gamepad wird über `vibrationActuator` gerüttelt. Der Klick
-  ist bewusst von `beep.ts` getrennt, dessen Töne Warnungen sind, die man über Fahrtwind
-  hören soll — dem darf er keine Konkurrenz machen.
-
 ## v1.50.0
-**English**
 - **The update button no longer turns a configured vehicle back into a simulator.** The
   native driver modules (`i2c-bus`, `pigpio`, `serialport`) are optionalDependencies, and
   the update runs `npm install --omit=optional` — which prunes them. `install.sh` has put
@@ -1580,28 +762,7 @@ Documentation only — no code changes.
   clears the cache so the next tick sends everything again — the cache can never claim a
   value the chip did not receive.
 
-**Deutsch**
-- **Der Update-Knopf macht aus einem konfigurierten Fahrzeug keinen Simulator mehr.** Die
-  nativen Treibermodule (`i2c-bus`, `pigpio`, `serialport`) sind optionalDependencies, und
-  das Update führt `npm install --omit=optional` aus — das entfernt sie. `install.sh`
-  stellt sie seit v1.39.0 aus den gespeicherten `hardwareDeps` wieder her, **das Update im
-  UI aber nie**: *Update & restart* hat also stillschweigend den PCA9685-Treiber und die
-  INA-Sensoren entfernt, bis jemand sie von Hand nachinstalliert hat. `updateSteps` hängt
-  jetzt pro gespeichertem Modul einen Wiederherstellungsschritt an, nach dem
-  aufräumenden Install, über dieselbe Allowlist wie `hwDeps.ts` (`restorableHwDeps`) — der
-  Wert kommt aus einer Konfigurationsdatei und landet in einer npm-Kommandozeile.
-- **Der PCA9685-Treiber schreibt nur noch geänderte Kanäle.** Jeder Kanal ist eine eigene
-  I²C-Transaktion; sechzehn davon füllen den 20-ms-Regeltakt fast aus, und `VehicleCore`
-  verwirft dann den nächsten — auf echter Hardware sichtbar als stetig wachsendes
-  `[core] driver write still busy — N ticks skipped`. Beim Fahren bewegen sich ein bis
-  zwei Kanäle pro Takt, entsprechend sinkt die Buslast. Verglichen wird in PWM-**Counts**,
-  nicht in µs, denn zwei µs-Werte, die auf denselben Count runden, sind derselbe Impuls.
-  Ein Kanal, für den der Aufrufer keinen Wert hat, bleibt unangetastet wie bisher, und ein
-  fehlgeschlagener Schreibvorgang löscht den Cache, damit der nächste Takt wieder alles
-  sendet — der Cache kann nie einen Wert behaupten, den der Chip nicht bekommen hat.
-
 ## v1.49.1
-**English**
 - **"Reboot required" now means it.** v1.49.0 raised the flag whenever the *text* of
   config.txt changed, so selecting a module and then selecting the one that is already
   running left a reboot notice standing for a change the firmware would not notice.
@@ -1611,19 +772,7 @@ Documentation only — no code changes.
 - The answer to *Select module* says which of the two happened instead of always
   promising a reboot.
 
-**Deutsch**
-- **„Reboot required" heißt jetzt auch wirklich Reboot.** v1.49.0 setzte die Meldung,
-  sobald sich der *Text* der config.txt änderte — wer ein Modul auswählte und danach
-  wieder das ohnehin laufende, bekam eine Reboot-Warnung für eine Änderung, welche die
-  Firmware gar nicht bemerken würde. YonderRC merkt sich jetzt die effektive
-  Kamera-Konfiguration, mit der das System tatsächlich gebootet hat — über die
-  Kernel-Boot-ID, damit sie einen Dienst-Neustart übersteht — und vergleicht damit. Hin
-  und zurück schalten bleibt still, eine echte Änderung wird weiterhin angezeigt.
-- Die Antwort auf *Select module* sagt, welcher der beiden Fälle eingetreten ist, statt
-  immer einen Reboot zu versprechen.
-
 ## v1.49.0
-**English**
 - **Pick the camera module in the setup page instead of over SSH.** A new *CSI camera
   module* panel above the camera list writes `camera_auto_detect` and `dtoverlay=` into
   `/boot/firmware/config.txt`, then says *Reboot required* until the Pi has actually
@@ -1652,39 +801,7 @@ Documentation only — no code changes.
 - Fully usable in the simulator — `SimSystem` keeps its own config.txt, including the
   reboot-pending state and the same overlay-name validation as the real one.
 
-**Deutsch**
-- **Das Kameramodul wird auf der Setup-Seite ausgewählt statt über SSH.** Ein neues Panel
-  *CSI camera module* über der Kameraliste schreibt `camera_auto_detect` und `dtoverlay=`
-  in `/boot/firmware/config.txt` und zeigt danach *Reboot required*, bis der Pi wirklich
-  damit gebootet hat — mit einem **Reboot now**-Knopf daneben. Der Katalog umfasst
-  Auto-Detect, die vier offiziellen Sensoren explizit erzwungen, Arducam IMX519 / 64MP
-  Hawkeye / OV64A40 Owlsight / Pivariety und *Other module* für alles Übrige.
-- **Die Auswahl gehört zum Pi, nicht zu einem Stream.** Sie ist bewusst kein vierter
-  Eintrag neben `sim`/`rpicam`/`usb` geworden: Der Stream-Typ sagt, *wie* das Bild
-  entsteht (und eine Arducam entsteht durch `rpicam-vid` wie jede andere CSI-Kamera),
-  während das Overlay eine Einstellung für den einen Kameraanschluss ist. In der
-  Stream-Liste ließen sich zwei widersprüchliche Overlays für Hardware ausdrücken, die
-  einen Port hat — und „arducam" allein könnte nie sagen, *welche* Arducam, denn jede
-  braucht ein anderes Overlay.
-- Wird ein Modul gewählt, das eine eigene Tuning-Datei mitbringt, trägt YonderRC sie in
-  die `rpicam`-Kameras ein, die noch keine haben — der Autofokus der IMX519 funktioniert
-  damit, ohne einen Pfad zu kennen.
-- **Es wird nichts blind überschrieben.** Ein Backup bleibt als `config.txt.yonderrc-bak`
-  liegen, konkurrierende Zeilen werden auskommentiert statt gelöscht, unser Block ist
-  markiert und wird bei der nächsten Änderung als Ganzes ersetzt, und er hängt unter einem
-  eigenen `[all]`, damit er nicht in einem `[cm4]`/`[pi5]`-Abschnitt landet. Ein eigener
-  Overlay-Name muss die Syntaxprüfung bestehen *und* als `.dtbo` auf diesem Pi existieren.
-- Die Reboot-Erkennung vergleicht die beim Schreiben notierte Kernel-Boot-ID mit der
-  aktuellen — sie übersteht damit einen Dienst-Neustart und verschwindet genau dann, wenn
-  der Pi tatsächlich neu gestartet wurde.
-- **`Detect hardware` erklärt jetzt die Boot-Konfiguration** — genau das, was fehlte:
-  bisher riet es zu einem `dtoverlay`, auch wenn das eigentliche Problem war, dass
-  `camera_auto_detect` für ein gar nicht mehr angestecktes Modul abgeschaltet war.
-- Im Simulator vollständig bedienbar — `SimSystem` führt eine eigene config.txt, inklusive
-  Reboot-Pending-Zustand und derselben Overlay-Namensprüfung wie das echte System.
-
 ## v1.48.1
-**English**
 - **The IMX519 focus map is now measured instead of assumed.** v1.48.0 mapped 0 dioptres
   to the AK7375's rest position — and on the real module that is the *blurriest* setting,
   not infinity. Sweeping the actuator's 10-bit range against a distant scene peaks at code
@@ -1693,18 +810,7 @@ Documentation only — no code changes.
 - Verified through the live stream on a Pi 4B: the same frame went from 26 kB to 40 kB and
   the scene outside the window became legible.
 
-**Deutsch**
-- **Die IMX519-Fokusabbildung ist jetzt gemessen statt angenommen.** v1.48.0 bildete 0
-  Dioptrien auf die Ruhelage des AK7375 ab — am echten Modul ist das die *unschärfste*
-  Position, nicht Unendlich. Ein Durchlauf über den 10-Bit-Bereich des Aktuators gegen
-  eine weite Szene hat sein Maximum bei Code ≈ 597, dort verankert die mitgelieferte
-  Tuning-Datei nun 0 Dioptrien: `"map": [0.0, 597, 10.0, 1023]`. `focus: manual` +
-  `lensPosition: 0` ist damit die scharfe Fern-Einstellung, die man am Fahrzeug will.
-- Über den Live-Stream auf einem Pi 4B verifiziert: dasselbe Bild ging von 26 kB auf 40 kB,
-  die Szene vor dem Fenster wurde lesbar.
-
 ## v1.48.0
-**English**
 - **Focus control for CSI cameras** — the reason an Arducam 16 MP IMX519 streams a
   permanently soft picture even after v1.47.0. Its AK7375 lens actuator is bound by the
   kernel and visible as a v4l-subdev, but Raspberry Pi's stock `imx519.json` tuning has
@@ -1724,30 +830,7 @@ Documentation only — no code changes.
   `..` — go2rtc splits `exec:` on whitespace, so a path with a space would quietly become
   two arguments.
 
-**Deutsch**
-- **Fokussteuerung für CSI-Kameras** — der Grund, warum eine Arducam 16 MP IMX519 auch
-  nach v1.47.0 dauerhaft unscharf streamt. Ihr AK7375-Fokusmotor ist vom Kernel gebunden
-  und als v4l-subdev sichtbar, aber Raspberry Pis mitgelieferte Tuning-Datei
-  `imx519.json` enthält keinen `rpi.af`-Algorithmus — libcamera beantwortet jede
-  Fokus-Anforderung mit *Could not set AF_MODE - no AF algorithm*, und die Linse bleibt
-  schlicht in Ruhelage.
-- `CameraCfg` hat jetzt `focus` (`off` / `manual` / `auto` / `continuous`),
-  `lensPosition` in Dioptrien und `tuningFile`; Setup › Cameras zeigt die drei Felder bei
-  `rpicam`-Kameras. Voreinstellung ist `off`, also exakt das bisherige Verhalten.
-- **`provisioning/tuning/imx519-af.json`** enthält Raspberry Pis Tuning mit angehängtem
-  `rpi.af`-Block, abgebildet auf den vollen Bereich des AK7375; `install.sh` kopiert sie
-  nach `/var/lib/yonderrc/tuning/`, außerhalb des Checkouts, damit ein Update sie nicht
-  überschreibt. Am echten Modul auf einem Pi 4B verifiziert: ohne die Datei wird
-  `--autofocus-mode` abgelehnt, mit ihr findet `auto` den Fokus und `manual` +
-  `--lens-position` hält ihn.
-- Am fahrenden Modell ist **`manual` auf 0 Dioptrien besser als `continuous`**, das bei
-  jedem Szenenwechsel neu sucht — die Setup-Seite sagt das neben dem Feld.
-- Der Tuning-Pfad wird wie der V4L2-Gerätepfad geprüft: absolut, ohne Leerzeichen,
-  `.json`, kein `..` — go2rtc trennt `exec:` an Leerzeichen, ein Pfad mit Leerzeichen
-  würde also stillschweigend zu zwei Argumenten.
-
 ## v1.47.0
-**English**
 - **The Pi camera stream never worked on current Raspberry Pi OS.** Two independent bugs,
   both found on real hardware (Pi 4B, Bookworm): the generated go2rtc source called
   `libcamera-vid`, but Bookworm renamed the tools to `rpicam-*` and dropped the old
@@ -1773,37 +856,7 @@ Documentation only — no code changes.
   `explainNoCamera`) with tests; the camera binary is sanitised like the V4L2 device path.
 - Both hardware guides gained a troubleshooting note for a black `rpicam` stream.
 
-**Deutsch**
-- **Der Pi-Kamera-Stream hat auf aktuellem Raspberry Pi OS nie funktioniert.** Zwei
-  unabhängige Fehler, beide an echter Hardware gefunden (Pi 4B, Bookworm): die erzeugte
-  go2rtc-Quelle rief `libcamera-vid` auf, aber Bookworm hat die Tools nach `rpicam-*`
-  umbenannt und die alten Symlinks entfernt — go2rtc protokollierte
-  `executable file not found in $PATH`, die Bodenstation zeigte connecting → schwarz →
-  reconnecting. `detectRpicamBinary()` löst den echten Namen jetzt beim Start auf,
-  `rpicam-vid` zuerst, `libcamera-vid` für Bullseye.
-- **Der zweite Fehler hätte die Umbenennung überlebt.** Die Quelle war
-  `libcamera-vid … -o - | ffmpeg … -f rtsp {output}`, aber go2rtc führt `exec:` **ohne
-  Shell** aus (`shell.QuoteSplit` + `exec.Command`) — das `|` und alles danach landete als
-  literales Argument beim Kamera-Binary. Ohne `{output}` liest go2rtc stattdessen den
-  stdout des Prozesses und erkennt das Format selbst, und rohes H.264 Annex-B ist genau
-  das, was `rpicam-vid` schreibt — ffmpeg fliegt damit aus dem `rpicam`-Pfad. Ein Prozess
-  weniger, kein Transcode, weniger Latenz, und es läuft auf einer Pi 5 ohne
-  Hardware-Encoder.
-- **Detect hardware sagt zum ersten Mal die Wahrheit über Kameras.** Es rief dasselbe
-  hartkodierte `libcamera-hello` auf und listete mangels Treffer jedes `/dev/video*` —
-  auf einem Pi ganz ohne Kamera sind das `video10`…`video31`, die V4L2-Codec/ISP-Knoten,
-  die Seite behauptete also vierzehn Kameras. Jetzt zuerst `rpicam-hello`, nur echte
-  Capture-Knoten (`video0`–`video9`), und wenn nichts da ist, steht dort auch, was zu
-  ändern ist: Flachbandkabel und CAM- statt DISPLAY-Port, oder `camera_auto_detect=0`
-  plus explizites `dtoverlay=` für Sensoren außerhalb der Auto-Detect-Menge (Arducam
-  IMX519 / 64MP / Pivariety, OV64A40).
-- Pure Helfer in `vehicle/system/cameras.ts` (`parseCameraList`, `captureNodes`,
-  `explainNoCamera`) mit Tests; das Kamera-Binary wird wie der V4L2-Gerätepfad bereinigt.
-- Beide Hardware-Leitfäden haben eine Fehlersuche-Notiz für einen schwarzen
-  `rpicam`-Stream bekommen.
-
 ## v1.46.3
-**English**
 - **A test now fails if the two READMEs drift apart.** `README.md` and `README.de.md` must
   have the same sections and point at each other; the German one must link the German
   hardware guide. It cannot judge a translation, but it catches the thing that actually
@@ -1815,21 +868,7 @@ Documentation only — no code changes.
 - Same guard and same wording in **YonderGate** (v0.12.12), which just gained its own
   `README.de.md`.
 
-**Deutsch**
-- **Ein Test schlägt jetzt fehl, wenn die beiden READMEs auseinanderlaufen.** `README.md`
-  und `README.de.md` müssen dieselben Abschnitte haben und aufeinander verweisen; die
-  deutsche muss den deutschen Hardware-Leitfaden verlinken. Über die Qualität einer
-  Übersetzung sagt das nichts, aber es fängt das, was wirklich passiert — ein Abschnitt,
-  der in einer der beiden ergänzt und in der anderen vergessen wird.
-- **CLAUDE.md sagt die Regel ausdrücklich**: Beide Sprachfassungen werden im *selben
-  Commit* bearbeitet, immer. Eine hinterherhinkende Übersetzung ist schlechter als keine —
-  sie behauptet als aktuell, was das Projekt nicht mehr tut, und der Leser kann nicht
-  erkennen, welche der beiden lügt.
-- Derselbe Wächter und derselbe Wortlaut in **YonderGate** (v0.12.12), das gerade sein
-  eigenes `README.de.md` bekommen hat.
-
 ## v1.46.2
-**English**
 - **WireGuard can now be set up by hand, not only from a file.** Uploading the `.conf`
   is perfect when there is one — a FritzBox hands you a file. It is useless when there is
   not: a peer somebody set up for you, a provider that shows the values on a web page, a
@@ -1858,41 +897,7 @@ Documentation only — no code changes.
 - 772 tests (33 new): key and endpoint shapes, the round trip through a conf and back, a
   foreign file with lower-case keys and comments, and the redaction.
 
-**Deutsch**
-- **WireGuard lässt sich jetzt auch von Hand einrichten, nicht nur per Datei.** Die
-  `.conf` hochzuladen ist perfekt, wenn es eine gibt — eine FritzBox liefert eine Datei.
-  Es hilft nichts, wenn es keine gibt: ein Peer, den jemand für dich eingerichtet hat, ein
-  Anbieter, der die Werte auf einer Webseite anzeigt, ein Schlüssel, den du auf dem Pi
-  erzeugt hast. Dann hatte man sieben Angaben und kein Feld dafür. Setup › Remote access ›
-  WireGuard bietet jetzt beides, per Radiobutton.
-- **Gespeichert wird in beiden Fällen dasselbe.** Aus den Feldern wird die `.conf`, und die
-  bleibt die maßgebliche Fassung — `wg-quick` liest ohnehin eine Datei, und eine zweite
-  parallele Kopie in der Konfiguration wäre ein Drift-Bug, der auf den Tag wartet, an dem
-  beide sich widersprechen. Das Formular wird durch Zurücklesen der Datei gefüllt, mit dem
-  angenehmen Nebeneffekt: **eine hochgeladene `.conf` lässt sich danach feldweise
-  bearbeiten**.
-- **Was das Formular nicht abbilden kann, sagt es** statt es still zu verlieren: ein
-  zweiter `[Peer]` oder Direktiven wie `MTU` und `PostUp`. Das Panel benennt sie und rät,
-  bei der Datei zu bleiben, wenn man sie braucht.
-- **Die beiden Geheimnisse verlassen die Box nie.** `/api/remote` antwortet ohne
-  API-Secret, damit die Seite immer lädt, und der Onboarding-Hotspot des Fahrzeugs ist
-  standardmäßig offen — den privaten Schlüssel dort zurückzugeben hieße, jedem in
-  WLAN-Reichweite das VPN zu schenken. Das Formular zeigt sie als gespeichert an und lässt
-  die Felder leer; leer heißt behalten.
-- **Jede Ablehnung nennt die Abhilfe**, weil das auf einem Handy gelesen wird: ein
-  fehlender privater Schlüssel verweist auf `wg genkey`, ein falscher Endpoint zeigt die
-  Form host:port, ein verirrter Preshared Key auf `wg genpsk`. Eine nackte Adresse wie
-  `10.0.0.2` wird angenommen und als `/32` geschrieben — genau das tippen die Leute.
-- **Keepalive steht absichtlich auf 25.** Hinter Carrier-NAT funktioniert ein Tunnel ohne
-  das bis zur ersten Leerlaufminute und trägt danach still nichts mehr herein.
-- In **YonderGate** identisch gelöst (v0.12.7): dasselbe Modul, derselbe Endpunkt, dasselbe
-  Panel — die beiden Repositories unterscheiden sich nur im Wort für die Box.
-- 772 Tests (33 neue): Schlüssel- und Endpoint-Formen, der Rundlauf durch eine conf und
-  zurück, eine fremde Datei mit klein geschriebenen Schlüsseln und Kommentaren, und die
-  Schwärzung.
-
 ## v1.46.1
-**English**
 - The origin gate from v1.46.0 now also reads **`Sec-Fetch-Site`**, which browsers send
   on every request — including the ones that carry no `Origin` at all, like an `<img>`,
   a `<script>` or a plain form. Those cannot read an answer, but they can still make the
@@ -1900,21 +905,11 @@ Documentation only — no code changes.
   a page elsewhere caused is refused; curl and scripts are unaffected. Brought back from
   YonderGate, where the same request can switch a relay.
 
-**Deutsch**
-- Die Origin-Prüfung aus v1.46.0 liest jetzt zusätzlich **`Sec-Fetch-Site`**, das Browser
-  bei jeder Anfrage mitschicken — auch bei denen ganz ohne `Origin`, etwa `<img>`,
-  `<script>` oder ein einfaches Formular. Die können zwar keine Antwort lesen, aber das
-  Fahrzeug trotzdem etwas tun lassen, und die reine Origin-Regel hätte sie durchgewunken.
-  Alles, was von einer fremden Seite ausgelöst wurde, wird abgewiesen; curl und Skripte
-  bleiben unberührt. Aus YonderGate zurückportiert, wo dieselbe Anfrage ein Relais
-  schaltet.
-
 ## v1.46.0
 A review pass over the whole repository — protocol, vehicle, ground, desktop — in the
 same spirit as the one on YonderGate. Five findings, all fixed here. Nothing needed
 hardware to find, and nothing found needed hardware to fix.
 
-**English**
 - **Fixed: a web page could arm your vehicle.** The API secret is off by default and
   WebSockets ignore CORS entirely, so any site the operator happened to open — while
   their phone was on the vehicle's own hotspot — could open a control link to
@@ -1949,47 +944,7 @@ hardware to find, and nothing found needed hardware to fix.
 - Both language versions of the hardware guide document the new trust rules, and the
   troubleshooting table explains close codes 4002 and 4003.
 
-**Deutsch**
-- **Behoben: eine Webseite konnte dein Fahrzeug scharf schalten.** Das API-Secret ist
-  standardmäßig aus, und WebSockets ignorieren CORS vollständig — jede Seite, die der
-  Bediener zufällig öffnet, während sein Handy am Fahrzeug-Hotspot hängt, konnte einen
-  Kontroll-Link zu `192.168.4.1:8080` aufmachen und scharf schalten oder an die Setup-API
-  POSTen (Werksreset, Servo-Sweep, Kamera- oder WLAN-Änderung, Neustart). Das Fahrzeug
-  schaut jetzt, **woher die Seite selbst stammt**: kein `Origin` (curl, Skripte, die
-  Tests), `file://` (Desktop-App), eine private, Loopback-, `.local`- oder
-  Tailscale-Adresse oder die eigene Adresse des Fahrzeugs werden angenommen; eine Seite
-  aus dem öffentlichen Internet wird mit HTTP 403 bzw. WS-Close-Code **4003** abgewiesen,
-  sofern sie nicht das API-Secret vorweist. Lesende Zugriffe bleiben offen, die
-  Setup-Seite geht also immer auf. Das entschärft auch DNS-Rebinding, weil die
-  angreifende Seite ihren eigenen Origin behält.
-- **Behoben: zwei Bodenstationen konnten gleichzeitig steuern.** Nichts erzwang einen
-  einzigen Kontroll-Link, und das Fahrzeug setzt seine Sequenzzählung bei jeder neuen
-  Verbindung zurück — ein vergessener Tab auf einem Handy in der Hosentasche und die
-  echte Sitzung des Bedieners hätten beide Steuerframes geschickt, 50-mal pro Sekunde,
-  der letzte gewinnt. Wiederverbinden muss funktionieren (das ist der Normalfall nach
-  einem Abriss), also **übernimmt die neue Sitzung**, und die alte wird mit Code **4002**
-  geschlossen und bekommt gesagt, was passiert ist — statt dass sich beide das Fahrzeug
-  sekündlich hin- und herreichen.
-- **Behoben: ein hängender Treiber konnte zwei Frames auf demselben Bus verschränken.**
-  `setInterval` wartet nicht auf einen async-Callback; ein I²C-Bus, der die Leitung hält,
-  oder ein voller Serial-Puffer bekam ein zweites `writeChannels` obendrauf. Zwei
-  verschränkte Frames sind kein langsames Servo, sondern ein korruptes. Ein Tick, der
-  während eines laufenden Schreibvorgangs kommt, wird jetzt übersprungen — der nächste
-  ist 20 ms entfernt und trägt frischere Werte als eine Warteschlange — und ein hängender
-  Bus meldet sich einmal pro Sekunde im Log.
-- **Behoben: ein belegter Port hat den Fahrzeugdienst getötet**, mit unbehandeltem
-  Error-Event und Stacktrace. Unter systemd ist das eine Neustartschleife ohne Erklärung.
-  Jetzt steht da, welcher Port belegt ist und wie man ausweicht.
-- **Behoben: der Treiber-Fallback hat still eine Sicherheitseinstellung verändert.** Wenn
-  ein echter Treiber beim Booten scheitert, fällt der Dienst auf sim zurück, damit die
-  Setup-UI erreichbar bleibt — er baute den Core aber ohne `disarmOnReconnect` neu, ein
-  Fahrzeugtyp mit abgeschaltetem Auto-Disarm bekam also den Standard zurück, bis die
-  Bodenstation ihre Konfiguration erneut schickte.
-- Beide Sprachfassungen des Hardware-Guides dokumentieren die neuen Vertrauensregeln, die
-  Troubleshooting-Tabelle erklärt die Close-Codes 4002 und 4003.
-
 ## v1.45.3
-**English**
 - **The WiFi country can be changed after it has been set.** The field only appeared
   while something was broken — once a country was in force, the block disappeared and
   the only way to correct it was an SSH session. It is a regulatory setting that decides
@@ -2002,21 +957,7 @@ hardware to find, and nothing found needed hardware to fix.
   Pi's own locale or timezone, and nothing is set until you press the button or the
   hotspot repairs a missing country by itself.
 
-**Deutsch**
-- **Das WLAN-Land lässt sich ändern, nachdem es gesetzt wurde.** Das Feld erschien nur,
-  solange etwas kaputt war — sobald ein Land in Kraft war, verschwand der Block, und
-  korrigieren ließ es sich nur noch per SSH. Es ist eine Funkregulierung, die über
-  Kanäle und Sendeleistung entscheidet, also muss es änderbar bleiben: ein Fahrzeug, das
-  über eine Grenze fährt, braucht eine Änderung und keine Neuinstallation.
-- Die Zeile zeigt jetzt immer das geltende Land, das Feld ist damit vorbelegt (nicht nur
-  mit dem Vorschlag), eine kurze Liste gängiger Kürzel steht zur Auswahl, und der Knopf
-  sagt, was er tut — *Apply country* bei gesundem Funkmodul, *Enable WiFi radio* bei
-  gesperrtem. Einen **eingebauten Standard gibt es nicht**: der Vorschlag stammt aus
-  Locale oder Zeitzone des Pi, gesetzt wird erst auf Knopfdruck oder wenn der
-  Hotspot-Start ein fehlendes Land selbst repariert.
-
 ## v1.45.2
-**English**
 - **Fixed: "Link lost" was announced for a link that never existed.** Open the ground app,
   don't press Connect, and two seconds later the voice reported an outage — of a
   connection you never had. Reported as "it says Link lost every time I switch from Setup
@@ -2030,23 +971,7 @@ hardware to find, and nothing found needed hardware to fix.
 - Eight new assertions, including a full minute of ticks with no connection ever made,
   proving silence — and the same disconnect announced once a connection has existed.
 
-**Deutsch**
-- **Behoben: „Link lost" wurde für eine Verbindung angesagt, die es nie gab.** Boden-App
-  öffnen, Connect nicht drücken — zwei Sekunden später meldete die Stimme einen Ausfall,
-  und zwar einer Verbindung, die nie bestand. Gemeldet als „beim Wechsel von Setup auf
-  Drive kommt jedes Mal Link lost", was derselbe Fehler durch die Brille des Browsers ist:
-  Sprachausgabe wird zurückgehalten, bis die Seite eine Nutzergeste hatte — die beim Start
-  eingereihte Ansage wurde also erst beim nächsten Tippen hörbar, und das Tippen sah aus
-  wie die Ursache.
-- Die Link-Stimme merkt sich jetzt, ob in dieser Sitzung überhaupt je eine Verbindung
-  bestand, und schweigt über den Verlust einer nie dagewesenen. Alles andere bleibt: ein
-  echter Ausfall wird weiterhin nach 2 s Karenz angesagt, seine Rückkehr weiterhin nur,
-  wenn der Ausfall angesagt wurde, und **Failsafe weiterhin sofort**.
-- Acht neue Prüfungen, darunter eine volle Minute Ticks ohne je bestandene Verbindung als
-  Beleg für das Schweigen — und derselbe Abriss, sobald eine Verbindung existiert hat.
-
 ## v1.45.1
-**English**
 - **The setup page shows its version, the same way the control app does.** The header now
   reads `YonderRC · Setup  vehicle · v1.45.1` next to the control app's
   `ground · v1.45.1` — so it takes a glance, not an investigation, to see whether both
@@ -2061,24 +986,7 @@ hardware to find, and nothing found needed hardware to fix.
   happened with v1.45.0's new go2rtc path. The installer now does a `try-restart` on
   go2rtc and the vehicle service.
 
-**Deutsch**
-- **Die Setup-Seite zeigt ihre Version, genau wie die Steuer-App.** Die Kopfzeile lautet
-  jetzt `YonderRC · Setup  vehicle · v1.45.1`, passend zum `ground · v1.45.1` der
-  Steuer-App — ob beide Hälften auf demselben Stand sind, ist damit ein Blick und keine
-  Nachforschung.
-- **Die Version wird aus `package.json` gelesen statt fest verdrahtet.** Das Banner des
-  Fahrzeugdienstes hatte eine eigene Kopie der Zeichenkette — eine Stelle mehr, die man am
-  Release-Tag vergessen kann. Banner, Setup-Kopfzeile und Update-Prüfung stammen jetzt aus
-  derselben Quelle, und ein Test schlägt fehl, wenn die Kopfzeile der Boden-App
-  zurückbleibt.
-- **Behoben: `install.sh` wendete Unit-Änderungen nicht auf laufende Dienste an.**
-  `enable --now` startet, was steht, lässt einen laufenden Dienst aber auf seiner ALTEN
-  Unit — ein geändertes `ExecStart` oder `Environment=` wirkte damit erst beim nächsten
-  Reboot. Genau das passierte mit dem neuen go2rtc-Pfad aus v1.45.0. Der Installer macht
-  jetzt ein `try-restart` auf go2rtc und den Fahrzeugdienst.
-
 ## v1.45.0
-**English**
 - **The generated video config moved out of the git checkout.** go2rtc's config is
   written by the vehicle from your camera settings, and it lived at
   `docker/go2rtc.yaml` — *inside the repository*. Every vehicle that had ever started
@@ -2095,28 +1003,7 @@ hardware to find, and nothing found needed hardware to fix.
 - Vehicles that have not run the installer yet keep working exactly as before, and the
   updater still treats the old in-repo path as a generated file it may discard.
 
-**Deutsch**
-- **Die generierte Video-Konfiguration ist aus dem git-Checkout ausgezogen.** Die
-  go2rtc-Konfiguration schreibt das Fahrzeug aus deinen Kameraeinstellungen, und sie lag
-  unter `docker/go2rtc.yaml` — *im Repository*. Jedes jemals gestartete Fahrzeug hatte
-  damit einen veränderten Checkout, und genau darüber ist der Update-Knopf wiederholt
-  gestolpert. Sie liegt jetzt unter **`/var/lib/yonderrc/go2rtc.yaml`**:
-  `yonderrc-vehicle.service` setzt `YRC_GO2RTC_CONFIG` dorthin, `go2rtc.service` liest
-  denselben Pfad.
-- **`install.sh` migriert das**: legt das Verzeichnis an, kopiert eine vorhandene
-  `docker/go2rtc.yaml` hinüber, damit go2rtc seine Streams behält, und stellt den
-  Checkout wieder her. Weil systemd-Units betroffen sind, braucht es **einen vollen
-  Installer-Lauf** — worauf das Update-Panel bereits hinweist, wenn sich `provisioning/`
-  geändert hat.
-- Ein Regressionstest liest jetzt beide Unit-Dateien und prüft, dass sie **denselben**
-  Pfad nennen. Ein Fehler dort ließe das Fahrzeug eine Konfiguration schreiben, die
-  go2rtc nie liest — unsichtbar, bis die Kameras dunkel bleiben.
-- Fahrzeuge, die den Installer noch nicht gelaufen haben, funktionieren unverändert
-  weiter, und der Updater behandelt den alten Pfad im Repo weiterhin als generierte
-  Datei, die er verwerfen darf.
-
 ## v1.44.2
-**English**
 - **Fixed: every real vehicle reported "local changes".** Two reasons, both ours.
   `docker/go2rtc.yaml` is **tracked in git and rewritten by the vehicle** from the camera
   settings at every start — so the checkout is modified on any vehicle that has ever run.
@@ -2133,25 +1020,7 @@ hardware to find, and nothing found needed hardware to fix.
   update now blocks on that overlap alone, and merely mentions local changes it does not
   affect.
 
-**Deutsch**
-- **Behoben: jedes echte Fahrzeug meldete „local changes".** Zwei Gründe, beide bei uns.
-  `docker/go2rtc.yaml` liegt **in git und wird vom Fahrzeug** bei jedem Start aus den
-  Kameraeinstellungen neu geschrieben — der Checkout ist damit auf jedem Fahrzeug
-  verändert, das jemals gelaufen ist. Und die Prüfung zählte **unversionierte** Dateien
-  als Änderungen, was sie nicht sind: ein laufendes Fahrzeug hat immer welche (eigene
-  Konfiguration, Logs), und sie stehen einem Fast-Forward nie im Weg.
-- Unversionierte Dateien werden jetzt ignoriert, und selbst erzeugte Dateien werden als
-  solche erkannt und **vor dem Pull verworfen** — sie werden beim nächsten Start ohnehin
-  neu geschrieben, es geht also nichts verloren. `yonderrc-config.json` steht zusätzlich
-  in `.gitignore`, damit auch ein menschliches `git status` lesbar bleibt.
-- **Die Prüfung ist nicht mehr strenger als git.** Sie verweigerte bei jeder lokalen
-  Änderung; git verweigert nur, wenn das Update *dieselbe* Datei anfasst. An einem echten
-  Klon nachgemessen: ein geändertes `docker/go2rtc.yaml` hielt `git pull --ff-only`
-  überhaupt nicht auf. Blockiert wird jetzt genau bei dieser Überschneidung, alles andere
-  wird nur erwähnt.
-
 ## v1.44.1
-**English**
 - **Third attempt at git's ownership block, and this time with the actual path.** The
   repo root is derived from a URL and therefore ends in a slash — `/opt/yonderrc/`. git
   compares `safe.directory` literally, so the exception the vehicle wrote never matched
@@ -2167,26 +1036,7 @@ hardware to find, and nothing found needed hardware to fix.
 - Verified end to end with the ownership block forced on and `$HOME` removed: the check
   completes, where the same repository refuses every plain git command with exit 128.
 
-**Deutsch**
-- **Dritter Anlauf auf gits Besitzrechte-Sperre, diesmal mit dem richtigen Pfad.** Das
-  Repo-Wurzelverzeichnis wird aus einer URL abgeleitet und endet deshalb auf einen
-  Schrägstrich — `/opt/yonderrc/`. git vergleicht `safe.directory` wörtlich, die
-  Ausnahme passte also nie auf das Verzeichnis, über das git sich beschwerte. Unentdeckt
-  blieb das, weil das git hier beide Schreibweisen akzeptiert und das des Pi nicht. Der
-  Pfad wird jetzt normalisiert, und die Wegwerf-Config listet **beide Schreibweisen plus
-  `*`**.
-- Der Platzhalter ist genau hier unbedenklich: Diese Datei erreicht git ausschließlich
-  über `GIT_CONFIG_GLOBAL` bei den **eigenen** Aufrufen des Fahrzeugs. Sie fasst die
-  git-Konfiguration des Betreibers nicht an und gilt für keinen anderen Befehl.
-- **Scheitert es weiterhin, nennt die Meldung jetzt den Versuch** — welche Datei
-  geschrieben und welcher Pfad freigegeben wurde — damit die nächste Rückmeldung die
-  Information schon enthält, statt eine weitere Runde zu kosten.
-- Ende-zu-Ende verifiziert mit erzwungener Besitzrechte-Sperre und entferntem `$HOME`:
-  der Check läuft durch, wo dasselbe Repository jeden blanken git-Befehl mit Exit 128
-  abweist.
-
 ## v1.44.0
-**English**
 - **Fixed (for real this time): the update check still refused the checkout.** git only
   honours `safe.directory` from **protected** configuration — system or global — and
   never from `-c` on the command line, which is what v1.43.2 used. On a newer git that
@@ -2205,28 +1055,7 @@ hardware to find, and nothing found needed hardware to fix.
   like the default, and a non-default source is shown in the panel so nobody wonders
   where an update came from.
 
-**Deutsch**
-- **Behoben (diesmal wirklich): der Update-Check verweigerte den Checkout weiterhin.** git
-  beachtet `safe.directory` nur aus **geschützter** Konfiguration — System oder Global —
-  und nie von `-c` auf der Kommandozeile, was v1.43.2 benutzt hat. Auf einem neueren git
-  funktionierte dieser Schalter zufällig, genau deshalb ging er raus; auf dem git des Pi
-  änderte er nichts. Das Fahrzeug übergibt git jetzt eine **eigene globale
-  Konfigurationsdatei** (`GIT_CONFIG_GLOBAL`) — die wird beachtet, braucht kein `$HOME`
-  und hinterlässt nichts außer einer Datei in `/tmp`.
-- Ende-zu-Ende verifiziert, indem genau dieser Zustand erzwungen wurde
-  (`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`): blankes git scheitert mit `dubious ownership`,
-  Exit 128, während der Update-Check des Fahrzeugs auf demselben Repository durchläuft und
-  Versionen meldet — zur Sicherheit auch mit entferntem `$HOME`.
-- **Die Update-Quelle ist jetzt ein Feld.** Zwei Eingaben unter *Update source* nehmen
-  einen git-Remote-Namen oder eine vollständige URL plus Branch, vorbelegt mit dem
-  `origin` / `main` dieses Fahrzeugs — ein Fork oder Testbranch
-  (`https://github.com/du/YonderRC.git` / `experiment`) braucht damit keine
-  Code-Änderung. Der Check vergleicht gegen FETCH_HEAD, eine eigene Quelle verhält sich
-  also exakt wie der Standard, und eine abweichende Quelle wird im Panel angezeigt, damit
-  niemand rätselt, woher ein Update kam.
-
 ## v1.43.2
-**English**
 - **Fixed: the update check's self-repair repaired nothing.** v1.43.1 answered git's
   "dubious ownership" by writing `git config --global --add safe.directory …` and
   retrying — but `--global` resolves through `$HOME`, and that is not something a
@@ -2240,24 +1069,7 @@ hardware to find, and nothing found needed hardware to fix.
   as root, and git refuses to touch a repository owned by someone else. It is the normal
   state of a YonderRC vehicle, not a broken install.
 
-**Deutsch**
-- **Behoben: die Selbstreparatur des Update-Checks reparierte nichts.** v1.43.1
-  beantwortete gits „dubious ownership" mit `git config --global --add safe.directory …`
-  und einem zweiten Versuch — aber `--global` löst über `$HOME` auf, und darauf kann sich
-  ein systemd-Dienst nicht verlassen. Der Schreibvorgang scheiterte mit
-  `fatal: $HOME not set`, das Ergebnis wurde ignoriert, und das Fahrzeug meldete
-  hilfsbereit denselben Fehler erneut.
-- **Jeder git-Aufruf trägt jetzt `-c safe.directory=<Checkout>`.** Kein Config-Schreiben,
-  kein `$HOME`, keine Rückstände auf der Maschine — und es wirkt beim ersten Klick.
-  Verifiziert, indem genau dieser Zustand erzwungen wurde
-  (`GIT_TEST_ASSUME_DIFFERENT_OWNER=1`), mit und ohne `$HOME`: der Schalter greift dort,
-  wo der alte Weg scheiterte.
-- Warum das überhaupt auftritt: `bootstrap.sh` klont als `pi`, während der Fahrzeugdienst
-  als root läuft, und git rührt ein Repository nicht an, das jemand anderem gehört. Das
-  ist der Normalzustand eines YonderRC-Fahrzeugs, keine kaputte Installation.
-
 ## v1.43.1
-**English**
 - **Fixed: the update check blamed the network for everything.** "Could not reach the
   update source. The vehicle needs internet" appeared on a vehicle that demonstrably had
   internet, because the check swallowed git's actual message and guessed. It now reports
@@ -2277,30 +1089,7 @@ hardware to find, and nothing found needed hardware to fix.
 - Reaching a vehicle over Tailscale says nothing about whether the *vehicle* has internet.
   The message says so now, because that is the exact confusion this bug produced.
 
-**Deutsch**
-- **Behoben: der Update-Check schob alles aufs Netzwerk.** „Could not reach the update
-  source. The vehicle needs internet" erschien auf einem Fahrzeug, das nachweislich
-  Internet hatte — weil der Check die eigentliche git-Meldung verschluckte und riet. Er
-  gibt jetzt **git im Wortlaut** wieder und übersetzt die üblichen Ursachen: ein Checkout,
-  der einem anderen Benutzer gehört (`dubious ownership` — der Normalfall, denn der
-  Installer klont als `pi`, während der Dienst als root läuft), fehlendes DNS, nicht
-  erreichbares github.com, fehlende Zugangsdaten, ein fehlender Branch, oder ein Fahrzeug
-  aus einem Zip, das sich grundsätzlich nicht aktualisieren kann.
-- **Der Besitzrechte-Fall repariert sich selbst.** Diese Meldung verlangt genau eine
-  Einstellung, also setzt das Fahrzeug sie für sein eigenes Verzeichnis
-  (`git config --global --add safe.directory /opt/yonderrc`) und wiederholt den Abruf
-  einmal, statt dich eine SSH-Sitzung suchen zu schicken.
-- **Alle ausgewerteten Befehle laufen jetzt in der C-Locale.** git, nmcli und die anderen
-  übersetzen ihre Meldungen: auf einem deutschen Pi antwortet git `Schwerwiegend: Kein
-  Git-Repository`, worauf kein einziges unserer Muster passt — und das gilt für jede
-  andere Ausgabe, die dieser Code liest. Gefunden, indem die echten Befehle ausgeführt
-  wurden statt dem englischen Wortlaut zu vertrauen, und einmal für alle behoben.
-- Dass man ein Fahrzeug über Tailscale erreicht, sagt nichts darüber, ob *das Fahrzeug*
-  Internet hat. Genau diese Verwechslung hat der Fehler ausgelöst, also steht sie jetzt in
-  der Meldung.
-
 ## v1.43.0
-**English**
 - **The vehicle updates itself from the setup page.** New *Software update* panel:
   **Check for updates** fetches and reports the installed version, the available one, how
   many commits behind you are and the subject line of each — and changes nothing, so you
@@ -2322,31 +1111,7 @@ hardware to find, and nothing found needed hardware to fix.
   back at a keyboard.
 - Documented as HARDWARE §3.4 in both languages, including the SSH equivalent.
 
-**Deutsch**
-- **Das Fahrzeug aktualisiert sich über die Setup-Seite.** Neues Panel *Software update*:
-  **Check for updates** holt den Stand und meldet installierte Version, verfügbare
-  Version, wie viele Commits zurück und die Betreffzeile jedes einzelnen — und ändert
-  dabei nichts, du kannst also erst schauen und dann entscheiden. **Update & restart** tut
-  danach, was eine SSH-Sitzung täte (`git pull --ff-only`, geänderte Abhängigkeiten
-  installieren, Steuer-App neu bauen, falls nötig) und startet den Dienst zuletzt neu.
-  Gedacht für das Fahrzeug, das im Feld steht und weit und breit keine Tastatur hat.
-- **Die Schritte kommen aus dem Diff, nicht aus Zuversicht.** Ein Pull, der eine
-  Abhängigkeit ergänzt oder die Boden-App ändert, gefolgt von einem bloßen Neustart, ergibt
-  einen Dienst, der nicht mehr hochkommt — und die Setup-Seite *ist* dieser Dienst, du
-  würdest also genau die Seite verlieren, die du gerade in der Hand hältst. Deshalb werden
-  Abhängigkeiten installiert und die Steuer-App gebaut, **bevor** neu gestartet wird; eine
-  reine Fahrzeugänderung bleibt ein einzelnes `git pull`.
-- **Es verweigert, wo es soll, und sagt warum.** Lokale Änderungen im Checkout (ein
-  Fast-Forward würde scheitern oder sie wegwerfen — die betroffenen Dateien werden
-  genannt) oder fehlendes Internet. Scheitert ein Schritt, bleibt es dort stehen und meldet
-  welcher; das Fahrzeug läuft mit der bisherigen Version weiter.
-- **apt, systemd-Units und `install.sh` selbst sind bewusst außen vor.** Sieht der Check,
-  dass sich diese geändert haben, sagt er es und verweist auf den vollen Installer für den
-  Moment, in dem du wieder an einer Tastatur sitzt.
-- In HARDWARE §3.4 in beiden Sprachen dokumentiert, samt SSH-Entsprechung.
-
 ## v1.42.0
-**English**
 - **Fixed: the setup page scrolled sideways on a phone.** Flex items don't shrink below
   their content, so one long unbreakable value — an IPv6 address, a Tailscale login URL,
   a device path — pushed a status row wider than the screen and dragged the whole page
@@ -2369,45 +1134,14 @@ hardware to find, and nothing found needed hardware to fix.
   and failsafe firing and clearing while the ground station moved from Wi-Fi to LTE.
   Written down as a data point with its conditions, not as a benchmark.
 
-**Deutsch**
-- **Behoben: die Setup-Seite ließ sich am Handy seitlich schieben.** Flex-Elemente
-  schrumpfen nicht unter ihren Inhalt — ein einziger langer, unumbrechbarer Wert (eine
-  IPv6-Adresse, eine Tailscale-Login-URL, ein Gerätepfad) machte eine Statuszeile breiter
-  als den Bildschirm und zog die ganze Seite mit. Statuszeilen dürfen jetzt schrumpfen und
-  umbrechen, und die drei- und vierspaltigen Raster klappen auf zwei Spalten (auf sehr
-  schmalen Geräten auf eine). Damit ist die Seite ein One-Pager wie die Steuerseite.
-- **Der System status zeigt auch die WLAN-Adresse**, damit LTE (WAN), Tailnet-Adresse und
-  WLAN/LAN-Adresse an einer Stelle stehen — und die Zeile nennt den eigenen Hotspot des
-  Fahrzeugs nicht mehr „client": einen AP zu betreiben und in einem Netz zu hängen liest
-  NetworkManager beides als *connected*, nur der Verbindungsname unterscheidet sie.
-- **Der Statusblock ist gruppiert**, mit dünnen Trennlinien zwischen Hostname/Modus, LTE,
-  Remote access und WLAN, statt einer undifferenzierten Liste.
-- **Die LTE-Modemfelder klappen ein, wenn ein HiLink-Stick der Uplink ist.** Sie bewirken
-  für so einen Stick nichts, also gehen sie aus dem Weg — der Satz, der das *begründet*,
-  bleibt sichtbar, und ein Knopf holt sie zurück, falls später ein echtes Modem steckt.
-- **README und HARDWARE enthalten jetzt den ersten Feldtest**: Pi 4 mit Huawei E3372h-320
-  (interne Antenne), gesteuert über Tailscale bei gezogenem Kabel — direkter IPv6-Pfad
-  (kein Relay, 69 ms), Steuer-Roundtrip 110 ms, Video 128 ms bei 444 kbps, LTE-Signal
-  52 %, und Failsafe, das beim Wechsel der Bodenstation von WLAN auf LTE griff und sich
-  wieder löste. Festgehalten als Datenpunkt mit seinen Bedingungen, nicht als Benchmark.
-
 ## v1.41.2
-**English**
 - **Fixed: a stale message under the Remote access panel.** The line held whatever the
   last button press wrote, so `Starting…` could sit there while the status row above it
   already said `Tailscale · Running · 100.x.y.z`. The status poll now owns that line: a
   pending login shows the link, a running tailnet shows the vehicle's name, IP and the
   address to reach it at.
 
-**Deutsch**
-- **Behoben: eine veraltete Meldung unter dem Remote-access-Panel.** Dort stand, was der
-  letzte Knopfdruck hinterlassen hatte — `Starting…` konnte also stehen bleiben, während
-  die Statuszeile darüber längst `Tailscale · Running · 100.x.y.z` meldete. Die Zeile
-  gehört jetzt der Statusabfrage: bei ausstehendem Login der Link, bei laufendem Tailnet
-  Name, IP und die Adresse, unter der das Fahrzeug erreichbar ist.
-
 ## v1.41.1
-**English**
 - **Fixed: "Bring up" for Tailscale gave you no login link.** The vehicle sat at
   `down · NeedsLogin` with nothing to click. Two causes, both ours: the link was scraped
   from `tailscale up --timeout=1s`, which returns *before* tailscaled has reached the
@@ -2425,29 +1159,7 @@ hardware to find, and nothing found needed hardware to fix.
 - Documented properly in HARDWARE §4.2, including the step everybody forgets: **disable
   key expiry** for the vehicle, or it silently drops out of the tailnet after ~180 days.
 
-**Deutsch**
-- **Behoben: „Bring up" für Tailscale lieferte keinen Login-Link.** Das Fahrzeug stand auf
-  `down · NeedsLogin`, und es gab nichts zum Anklicken. Zwei Ursachen, beide bei uns: Der
-  Link wurde aus `tailscale up --timeout=1s` gefischt, das *vor* dem Kontakt zur
-  Control-Plane zurückkehrt — also bevor die URL überhaupt existiert — und der
-  Status-Parser setzte `loginUrl` anschließend hart auf `null`, sodass ein ausstehender
-  Login auch dort nie auftauchen konnte.
-- **Der Login-Link kommt jetzt vom Daemon selbst** (`AuthURL` aus
-  `tailscale status --json`). *Bring up* startet den Login losgelöst und wartet bis zu 14 s
-  auf den Link; der Status zeigt ihn weiter an, solange der Login aussteht — ein Neuladen
-  der Setup-Seite verliert ihn also nicht mehr. Ein erneuter Druck auf den Knopf gibt
-  denselben Link zurück, statt ein zweites `tailscale up` zu starten.
-- Kommt in diesem Zeitfenster kein Link, sagt das Fahrzeug das jetzt und nennt den
-  Ausweichweg (`sudo tailscale up --hostname=yonderrc` per SSH), statt „Tailscale is
-  starting" zu behaupten.
-- Die Tailnet-IPv4 wird aus demselben Statusdokument gelesen, der Normalfall braucht damit
-  einen Shell-Aufruf weniger.
-- In HARDWARE §4.2 sauber dokumentiert, inklusive des Schritts, den alle vergessen:
-  **Key-Ablauf abschalten**, sonst fällt das Fahrzeug nach ca. 180 Tagen stillschweigend
-  aus dem Tailnet.
-
 ## v1.41.0
-**English**
 - **The onboarding hotspot now defaults to `always`.** It comes up whenever the WiFi radio
   is free — next to Ethernet or LTE too — so you can always walk up to the vehicle and
   reach the setup page. Before, any default route (a network cable on the bench counted)
@@ -2463,25 +1175,7 @@ hardware to find, and nothing found needed hardware to fix.
   choice; it just means anyone in range reaches the setup page and, if you enabled it, the
   LTE stick's admin page.
 
-**Deutsch**
-- **Der Onboarding-Hotspot steht jetzt standardmäßig auf `always`.** Er kommt hoch, sobald
-  die WLAN-Einheit frei ist — auch neben Ethernet oder LTE — damit du jederzeit ans
-  Fahrzeug herankommst. Vorher unterdrückte ihn jede Default-Route (ein Netzwerkkabel auf
-  der Werkbank zählte schon), und genau so wird ein Fahrzeug unerreichbar, sobald sein
-  Uplink zickt. Das alte Verhalten ist als `auto` weiterhin einen Klick entfernt.
-- **Das ändert bestehende Fahrzeuge, die nie einen Modus gewählt haben.** Ein nicht
-  gesetzter `hotspot.mode` folgt dem ausgelieferten Standard — so ein Pi funkt nach dem
-  Update also `YonderRC-setup`. Fahrzeuge, deren WLAN *in einem Netz eingebucht* ist,
-  bleiben unberührt: eine Funkeinheit kann AP sein oder Client, nie beides, und die
-  Client-Verbindung gewinnt weiterhin.
-- Der Hotspot bleibt standardmäßig **offen** (nur so stellt das Captive Portal die Seite
-  ohne Tipparbeit vor dich), also **vergib ein Passwort, sobald das Fahrzeug die Werkbank
-  verlässt** — Setup › WiFi › Setup hotspot, mind. 8 Zeichen. Ihn offen zu lassen ist eine
-  legitime Entscheidung; sie heißt nur, dass jeder in Reichweite die Setup-Seite erreicht
-  und, falls aktiviert, die Admin-Seite des LTE-Sticks.
-
 ## v1.40.2
-**English**
 - **Installing one native driver module builds all three — now it says so.** `npm install
   i2c-bus -w @yonderrc/vehicle` reifies the *whole* vehicle package, and `pigpio` and
   `serialport` are optional dependencies of that same package, so npm always builds them
@@ -2494,22 +1188,7 @@ hardware to find, and nothing found needed hardware to fix.
   modules that came along would have been pruned on the next update while the third
   survived. What is actually installed is recorded now.
 
-**Deutsch**
-- **Ein Treibermodul zu installieren baut alle drei — das steht jetzt auch da.** `npm
-  install i2c-bus -w @yonderrc/vehicle` reifiziert das *gesamte* Vehicle-Paket, und
-  `pigpio` und `serialport` sind optionale Abhängigkeiten genau dieses Pakets, werden also
-  immer mitgebaut. Vermeiden lässt sich das nicht: `npm install <pkg> --omit=optional`
-  überspringt auch das angeforderte Modul (npm meldet „up to date" und installiert
-  nichts), was schlechter wäre. Das Panel sagt es deshalb vorher, und die Erfolgsmeldung
-  benennt, was sonst noch gebaut wurde. Harmlos — kein Modul wird benutzt, solange du den
-  zugehörigen Treiber nicht auswählst.
-- **Behoben: gemerkt wurde nur das angeklickte Modul.** `install.sh` stellt nach seinem
-  `--omit=optional`-Lauf wieder her, was in `hardwareDeps` steht — die beiden
-  mitgebauten Module wären beim nächsten Update also entfernt worden, während das dritte
-  überlebt. Jetzt wird festgehalten, was tatsächlich installiert ist.
-
 ## v1.40.1
-**English**
 - **Fixed: System status still said "no modem" while the vehicle was online through a
   HiLink stick.** The status row only ever asked ModemManager. It now falls back to the
   stick, so model, state, operator, signal and WAN IP appear there — marked as
@@ -2532,34 +1211,7 @@ hardware to find, and nothing found needed hardware to fix.
   the stick wants a session, which its own UI establishes and which YonderRC's reader
   fetches first. Expected, and now documented.
 
-**Deutsch**
-- **Behoben: System status meldete weiter „no modem", während das Fahrzeug über den
-  HiLink-Stick online war.** Die Statuszeile fragte ausschließlich ModemManager. Sie
-  greift jetzt auf den Stick zurück — Modell, Zustand, Betreiber, Signal und WAN-IP
-  stehen dort, gekennzeichnet mit `(HiLink)`, und das LTE-Panel sagt ausdrücklich, dass
-  seine Felder für so einen Stick wirkungslos sind, weil APN und PIN in ihm selbst
-  liegen.
-- **Die Weboberfläche des Sticks wird jetzt standardmäßig durchgereicht, auf Port 8081.**
-  Ein Stick, den man nicht konfigurieren kann, ist ein Stick, den man abziehen und zum
-  Laptop tragen muss — und alles andere an diesem Fahrzeug ist per Browser erreichbar.
-  Der Knopf **Open the stick's UI ↗** hat damit immer ein Ziel. Leeres Portfeld schaltet
-  es weiterhin ab. *Der Nachteil, klar gesagt:* An einem **offenen** Onboarding-Hotspot
-  erreicht jeder Verbundene diese Admin-Seite — also Hotspot-Passwort oder API-Secret
-  setzen, bevor das Fahrzeug die Werkbank verlässt; für die Setup-Oberfläche gilt
-  dasselbe ohnehin schon.
-- **Das OSD sagt nicht mehr zweimal LTE.** Aus „LTE 72% · 4G (LTE)" wurde „LTE 72%" — ein
-  **Rückfall auf 2G/3G wird aber ausgeschrieben** („3G (HSPA+) 41%"), denn genau dann
-  hört das Video auf zu funktionieren, und der Pilot braucht den Grund, nicht eine Zahl.
-- Der Stick wird höchstens alle 8 Sekunden gelesen und zwischengespeichert: die
-  Setup-Seite pollt den Status alle 3 s, das OSD den Link alle 5 s, und ein Lesevorgang
-  sind fünf HTTP-Anfragen an den Stick. **Refresh** im Panel erzwingt eine frische
-  Abfrage.
-- Ein API-Pfad direkt im Browser (`…:8081/api/monitoring/status`) antwortet mit `125002`:
-  der Stick will eine Session, die seine eigene Oberfläche aufbaut und die der Leser von
-  YonderRC vorher selbst holt. Erwartet — und jetzt dokumentiert.
-
 ## v1.40.0
-**English**
 - **HiLink LTE sticks are supported properly.** A Huawei E3372h-320 (and friends) is not a
   modem in the ModemManager sense — it is a small router that dials by itself, so
   `mmcli -L` stays empty and the LTE panel had nothing to show. YonderRC now reads the
@@ -2591,45 +1243,7 @@ hardware to find, and nothing found needed hardware to fix.
   headers), and the proxy's auth gate. The proxy itself was exercised end to end against a
   stand-in stick. **The real stick's XML is the one thing only your hardware can confirm.**
 
-**Deutsch**
-- **HiLink-LTE-Sticks werden jetzt richtig unterstützt.** Ein Huawei E3372h-320 (und
-  Verwandte) ist kein Modem im Sinne von ModemManager, sondern ein kleiner Router, der
-  sich selbst einwählt — `mmcli -L` bleibt leer, das LTE-Panel hatte nichts zu zeigen.
-  YonderRC liest jetzt die **eigene API des Sticks**: **Setup › LTE stick (HiLink)** zeigt
-  Modell, Interface, Zustand, Betreiber, Netztyp und Signal, und im **OSD erscheint die
-  LTE-Prozentzahl** wie bei einem echten Modem (aus RSRP, ersatzweise aus der
-  Balkenanzeige des Sticks).
-- **Der Stick wird über die Routing-Tabelle erkannt, nie über den Interface-Namen.** Mit
-  FritzBox an `eth0` und Stick an `eth1` — oder nach Reboot bzw. anderem USB-Port
-  umgekehrt — würde eine Namensvermutung irgendwann das LAN als LTE-Strecke melden.
-  `ip route get 192.168.8.1` beantwortet, welches Interface der Stick **ist**, und genau
-  das wird angezeigt und benutzt.
-- **Die Konfigurationsseite des Sticks ist über das Fahrzeug erreichbar.** Sein Netz
-  (192.168.8.0/24) ist nur vom Pi aus routbar; APN, SIM-PIN und Netzmodus bedeuteten
-  bisher also Tastatur am Fahrzeug oder Umstecken an den Laptop. Trägst du unter *Expose
-  its web UI on port* einen Port ein, reicht das Fahrzeug die Seite unter
-  `http://<Fahrzeug>:<Port>/` durch — nutzbar vom Hotspot, aus dem LAN oder über das VPN.
-  Weitergereicht wird auf der **Wurzel eines eigenen Ports**, weil die HiLink-Oberfläche
-  voller absoluter Pfade steckt, die kein Präfix-Umschreiben überleben; nebenbei
-  funktioniert so auch ihr Session-Cookie unverändert.
-- **Der Proxy ist standardmäßig aus und respektiert das API-Secret.** Mit gesetztem Secret
-  öffnet man die Seite einmal als `…?secret=…`, was gegen ein `HttpOnly`-Cookie getauscht
-  wird, damit auch die eigenen Anfragen der Oberfläche durchkommen; ohne das antwortet der
-  Port mit 401. Unser Cookie wird vor dem Weiterleiten entfernt, und die Zieladresse muss
-  eine IPv4-Literal sein — sie ist ein Proxy-Ziel und darf nie zu einem fremden Hostnamen
-  werden.
-- **Ein reiner 2G/3G-Stick wird benannt.** E3131/E353 (`12d1:14db`) und Ähnliche werden im
-  Panel markiert: Deutschland und andere haben 3G vor Jahren abgeschaltet, ein solcher
-  Stick bekommt dort überhaupt keine Datenverbindung — das erfährt man besser auf der
-  Seite als im Feld.
-- 32 neue Tests: XML-Auswertung, Fehlercodes, Netztyp- und Zustandszuordnung, RSRP →
-  Prozent, Routen-Auswertung, der komplette Lesevorgang gegen aufgezeichnetes XML
-  (inklusive Session-Header) und das Auth-Gate des Proxys. Der Proxy selbst lief
-  Ende-zu-Ende gegen einen nachgebauten Stick. **Das XML des echten Sticks kann nur deine
-  Hardware bestätigen.**
-
 ## v1.39.2
-**English**
 - **Every button in Setup now shows that it is working.** nmcli, npm and modem calls take
   seconds; the page looked frozen, so you clicked again — and a second "start hotspot" on
   top of a running one is how NetworkManager ends up half-built. One `run()` wrapper
@@ -2652,33 +1266,7 @@ hardware to find, and nothing found needed hardware to fix.
 - A laptop behaves differently from a phone here: phones pop the page up, GNOME/Windows
   usually just offer a "sign in to network" notification. Documented in HARDWARE §5.
 
-**Deutsch**
-- **Jeder Knopf im Setup zeigt jetzt, dass er arbeitet.** nmcli-, npm- und Modem-Aufrufe
-  dauern Sekunden; die Seite wirkte eingefroren, also klickt man nochmal — und ein zweites
-  „Hotspot starten" auf einem laufenden ist genau der Weg, wie NetworkManager halbfertig
-  liegen bleibt. Ein `run()`-Wrapper sperrt den Knopf und beschriftet ihn für die Dauer des
-  Aufrufs und stellt ihn selbst dann wieder her, wenn der Handler eine Ausnahme wirft.
-  Gilt für **alle 38** asynchronen Knöpfe, nicht nur den Hotspot.
-- **Vom Setup geht es zurück zur Steuerung.** Ein **Control ↗**-Link sitzt in der
-  Setup-Kopfzeile — nur sichtbar, wenn die Boden-App auf diesem Fahrzeug wirklich gebaut
-  ist (`groundApp` in `/api/system`). Die Boden-App hatte den Setup-Link schon; damit
-  kommt man jetzt in beide Richtungen, ohne URLs zu tippen.
-- **Behoben: das Captive Portal wurde nur beim Booten eingerichtet.** Beim Start über die
-  Setup-Seite wurde die dnsmasq-Datei nie geschrieben — die Seite konnte sich also gar
-  nicht von selbst öffnen. Genau das sieht man, wenn man sich nach „Save & start now" mit
-  dem Laptop verbindet. `hotspotStart` erledigt das jetzt, und zwar **bevor** das Profil
-  hochkommt, damit dafür niemand getrennt werden muss.
-- **…und es wird bewusst weggelassen, wenn das Fahrzeug einen Uplink hat.** Das Portal
-  funktioniert, indem jeder Name auf den Pi zeigt. Mit Ethernet oder LTE **teilt der
-  Hotspot dieses Internet**, und DNS umzubiegen würde es für jeden Client zerstören —
-  also bleibt DNS in Ruhe, und die Meldung sagt dir, welcher Fall eingetreten ist. Beim
-  Stoppen des Hotspots wird die Datei wieder entfernt.
-- Ein Laptop verhält sich hier anders als ein Handy: Handys öffnen die Seite von selbst,
-  GNOME/Windows bieten meist nur eine „Beim Netzwerk anmelden"-Benachrichtigung. In
-  HARDWARE §5 dokumentiert.
-
 ## v1.39.1
-**English**
 - **Fixed: the "open" onboarding hotspot was never open.** `nmcli device wifi hotspot`
   always secures the AP — its man page says "password to use for the created hotspot. If
   not provided, nmcli will generate a password". So the vehicle broadcast **YonderRC-setup
@@ -2703,36 +1291,7 @@ hardware to find, and nothing found needed hardware to fix.
   themselves stay hardware-only-verifiable — the flaw they fix was found on real hardware,
   not in the simulator, which is precisely why the sim can't prove them.
 
-**Deutsch**
-- **Behoben: der „offene" Onboarding-Hotspot war nie offen.** `nmcli device wifi hotspot`
-  verschlüsselt den AP immer — die Manpage sagt es wörtlich: „password to use for the
-  created hotspot. If not provided, nmcli will generate a password." Das Fahrzeug funkte
-  also **YonderRC-setup mit einem zufälligen WPA-Schlüssel, den niemand kennen konnte**,
-  womit das gesamte dokumentierte Onboarding ohne Laptop („verbinden, Captive Portal geht
-  auf, nichts tippen") stillschweigend unmöglich war. Das Profil wird jetzt explizit
-  gebaut (`connection add … 802-11-wireless.mode ap … ipv4.addresses 192.168.4.1/24`),
-  Verschlüsselung kommt **nur** bei einem gesetzten Passwort dazu, und der Schlüssel wird
-  danach **zurückgelesen** statt angenommen — landet der AP doch verschlüsselt, nennt die
-  Seite den Schlüssel, statt dich aus deinem eigenen Fahrzeug auszusperren.
-- **Behoben: gar kein Hotspot, ohne Begründung.** Raspberry Pi OS hält das WLAN-Modul per
-  rfkill gesperrt, solange kein **WLAN-Land** gesetzt ist; NetworkManager meldet dann nur
-  `device is not available`. Setup › WiFi hat jetzt einen Block **WiFi radio**: Zustand,
-  Land und ein Knopf, der das Modul entsperrt und das Land setzt — **vorbelegt aus Locale
-  bzw. Zeitzone des Pi**, im Normalfall also ein Klick und sonst nichts. Der Hotspot-Start
-  repariert das von selbst und sagt, was er getan hat.
-- **Jeder nmcli-Fehler wird übersetzt**, wie in v1.39.0 die von npm: gesperrtes Modul,
-  fehlendes Land, kein WLAN-Gerät, Hardware-Schalter, abgelehnter Schlüssel, Timeout, ein
-  Adapter ohne AP-Fähigkeit — jeweils mit dem Schritt, der hilft, und darunter nmclis
-  eigener Wortlaut.
-- `onboard.sh` spiegelt alles, der Hotspot **beim Booten** ist damit ebenfalls offen und
-  repariert ein gesperrtes Funkmodul selbst (Land aus der Locale abgeleitet).
-- 25 neue Tests, darunter exakt die Fehlermeldung, die dieser Pi ausgegeben hat. Die
-  nmcli-Aufrufe selbst bleiben nur auf Hardware verifizierbar — der Fehler, den sie
-  beheben, wurde auf echter Hardware gefunden und nicht im Simulator, genau deshalb kann
-  der Simulator sie nicht beweisen.
-
 ## v1.39.0
-**English**
 - **Native driver modules install from the browser.** Setup › Vehicle configuration now has
   **Native driver modules**: `i2c-bus`, `pigpio` and `serialport` with their status and an
   **Install** button, plus a **Restart service now** button afterwards. Until now a detected
@@ -2768,46 +1327,7 @@ hardware to find, and nothing found needed hardware to fix.
   turned a broken Python into "the Pi has no internet". Error codes are matched
   case-sensitively as whole words now.
 
-**Deutsch**
-- **Native Treibermodule installieren sich im Browser.** Setup › Vehicle configuration hat
-  jetzt **Native driver modules**: `i2c-bus`, `pigpio` und `serialport` mit Status und
-  **Install**-Knopf, danach **Restart service now**. Bisher bedeutete ein erkannter PCA9685
-  oder INA228 trotzdem: SSH-Sitzung aufmachen — absurd bei einem Fahrzeug, dessen ganze
-  Inbetriebnahme „mit dem Handy in seinen Hotspot" lautet.
-- **Ein gescheiterter Build erklärt sich selbst.** Das npm/node-gyp-Protokoll wird in eine
-  Ursache plus den passenden Befehl übersetzt: kein Internet (der wahrscheinlichste Fall —
-  der eigene Hotspot hat keinen Uplink), fehlender Compiler (`build-essential`), fehlende
-  C-Bibliothek (`pigpio` braucht sein eigenes apt-Paket und ist *kein* Compiler-Problem),
-  node-gyp ohne Python, volle SD-Karte, falsche Besitzrechte oder ein Timeout. Darunter
-  steht das Ende des Rohprotokolls — manchmal ist das letzte Wort des Compilers der einzige
-  echte Hinweis.
-- **Detect hardware sagt jetzt, wenn ein Modul fehlt.** Ein Gerät auf 0x40 nützt nichts,
-  solange das Modul fehlt, das mit ihm spricht — statt still auf `sim` zurückzufallen, weist
-  das Ergebnis darauf hin.
-- **Ein Update entwaffnet die Hardware nicht mehr.** Was du installierst, wird gemerkt
-  (`hardwareDeps`), und `install.sh` stellt es nach seinem `--omit=optional`-Lauf wieder
-  her — vorher entfernte jeder Installer-Rerun die Treibermodule klammheimlich.
-- Nur Modulnamen von der Positivliste erreichen npm (`i2c-bus`/`pigpio`/`serialport`,
-  geprüft im Router *und* in der Systemschicht), der Aufruf läuft ohne Shell, und der
-  Endpunkt liegt wie jeder andere schreibende Aufruf hinter dem API-Secret.
-- **„npm hat Erfolg gemeldet" ist kein Beweis.** Die Module sind optionale
-  Abhängigkeiten: Scheitert der native Build, entfernt npm das Modul wieder, schreibt
-  `up to date` und **endet mit Exit-Code 0**. Diesem Code zu glauben hätte einen Treiber
-  als installiert gemeldet, der gar nicht da ist — genau das stille Versagen, gegen das
-  diese Funktion gebaut ist. Erfolg entscheidet deshalb, ob sich das Modul danach
-  tatsächlich auflösen lässt, nie der Exit-Code.
-- In sim komplett durchgetestet (Status, Installation, Fehlerpfad, abgelehnte
-  Positivliste, Secret-Gate, Persistenz), dazu ein **echter npm/node-gyp-Lauf** in einer
-  Wegwerf-Kopie — der tatsächlich scheiterte und korrekt gemeldet wurde — plus 26 neue
-  Unit-Tests für Positivliste und jede Fehlermeldung. Offen bleibt nur, was arm64/Pi
-  spezifisch ist.
-- Einer dieser Tests existiert wegen eines Fehlers aus genau diesem echten Lauf: In einem
-  node-gyp-Stacktrace steht der Bezeichner `eNotFound`, und ein case-insensitiver
-  Treffer auf `ENOTFOUND` machte daraus „der Pi hat kein Internet", obwohl in Wahrheit
-  Python kaputt war. Fehlercodes werden jetzt case-sensitiv als ganze Wörter geprüft.
-
 ## v1.38.5
-**English**
 - **Fixed: `yonderrc-onboard.service` failed to start on a fresh Pi.** `onboard.sh` was
   committed **without the executable bit**, and the unit ran it directly as `ExecStart=`
   — systemd could only answer with `203/EXEC`. The hotspot fallback therefore never came
@@ -2818,20 +1338,7 @@ hardware to find, and nothing found needed hardware to fix.
   line now: the hotspot is a fallback, while `go2rtc` and the vehicle service are what
   actually fly the model — the installer prints a hint and runs to the end.
 
-**Deutsch**
-- **Behoben: `yonderrc-onboard.service` startete auf einem frischen Pi nicht.** `onboard.sh`
-  war **ohne Ausführungsrecht** eingecheckt, und die Unit rief es direkt als `ExecStart=`
-  auf — systemd konnte darauf nur mit `203/EXEC` antworten. Der Hotspot-Rückfall kam damit
-  nie hoch, ein Pi ohne Netzwerk wäre also nicht mehr erreichbar gewesen. Die Datei ist
-  jetzt ausführbar, und die Unit ruft sie zusätzlich über `/bin/bash` auf — das übersteht
-  auch eine Installation aus einem Quell-Zip (Zips transportieren keine Dateirechte).
-- **Ein fehlschlagender Onboarding-Dienst bricht die Einrichtung nicht mehr ab.** Er wird
-  jetzt in einer eigenen Zeile aktiviert: der Hotspot ist ein Rückfall, während `go2rtc`
-  und der Fahrzeugdienst das Modell tatsächlich fahren — der Installer gibt einen Hinweis
-  aus und läuft bis zum Ende durch.
-
 ## v1.38.4
-**English**
 - **Fixed: provisioning a fresh Raspberry Pi aborted at the ground build.** `install.sh`
   ran `npm install --omit=optional` to keep the native hardware drivers (i2c-bus, pigpio,
   serialport) out of a plain sim install — but npm applies `--omit` to the *whole* tree,
@@ -2847,27 +1354,7 @@ hardware to find, and nothing found needed hardware to fix.
 - **Recovering a Pi that already hit this**: `cd /opt/yonderrc && sudo git pull --ff-only
   && sudo bash provisioning/install.sh` — the installer is idempotent.
 
-**Deutsch**
-- **Behoben: die Einrichtung eines frischen Raspberry Pi brach beim Ground-Build ab.**
-  `install.sh` lief mit `npm install --omit=optional`, um die nativen Hardware-Treiber
-  (i2c-bus, pigpio, serialport) aus einer reinen Sim-Installation herauszuhalten — npm
-  wendet `--omit` aber auf den *gesamten* Abhängigkeitsbaum an, und rollup und esbuild
-  liefern ihre Plattform-Binaries selbst als optionale Abhängigkeiten. `vite build` starb
-  deshalb mit `Cannot find module @rollup/rollup-linux-arm64-gnu`, und da das Skript bei
-  einem Fehler abbricht, blieb der Pi **ohne gebaute Ground-App und ohne seine
-  systemd-Dienste** zurück.
-- Der Installer führt jetzt ein zweites, eng gefasstes `npm install
-  --include-workspace-root -w @yonderrc/ground` mit optionalen Abhängigkeiten aus: das
-  ergänzt nur die rollup/esbuild-Binaries für diese Architektur (inklusive des
-  verschachtelten esbuild von vite) — die Hardware-Treiber des Fahrzeugs bleiben draußen,
-  weil dieses Workspace nicht ausgewählt ist. Scheitert der Build trotzdem, wird einmal
-  mit einer vollständigen Installation wiederholt, statt einen halb eingerichteten Pi
-  zu hinterlassen.
-- **Einen bereits betroffenen Pi retten**: `cd /opt/yonderrc && sudo git pull --ff-only
-  && sudo bash provisioning/install.sh` — der Installer ist idempotent.
-
 ## v1.38.3
-**English**
 - **Fixed: a one-second link blip was announced as an outage.** The WebSocket reconnects
   a second after any close, so a WiFi roam or an LTE handover produced a truthful but
   useless "link lost / link restored" pair. Both now wait ~2 s, and a recovery is only
@@ -2887,30 +1374,7 @@ hardware to find, and nothing found needed hardware to fix.
   because a momentary spike in round-trip or loss is normal and the OSD badge already
   shows it instantly.
 
-**Deutsch**
-- **Behoben: ein Ein-Sekunden-Aussetzer wurde als Verbindungsverlust angesagt.** Der
-  WebSocket verbindet sich eine Sekunde nach jedem Abriss neu, ein WLAN-Wechsel oder
-  LTE-Handover erzeugte also ein zwar wahres, aber nutzloses „link lost / link restored".
-  Beide warten jetzt ca. 2 s, und eine Rückkehr wird nur für einen Ausfall angesagt, der
-  auch gemeldet wurde — ein Aussetzer bleibt damit komplett stumm. Ohne Sicherheitsverlust:
-  **Failsafe wird weiterhin sofort angesagt**, und das Fahrzeug geht 300 ms nach dem
-  Ausbleiben der Frames hinein.
-- **Behoben: ein Reconnect meldete mitten im Ausfall „link recovered".** Die Ansage zur
-  Verbindungsqualität hing an einem Wert, in dem „sind wir verbunden" mit drinsteckte —
-  fiel die Verbindung weg, verschwand der Health-Score, was als Übergang aus „schlecht"
-  gelesen wurde und fröhlich eine Erholung meldete, während die Verbindung weg war.
-  Präsenz und Qualität werden jetzt gemeinsam entschieden: **solange die Verbindung weg
-  ist, ist ihre Qualität nicht schlecht, sondern unbekannt**, und die Qualitätsuhr startet
-  beim Reconnect neu, statt eine Verbesserung zu behaupten.
-- **Die beiden Paare klingen nicht mehr gleich.** „Link recovered" neben „Link restored"
-  waren zwei fast identische Formulierungen für verschiedene Ereignisse. Jetzt heißt es
-  **lost / restored** für die Existenz der Verbindung und **weak / good** für ihre Güte.
-- Anhaltende Schwäche braucht ca. 3 s bis zur Ansage — länger als die Ausfall-Karenz,
-  weil eine kurze Spitze bei Round-Trip oder Verlust normal ist und das OSD-Badge sie
-  ohnehin sofort zeigt.
-
 ## v1.38.2
-**English**
 - **The return-home reserve is explained properly.** It is a margin on the **trip home**,
   not a percentage of the pack: at 50% you turn around while the pack still holds **1.5×**
   what getting home costs, and arrive with half that cost to spare. So it scales with how
@@ -2920,32 +1384,13 @@ hardware to find, and nothing found needed hardware to fix.
 - The code comment said "arrive with half again as much as the trip home costs", which
   was simply wrong — that is the state at the **turn-around** point, not on arrival.
 
-**Deutsch**
-- **Die Heimkehr-Reserve ist jetzt richtig erklärt.** Sie ist eine Marge auf den
-  **Rückweg**, kein Prozentsatz des Akkus: Bei 50 % kehrst du um, während im Pack noch
-  das **1,5-fache** dessen ist, was der Heimweg kostet, und kommst mit der Hälfte davon
-  an. Sie skaliert also mit der Entfernung — klein bei 100 m, groß bei 2 km, und genau
-  dort wird eine falsch geschätzte Verbrauchsrate teuer. Unter Setup › Controls steht das
-  jetzt so, samt dem Hinweis, dass sie gegen **Schätzfehler** schützt und nicht gegen
-  Tiefentladung (dafür ist die Akku-Warnung da).
-- Der Code-Kommentar behauptete „mit dem Anderthalbfachen ankommen" — das ist schlicht
-  falsch, das ist der Zustand am **Umkehrpunkt**, nicht bei der Ankunft.
-
 ## v1.38.1
-**English**
 - **Clearer wording in the return-home budget**: `home 64 of 2143 mAh` instead of
   `home 64 · left 2143 mAh`. With the unit only at the end of the line, the first number
   looked like it had none, and it wasn't obvious the two were the same quantity — the
   cost of the trip home out of what is left in the pack.
 
-**Deutsch**
-- **Klarere Beschriftung im Heimkehr-Budget**: `home 64 of 2143 mAh` statt
-  `home 64 · left 2143 mAh`. Weil die Einheit nur am Zeilenende stand, sah die erste
-  Zahl aus, als hätte sie gar keine — und dass beide dieselbe Größe sind (Kosten des
-  Heimwegs von dem, was im Pack übrig ist), war nicht erkennbar.
-
 ## v1.38.0
-**English**
 - **Return-home energy budget** (off by default). A battery percentage cannot answer the
   question you actually have beyond line of sight: 30% is plenty at 50 m and not enough
   at 800 m into a headwind. This measures what the vehicle really consumes per km and
@@ -2966,33 +1411,7 @@ hardware to find, and nothing found needed hardware to fix.
 - The odometer moved from the OSD into the app, so the distance readout and the energy
   estimate can never disagree about how far the vehicle has gone.
 
-**Deutsch**
-- **Heimkehr-Energiebudget** (standardmäßig aus). Ein Akku-Prozentwert beantwortet die
-  Frage nicht, die man jenseits der Sichtweite wirklich hat: 30 % sind bei 50 m reichlich
-  und bei 800 m gegen den Wind zu wenig. Das hier misst, was das Fahrzeug tatsächlich pro
-  km verbraucht, und macht daraus eine Entscheidung — **wie weit du noch weiter darfst
-  und trotzdem mit Reserve heimkommst**.
-- Die Hauptzahl ist bewusst eine **Distanz, kein Prozentwert**: `⏎ 1,7 km` beantwortet
-  „weiterfahren?" direkt. Darunter, was der Heimweg kostet und was übrig ist, dazu die
-  gemessenen mAh/km — die Effizienzzahl, an der man auch eine schleifende Bremse oder
-  eine verdreckte Schraube sieht. Grün, solange Luft ist, gelb wenn es eng wird, rot bei
-  **TURN BACK**.
-- Der Block erscheint **nur im vollen OSD**; die **Umkehr-Warnung** sitzt in der
-  Badge-Zeile, überlebt also den Kompakt-Modus am Handy, und wird **angesagt**, wenn
-  Sprachansagen an sind.
-- **Reserve einstellbar** (Standard 50 %): die Marge, die er für den Rückweg
-  übrigbehalten will — Gegenwind, Umwege, eine Steigung, und ein Pack, das zum Schluss
-  einbricht.
-- **Es braucht Akkukapazität, einen Stromsensor und einen GPS-Home-Punkt — fehlt eines
-  davon, zeigt es gar nichts.** Das ist die Konstruktion, keine Einschränkung: die
-  meisten Fahrzeuge haben nichts davon, und ein PCA9685 allein ist eine vollständige Art,
-  ein Fahrzeug zu steuern. Unter Setup › Controls steht, welche Eingangsgröße fehlt —
-  das OSD schweigt dazu ja mit Absicht.
-- Der Odometer ist vom OSD in die App gewandert, damit Distanzanzeige und
-  Energieschätzung sich nie darüber uneinig sein können, wie weit das Fahrzeug gefahren ist.
-
 ## v1.37.0
-**English**
 - **Voice callouts, on by default.** On FPV you watch the picture, not the OSD — a beep
   says *that* something happened, a voice says *what*. Spoken: **link lost / restored**,
   **failsafe**, **armed / disarmed**, and **low battery with the percentage**, repeated
@@ -3016,34 +1435,7 @@ hardware to find, and nothing found needed hardware to fix.
 - The trend arrow uses a deadband over a ~12 s history, so a single noisy sample can't
   flip it back and forth.
 
-**Deutsch**
-- **Sprachansagen, standardmäßig an.** Bei FPV schaust du aufs Bild, nicht aufs OSD — ein
-  Piepser sagt, *dass* etwas ist, eine Stimme sagt, *was*. Angesagt werden: **Verbindung
-  verloren / wieder da**, **Failsafe**, **armiert / entschärft** und **niedriger Akku mit
-  Prozentwert**, alle 30 s wiederholt, solange er niedrig bleibt. Nutzt die eingebaute
-  Sprachausgabe des Browsers — keine Abhängigkeit, kein Netz. Geschwindigkeit einstellbar,
-  mit Test-Button, unter Setup › Controls.
-- Bewusst nichts darüber hinaus. Eine Stimme, die alles kommentiert, ist eine Stimme, die
-  man stummschaltet — und dann sind die wichtigen Ansagen mit weg. Dringende (Failsafe,
-  Verbindung verloren, Akku leer) unterbrechen das, was gerade läuft: bis „armiert"
-  zu Ende gesprochen ist, ist „Failsafe" alte Nachricht.
-- Der erste Verbindungsaufbau einer Sitzung sagt nichts — du hast gerade Connect gedrückt
-  und schaust hin. Nur ein echter **Wieder**verbindungsaufbau wird angesagt.
-- **Link-Gesundheit als eine Zahl.** Round-Trip, Paketverlust und Funksignal werden zu
-  einem Wert von 0–100 mit Trendpfeil, grün / gelb / rot. Die Zahl ist das
-  **Schlechteste** der drei, kein Mittelwert — ein perfektes Funksignal darf 15 %
-  Paketverlust nicht verdecken können, und genau das täte ein Mittelwert.
-- **Die Einzelwerte bleiben ausgeblendet, solange der Link gut ist, und kommen von
-  selbst zurück, sobald er es nicht mehr ist.** Darum geht es: „Link 34, fallend" sagt
-  dir, dass du reagieren musst, aber nicht wie — „Paketverlust 12 %" und „Signal 18 %"
-  verlangen unterschiedliche Reaktionen. Und ein sterbender Link ist der schlechteste
-  Moment, um eine Einstellung zu suchen. Ein zweites Badge benennt, was die Zahl
-  herunterzieht. Im Setup lassen sich die Zahlen dauerhaft einblenden.
-- Der Trendpfeil nutzt einen Totbereich über eine ca. 12 s lange Historie, damit ein
-  einzelner Ausreißer ihn nicht hin- und herspringen lässt.
-
 ## v1.36.1
-**English**
 - **Fixed: holding a button on iOS selected its label.** Since v1.35 several buttons
   need a ~0.3 s press, and on iOS that is precisely the gesture that starts a text
   selection and pops the callout menu — so holding the lights toggle or a trim
@@ -3055,20 +1447,7 @@ hardware to find, and nothing found needed hardware to fix.
   `touch-action: manipulation` — a page scroll starting on one could cancel the press
   half way through. Both corrected to match the other hold buttons.
 
-**Deutsch**
-- **Behoben: Ein Button gedrückt zu halten markierte unter iOS seine Beschriftung.** Seit
-  v1.35 brauchen mehrere Buttons ca. 0,3 s Druck — und genau diese Geste startet unter
-  iOS eine Textauswahl samt Kontextmenü. Den Licht-Toggle oder einen Trim zu halten
-  markierte also den Text, statt sich nach einem Druck anzufühlen. `user-select: none`
-  allein reicht in Safari nicht; `-webkit-touch-callout: none` fehlte überall und steht
-  jetzt für alle Bedienelemente gemeinsam, nicht pro Button — damit das nächste Element
-  mit Haltezeit nicht in dieselbe Falle läuft.
-- Den Speed-Limit-Buttons fehlte zusätzlich `-webkit-user-select` komplett, und sie
-  nutzten `touch-action: manipulation` — ein auf ihnen beginnendes Scrollen konnte den
-  Druck auf halbem Weg abbrechen. Beides an die übrigen Halte-Buttons angeglichen.
-
 ## v1.36.0
-**English**
 - **Response curves per stick channel** — the thing expo cannot express. Expo is one
   number and always symmetric around centre; a curve gives you the actual shape: gentle
   to half throttle and then opening up, soft at the extremes but direct in the middle,
@@ -3088,30 +1467,7 @@ hardware to find, and nothing found needed hardware to fix.
   what makes the plot readable — and the two can be combined. Only proportional
   channels get one: a switch has two positions and nothing in between to shape.
 
-**Deutsch**
-- **Kennlinien pro Stick-Kanal** — genau das, was Expo nicht kann. Expo ist eine Zahl und
-  immer symmetrisch um die Mitte; eine Kurve gibt dir den tatsächlichen Verlauf: bis
-  Halbgas sanft und dann aufmachend, an den Enden weich und in der Mitte direkt, ein
-  flacher Totbereich, was das Modell eben braucht. **Standardmäßig aus** — ein Kanal ohne
-  Kurve verhält sich exakt wie bisher.
-- 3, 5, 7 oder 9 gleichmäßig verteilte Punkte, linear interpoliert, mit einem
-  **Live-Diagramm** neben den Zahlen. Die gestrichelte Diagonale bleibt darunter
-  sichtbar, damit die Abweichung von der Geraden das ist, was man sieht. Ändert man die
-  Punktzahl, wird die vorhandene Form **neu abgetastet** statt verworfen.
-- **Die beiden Endpunkte sind auf ±100 % fixiert.** Den Weg begrenzt man mit
-  `min/max µs`, das gibt es bereits — eine Kurve, die die Enden ebenfalls kappen könnte,
-  wäre ein verwirrender zweiter Weg dorthin und würde stillschweigend die Garantie
-  brechen, auf der die Sicherheitskette steht: dass ein ruhender Stick den Aus-Wert des
-  Kanals erzeugt. Mit fixierten Enden funktionieren **Disarm-Wert, Failsafe und
-  Pre-Arm-Check unabhängig davon, welche Form du zeichnest** — dafür gibt es Tests,
-  inklusive einer Kurve, die versucht, die Enden abzuschneiden.
-- Wird **vor** dem Expo angewendet, damit die X-Achse der Kurve die Stickposition selbst
-  ist — das macht das Diagramm erst lesbar — und beides kombinierbar bleibt. Nur
-  proportionale Kanäle bekommen eine: ein Schalter hat zwei Stellungen und nichts
-  dazwischen zu formen.
-
 ## v1.35.0
-**English**
 - **Live trims.** A collapsible *Trims* panel under the sticks (and under the video for
   keyboard/gamepad models) nudges a stick channel's neutral by 5 µs a press, up to
   ±150 µs, with a reset per channel. The car pulls left, you tap right — no trip to
@@ -3132,31 +1488,7 @@ hardware to find, and nothing found needed hardware to fix.
   arming (~1 s confirmation) and the speed limiter (~0.3 s filter) want different
   things from the same mechanism.
 
-**Deutsch**
-- **Live-Trims.** Ein aufklappbares *Trims*-Feld unter den Sticks (bzw. unter dem Video
-  bei Tastatur-/Gamepad-Modellen) verschiebt die Mittelstellung eines Stick-Kanals um
-  5 µs pro Druck, bis ±150 µs, mit Reset je Kanal. Das Auto zieht nach links, du tippst
-  nach rechts — ohne Umweg über Setup. Der Wert landet im vorhandenen
-  `shaping.trimUs` des Kanals, ist also dieselbe Zahl wie `trim µs` unter Setup ›
-  Channels und wird mit dem Modell gespeichert.
-- **Kurze Haltezeit für die Buttons, die etwas Dauerhaftes verstellen.** Toggle-Kanäle,
-  der Speed-Limiter und die Trims brauchen jetzt ca. 0,3 s Druck, bevor sie auslösen —
-  am Bildschirm wie am Controller. Lang genug, um ein versehentliches Streifen
-  abzuweisen, kurz genug, um sich nicht kaputt anzufühlen. Jeder Button füllt sich
-  während des Haltens, so wie der Arm-Button.
-- Bewusst **nicht** betroffen, und darum geht es bei dieser Liste: **Momentary-Kanäle**
-  (eine Hupe muss im Moment des Drückens kommen), **Hold-Ramp-Kanäle** (Halten ist dort
-  bereits die Geste) und die **Sticks** — Lenkung und Gas werden nie verzögert. Arm
-  behält seine eigene, längere Haltezeit; Panic-Disarm bleibt sofort.
-- Einstellbar unter Setup › Controls (0,1–3 s, oder aus — aus stellt exakt das bisherige
-  Tipp-Verhalten wieder her). Pro Browser, wie die anderen Sicherheitsoptionen der
-  Bodenstation.
-- Die Haltezeit für Aktionen ist jetzt **pro Aktion** statt einer Zeit für alle, weil
-  Armieren (~1 s Bestätigung) und Speed-Limiter (~0,3 s Filter) vom selben Mechanismus
-  Unterschiedliches wollen.
-
 ## v1.34.1
-**English**
 - **Setup › Channels now warns when a throttle failsafe would open the throttle.** The
   failsafe is stored as a raw µs and never passes through shaping, so on a channel with
   `reverse` ticked the seeded 1000 µs — which meant "motor off" when the profile was
@@ -3172,25 +1504,7 @@ hardware to find, and nothing found needed hardware to fix.
   deliberately set to cruise home on a low failsafe throttle stays quiet. Drone, car and
   boat failsafe at centre, which is reverse-symmetric, and never trigger it.
 
-**Deutsch**
-- **Setup › Channels warnt jetzt, wenn ein Gas-Failsafe das Gas aufziehen würde.** Der
-  Failsafe wird als roher µs-Wert gespeichert und läuft nie durch die Shaping — auf
-  einem Kanal mit gesetztem `reverse` wird aus den beim Anlegen gesetzten 1000 µs, die
-  „Motor aus" bedeuteten, klammheimlich **volle Leistung bei Verbindungsabriss**,
-  während im Editor weiterhin unverdächtige 1000 stehen. v1.34.0 hat den Disarmed-Wert
-  behoben, der abgeleitet wird; das hier deckt den Failsafe ab, den du selbst setzt und
-  der deshalb markiert statt hinter deinem Rücken überschrieben wird.
-- Die Warnung nennt die konkrete Zahl und die Lösung: *„Failsafe 1000 µs = 100 % Gas auf
-  diesem Kanal (reverse ist an) — Motor aus ist hier 2000 µs."* Sie steht über der
-  zugeklappten Shaping-Zeile, ist also ohne Aufklappen sichtbar, und verschwindet, sobald
-  der Wert korrigiert ist.
-- Die Schwelle ist bewusst grob — sie greift erst oberhalb von halbem Gas, damit ein
-  Flugzeug, das absichtlich mit wenig Gas heimfliegen soll, still bleibt. Drohne, Auto
-  und Boot haben ihren Failsafe in der Mitte, was reverse-symmetrisch ist, und lösen ihn
-  nie aus.
-
 ## v1.34.0
-**English**
 - **Fixed (safety): a reversed throttle channel disarmed to FULL THROTTLE.** The
   disarmed value was read flat off the profile endpoints (`endpoints.minUs` for plane
   and drone), ignoring the channel's own `reverse` flag. With `reverse` ticked the idle
@@ -3215,35 +1529,7 @@ hardware to find, and nothing found needed hardware to fix.
   applied in fullscreen, leaving the desktop picture at two-thirds height while the
   phone looked right.
 
-**Deutsch**
-- **Behoben (Sicherheit): ein reversierter Gaskanal ging beim Disarm auf VOLLGAS.** Der
-  Disarmed-Wert wurde pauschal aus den Profil-Endpoints gelesen (`endpoints.minUs` bei
-  Flugzeug und Drohne) und ignorierte das `reverse`-Flag des Kanals. Mit gesetztem
-  `reverse` liegt der Leerlauf-Stick auf **max**, „Motoren aus" ist auf diesem Kanal
-  also 2000 µs — 1000 µs zu senden bedeutete volle Leistung im Moment des Entschärfens.
-  Der Wert wird jetzt **abgeleitet**: die Ruhelage des Sticks läuft durch die Shaping
-  des Kanals, damit zählen Reverse, kanaleigene Endpoints und Trim. Auto und Boot waren
-  nie betroffen (sie stoppen in der Mitte, das ist reverse-symmetrisch); ein nicht
-  reversierter Kanal bekommt exakt den bisherigen Wert. Durch Tests über alle vier
-  Fahrzeugtypen mit Reverse an und aus abgedeckt.
-- **Der Fullscreen-Button funktioniert jetzt am Handy.** Auf dem iPhone tat er noch nie
-  etwas: Safari hat dort kein `Element.requestFullscreen` (iPadOS 13+ schon), das alte
-  `requestFullscreen?.()` lief also ins Leere. Fullscreen ist jetzt ein CSS-Modus — eine
-  fixierte `100dvh`-Bühne, die Safaris ein- und ausfahrende Leiste mitrechnet — und
-  verhält sich überall gleich; die echte Fullscreen-API kommt obendrauf, wo es sie gibt,
-  um zusätzlich die Browserleiste auszublenden. Das **OSD bleibt sichtbar**; raus über
-  den Exit-Button in der Ecke oder Esc.
-- Im Vollbild kann die Seite unter dem Finger weder scrollen noch zoomen
-  (`touch-action: none` — iOS ignoriert `user-scalable=no`, dieses Meta-Tag war nie der
-  Schutz). Das OSD hält sich per Safe-Area-Insets von Notch und Home-Indikator frei.
-- Die Touch-Sticks bleiben auf der Seite dahinter und sind im Vollbild nicht erreichbar;
-  im **armierten** Zustand weist eine Zeile darauf hin — dann zählt es.
-- Nebenbei behoben: der `max-height: 60vh`-Deckel der Videobühne für breite Fenster galt
-  auch im Vollbild und ließ das Desktop-Bild auf zwei Dritteln Höhe stehen, während es
-  am Handy passte.
-
 ## v1.33.2
-**English**
 - **The throttle row in Setup › Channels now shows its disarmed value** next to the
   failsafe: `fs 1500 · disarmed 1000`. Those two are deliberately different on a drone
   — failsafe is link loss *while armed* (hold, don't drop it), disarmed is switched off
@@ -3251,17 +1537,7 @@ hardware to find, and nothing found needed hardware to fix.
   1000 in the monitor looked like a contradiction. Shown on throttle channels only,
   where it's the one value that differs, with the reasoning on the tooltip.
 
-**Deutsch**
-- **Die Throttle-Zeile unter Setup › Channels zeigt jetzt ihren Disarmed-Wert** neben
-  dem Failsafe: `fs 1500 · disarmed 1000`. Die beiden unterscheiden sich bei einer
-  Drohne mit Absicht — Failsafe ist Verbindungsabriss *im armierten Zustand* (halten,
-  nicht abstürzen lassen), Disarmed ist bewusst abgeschaltet am Boden (Motoren aus) —
-  und nur `fs 1500` neben einem Kanal zu sehen, der im Monitor auf 1000 steht, sah nach
-  einem Widerspruch aus. Nur auf Throttle-Kanälen, wo dieser Wert überhaupt abweicht;
-  die Begründung steht im Tooltip.
-
 ## v1.33.1
-**English**
 - **Fixed: a channel row in Setup › Channels broke apart when its label was long.**
   The row was a wrapping flexbox whose mode text carried `margin-left: auto`, so once
   the content no longer fitted, the auto margin scattered the leftovers — the Throttle
@@ -3271,19 +1547,7 @@ hardware to find, and nothing found needed hardware to fix.
   channel, whatever the label is called. The mode text truncates rather than wrapping
   into a column of single letters, with the full value on its tooltip.
 
-**Deutsch**
-- **Behoben: eine Kanalzeile unter Setup › Channels ist bei langem Label zerfallen.**
-  Die Zeile war eine umbrechende Flexbox, deren Modus-Text `margin-left: auto` trug —
-  sobald der Inhalt nicht mehr passte, verteilte die Auto-Margin die Reste: Die
-  Throttle-Zeile (das längste Label) brach auf, „Remove" rutschte in eine zweite Zeile,
-  während alle anderen Zeilen einzeilig blieben. Jetzt ist die Zeile ein Grid: über
-  640 px einzeilig, darunter wandert der Modus in eine eigene Zeile über die volle
-  Breite unter das Label — für **jeden** Kanal gleich, egal wie das Label heißt. Der
-  Modus-Text wird abgeschnitten statt zu einer Buchstabensäule umzubrechen, der
-  vollständige Wert steht im Tooltip.
-
 ## v1.33.0
-**English**
 - **The blackbox now logs the GPS track.** `lat`, `lon`, `alt_m`, `sats`, `hdop`,
   `speed_ms` and `course_deg` are written into the *same row* as the electrics and the
   link stats, at the same 2 Hz. That's the point of putting them there rather than in a
@@ -3300,26 +1564,7 @@ hardware to find, and nothing found needed hardware to fix.
 - **The GPS sim now circles over Balingen (72336)** at ~517 m instead of Berlin, so a
   sim track lands where the project does.
 
-**Deutsch**
-- **Die Blackbox loggt jetzt die GPS-Strecke.** `lat`, `lon`, `alt_m`, `sats`, `hdop`,
-  `speed_ms` und `course_deg` stehen in *derselben Zeile* wie Elektrik und
-  Link-Statistik, mit denselben 2 Hz. Genau deshalb stecken sie dort und nicht in einer
-  zweiten Datei: In QGIS oder kepler.gl lässt sich die Route nach Akkuspannung oder
-  Round-Trip einfärben — man sieht also, **wo** die Verbindung schlecht wird, nicht nur
-  dass sie es war.
-- **Neuer Button „Download GPX"** (Setup › Controls) schreibt eine GPX-1.1-Strecke — Höhe,
-  Satelliten und HDOP je Punkt, Geschwindigkeit und Kurs in der Garmin-Erweiterung
-  `TrackPointExtension`. Google Earth, [gpx.studio](https://gpx.studio), Garmin BaseCamp,
-  GPSBabel, QGIS und Strava lesen das direkt. Der Button bleibt gesperrt, solange keine
-  Zeile einen Fix trägt; die Statuszeile zeigt die Zahl der Fixe neben der Zeilenzahl.
-- Zeilen **ohne** Fix loggen leere Koordinaten statt der letzten bekannten Position — ein
-  eingefrorener Punkt sähe aus, als stünde das Fahrzeug dort. Die Satellitenzahl wird
-  auch während der Suche geloggt, damit man den Empfänger hochkommen sieht.
-- **Die GPS-Sim kreist jetzt über Balingen (72336)** auf ca. 517 m statt über Berlin,
-  damit eine Sim-Strecke dort landet, wo das Projekt herkommt.
-
 ## v1.32.0
-**English**
 - **The Car template now defaults to stick mode 2.** A car needs only two axes, and mode 2
   puts both on the **left stick** — steering on X, throttle on Y — so one thumb drives it
   on a phone. Mode 4 splits them across two sticks if you prefer that; switch any time in
@@ -3332,36 +1577,13 @@ hardware to find, and nothing found needed hardware to fix.
 - Existing models keep their stick mode; this changes what a **new** model from the
   template looks like (and what a factory reset seeds).
 
-**Deutsch**
-- **Die Auto-Vorlage steht jetzt standardmäßig auf Stick-Mode 2.** Ein Auto braucht nur
-  zwei Achsen, und Mode 2 legt beide auf den **linken Stick** — Lenkung auf X, Gas auf Y —
-  damit fährt man es am Handy mit einem Daumen. Mode 4 verteilt sie auf zwei Sticks, wenn
-  dir das lieber ist; jederzeit umstellbar unter Setup › Model.
-- **Behoben: der Standard-Stick-Mode einer Vorlage wurde vermerkt, aber nie angewendet.**
-  `buildProfile` hat `stickMode` gespeichert und die Achsen trotzdem genau so gelegt, wie
-  sie in der Vorlage stehen — eine Vorlage, deren Standard von dieser Anordnung abweicht,
-  erzeugte also ein Profil, das einen Mode behauptete, in dem es gar nicht war. Der Mode
-  wird jetzt beim Erzeugen angewendet — für Boot, Flugzeug und Drohne ohne Wirkung, deren
-  Anordnung passte bereits.
-- Bestehende Modelle behalten ihren Stick-Mode; das ändert, wie ein **neues** Modell aus
-  der Vorlage aussieht (und was ein Factory Reset anlegt).
-
 ## v1.31.3
-**English**
 - **The default arm hold is now 1 s** (was 2 s). Still long enough to filter out a tap or
   a bumped controller button, but quicker to arm. An already-stored hold time is
   untouched — this only changes the default for a fresh install or after a factory reset;
   the time stays adjustable (0.5–10 s) and switchable off in Setup › Controls.
 
-**Deutsch**
-- **Die Standard-Haltezeit zum Armen ist jetzt 1 s** (vorher 2 s). Immer noch lang genug,
-  um ein Antippen oder einen angestoßenen Controller-Button abzufangen, aber schneller
-  beim Armen. Eine bereits gespeicherte Haltezeit bleibt unverändert — das ändert nur die
-  Vorgabe für eine frische Installation bzw. nach einem Factory Reset; die Zeit bleibt
-  einstellbar (0,5–10 s) und abschaltbar unter Setup › Controls.
-
 ## v1.31.2
-**English**
 - **ESC calibration now uses the throttle channel's own endpoints.** It sent the
   profile-wide *Endpoints* values, so narrowing just the throttle channel (say to
   1200–1800 µs) still calibrated the ESC to 1000–2000 — teaching it a range it is never
@@ -3378,27 +1600,7 @@ hardware to find, and nothing found needed hardware to fix.
 - The *Endpoints* field is now labelled and described as what it is: a **batch write**
   into every channel, adjustable per channel afterwards — not a cap that keeps applying.
 
-**Deutsch**
-- **Die ESC-Kalibrierung nimmt jetzt die Endpunkte des Gaskanals selbst.** Sie hat die
-  profilweiten *Endpoints* geschickt — wer nur den Gaskanal enger stellte (etwa auf
-  1200–1800 µs), kalibrierte den ESC trotzdem auf 1000–2000 und lehrte ihm damit einen
-  Bereich, mit dem er nie gefahren wird. Jetzt gewinnen die Werte des Kanals, die
-  profilweiten sind nur noch Rückfallebene.
-- **Das Kalibrier-Panel sagt vorher, was es tun wird**, bevor der Motor läuft: „Will
-  teach the ESC CH03: max 1800 µs → min 1200 µs" — mit Warnung, wenn der gewählte Kanal
-  nicht der Gaskanal des Modells ist.
-- **Das Kanal-Feld folgt dem Modell.** Es wurde einmalig beim Aufbau des Panels gefüllt;
-  ein Modellwechsel (oder ein verschobener Gaskanal) ließ es auf dem alten Kanal stehen.
-- **„Endpoints (ms)" in der Oberfläche behoben.** Im Quelltext stand immer µs, aber CSS
-  `text-transform: uppercase` bildet das MICRO SIGN auf das griechische große My ab —
-  optisch ein lateinisches M, also las es sich als Millisekunden. Einheiten in
-  großgeschriebenen Überschriften sind jetzt von der Umwandlung ausgenommen.
-- Das *Endpoints*-Feld heißt und erklärt sich jetzt als das, was es ist: ein
-  **Sammel-Schreibvorgang** in alle Kanäle, danach pro Kanal anpassbar — keine dauerhaft
-  wirkende Begrenzung.
-
 ## v1.31.1
-**English**
 - **Fixed: a touch model could come up with a missing joystick and refuse to arm.**
   Profiles live in the browser and outlive the version that wrote them. Before v1.10.0 a
   transmitter-mode switch reassigned a stick axis without re-deriving its input element,
@@ -3412,22 +1614,7 @@ hardware to find, and nothing found needed hardware to fix.
   untouched. Switching the input method away and back was the manual workaround; it is no
   longer needed.
 
-**Deutsch**
-- **Behoben: ein Touch-Modell konnte mit fehlendem Joystick starten und das Armen
-  verweigern.** Profile liegen im Browser und überleben die Version, die sie geschrieben
-  hat. Vor v1.10.0 hat ein Sendermodus-Wechsel eine Stick-Achse umgehängt, ohne ihr
-  Eingabe-Element neu abzuleiten — ein gespeichertes Modell konnte also seine Gas-Achse
-  noch auf der *Tastatur*-Quelle haben, während das Modell auf **Touch** lief. Das
-  Control-Pad zeichnet nur virtuelle `joy:…`-Bindungen, dieser Stick fehlte also — und
-  weil niemand den Kanal gefahren hat, stand er auf Mitte statt Leerlauf, worauf der
-  Pre-Arm-Check mit „throttle not at idle" blockierte.
-- Modelle werden jetzt **beim Laden einmal repariert** und zurückgeschrieben: eine
-  Achsen-Bindung bekommt Quelle und Element, die ihre Eingabemethode verlangt. Aux- und
-  selbst angelegte Kanäle bleiben unangetastet. Der Workaround (Eingabemethode einmal
-  hin und zurück schalten) ist damit überflüssig.
-
 ## v1.31.0
-**English**
 - **Fixed: the throttle channel could go stale.** A profile stored `throttleChannels`
   from its template, but moving a binding to another channel in the editor never updated
   that list — and the **disarmed value, the failsafe array, the pre-arm check**, the OSD
@@ -3448,31 +1635,7 @@ hardware to find, and nothing found needed hardware to fix.
   sees the raw stick command. The OSD shows `LIM 40%` next to the throttle bar while a
   limit is active.
 
-**Deutsch**
-- **Behoben: der Gaskanal konnte veralten.** Ein Profil speicherte `throttleChannels` aus
-  seiner Vorlage, aber das Verschieben einer Bindung auf einen anderen Kanal im Editor
-  hat diese Liste nie aktualisiert — und **Disarm-Wert, Failsafe-Array, Pre-Arm-Check**,
-  OSD-Balken und ESC-Kalibrierung lesen genau sie. Ein Flugzeug mit verschobenem Gas
-  hielt bei Link-Verlust *Mitte* statt Motor aus und reichte den Stick im „disarmten"
-  Zustand einfach durch. Der Kanal wird jetzt aus den Bindungen abgeleitet
-  (`throttleChannelsOf`), mit der gespeicherten Liste als Rückfallebene, und der Editor
-  schreibt die abgeleitete Liste bei jeder Änderung zurück — alte Modelle heilen sich
-  damit selbst.
-- **Tempolimit mit drei Stufen.** Low / Mid / High (Prozent pro Modell, Vorgabe
-  40/70/100) als drei Buttons unter den Sticks und den Kanal-Buttons; die Werte werden am
-  Gaskanal im Setup eingestellt, ein belegbarer Controller-Button schaltet durch.
-- Der Befehl wird **um die Ruhelage des Gaskanals skaliert**, eine Regel deckt damit
-  beide Fälle: **Mitte** (Auto mit Rückwärtsgang, Drohne) wird nach oben *und* unten
-  begrenzt, **min/frei** (Flugzeug, gerastertes Gas) behält den exakten Leerlauf und wird
-  nur nach oben begrenzt. Skaliert statt abgeschnitten — der volle Stickweg bleibt
-  nutzbar.
-- Das Limit ändert nur das, was **gesendet** wird: Endpunkte, Failsafe, Disarm-Wert und
-  Pre-Arm-Check arbeiten weiter mit der echten Ruhelage, und der Pre-Arm-Check sieht
-  weiterhin den rohen Stickbefehl. Im OSD steht `LIM 40%` neben dem Gasbalken, solange
-  ein Limit aktiv ist.
-
 ## v1.30.0
-**English**
 - **Panic-disarm now ships unbound** — for every vehicle type and input method. It used
   to default to **Escape**, and it is the one control with *no hold and no
   confirmation*: an accidental press cuts the motors, which on an aircraft means a
@@ -3485,23 +1648,7 @@ hardware to find, and nothing found needed hardware to fix.
   a button) survives untouched.
 - The Controls panel now says why panic is unbound and what to bind it to.
 
-**Deutsch**
-- **Panic-Disarm ist jetzt ab Werk unbelegt** — für jeden Fahrzeugtyp und jede
-  Eingabemethode. Bisher lag es standardmäßig auf **Escape**, und es ist die einzige
-  Funktion *ohne Halten und ohne Rückfrage*: ein versehentlicher Druck kappt die
-  Motoren, bei einem Luftfahrzeug also Absturz. Selbst belegen unter Setup › Controls,
-  auf eine Taste oder Controller-Taste, die man nicht aus Versehen trifft — und wer mit
-  Controller fliegt, legt sie *auf den Controller*, denn eine Tastaturtaste nützt nichts,
-  wenn beide Hände an den Sticks sind.
-- **Bestehende Installationen werden migriert**: die Belegungen wandern nach
-  `yonderrc.actions.v2`, und eine gespeicherte Panic-Belegung, die exakt dem alten
-  `Escape`-Standard entspricht, wird entfernt — sie war nie eine bewusste Wahl. Alles
-  selbst Gewählte (auch Escape plus Button) bleibt unangetastet.
-- Das Controls-Panel erklärt jetzt, warum Panic unbelegt ist und worauf man es legen
-  sollte.
-
 ## v1.29.0
-**English**
 - **The arm hold now covers the bound key and controller button too.** Until now the
   2 s hold only applied to the on-screen arm button; a key or gamepad button bound to
   *Arm / disarm* fired on the press, which is the input most likely to be bumped by
@@ -3512,21 +1659,7 @@ hardware to find, and nothing found needed hardware to fix.
   **panic-disarm stays instant** either way. Losing window focus mid-hold cancels, so a
   key can't stay "held" while you're in another tab.
 
-**Deutsch**
-- **Das Arm-Halten gilt jetzt auch für die belegte Taste und den Controller-Button.**
-  Bisher galten die 2 s nur für den Arm-Button auf dem Bildschirm; eine auf
-  *Arm / disarm* gelegte Taste oder Gamepad-Taste löste beim Drücken aus — ausgerechnet
-  die Eingabe, die man am ehesten aus Versehen anstößt. Jetzt braucht sie dasselbe
-  Halten, und früher loslassen bricht ab.
-- **Der Arm-Button zeigt dieses Halten mit an**: die belegte Taste füllt denselben
-  Balken und lässt denselben Countdown laufen — sichtbares Feedback, egal wohin man
-  gerade schaut.
-- Der Aus-Schalter in Setup › Controls schaltet **beide** Wege ab, und **Panic-Disarm
-  bleibt in jedem Fall sofort**. Verliert das Fenster den Fokus, bricht das Halten ab —
-  eine Taste kann also nicht „gedrückt bleiben", während man in einem anderen Tab ist.
-
 ## v1.28.0
-**English**
 - **Hold-to-arm is now configurable** in Setup › Controls: a switch to turn the
   protection off entirely and an adjustable **hold time** (0.5–10 s), stored per browser.
 - **The default hold is now 2 s** instead of 3 — long enough that no pocket-touch gets
@@ -3535,18 +1668,7 @@ hardware to find, and nothing found needed hardware to fix.
 - **Panic-disarm stays instant** in every configuration, and the pre-arm check is
   unaffected.
 
-**Deutsch**
-- **Halten zum Armen ist jetzt einstellbar** unter Setup › Controls: ein Schalter, um den
-  Schutz ganz abzuschalten, und eine einstellbare **Haltezeit** (0,5–10 s), pro Browser
-  gespeichert.
-- **Die Vorgabe sind jetzt 2 s** statt 3 — lang genug, dass kein Griff in die Hosentasche
-  durchkommt, kurz genug, dass Armen keine Zeremonie wird. Abgeschaltet reagiert der
-  Arm-Button wieder auf einfaches Antippen und sagt das auch („DISARMED — tap to arm").
-- **Panic-Disarm bleibt in jeder Konfiguration sofort**, der Pre-Arm-Check bleibt
-  unberührt.
-
 ## v1.27.1
-**English**
 - **The setup hotspot can now stay up next to LTE.** New *when to start it* setting in
   Setup › WiFi: **auto** (default, unchanged — only when the Pi has no uplink at boot),
   **always** (also next to a working LTE link, so you can always walk up to the vehicle
@@ -3559,22 +1681,7 @@ hardware to find, and nothing found needed hardware to fix.
   reboot with an uplink in `auto` mode — a remote service (Tailscale/ZeroTier/WireGuard)
   or LTE does **not**, those ride on other interfaces.
 
-**Deutsch**
-- **Der Setup-Hotspot kann jetzt neben LTE oben bleiben.** Neue Einstellung *when to
-  start it* in Setup › WiFi: **auto** (Standard, unverändert — nur wenn der Pi beim
-  Booten keinen Uplink hat), **always** (auch neben laufendem LTE, damit du fürs
-  Diagnostizieren immer ans Fahrzeug herankommst) und **off**. Dazu ein Button
-  **Stop hotspot**.
-- Eine WLAN-*Client*-Verbindung schlägt `always` immer: eine Funkeinheit kann nicht
-  gleichzeitig Access Point sein und in einem Netz hängen, und den WLAN-Link abzureißen
-  würde das Fahrzeug aus dem LAN werfen. Das Onboarding prüft das vorher und schreibt es
-  ins Log.
-- Dokumentiert, was den Hotspot tatsächlich schließt: einem Netz beitreten, *Stop
-  hotspot*, oder ein Neustart mit Uplink im Modus `auto` — ein Remote-Dienst
-  (Tailscale/ZeroTier/WireGuard) oder LTE **nicht**, die laufen über andere Interfaces.
-
 ## v1.27.0
-**English**
 - **Wi-Fi onboarding from the phone.** New **Setup › WiFi** panel: scan for networks
   (SSID, signal, lock state), pick one, enter the password, connect. The Pi has a single
   radio, so joining your network closes the setup hotspot — the page stops responding,
@@ -3591,25 +1698,7 @@ hardware to find, and nothing found needed hardware to fix.
   The row is now **Remote access** and shows the selected method with its state
   (`ZeroTier · up (joined …)`, `WireGuard · down`, `none`).
 
-**Deutsch**
-- **WLAN-Einrichtung vom Handy.** Neues Panel **Setup › WiFi**: Netze scannen (SSID,
-  Signal, verschlüsselt ja/nein), auswählen, Passwort eingeben, verbinden. Der Pi hat
-  nur eine Funkeinheit — das Verbinden schließt also den Setup-Hotspot, die Seite
-  antwortet nicht mehr, und genau das ist das erwartete Zeichen. **War das Passwort
-  falsch, fährt das Fahrzeug den Hotspot wieder hoch**, es sperrt sich also nicht aus.
-- **Der Onboarding-Hotspot ist jetzt standardmäßig offen.** So stellt das Captive Portal
-  die Setup-Seite ohne Tipparbeit vor dich; ein in einem öffentlichen README
-  dokumentiertes Standardpasswort hat ohnehin nichts geschützt. **SSID und Passwort**
-  (mind. 8 Zeichen, WPA2) lassen sich im selben Panel setzen — *Save* wirkt beim
-  nächsten Hotspot-Start, *Save & start now* startet ihn sofort neu.
-- **Generieren-Button für das API-Secret**: 20 Zufallszeichen aus einem Alphabet ohne
-  verwechselbare Zeichen, einmal sichtbar zum Kopieren, dann ans Fahrzeug übernommen.
-- **Die Statuszeile behauptet nicht mehr „Tailscale"**, wenn eine andere Methode
-  konfiguriert ist. Die Zeile heißt jetzt **Remote access** und zeigt die gewählte
-  Methode mit ihrem Zustand (`ZeroTier · up (joined …)`, `WireGuard · down`, `none`).
-
 ## v1.26.0
-**English**
 - **Auto-disarm on reconnect is now selectable** in Setup › Controls: **Auto** (default,
   follows the vehicle type — on for car/boat, off for plane/drone), **Always on** or
   **Always off**. The choice is pushed to the vehicle immediately, not only on the next
@@ -3620,19 +1709,7 @@ hardware to find, and nothing found needed hardware to fix.
   the session timer and the GPS badge carried a blank tail. Same class of bug as the
   LINK badge in v1.22.0, now fixed for both left columns.
 
-**Deutsch**
-- **Auto-Disarm bei Reconnect ist jetzt wählbar** unter Setup › Controls: **Auto**
-  (Standard, folgt dem Fahrzeugtyp — an für Auto/Boot, aus für Flugzeug/Drohne),
-  **immer an** oder **immer aus**. Die Wahl geht sofort ans Fahrzeug, nicht erst beim
-  nächsten Verbinden; wer gegen die Typregel erzwingt, bekommt einen Warnhinweis, was
-  das in der Luft bzw. am Boden bedeutet.
-- **Verzerrte OSD-Badges oben links behoben.** Den linken OSD-Spalten fehlte die
-  Ausrichtung, dadurch streckte der Flex-Default jedes Badge auf die Breite des
-  breitesten — Session-Timer und GPS-Badge hatten einen leeren Fortsatz. Dieselbe
-  Fehlerklasse wie beim LINK-Badge in v1.22.0, jetzt für beide linken Spalten behoben.
-
 ## v1.25.0
-**English**
 - **The blackbox CSV now holds every telemetry channel.** Next to the fixed link/video
   columns it gets **one column per configured channel**, named after its label
   (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`), so temperatures and extra voltages/currents
@@ -3646,23 +1723,7 @@ hardware to find, and nothing found needed hardware to fix.
   INA228 additions in the feature list, the new CSV columns, and a refreshed
   touch/status screenshot showing the hold-to-arm button and the Session stat.
 
-**Deutsch**
-- **Die Blackbox-CSV enthält jetzt jeden Telemetriekanal.** Neben den festen Link-/
-  Video-Spalten gibt es **je eine Spalte pro konfiguriertem Kanal**, benannt nach dessen
-  Label (`Pack_V`, `BEC_V`, `I1_A`, `Motor_C`) — Temperaturen und zusätzliche
-  Spannungen/Ströme landen also endlich im Log. `volt`/`amp` bleiben der **primäre**
-  Kanal, damit ein Skript den Pack immer an derselben Stelle findet. Die Spalten sind
-  die Vereinigung über das ganze Log: ein zeitweise ausfallender Sensor hinterlässt eine
-  Lücke, statt alles zu verschieben.
-- **Aus „Flight" wird „Session"** in der Status-Leiste und der OSD-Feldliste — dieselbe
-  App fährt Autos und Boote, und der Timer misst die gearmte Zeit, keinen Flug.
-- **Doku-Durchgang** für alles seit v1.21.1: Halten-zum-Armen im Sicherheitskapitel und
-  in den Erst-Test-Schritten (beide Sprachen), die Einzelschalter im OSD, Temperatur-
-  sensoren und INA228 in der Feature-Liste, die neuen CSV-Spalten sowie ein
-  aufgefrischter Touch-/Status-Screenshot mit Halten-zum-Armen und Session-Anzeige.
-
 ## v1.24.0
-**English**
 - **Temperature sensors, 1..n.** New temperature channels in Setup › Telemetry, shown in
   the OSD under voltage and current: **Raspberry Pi SoC**, **DS18B20** (1-Wire),
   **MCP9808 / TMP102 / TMP117 / BMP280 / BME280** (I²C), **MAX6675 / MAX31855 / MAX31856**
@@ -3683,30 +1744,7 @@ hardware to find, and nothing found needed hardware to fix.
   channel wins, so existing configs are unchanged. The vehicle reports the index, so the
   ground warns on the same voltage it counted with.
 
-**Deutsch**
-- **Temperatursensoren, 1..n.** Neue Temperaturkanäle in Setup › Telemetry, im OSD
-  unterhalb von Spannung und Strom: **Raspberry-Pi-SoC**, **DS18B20** (1-Wire),
-  **MCP9808 / TMP102 / TMP117 / BMP280 / BME280** (I²C), Thermoelemente über
-  **MAX6675 / MAX31855 / MAX31856** und PT100/PT1000 über **MAX31865** (SPI) sowie
-  **NTC oder PT100 an ADS1115 / MCP3008**. Jede Art zeigt nur die Felder, die sie
-  braucht (Adresse, Chip-Select, Thermoelement-Typ, Sonde, Vorwiderstand, R25/Beta,
-  Offset). Ein Sensor, der sich nicht lesen lässt, fehlt im OSD, statt als 0 °C
-  aufzutauchen — und wird einmalig geloggt.
-- **Jeder Telemetriewert ist jetzt einzeln ausblendbar** — FPV › ⚙ › *Sensor values*
-  listet jeden Kanal, den das Fahrzeug meldet, pro Browser gespeichert; am Handy also
-  weniger als am Laptop. Neue Kanäle sind standardmäßig sichtbar.
-- **Kürzel im OSD**: sobald eine Art mehr als einen Kanal hat, steht das Label vor dem
-  Wert (`Pack 16.6 V · BEC 5.1 V`, `Motor 62 °C`). Bei einem einzelnen Kanal ändert sich
-  nichts. Neue Kanäle heißen per Default kurz (`U2`, `I2`, `T1`).
-- **Expliziter Primärkanal.** Akku-%, mAh/Wh-Zählung, Akku-Warnung und Blackbox haben
-  bisher schlicht den *ersten* Kanal gelesen — Löschen oder Einfügen verschob die
-  Akkurechnung also unbemerkt. Ein **primary**-Radio (Setup › Telemetry, erscheint ab
-  zwei Kanälen einer Art) markiert ihn jetzt; ohne Flag gewinnt weiterhin der erste
-  Kanal, bestehende Configs bleiben unverändert. Das Fahrzeug meldet den Index mit,
-  damit der Ground auf derselben Spannung warnt, mit der gezählt wurde.
-
 ## v1.23.0
-**English**
 - **INA228 support — the sensor counts the charge itself.** The INA228 integrates
   CHARGE (coulombs) and ENERGY (joules) in hardware at ADC rate, so the vehicle reads
   two registers instead of summing samples: the consumed mAh no longer depend on the
@@ -3729,32 +1767,7 @@ hardware to find, and nothing found needed hardware to fix.
   in-memory config, so reloading the setup page showed the pre-save values again.
 - Detection hints for I²C addresses now name the whole INA2xx family.
 
-**Deutsch**
-- **INA228 unterstützt — der Sensor zählt die Ladung selbst.** Der INA228 integriert
-  CHARGE (Coulomb) und ENERGY (Joule) in Hardware mit der ADC-Rate; das Fahrzeug liest
-  nur noch zwei Register, statt Messwerte aufzusummieren: die verbrauchten mAh hängen
-  nicht mehr an der Abtastrate, und eine ausgefallene Messung fehlt nicht mehr still in
-  der Bilanz. Dazu 85 V Busbereich (bis 12S) und 20 Bit Auflösung. Neue Einstellung
-  **Charge counter** (`auto` / `sensor` / `pi`); `auto` nimmt den Chip, wenn er einen
-  Zähler hat, sonst den Pi. **Reset mAh** löscht jetzt auch die Chip-Register (RSTACC).
-- **INA237 / INA238 unterstützt** — dieselbe 85-V-Familie und Registerkarte, 16 Bit und
-  ohne Akkumulatoren, für sie integriert weiterhin der Pi. Damit ist die Abdeckung
-  komplett: INA219/226/228/237/238/260/3221.
-- Neue Felder pro Kanal für diese drei: **Max current A** (bestimmt CURRENT_LSB und
-  damit SHUNT_CAL, wird beim Start geschrieben) und der **Shunt-Bereich** (±163,84 mV /
-  ±40,96 mV, 4× Auflösung), mit Warnung, wenn max. Strom × Shunt nicht in den kleinen
-  Bereich passt. Der Strom kommt aus VSHUNT und stimmt daher auch dann, wenn die
-  Kalibrierung nicht geschrieben werden konnte.
-- **Empfehlung im Hardware-Guide ist jetzt der INA228** (Teileliste, Verkabelung 2.2,
-  Setup-Schritt 3), mit Vergleichstabelle aller sieben unterstützten Sensoren — der
-  INA226 bleibt die Wahl bis 36 V.
-- **Behoben:** Telemetrie-Speichern aktualisierte Datei und laufenden Dienst, aber
-  nicht die Config im Speicher — nach einem Reload zeigte die Setup-Seite wieder die
-  alten Werte.
-- Die Erkennungs-Hinweise zu I²C-Adressen nennen jetzt die ganze INA2xx-Familie.
-
 ## v1.22.0
-**English**
 - **Hold-to-arm (3 s)**: the arm button no longer toggles on a tap. Press and hold it
   for 3 seconds — the button fills up and counts down ("ARMING IN 1.6 s") — and the
   same hold is required to *disarm*, which is the accidental touch that actually hurts.
@@ -3772,25 +1785,7 @@ hardware to find, and nothing found needed hardware to fix.
   viewport): easier two-thumb control on a phone, in every stick mode, and still no
   wrapping on narrow screens.
 
-**Deutsch**
-- **Halten zum Armen (3 s)**: der Arm-Button schaltet nicht mehr auf Antippen. 3 Sekunden
-  gedrückt halten — der Button füllt sich und zählt herunter („ARMING IN 1.6 s") — und
-  dasselbe Halten gilt fürs *Disarmen*, denn das ist der Fehlgriff, der wirklich weh tut.
-  Früher loslassen bricht ab; ein Link-Verlust während des Haltens ebenfalls. Geht mit
-  Finger, Maus und Leertaste/Enter, mit kurzem Vibrieren auf Handys, die das können.
-  **Panic-Disarm (Setup › Controls) bleibt sofort** — das ist der Notfallweg.
-- **Im OSD steht nur noch DISARMED / FAILSAFE**, nie ARMED. Gearmt ist der Normalfall und
-  am Flight-Timer und den Kanalbalken ohnehin sichtbar — ein Element weniger im Bild.
-- **Verzerrtes OSD-Badge behoben**: der obere Mittelstreifen hat `flex-direction: column`
-  von `.osd > div` geerbt, dadurch standen LINK und DISARMED untereinander *und* das
-  kürzere Badge wurde auf die Breite des längeren gestreckt — das leere Feld hinter
-  „LINK", das beim Armen verschwand. Beide Mittelstreifen sind wieder echte Zeilen.
-- **Mehr Platz zwischen den Touch-Joysticks** (Abstand 18px → bis 64px, mit der
-  Viewport-Breite skaliert): bessere Zwei-Daumen-Bedienung am Handy, in allen Stick-Modes,
-  ohne auf schmalen Displays umzubrechen.
-
 ## v1.21.1
-**English**
 - **Documentation pass over all four docs** (EN + DE), correcting what had gone stale:
   auto-disarm on reconnect is **vehicle-type coupled** (the setup checkbox is only the
   fallback until a ground station connects — the old "turn it off for plane/drone by
@@ -3811,30 +1806,7 @@ hardware to find, and nothing found needed hardware to fix.
   **blackbox logging**.
 - Setup page: the last German string ("RÄDER HOCH / PROPS AB") is now English.
 
-**Deutsch**
-- **Doku-Durchgang über alle vier Dokumente** (EN + DE), veraltete Stellen korrigiert:
-  Auto-Disarm bei Reconnect ist **an den Fahrzeugtyp gekoppelt** (die Checkbox im Setup
-  ist nur der Fallback, bis sich eine Bodenstation verbindet — der alte Hinweis „für
-  Flugzeug/Drohne von Hand ausschalten" war falsch); die echte Paketliste des Installers
-  (Node 22, `usb-modeswitch`, `i2c-tools`, `gpsd`, `wireguard-tools`, ZeroTier); die
-  nativen Treiber-Libs sind **optionale Abhängigkeiten**, die `npm install
-  --omit=optional` überspringt; serielles GPS braucht ebenfalls `serialport`; Pi OS ist
-  im Text nicht mehr auf Bookworm festgenagelt.
-- **Neu in `HARDWARE.de.md` §6.1: das Vertrauensmodell** — der Dienst lauscht auf
-  `0.0.0.0`, das Netz ist also die Sicherheitsgrenze; wann ein API-Secret sinnvoll ist,
-  was es schützt und was nicht (Klartext in der Config, Verkehr unverschlüsselt),
-  `YRC_API_SECRET` sowie `YRC_HOST` zum Binden auf eine einzelne Adresse.
-- Die Setup-Schritte decken jetzt **Detect hardware**, die **Akku-%-Quelle** und das
-  **Security**-Panel ab; der LTE-Abschnitt erklärt das **Uplink-Signal im OSD**
-  (`mmcli`-%, sonst der `wlan0`-RSSI). Neue Fehlersuche-Zeilen für gesetztes API-Secret,
-  fehlenden GPS-Fix und fehlenden Signalwert.
-- README (EN + DE): **mobile Ansicht** mit aufklappbarem Screenshot, dazu die bisher
-  fehlenden Funktionen — **Auto**-Videoqualität, einzeln abschaltbare OSD-Blöcke,
-  Akku-Warnung und **Blackbox-Logging**.
-- Setup-Seite: der letzte deutsche String („RÄDER HOCH / PROPS AB") ist jetzt englisch.
-
 ## v1.21.0
-**English**
 - **Mobile layout fixes** — nothing widens the page any more, so mobile Safari can't
   pan/zoom the whole view sideways: the FPV/OSD tool buttons wrap into a second row,
   the model editor's *Duplicate*/*Delete* drop onto their own right-aligned row, and
@@ -3848,54 +1820,21 @@ hardware to find, and nothing found needed hardware to fix.
   *Auto* (compact on narrow screens and on phones in landscape), *Compact*, *Full* —
   persisted per browser. Desktop is unchanged.
 
-**Deutsch**
-- **Mobile-Layout-Fixes** — nichts macht die Seite mehr breiter als das Fenster, damit
-  Safari die Ansicht nicht mehr seitlich verschieben/zoomen lässt: die FPV/OSD-Buttons
-  rutschen in eine zweite Reihe, *Duplicate*/*Delete* im Modell-Editor bekommen eine
-  eigene, rechtsbündige Zeile, und die Zahlenfeld-Raster (Endpoints, Auto-Qualität,
-  Akku-Schwellen) richten sich nach den Spalten statt nach der Eigenbreite der Felder.
-  Das min/max-Paar bei den Endpoints hatte gar kein CSS und ist jetzt ein sauberes
-  Zwei-Spalten-Feld.
-- **Kompaktes OSD am Handy** — gleiche Blöcke in ca. ⅔ Größe, sekundäre Werte
-  (Video-Latenz, kbps, fps, Akku-%-Quelle) ausgeblendet, die Telemetrie-Blöcke unten
-  rechts als umbrechende Zeilen, und das ARMED/FAILSAFE-Badge wandert nach oben neben
-  LINK, damit der Telemetrie-Block es nicht mehr verdeckt. Neue Einstellung **OSD size**
-  im FPV-⚙-Panel: *Auto* (kompakt auf schmalen Screens und am Handy im Querformat),
-  *Compact*, *Full* — pro Browser gespeichert. Desktop bleibt unverändert.
-
 ## v1.20.4
-**English**
 - OSD: **GPS ground speed** (km/h) now shown under the home compass, next to the trip
   odometer; the compass column is left-aligned so speed/odometer sit flush left.
 
-**Deutsch**
-- OSD: **GPS-Geschwindigkeit** (km/h) jetzt unter dem Home-Kompass, neben dem
-  Trip-Odometer; die Kompass-Spalte ist linksbündig, sodass Speed/Odometer links stehen.
-
 ## v1.20.3
-**English**
 - **Trip odometer** under the home compass in the OSD — accumulated ground distance
   (m, switching to km with 2 decimals ≥ 1000 m), computed from successive GPS fixes
   with a jitter deadband so a stationary receiver doesn't make it creep. Resets on
   link loss.
 
-**Deutsch**
-- **Trip-Odometer** unter dem Home-Kompass im OSD — aufsummierte Strecke (m, ab
-  1000 m in km mit 2 Nachkommastellen), aus aufeinanderfolgenden GPS-Fixes mit
-  Jitter-Deadband, damit ein stehender Empfänger sie nicht hochzählt. Reset bei
-  Verbindungsverlust.
-
 ## v1.20.2
-**English**
 - OSD polish: bigger **battery bar** and **home compass**; dropped the distance label
   next to the compass (it's already shown in the home badge just above it).
 
-**Deutsch**
-- OSD-Feinschliff: größerer **Akku-Balken** und **Home-Kompass**; die Distanz-Anzeige
-  neben dem Kompass entfällt (sie steht bereits im Home-Badge direkt darüber).
-
 ## v1.20.1
-**English**
 - **Home compass/arrow in the OSD** — a rotating arrow that points the way back to
   home. It rotates relative to your travel direction (course) so "up = forward", with
   the distance next to it (falls back to north-relative when stationary).
@@ -3903,16 +1842,7 @@ hardware to find, and nothing found needed hardware to fix.
   timer, GPS, home arrow, channel bars, link block (WS/ms/fps/loss), battery bar, and
   battery data (V/A/mAh). Saved per browser.
 
-**Deutsch**
-- **Home-Kompass/-Pfeil im OSD** — ein drehender Pfeil, der den Weg zurück zum Home
-  zeigt. Er dreht relativ zur Fahrtrichtung (Kurs), also „oben = vorne", mit der Distanz
-  daneben (fällt bei Stillstand auf Nord-Bezug zurück).
-- **OSD-Feld-Schalter** im Zahnrad-(⚙-)Menü — einzelne OSD-Blöcke ein-/ausblenden:
-  Flug-Timer, GPS, Home-Pfeil, Kanal-Balken, Link-Block (WS/ms/fps/loss), Akku-Balken
-  und Akku-Daten (V/A/mAh). Pro Browser gespeichert.
-
 ## v1.20.0
-**English**
 - **GPS (local, source-selectable).** A new GPS subsystem with a pluggable source —
   **local NMEA** over serial (Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880…),
   **gpsd** (USB dongles), a **sim** source, and a **MAVLink** slot for later — all
@@ -3924,20 +1854,7 @@ hardware to find, and nothing found needed hardware to fix.
   home); "Detect hardware" now also lists serial GPS candidates; the installer adds
   `gpsd`. HARDWARE docs (EN+DE) cover common modules and wiring.
 
-**Deutsch**
-- **GPS (lokal, Quelle wählbar).** Ein neues GPS-Subsystem mit austauschbarer Quelle —
-  **lokales NMEA** über Serial (Adafruit Ultimate GPS, u-blox NEO-6/7/8/M9, BN-880…),
-  **gpsd** (USB-Dongles), eine **Sim**-Quelle und ein **MAVLink**-Slot für später — alles
-  zu einem Fix normalisiert und ~1 Hz an die Ground gestreamt.
-- **Home-Punkt**: manuell setzen oder **Auto-Home** beim ersten guten Fix (Session /
-  Startpunkt). Das OSD zeigt Fix-Typ + Satelliten und, mit gesetztem Home, **Distanz und
-  Richtung zurück zum Home**.
-- Setup › GPS (Quelle, Serial-Device/Baud, Min-Sats, Auto-Home, Live-Status, Home
-  setzen/löschen); „Detect hardware" listet jetzt auch serielle GPS-Kandidaten; der
-  Installer bringt `gpsd` mit. HARDWARE-Docs (EN+DE) mit gängigen Modulen und Verkabelung.
-
 ## v1.19.0
-**English**
 - **Link health in the OSD** — the vehicle now reports its uplink signal (LTE % or
   WiFi dBm), shown bottom-right in the OSD and folded into the **weak-link** warning
   alongside control RTT and video packet loss. One unified "is the link good" signal.
@@ -3948,35 +1865,14 @@ hardware to find, and nothing found needed hardware to fix.
   suggests the driver/sensors to pick, so you don't have to guess addresses. The
   installer now also adds `i2c-tools`.
 
-**Deutsch**
-- **Link-Qualität im OSD** — das Fahrzeug meldet jetzt sein Uplink-Signal (LTE % oder
-  WiFi dBm), unten rechts im OSD sichtbar und in die **Weak-Link**-Warnung eingerechnet
-  (zusammen mit Steuer-RTT und Video-Paketverlust). Ein einheitliches „ist der Link gut".
-- **Ein-Zeilen-Installation** auf Raspberry Pi OS Lite:
-  `curl -fsSL …/provisioning/bootstrap.sh | bash` klont nach `/opt/yonderrc` und startet
-  den Installer.
-- **„Detect hardware"**-Button im Setup — scannt den I²C-Bus, das LTE-Modem und Kameras
-  und schlägt Treiber/Sensoren vor, statt Adressen raten zu müssen. Der Installer bringt
-  jetzt zusätzlich `i2c-tools` mit.
-
 ## v1.18.4
-**English**
 - **More LTE control** (Setup › LTE): force the **network mode** (4G/LTE-only or 3G)
   for lower latency, toggle **data roaming** (home-only), a **Diagnostics** button
   that shows the raw `mmcli` output so you can see what the Pi detects, and **SIM PIN
   management** — change the PIN or **remove the PIN lock** entirely (empty new PIN =
   no PIN). PIN operations act on the SIM itself and require the current PIN.
 
-**Deutsch**
-- **Mehr LTE-Kontrolle** (Setup › LTE): **Netzmodus** erzwingen (nur 4G/LTE oder 3G)
-  für niedrigere Latenz, **Daten-Roaming** umschalten (home-only), ein **Diagnose**-
-  Button mit der rohen `mmcli`-Ausgabe (du siehst, was der Pi erkennt) und
-  **SIM-PIN-Verwaltung** — PIN ändern oder die **PIN-Sperre ganz entfernen** (leere
-  neue PIN = keine PIN). PIN-Aktionen wirken auf die SIM selbst und brauchen die
-  aktuelle PIN.
-
 ## v1.18.3
-**English**
 - **Non-root operation**: added a ready-made minimal sudoers policy
   (`provisioning/yonderrc.sudoers`) for running the vehicle service as a non-root
   user — it grants passwordless sudo only for the privileged helpers (mmcli PIN,
@@ -3984,17 +1880,7 @@ hardware to find, and nothing found needed hardware to fix.
   systemd unit runs as root, where it isn't needed. `zerotier-cli` is now invoked via
   sudo too, so ZeroTier works under a non-root user. Documented in provisioning/README.
 
-**Deutsch**
-- **Nicht-Root-Betrieb**: eine fertige, minimale sudoers-Policy
-  (`provisioning/yonderrc.sudoers`) für den Betrieb des Fahrzeugdienstes als
-  Nicht-Root-User — sie gewährt passwortloses sudo nur für die privilegierten Helfer
-  (mmcli-PIN, wg/wg-quick, zerotier-cli, install der WireGuard-Conf, reboot). Die
-  Standard-systemd-Unit läuft als root, dort ist sie nicht nötig. `zerotier-cli` wird
-  jetzt ebenfalls via sudo aufgerufen, damit ZeroTier auch als Nicht-Root funktioniert.
-  Dokumentiert in provisioning/README.
-
 ## v1.18.2
-**English**
 - **Much better LTE stick setup** (Setup › LTE) — no longer assumes pure plug-and-play:
   - **SIM PIN** unlock (`mmcli --pin`) for locked SIMs.
   - **APN username/password** for carriers that require APN auth.
@@ -4004,18 +1890,7 @@ hardware to find, and nothing found needed hardware to fix.
   - PIN/password are stored on the vehicle and **never returned** by the API.
   - The install script now adds **`usb-modeswitch`** for "Zero-CD" dongles.
 
-**Deutsch**
-- **Deutlich besseres LTE-Stick-Setup** (Setup › LTE) — nicht mehr reines Plug-and-Play:
-  - **SIM-PIN**-Entsperrung (`mmcli --pin`) für gesperrte SIMs.
-  - **APN-Benutzer/Passwort** für Anbieter mit APN-Auth.
-  - **Reichere Statusanzeige/Diagnose**: echtes Modem-Modell, Registrierungsstatus, live
-    APN/IP und eine klare „SIM PIN required"-Markierung (statt nur „idle").
-  - Die NM-Verbindung wird mit **`autoconnect`** angelegt, wählt sich also selbst neu.
-  - PIN/Passwort werden am Fahrzeug gespeichert und von der API **nie zurückgegeben**.
-  - Das Install-Skript bringt jetzt **`usb-modeswitch`** für „Zero-CD"-Dongles mit.
-
 ## v1.18.1
-**English**
 - **Auto-disarm on reconnect is now coupled to the vehicle type** — the ground derives
   it from the active profile (car/boat = ON, plane/drone = OFF) and pushes it to the
   vehicle, so a brief reconnect can no longer cut an aircraft's motors in flight. The
@@ -4023,16 +1898,7 @@ hardware to find, and nothing found needed hardware to fix.
   is now just a fallback used until a ground connects. Failsafe is unchanged and remains
   the primary link-loss safety.
 
-**Deutsch**
-- **Auto-Disarm bei Reconnect ist jetzt an den Fahrzeugtyp gekoppelt** — der Ground
-  leitet es aus dem aktiven Profil ab (Auto/Boot = AN, Flugzeug/Drohne = AUS) und pusht
-  es ans Fahrzeug, sodass ein kurzer Reconnect einem Luftfahrzeug nicht mehr im Flug die
-  Motoren kappen kann. Das Controls-(Safety-)Panel zeigt die aktuelle Politik und warum;
-  der manuelle Schalter am Fahrzeug ist nur noch ein Fallback, bis ein Ground verbindet.
-  Failsafe bleibt unverändert die primäre Sicherheit bei Link-Verlust.
-
 ## v1.18.0
-**English**
 - **Selectable remote access** (Setup › Remote access) — pick one method to reach the
   vehicle behind CGNAT/LTE:
   - **Tailscale** and **ZeroTier** — zero-config mesh VPNs (ZeroTier: enter the 16-hex
@@ -4045,37 +1911,14 @@ hardware to find, and nothing found needed hardware to fix.
     real `wg-quick`/`zerotier-cli` paths are hardware-verified only — test on your Pi.)*
 - The Pi install script now also installs `wireguard-tools` and ZeroTier.
 
-**Deutsch**
-- **Wählbarer Remote-Zugang** (Setup › Remote access) — eine Methode, um das Fahrzeug
-  hinter CGNAT/LTE zu erreichen:
-  - **Tailscale** und **ZeroTier** — Zero-Config-Mesh-VPNs (ZeroTier: 16-stellige
-    Network-ID eintragen, dann Node autorisieren).
-  - **WireGuard** — eine **`.conf` hochladen** (z. B. FritzBox-Export); das Fahrzeug
-    wendet sie mit `wg-quick` an; kommt beim Boot automatisch hoch.
-  - Die gewählte Methode wird gespeichert und beim Boot hochgefahren; Secrets (Auth-Key,
-    WG-Conf) gibt die API nie zurück. Alles hinter dem optionalen Shared Secret. *(ZeroTier/
-    WireGuard sind im Simulator und per Unit-Tests geprüft; die echten `wg-quick`/
-    `zerotier-cli`-Pfade sind nur auf Hardware verifizierbar — bitte am Pi testen.)*
-- Das Pi-Install-Skript installiert jetzt zusätzlich `wireguard-tools` und ZeroTier.
-
 ## v1.17.4
-**English**
 - **Choose what drives the battery % gauge.** Setup › Telemetry now has a "Battery %
   source": **coulomb** (consumed mAh vs capacity), **voltage** (full/empty curve), or
   **clamp** (the lower of the two — safe default). The mAh readout (consumed/remaining)
   is shown regardless; this only changes the top-right % gauge. The OSD now labels the
   bar with its source (`mAh` / `volt` / `mAh·V`) so it's clear where the number comes from.
 
-**Deutsch**
-- **Wählbar, was die Akku-%-Anzeige speist.** Unter Setup › Telemetry gibt es jetzt eine
-  „Battery % source": **coulomb** (verbrauchte mAh vs. Kapazität), **voltage**
-  (Voll/Leer-Kurve) oder **clamp** (der niedrigere von beiden — sicherer Default). Die
-  mAh-Anzeige (verbraucht/Rest) bleibt unabhängig; das ändert nur die %-Anzeige oben
-  rechts. Das OSD beschriftet den Balken jetzt mit seiner Quelle (`mAh` / `volt` /
-  `mAh·V`), damit klar ist, woher der Wert kommt.
-
 ## v1.17.3
-**English**
 - **Factory reset** — vehicle and ground. Vehicle: Setup › System → "Factory reset"
   clears the saved config file (incl. the API secret, dropped live so you're not
   locked out); restart to apply defaults. Ground: Setup → "Reset app settings" wipes
@@ -4088,21 +1931,7 @@ hardware to find, and nothing found needed hardware to fix.
 - **SBUS driver**: a serial error is now logged instead of surfacing as an unhandled
   crash; the fixed-rate frames keep trying and the watchdog holds failsafe.
 
-**Deutsch**
-- **Werksreset** — Fahrzeug und Ground. Fahrzeug: Setup › System → „Factory reset"
-  leert die gespeicherte Config-Datei (inkl. API-Secret, live gelöscht, damit man
-  sich nicht aussperrt); Neustart übernimmt die Defaults. Ground: Setup → „Reset app
-  settings" löscht den gesamten `yonderrc.*`-Browser-Speicher (Modelle, Bindings,
-  Aktionen, Akku, Secret) und lädt mit den Demo-Modellen neu.
-- **Spannungs-Sicherheits-Floor für Akku-%** — optional volle/leere Pack-Spannung
-  unter Setup › Telemetry setzen; der Akku-Prozentwert wird dann so begrenzt, dass er
-  nicht höher als die Spannung anzeigt (reines Coulomb-Counting würde bei nicht-voll
-  gestartetem Pack ~100 % zeigen). Liefert auch ohne Kapazität einen %-Wert.
-- **SBUS-Treiber**: ein Serial-Fehler wird jetzt geloggt statt als unbehandelter
-  Absturz; die Frames laufen weiter und der Watchdog hält Failsafe.
-
 ## v1.17.2
-**English**
 - **Telemetry can be turned OFF** (Setup › Telemetry → source "off"). Default stays
   sim, but for a first flight you can disable it so the OSD shows **no fake values**
   at all. The ground also clears telemetry if the vehicle stops sending it, so
@@ -4114,20 +1943,7 @@ hardware to find, and nothing found needed hardware to fix.
   now has a tooltip + hint explaining it (lower-latency, NAT/LTE-friendly control
   path that auto-falls back to WS; arm/settings always use WS).
 
-**Deutsch**
-- **Telemetrie abschaltbar** (Setup › Telemetry → Source „off"). Standard bleibt Sim,
-  aber für den ersten Flug kann man sie deaktivieren, damit das OSD **gar keine
-  Fantasiewerte** zeigt. Die Ground-Seite blendet Telemetrie zudem aus, wenn das
-  Fahrzeug keine mehr sendet — Abschalten im Betrieb hinterlässt keine alten Werte.
-- **„Setup ↗"-Button** auf der Ground-Seite öffnet die Fahrzeug-Setup-Seite in einem
-  neuen Tab, abgeleitet aus der Verbindungsadresse — funktioniert im LAN, über den
-  AP des Pi oder eine Tailscale-IP (gleicher Host:Port wie der Steuer-Link, per http).
-- **WebRTC-Option klarer erklärt**: Die Checkbox „Control via WebRTC data channel" hat
-  jetzt Tooltip + Hinweis (latenzärmerer, NAT/LTE-freundlicher Steuerpfad mit
-  automatischem WS-Fallback; Arm/Einstellungen laufen immer über WS).
-
 ## v1.17.1
-**English**
 - **Optional shared secret (off by default).** Set an "API secret" in the vehicle's
   Setup › Security. While unset, nothing changes — first-time connect and setup need
   no password. Once set, it's required for **saving settings** (mutating `/api/*`
@@ -4136,26 +1952,10 @@ hardware to find, and nothing found needed hardware to fix.
   rejected with WS close 4001). The secret is never returned by the API. Set/clear it
   live without a restart.
 
-**Deutsch**
-- **Optionales Shared Secret (standardmäßig aus).** Unter Setup › Security am Fahrzeug
-  ein „API secret" setzen. Solange keins gesetzt ist, ändert sich nichts — der erste
-  Verbindungsaufbau und das Setup brauchen kein Passwort. Einmal gesetzt, ist es nötig
-  zum **Speichern von Einstellungen** (mutierende `/api/*`-POSTs, per Header
-  `x-yonderrc-secret` oder `?secret=`) **und für den Steuer-Link** (neues „secret"-Feld
-  in der Ground-App, als `?secret=`; falsches/fehlendes Secret → WS-Close 4001). Das
-  Secret wird von der API nie zurückgegeben. Setzen/Löschen live ohne Neustart.
-
 ## v1.17.0
-**English**
 - **English-first documentation.** `README.md` and `docs/HARDWARE.md` are now
   English; the German originals live in `README.de.md` and `docs/HARDWARE.de.md`,
   with a language switcher at the top of each. No code changes — docs only.
-
-**Deutsch**
-- **Englisch als Hauptsprache der Doku.** `README.md` und `docs/HARDWARE.md` sind
-  jetzt englisch; die deutschen Originale liegen in `README.de.md` und
-  `docs/HARDWARE.de.md`, mit Sprachumschalter oben in jeder Datei. Keine
-  Code-Änderungen — nur Dokumentation.
 
 ## v1.16.3
 - **Camera setup hardening**: stream names are restricted to a safe charset (they
@@ -4236,7 +2036,6 @@ hardware to find, and nothing found needed hardware to fix.
 - **Flight timer + session**: runs while armed (OSD top-left and status strip), with
   mAh consumed since arming when a real sensor is present.
 
-
 ## v1.11.0
 - OSD: link state moved to top-center, armed/failsafe to bottom-center; the
   top-right stats and bottom-right telemetry now sit on a translucent panel so
@@ -4246,7 +2045,6 @@ hardware to find, and nothing found needed hardware to fix.
   settle at centre (1500) instead of min. Independent of stick modes.
 - Channel monitor: throttle-held-safe channels are now clearly tinted and labelled
   "held safe · disarmed" instead of a truncated tag.
-
 
 ## v1.10.0
 - **Transmitter stick modes 1–4**: switch which stick controls throttle / elevator
@@ -4259,7 +2057,6 @@ hardware to find, and nothing found needed hardware to fix.
   key or gamepad button/axis; each channel has a Remove button. Custom channels now
   survive input-method and stick-mode switches.
 
-
 ## v1.9.0
 - Fix: per-channel and global endpoints (µs) now actually apply beyond 1000–2000 —
   the hard clamp was widened to an absolute 500–2500 range (nominal default stays
@@ -4268,7 +2065,6 @@ hardware to find, and nothing found needed hardware to fix.
   reorganised — model selection now lives under Setup only; Drive view is
   Vehicle-Link → FPV+control → status info → servo outputs. The OSD now shows the
   link state (LINK / NO LINK) alongside armed/failsafe.
-
 
 ## v1.8.0
 - **Auto video quality**: a new "Auto" mode steps the video quality down when the
@@ -4279,7 +2075,6 @@ hardware to find, and nothing found needed hardware to fix.
   recovery and a "⚠ WEAK LINK" warning when control latency or video loss is high.
 - **License**: switched to CC BY-NC-ND 4.0 with an additional no-military-use
   restriction. README gained the repo-copy instructions (git/scp/USB).
-
 
 ## v1.7.2
 - Docs: README rewritten to be concise and describe the current feature set

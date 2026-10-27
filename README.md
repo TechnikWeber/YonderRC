@@ -1,5 +1,3 @@
-**English** · [Deutsch](README.de.md)
-
 # YonderRC
 
 Remote control over the internet for RC cars, boats, planes and drones — with live video,

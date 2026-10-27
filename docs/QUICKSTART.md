@@ -1,5 +1,3 @@
-**English** · [Deutsch](QUICKSTART.de.md)
-
 # YonderRC — Quick start on a Raspberry Pi
 
 From an empty SD card to a vehicle you can drive from a browser — written for people

@@ -6,13 +6,13 @@ YonderRC is licensed under the PolyForm Noncommercial License 1.0.0 together wit
 additional restriction: no military use. The binding text of both is in
 [LICENSE](LICENSE).
 
-## Kurzfassung (unverbindlich — es gilt der volle Lizenztext)
+## Summary (not binding — the full license text applies)
 
-Du darfst YonderRC kostenlos herunterladen, benutzen, verändern und — auch verändert —
-weitergeben, solange der Zweck nicht kommerziell ist. Wer es weitergibt, gibt die
-Lizenz, den Zusatz und die Zeile „Required Notice" oben mit. Du darfst es NICHT
-kommerziell nutzen und — durch den Zusatz — NICHT für militärische oder kriegerische
-Zwecke einsetzen, auch nicht in einer veränderten Fassung.
+You may download, use, modify and share YonderRC free of charge — modified versions
+too — as long as the purpose is non-commercial. Whoever shares it passes on the
+license, the additional restriction and the "Required Notice" line above. You may NOT
+use it commercially and — through the additional restriction — NOT for military or
+warfare purposes, not even in a modified version.
 
 ## Notes
 
