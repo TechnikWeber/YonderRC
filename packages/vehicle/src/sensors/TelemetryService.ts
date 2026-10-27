@@ -74,21 +74,7 @@ export class TelemetryService {
 
       // Real source but sensor unavailable: report NO DATA, never fake values.
       if (this.degraded) {
-        this.latest = {
-          type: 'telemetry',
-          source: this.actualSource,
-          ok: false,
-          voltages: this.cfg.voltages.map((c) => ({ label: c.label, value: 0 })),
-          currents: this.cfg.currents.map((c) => ({ label: c.label, value: 0 })),
-          temperatures: (this.cfg.temperatures ?? []).map((c) => ({ label: c.label, value: 0 })),
-          primaryVoltage: primaryIndex(this.cfg.voltages),
-          primaryCurrent: primaryIndex(this.cfg.currents),
-          mah: 0,
-          wh: 0,
-          capacityMah: this.cfg.batteryCapacityMah,
-          batteryPercent: null,
-          displayMode: this.cfg.displayMode,
-        };
+        this.latest = this.noData();
         return;
       }
 
@@ -149,7 +135,29 @@ export class TelemetryService {
       };
     } catch (err) {
       console.error('[telemetry] sample failed:', (err as Error).message);
+      // A sensor that has never answered (not wired, I2C off) is NO DATA, not an empty
+      // panel. After good samples, a single failed read keeps the last values as before.
+      if (!this.latest?.ok) this.latest = this.noData();
     }
+  }
+
+  /** The NO DATA message for a real source without a working sensor. */
+  private noData(): TelemetryMessage {
+    return {
+      type: 'telemetry',
+      source: this.actualSource,
+      ok: false,
+      voltages: this.cfg.voltages.map((c) => ({ label: c.label, value: 0 })),
+      currents: this.cfg.currents.map((c) => ({ label: c.label, value: 0 })),
+      temperatures: (this.cfg.temperatures ?? []).map((c) => ({ label: c.label, value: 0 })),
+      primaryVoltage: primaryIndex(this.cfg.voltages),
+      primaryCurrent: primaryIndex(this.cfg.currents),
+      mah: 0,
+      wh: 0,
+      capacityMah: this.cfg.batteryCapacityMah,
+      batteryPercent: null,
+      displayMode: this.cfg.displayMode,
+    };
   }
 
   /**

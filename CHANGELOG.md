@@ -3,6 +3,11 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## Unreleased
+- **Telemetry with a sensor that never answers shows NO DATA** instead of an empty
+  OSD. With the I2C driver present but no INA226 wired (or I2C switched off), every
+  read failed and no message was sent at all. Found by the new CI run on GitHub.
+
 ## v1.72.3
 *The desktop app as a download: Windows installer, portable and Linux AppImage on every
 release — and the installed app now actually works.*
