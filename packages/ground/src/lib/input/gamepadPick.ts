@@ -32,7 +32,7 @@ export interface PadAssessment {
   /** Ranking among the likely ones — higher is better. */
   score: number;
   layout: 'standard' | 'own';
-  /** Why — shown next to the device in Setup › Controls. */
+  /** Why — shown next to the device in Ground setup › Controls. */
   reasons: string[];
 }
 

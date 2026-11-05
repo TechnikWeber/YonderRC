@@ -12,9 +12,9 @@ often names the cause itself, before anybody has to look.
 
 | Situation | Where | What you get |
 |---|---|---|
-| **Usual case** — the control app connects | Control app › **Setup › Diagnostics › Download diagnostics** | one `.json` with **both halves**: this app and the vehicle |
-| The control app cannot connect, the setup page opens | Setup page › **Overview › Problem report › Download diagnostics** | one `.json` with the vehicle's half |
-| Not even the setup page opens (service down) | SSH: `sudo bash /opt/yonderrc/provisioning/diag.sh` | one `.txt` in your home folder on the Pi |
+| **Usual case** — the ground app connects | Ground app › **Ground setup › Diagnostics › Download diagnostics** | one `.json` with **both halves**: this app and the vehicle |
+| The ground app cannot connect, the Vehicle setup opens | Vehicle setup › **Overview › Problem report › Download diagnostics** | one `.json` with the vehicle's half |
+| Not even the Vehicle setup opens (service down) | SSH: `sudo bash /opt/yonderrc/provisioning/diag.sh` | one `.txt` in your home folder on the Pi |
 
 **Make it right after the problem happened**, without restarting anything in between:
 the vehicle counts its link statistics since the service started, the app since the page
@@ -77,19 +77,19 @@ shows the longest wait. A link that *works* can still trip it, if frames arrive 
 | **WiFi power saving on the Pi** | Diagnostics: "WiFi power saving is on"; on the Pi: `iw dev wlan0 get power_save` | `sudo iw dev wlan0 set power_save off`; the installer (v1.70.0+) switches it off for good — run it once. |
 | **Weak WiFi** | OSD/diagnostics: signal below about −70 dBm | Closer access point, the vehicle's own hotspot, or LTE. |
 | **The supply sags** | ⚠ POWER in the OSD, "under-voltage" in the diagnostics | 5.1 V / 3 A or more, a short thick cable, servos never powered from the Pi ([HARDWARE.md 2.3](HARDWARE.md#23-power-supply)). |
-| **LTE jitter** | Gaps of 300–1000 ms with 0 % loss | Raise the watchdog (below) to 700–1000 ms; try *Control via WebRTC data channel* in the control app. |
+| **LTE jitter** | Gaps of 300–1000 ms with 0 % loss | Raise the watchdog (below) to 700–1000 ms; try *Control via WebRTC data channel* in the ground app. |
 | **The vehicle itself is busy** | Diagnostics: "the vehicle service itself stalls", high load or temperature | Lower the video resolution or quality; cooling. |
 
-**Changing the watchdog:** Setup page › **Sensors & outputs › Watchdog (ms)**, 100–2000,
+**Changing the watchdog:** Vehicle setup › **Core setup › Watchdog (ms)**, 100–2000,
 applies on *Save* without a restart. Shorter stops sooner after a real loss; too short
 trips on ordinary jitter. The failsafe *values* per channel are set per model in the
-control app.
+ground app (Ground setup › Channels).
 
 ## 3. The game controller does nothing
 
 - **Press a button on it.** A browser shows a controller to a page only after one of its
   buttons was pressed while the page had focus.
-- **Setup › Controls › Game controller** lists every device the browser sees, which one is
+- **Ground setup › Controls › Game controller** lists every device the browser sees, which one is
   used, and lights a dot while a device sends input. Pick yours if the automatic choice
   is wrong — a headset or a "Motion Sensors" device is never chosen automatically, but it
   is listed.
@@ -100,7 +100,7 @@ control app.
   channel learned with it before that may point at another control afterwards — press
   **Learn** on it once more.
 - **A button works on one controller and not on another:** each controller can have its
-  own action buttons (Setup › Controls › Action bindings › *Controller buttons for*). One
+  own action buttons (Ground setup › Controls › Action bindings › *Controller buttons for*). One
   without its own uses the shared ones; keys are always shared.
 - **Button numbers** follow the standard layout in the desktop app too, since v1.71
   (Start = 9, RT/R2 = 7, LT/L2 = 6, as in the browser). What the desktop app had learned
@@ -110,18 +110,21 @@ control app.
   and Edge it then has the standard layout. **DS4Windows** hides the real controller and
   offers an emulated Xbox pad — pick that, or close the tool. **Steam** can grab the
   controller while it runs — close it if the controller shows no input.
-- The model's **input method** must be *gamepad*: Setup › model › Input method.
+- The model's **input method** must be *gamepad*: Ground setup › model › Input method.
 - **"No controller" when arming** means just that: a gamepad model does not arm without its
   controller. If the controller drops out while armed, the app stops sending and the
   vehicle goes to failsafe until it is back ("Controller lost").
 
 ## 4. The servos do not move
 
-- Setup page › **Overview › Output driver**: `sim` means no hardware driver is selected;
+- Vehicle setup › **Overview › Output driver**: `sim` means no hardware driver is selected;
   red text means one failed to start, with the reason.
-- The usual reasons: the native module is missing (*Sensors & outputs › Native driver
-  modules › Install* `i2c-bus`), or the I²C address is wrong (*Detect hardware*, then the
-  PCA9685 address field). Then **Restart vehicle service**.
+- The usual reasons: the native module is missing (*Core setup › Add-ons › Install*
+  `i2c-bus`), or the I²C address is wrong (*Detect hardware*, then the PCA9685 address
+  field). Then **Restart vehicle service**.
+- **A servo moves, but on the wrong channel:** the app counts channels 1–16, the PCA9685
+  board its pins 0–15 — **CH01 is pin 0**. Connected, the channel monitor and the
+  channel list name the pin next to each channel (`CH03 · PCA 2`).
 - Still nothing: `sudo i2cdetect -y 1` over SSH must show the PCA9685's address (e.g. `41`)
   and `70`. Nothing there is wiring or power; two chips on one address give garbage
   ([QUICKSTART.md §2](QUICKSTART.md)).
@@ -138,8 +141,26 @@ control app.
 | `does not look like the YonderRC project` | The folder one level too deep was copied (e.g. `YonderRC-main/YonderRC-main`). Copy the folder that has `package.json` in it. |
 | `curl: (6) Could not resolve host` | No internet on the Pi. WiFi set in Imager? Otherwise Ethernet, or copy the files (QUICKSTART Option B). |
 | `REMOTE HOST IDENTIFICATION HAS CHANGED` (SSH) | After re-flashing: on the PC `ssh-keygen -R yonderrc.local`. |
-| Certificate error during an update | The Pi's clock is wrong (it has no battery-backed clock). Give it internet; the setup page shows the clock next to the update button. |
+| Certificate error during an update | The Pi's clock is wrong (it has no battery-backed clock). Give it internet; the Vehicle setup shows the clock next to the update button. |
 | Simulator on Windows: `Cannot find module @rollup/rollup-win32-…` with "An Application Control policy has blocked this file" (German Windows: "Eine Anwendungssteuerungsrichtlinie hat diese Datei blockiert") | Windows' **Smart App Control** checks new program files online and can block one right after `npm install`. Wait a few minutes and run `npm run dev` again; usually the file is allowed then. If it stays blocked, the way out is to switch it off: *Windows Security › App & browser control › Smart App Control settings › Off*. **Think first:** it protects you from unknown programs, and depending on the Windows version it can only be switched back on by reinstalling Windows. |
+
+## 6. Remote access is slow to come back after a network change
+
+Moving the vehicle from one network to another — home Wi-Fi to a phone hotspot, Wi-Fi to
+LTE — leaves a VPN tunnel on a path that no longer exists.
+
+- **OpenVPN** (experimental): since v1.73 the vehicle notices the new uplink within a few
+  seconds and tells OpenVPN to reconnect at once, and between failed attempts it waits at
+  most 15 s (OpenVPN's own default grows to 300 s). *Remote access* shows how often it
+  reconnected and why. Still slow? Make the diagnostics file right afterwards —
+  `vehicle.remoteKeeper` and the OpenVPN journal in it show what happened — and open an
+  issue.
+- **WireGuard** (Keepalive 25) and **Tailscale** roam by themselves: they carry on from the
+  new address without a new connection, which makes them the better fit for a vehicle that
+  hops between networks.
+- **WireGuard to a DynDNS name** (a home router's MyFRITZ address, say): when the router's
+  address changes, the vehicle looks the name up again once the handshake goes stale (after
+  about two minutes) — no restart needed.
 
 More symptoms — no video, LTE, GPS, the data budget — are in
 [`HARDWARE.md` §7](HARDWARE.md#7-quick-troubleshooting).

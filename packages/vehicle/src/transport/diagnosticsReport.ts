@@ -78,6 +78,8 @@ export async function collectVehicleDiagnostics(ctx: SetupContext): Promise<Reco
       status,
       system: system ? redactDeep(system) : null,
       health,
+      // CPU busy share over the last ~5 s and memory in use, from the status poll.
+      host: ctx.hostLoad?.() ?? null,
       os: os ? redactDeep(os) : null,
       telemetry: ctx.telemetry.message ?? null,
       gps: stripPosition(ctx.gps.message as unknown as Record<string, unknown>),
@@ -85,6 +87,8 @@ export async function collectVehicleDiagnostics(ctx: SetupContext): Promise<Reco
       gpsLink: gpsLink ? { ...gpsLink, last: gpsLink.last ? gpsLink.last.split(',')[0] : null } : null,
       cameras: c.cameras,
       dataUsage: ctx.traffic.usage ?? null,
+      // What kept the tunnel on the right network: uplink changes, reconnects, lookups.
+      remoteKeeper: ctx.remoteKeeper?.() ?? null,
       effective: {
         remoteAccess: c.remoteAccess.kind,
         hotspotMode: c.hotspot.mode ?? null,

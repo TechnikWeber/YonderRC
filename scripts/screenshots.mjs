@@ -12,10 +12,12 @@
  *     npm run dev:video  # go2rtc test pattern, or the FPV panel stays empty
  *     node scripts/screenshots.mjs
  *
- * Needs google-chrome on PATH. Node 22+ (global WebSocket, global fetch).
+ * Needs Chrome (google-chrome on PATH; on Windows and macOS its usual install path is
+ * found, or set YRC_CHROME) and Node 22+ (global WebSocket, global fetch). ImageMagick
+ * shrinks the files; without it, ffmpeg — already needed for the video — does.
  */
 import { spawn } from 'node:child_process';
-import { writeFileSync, mkdtempSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, existsSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,8 +51,21 @@ async function primeVehicle() {
 }
 
 // ---- headless chrome over CDP ----
+/** Where Chrome is: YRC_CHROME, else the usual install path on Windows/macOS, else PATH. */
+function chromeBinary() {
+  if (process.env.YRC_CHROME) return process.env.YRC_CHROME;
+  const known = {
+    win32: [
+      'C:/Program Files/Google/Chrome/Application/chrome.exe',
+      'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+      `${process.env.LOCALAPPDATA ?? ''}/Google/Chrome/Application/chrome.exe`,
+    ],
+    darwin: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'],
+  }[process.platform] ?? [];
+  return known.find((p) => existsSync(p)) ?? 'google-chrome';
+}
 const profile = mkdtempSync(join(tmpdir(), 'yrc-shot-'));
-const chrome = spawn('google-chrome', [
+const chrome = spawn(chromeBinary(), [
   '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
   '--no-first-run', '--no-default-browser-check', '--hide-scrollbars',
   '--autoplay-policy=no-user-gesture-required', '--window-size=1400,1000',
@@ -175,7 +190,7 @@ await shot({
 });
 
 await shot({
-  url: `${VEHICLE}/setup`, out: 'VehicleConfig_Setup.png', width: 1000, height: 1700, prep: [4000],
+  url: `${VEHICLE}/setup`, out: 'VehicleConfig_Setup.png', width: 1000, height: 2200, prep: [4000],
   clip: `(() => { const r = document.querySelector('.wrap').getBoundingClientRect();
     return { x: 0, y: 0, width: innerWidth, height: r.height + 20 }; })()`,
 });
@@ -196,14 +211,31 @@ console.log('done — check the diff before committing, the sim numbers change e
  * the .jpeg the READMEs point at (photographic content, and it is the biggest file).
  */
 async function optimise() {
-  const run = (args) => new Promise((res) => {
-    const p = spawn('magick', args, { stdio: 'ignore' });
+  const runWith = (bin, args) => new Promise((res) => {
+    const p = spawn(bin, args, { stdio: 'ignore' });
     p.on('close', (code) => res(code === 0));
     p.on('error', () => res(false));
   });
+  const run = (args) => runWith('magick', args);
   const at = (f) => join(OUT, f);
   if (!(await run(['-version']))) {
-    console.warn('  ! ImageMagick not found — files left as captured, and Mobile_FPV is still a .png');
+    // ffmpeg can do the same two things: a 256-colour palette for the flat shots, and the
+    // phone shot as a JPEG. It is installed wherever the simulator shows video.
+    const ff = (args) => runWith('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args]);
+    if (!(await ff(['-version']))) {
+      console.warn('  ! neither ImageMagick nor ffmpeg found — files left as captured, and Mobile_FPV is still a .png');
+      return;
+    }
+    for (const f of ['TouchInputs_and_Status.png', 'ChannelOutput_Monitor.png', 'VehicleConfig_Setup.png']) {
+      const tmp = at(`${f}.tmp.png`);
+      const ok = await ff(['-i', at(f), '-vf', 'split[a][b];[a]palettegen=max_colors=256:stats_mode=full[p];[b][p]paletteuse=dither=none', tmp]);
+      if (ok) renameSync(tmp, at(f));
+    }
+    if (await ff(['-i', at('Mobile_FPV.png'), '-q:v', '5', at('Mobile_FPV.jpeg')])) {
+      const { rmSync } = await import('node:fs');
+      rmSync(at('Mobile_FPV.png'), { force: true });
+    }
+    console.log('  (shrunk with ffmpeg — ImageMagick not found)');
     return;
   }
   for (const f of ['TouchInputs_and_Status.png', 'ChannelOutput_Monitor.png', 'VehicleConfig_Setup.png']) {

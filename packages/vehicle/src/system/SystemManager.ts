@@ -7,6 +7,7 @@ import type { WifiRadioStatus } from './wifi.js';
 import type { HilinkStatus, HilinkTraffic } from './hilink.js';
 import type { UpdateCheck, UpdateSource } from './update.js';
 import type { SystemDiagnostics } from './diagnostics.js';
+import type { DeviceAccessAction, DeviceAccessResult, DeviceAccessStatus } from './deviceAccess.js';
 
 /** Result of a hardware probe (see detectHardware). */
 export interface DetectResult {
@@ -368,6 +369,22 @@ export interface SystemManager {
   remoteUp(cfg: RemoteAccessConfig): Promise<ActionResult>;
   remoteDown(cfg: RemoteAccessConfig): Promise<ActionResult>;
   remoteStatus(cfg: RemoteAccessConfig): Promise<RemoteAccessStatus>;
+  /**
+   * The way this vehicle's own traffic leaves, as one comparable string ('' = none) —
+   * see uplink.ts. RemoteKeeper compares it to reconnect OpenVPN after a network change.
+   */
+  uplinkKey(): Promise<string>;
+  /** OpenVPN: reconnect now (SIGUSR1) when its unit is running; a no-op otherwise. */
+  openvpnReconnect(): Promise<ActionResult>;
+  /**
+   * WireGuard: look up again every peer whose endpoint is a name and whose handshake
+   * is stale, and set the endpoint where the address changed. Returns what was updated.
+   */
+  wireguardReresolve(conf: string): Promise<{ updated: string[] }>;
+  /** Raspberry Pi Connect, SSH and VNC on this box — see deviceAccess.ts. */
+  deviceAccess(): Promise<DeviceAccessStatus>;
+  /** One action on them (install Connect, sign in, enable SSH, …). Slow for `connect-install`. */
+  deviceAccessAction(action: DeviceAccessAction): Promise<DeviceAccessResult>;
   /** Which native driver modules (i2c-bus/pigpio/serialport) are installed. */
   hwDeps(): Promise<HwDepStatus[]>;
   /** Install one allowlisted native driver module via npm (slow: it compiles). */

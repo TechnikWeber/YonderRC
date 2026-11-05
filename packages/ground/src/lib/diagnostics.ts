@@ -173,7 +173,7 @@ export function groundFindings(i: GroundFindingInput): DiagnosticFinding[] {
       text: c.listed
         ? `The model expects a game controller, but none of the ${c.listed} listed device(s) is in use.`
         : 'The model expects a game controller, but the browser lists none.',
-      fix: 'Setup › Controls › Game controller. A browser only shows a controller after one of its buttons was pressed on this page.',
+      fix: 'Ground setup › Controls › Game controller. A browser only shows a controller after one of its buttons was pressed on this page.',
     });
   } else if (c.active && c.active.mapping !== 'standard') {
     out.push(
@@ -183,7 +183,7 @@ export function groundFindings(i: GroundFindingInput): DiagnosticFinding[] {
             level: 'info',
             area: 'controller',
             text: `The controller in use (${c.active.id}) reports its own layout and is not set up — its sticks may not be where the models expect them.`,
-            fix: 'Setup › Controls › Game controller › Set up: show the app once where its sticks and buttons are.',
+            fix: 'Ground setup › Controls › Game controller › Set up: show the app once where its sticks and buttons are.',
           },
     );
   }

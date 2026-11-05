@@ -47,7 +47,7 @@ fi
 echo "-- packages"
 apt-get update
 # wireguard-tools = wg / wg-quick for the WireGuard remote-access option (e.g. FritzBox).
-# openvpn = the OpenVPN remote-access option (experimental, Setup > Remote access).
+# openvpn = the OpenVPN remote-access option (experimental, Vehicle setup > Remote access).
 # usb-modeswitch = flips "Zero-CD" LTE dongles from storage mode into modem mode so
 # ModemManager can see them (many Huawei/ZTE sticks need this).
 # i2c-tools = i2cdetect for the setup page's "Detect hardware" probe.
@@ -108,8 +108,8 @@ ensure_build_tools() {
   fi
 }
 
-# Native driver modules the operator installed from the setup UI (Setup > Vehicle
-# configuration > Native driver modules) — or that hardware detection below asked for —
+# Native driver modules the operator installed from the setup UI (Vehicle setup > Core setup
+# > Add-ons > Driver modules) — or that hardware detection below asked for —
 # are optionalDependencies too, so `--omit=optional` just pruned them. Put back exactly
 # the ones this vehicle recorded: an update must not silently turn a configured vehicle
 # back into a simulator.
@@ -133,12 +133,12 @@ PY
     if [ -d "$REPO/node_modules/$dep" ]; then continue; fi
     echo "-- installing native driver module: $dep"
     npm install "$dep" -w @yonderrc/vehicle --no-audit --no-fund ||
-      echo "   ($dep failed to build — reinstall it in Setup > Sensors & outputs, it shows why)"
+      echo "   ($dep failed to build — reinstall it in Vehicle setup > Core setup > Add-ons, it shows why)"
   done
 }
 restore_hw_deps
 
-echo "-- build the ground control app (so a phone can fly/configure via the Pi)"
+echo "-- build the ground app (so a phone can drive and configure via the Pi)"
 if ! npm run build -w @yonderrc/ground; then
   echo "   build failed — retrying once with a full install (incl. all optional deps)"
   npm install
@@ -156,7 +156,7 @@ if command -v raspi-config >/dev/null; then
   # wired GPS shares its line with kernel messages and its sentences arrive shredded —
   # which looks exactly like bad wiring. `do_serial_cons 1` = console off.
   raspi-config nonint do_serial_cons 1 2>/dev/null ||
-    echo "   (this raspi-config has no do_serial_cons — free the port in Setup > GPS instead)"
+    echo "   (this raspi-config has no do_serial_cons — free the port in Vehicle setup > GPS instead)"
   systemctl disable --now serial-getty@ttyAMA0.service serial-getty@ttyS0.service 2>/dev/null || true
 fi
 
@@ -227,9 +227,9 @@ systemctl try-restart go2rtc.service yonderrc-vehicle.service || true
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 echo
 echo "== Done =="
-echo "Setup page:   http://$(hostname).local:8080/setup   (or http://${IP:-<pi-ip>}:8080/setup)"
-echo "Control app:  http://$(hostname).local:8080/"
+echo "Vehicle setup: http://$(hostname).local:8080/setup   (or http://${IP:-<pi-ip>}:8080/setup)"
+echo "Ground app:    http://$(hostname).local:8080/   (drive; Ground setup for models and controls)"
 echo "If the Pi has no network, it starts an OPEN WiFi hotspot 'YonderRC-setup'"
 echo "— join it; the captive portal opens http://192.168.4.1:8080/setup"
-echo "There, Setup > WiFi scans and joins your network (and sets a hotspot password)."
-echo "Something not working? Setup > Overview > Problem report — or: sudo bash $REPO/provisioning/diag.sh"
+echo "There, Vehicle setup > Network > WiFi scans and joins your network (and sets a hotspot password)."
+echo "Something not working? Vehicle setup > Overview > Problem report — or: sudo bash $REPO/provisioning/diag.sh"

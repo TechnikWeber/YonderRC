@@ -114,9 +114,9 @@ export interface WelcomeMessage {
   /** The output driver actually RUNNING — `sim` after a hardware driver failed to start. */
   driver: string;
   /**
-   * What each channel is wired to on that driver, by index (v1.71): `out 0`…`out 15`
-   * on a PCA9685 board, `GPIO 18` for a pin, `SBUS 1`… — '' for a channel that goes
-   * nowhere. Absent in simulation and from older vehicles.
+   * What each channel is wired to on that driver, by index (v1.71): `PCA 0`…`PCA 15`
+   * on a PCA9685 board (`out 0`… before v1.73), `GPIO 18` for a pin, `SBUS 1`… — ''
+   * for a channel that goes nowhere. Absent in simulation and from older vehicles.
    */
   outputs?: string[];
   /** Echo of watchdog timeout so the ground can show/keepalive correctly. */
@@ -177,6 +177,26 @@ export interface StatusMessage {
    * the symptom is that the vehicle is gone.
    */
   data?: DataUsage;
+  /**
+   * How busy the vehicle's own computer is (v1.73), on the same slow cadence. The
+   * control loop, the failsafe watchdog and the video encoder share this CPU — a
+   * pegged CPU is the honest explanation for jitter the link did not cause. Absent
+   * from older vehicles.
+   */
+  host?: HostLoad;
+}
+
+/**
+ * CPU and memory of the computer the vehicle service runs on (a Pi on a vehicle, the
+ * PC itself in the simulator).
+ */
+export interface HostLoad {
+  /** Share of the last few seconds spent working, over all cores, 0..100; null until two samples exist. */
+  cpuPercent: number | null;
+  /** Memory in use, 0..100 — what the kernel could not hand out (MemAvailable), not the page cache. */
+  memPercent: number | null;
+  memUsedMb: number | null;
+  memTotalMb: number | null;
 }
 
 export interface DataUsage {

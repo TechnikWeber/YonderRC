@@ -242,14 +242,14 @@ export function vehicleFindings(i: VehicleFindingInput): Finding[] {
       area: 'driver',
       text: `Output driver "${i.driver.configured}" is configured, but "${i.driver.running}" is running — the servos are not being driven.` +
         (i.driver.error ? ` Start-up error: ${redactSecrets(i.driver.error)}` : ''),
-      fix: 'Setup › Sensors & outputs: install the native module the driver needs (i2c-bus for pca9685) and check the I²C address, then restart the vehicle service.',
+      fix: 'Vehicle setup › Core setup › Add-ons: install the native module the driver needs (i2c-bus for pca9685) and check the I²C address, then restart the vehicle service.',
     });
   } else if (i.driver.running === 'sim' && i.systemKind === 'real') {
     add({
       level: 'info',
       area: 'driver',
       text: 'The output driver is "sim": everything works, but nothing is connected to a servo. Fine on the bench, not for driving.',
-      fix: 'Setup › Sensors & outputs › Output driver (pca9685 for the reference build).',
+      fix: 'Vehicle setup › Core setup › Output driver (pca9685 for the reference build).',
     });
   }
 

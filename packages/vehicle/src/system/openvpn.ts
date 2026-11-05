@@ -3,8 +3,11 @@
  *
  * Asked for by a user who already runs an OpenVPN server (on a router, a NAS, a VPS).
  * It is built from the OpenVPN 2.5/2.6 documentation and Debian's `openvpn-client@`
- * systemd unit and covered by these unit tests — but it has not run on a vehicle yet.
- * The setup page says so next to the option.
+ * systemd unit and covered by these unit tests. First report from a vehicle (2026-11,
+ * v1.72): it connects, but it was slow to come back and lost its way when the vehicle
+ * changed networks (home WiFi → phone hotspot). v1.73 caps the retry backoff
+ * (`connect-retry`, below) and reconnects at once when the uplink changes
+ * (RemoteKeeper, `OVPN_RECONNECT_ARGS`). Still experimental; the page says so.
  *
  * How it works: the operator uploads the client profile (`.ovpn`) their server exported.
  * The vehicle keeps that text as uploaded, and every time the tunnel is brought up it
@@ -43,6 +46,15 @@ export const OVPN_TAP_IFACE = 'tapyrc';
 export const OVPN_ENABLE_ARGS = ['systemctl', 'enable', OVPN_UNIT];
 export const OVPN_RESTART_ARGS = ['systemctl', 'restart', '--no-block', OVPN_UNIT];
 export const OVPN_STOP_ARGS = ['systemctl', 'disable', '--now', OVPN_UNIT];
+/**
+ * Reconnect now (v1.73): SIGUSR1 is OpenVPN's own "restart the connection" — the same
+ * thing its ping-restart timer does, without waiting for it, and with persist-tun the
+ * tunnel device and its address stay up meanwhile. Sent by RemoteKeeper when the
+ * vehicle's uplink changes (home WiFi → phone hotspot): the old UDP path is dead, and
+ * a server without peer-id floating only notices after its ping-restart, typically
+ * 60–120 s. `-s`, not `--signal=`: an `=` would have to be escaped in the sudoers file.
+ */
+export const OVPN_RECONNECT_ARGS = ['systemctl', 'kill', '-s', 'SIGUSR1', OVPN_UNIT];
 
 /** Directives that run programs, load code, open a control port, or write files. */
 const UNSAFE = new Set([
@@ -173,6 +185,11 @@ export function sanitiseOvpn(
   if (!seen.has('persist-tun')) out.push('persist-tun');
   if (!seen.has('persist-key')) out.push('persist-key');
   if (!seen.has('keepalive') && !seen.has('ping')) out.push('keepalive 10 60');
+  // OpenVPN doubles the wait after five failed attempts, up to 300 s by default. While
+  // the vehicle moves from one network to the next every attempt fails, so by the time
+  // the new network is up it may be sleeping for minutes — the "slow to reconnect" a
+  // tester reported (v1.73). 2 s between attempts, never more than 15.
+  if (!seen.has('connect-retry')) out.push('connect-retry 2 15');
 
   return { conf: out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n', removed, externalFiles, needsAuth, device, problems };
 }

@@ -3,7 +3,6 @@ import type { Detent, Profile, ThrottleLimit } from '@yonderrc/protocol';
 import type { InputManager } from '../lib/input/inputManager';
 import type { BindingEngine } from '../lib/input/bindingEngine';
 import { holdProgress, holdRemainingS } from '../lib/hold';
-import { LIMIT_STEP_LABELS } from '../lib/throttleLimit';
 import { VirtualJoystick } from './VirtualJoystick';
 import type { HapticCfg } from '../lib/haptics';
 import { HoldButton } from './HoldButton';
@@ -72,7 +71,7 @@ export function ControlPad({
   externalProgress?: number;
   /** Speed-limit steps for this model, and the active one. */
   limit: ThrottleLimit;
-  onLimitStep: (step: 0 | 1 | 2) => void;
+  onLimitStep: (step: number) => void;
   /**
    * Short hold for the buttons that change something lasting (toggle channels,
    * speed limiter, trims). 0 = plain taps. Momentary channels are never affected.
@@ -97,7 +96,7 @@ export function ControlPad({
 
   const armDisabled = !connected || calibrationActive;
 
-  // Hold-to-confirm: unless it is switched off in Setup › Controls, a single tap
+  // Hold-to-confirm: unless it is switched off in Ground setup › Controls, a single tap
   // can't arm (or, worse, disarm in flight) — the button has to be held for the
   // configured time and fills up while you do.
   const [progress, setProgress] = useState(0);
@@ -162,7 +161,7 @@ export function ControlPad({
       ? 'Keyboard: W A S D (left stick) · I J K L (right stick) · aux keys G H …'
       : profile.inputMethod === 'gamepad'
         ? 'Gamepad: sticks drive the axes, buttons drive aux. Plug in and go.'
-        : 'Touch: drag the sticks. Detents (centering) are set per axis in Setup.';
+        : 'Touch: drag the sticks. Detents (centering) are set per axis in Ground setup.';
 
   return (
     <section className="panel">
@@ -250,18 +249,20 @@ export function ControlPad({
         </div>
       )}
 
+      {/* Named by their percentage since v1.73: with up to five steps, Low/Mid/High
+          ran out of names, and "40%" says what it does. */}
       <div className="limit-row" role="group" aria-label="Speed limit">
         <span className="limit-label">Speed</span>
-        {([0, 1, 2] as const).map((i) => (
+        {limit.steps.map((pct, i) => (
           <HoldButton
             key={i}
             className={`limitbtn${limit.step === i ? ' on' : ''}`}
             holdMs={buttonHoldMs}
             onFire={() => onLimitStep(i)}
             ariaPressed={limit.step === i}
+            title={`Speed limit ${pct}% of full travel`}
           >
-            <span>{LIMIT_STEP_LABELS[i]}</span>
-            <span className="sub">{limit.steps[i]}%</span>
+            {pct}%
           </HoldButton>
         ))}
       </div>

@@ -104,9 +104,14 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   binding was moved, and it drives the disarmed value, the failsafe array, the pre-arm
   check, the OSD bar and the speed limiter. Never read `profile.throttleChannels`
   directly; the binding editor normalises it via `withResolvedThrottle` on every edit.
-- **Speed limiter** (`ground/src/lib/throttleLimit.ts`): three per-model steps, scaled
-  around the channel's rest position (`throttleSafeUs`), applied to what is SENT while
-  the pre-arm check keeps seeing the raw command.
+- **Speed limiter** (`ground/src/lib/throttleLimit.ts`): 2–5 per-model steps (default
+  20/40/60/80/100 since v1.73; `ThrottleLimit.steps` is `number[]`), scaled around the
+  channel's rest position (`throttleSafeUs`), applied to what is SENT while the pre-arm
+  check keeps seeing the raw command. Read it through `limitOf` only — it heals garbage
+  and turns the untouched pre-v1.73 default 40/70/100 into the five (keeping the speed:
+  70 → the slower 60); edited steps are kept. `loadProfiles` writes that once
+  (`withHealedLimit`). Actions: `throttle-limit` cycles, `limit-down`/`limit-up` stop at
+  the ends (`stepToward`).
 - **Per-channel rest position** (`detent`: center/low/free) drives where hold-ramp /
   momentary / toggle settle. The throttle's safe rest for the **pre-arm check** and the
   limiter is `throttleSafeUs(binding, vehicleType)` (`ground/src/lib/safety.ts`): the
@@ -115,7 +120,7 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   endpoints and trim count. Reading it off the detent alone armed boats only at full
   reverse and reversed throttles only at full throttle (fixed in v1.70.1).
 - **Actions** (`ground/src/lib/actions.ts`): panic-disarm, arm, next-camera, record,
-  snapshot — bindable to key+button, edited in Setup › Controls. Add new bindable
+  snapshot — bindable to key+button, edited in Ground setup › Controls. Add new bindable
   features here rather than scattering hotkeys. **panic-disarm and toggle-arm ship
   unbound** (panic fires instantly with no hold — an accidental press is a crash);
   storage is `yonderrc.actions.v2`, and `migrateActions` drops a stored panic binding
@@ -154,7 +159,12 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   there. Installers come from `.github/workflows/desktop.yml` on every published release.
 - **Output names** (v1.71): `OutputDriver.outputLabel(ch)` → `VehicleCore.outputLabels()`
   → `welcome.outputs` (undefined on sim) → `channelName(ch, outputs)` in the ground:
-  `CH03 · out 2`. The app keeps counting from 1.
+  `CH03 · PCA 2` (`out 2` before v1.73 — `outputLabel()` in `lib/channelName.ts` shows an
+  old vehicle's `out N` as `PCA N`). **The app keeps counting from 1** — a tester asked
+  for CH0–15 to match the PCA9685 board; the owner decided (2026-11) to keep the RC
+  convention and name the board's pin wherever a channel means hardware instead: channel
+  list, monitor (pin column while connected), calibration, the setup page's servo test
+  (a select from `GET /api/config` `outputs`) and log lines (`VehicleCore.channelText`).
 - **Typing is not driving** (v1.71): `InputManager` ignores keys whose target is a text
   field (`isTypingTarget`) — a space never reached a label, and on a keyboard model a "w"
   typed into the address was throttle.
@@ -208,7 +218,7 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   CORS preflight); `?download=1` adds content-disposition. Ground half
   (`ground/lib/diagnostics.ts`) records how regularly the **50 Hz send loop really ran**
   (stalls > 100 ms, with `document.hidden` — a hidden tab is throttled by the browser) and a
-  bounded event timeline; *Setup › Diagnostics* merges both into one download. On the
+  bounded event timeline; *Ground setup › Diagnostics* merges both into one download. On the
   vehicle `core/linkStats.ts` (`LinkStats`, fed by `VehicleCore` — counting only, never an
   output) keeps the arrival-gap histogram and failsafe episodes; **episodes only count while
   a ground is connected** (`endSession` on WS close — a closed app is parked, not dropping
@@ -231,7 +241,7 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   device is connected; otherwise the best *likely* controller (standard mapping, or ≥4 axes,
   or 2 axes + a controller-ish name/vendor id); something unlikely (audio, keyboard, the Sony
   pads' Linux "Motion Sensors"/"Touchpad" devices) is **never picked automatically** but stays
-  listed (Setup › Controls › Game controller, `ControllerPicker.tsx`). **Learn** compares
+  listed (Ground setup › Controls › Game controller, `ControllerPicker.tsx`). **Learn** compares
   against the rest position at Learn time (`movedAxis`, `newlyPressed`) — a non-standard
   trigger rests at −1 and used to be learned instantly.
 - **Install-time hardware detection** (`system/firstRun.ts` + `cli/firstRun.ts`, run by
@@ -246,10 +256,41 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   `tunyrc`/`tapyrc` (status + data counter find it); `redirect-gateway` ignored unless
   `openvpnFullTunnel`; external cert files refused with an explanation. Runs as
   `openvpn-client@yonderrc` with `--no-block` (Type=notify would hang the request until the
-  tunnel is up). The sudoers file must list exactly `OVPN_*_ARGS` (the suite checks). Not yet
-  run on a vehicle — say so wherever it is offered.
+  tunnel is up). The sudoers file must list exactly `OVPN_*_ARGS` (the suite checks) — no
+  `=` in an argument, sudoers would want it escaped. **First report from a vehicle**
+  (2026-11, v1.72): it connects, but came back slowly and lost its way after a network
+  change (home WiFi → phone hotspot). Since v1.73 the sanitiser adds `connect-retry 2 15`
+  (the default backoff grows to 300 s) and **RemoteKeeper** reconnects it (below). Still
+  experimental — say so wherever it is offered.
+- **RemoteKeeper** (`system/remoteKeeper.ts` + `uplink.ts`, v1.73, started in wsServer):
+  every 5 s, *only while OpenVPN is the method*, it compares the uplink key — the main
+  table's best default route from `/proc/net/route` (VPN routes live in other tables or as
+  /1 halves, tunnels are skipped) plus the interface's own address — and on a change to a
+  non-empty uplink sends SIGUSR1 (`OVPN_RECONNECT_ARGS`), at most every 15 s; the first
+  look only records (`decideUplink`, pure). For WireGuard it looks a stale peer's DynDNS
+  endpoint up again every 30 s (`stalePeersByName`, WG_STALE_S 135) and sets it only when
+  the address moved. Tailscale/ZeroTier roam by themselves: the keeper does nothing then.
+  Its snapshot is on `/api/remote` (`keeper`) and in the diagnostics (`remoteKeeper`).
 - **The vehicle's WireGuard interface is `yonderrc`** (wg-quick names it after the conf), so
   the data counter excludes it by name (`VEHICLE_WG_IFACE`) — no `wg*` pattern catches it.
+- **Device access** (`system/deviceAccess.ts`, v1.73, Vehicle setup › Device access, a
+  tester's request for a terminal and a desktop on the Pi): **Raspberry Pi Connect**
+  (rpi-connect-lite is preinstalled, off, on Pi OS Lite), **SSH** commands, **VNC** via
+  `raspi-config nonint do_vnc` on desktop images only. Connect is a systemd *user* service
+  of the login user (`pickLoginUser`: the checkout's owner, else uid ≥ 1000) — the root
+  service runs its CLI via `runuser -u <user> -- env HOME XDG_RUNTIME_DIR
+  DBUS_SESSION_BUS_ADDRESS …` and switches on `loginctl enable-linger` first. **The
+  sign-in link only goes back in the POST answer**, never in `GET /api/device-access`
+  (which answers without the secret): whoever completes it owns a shell on the vehicle.
+  The page links only `https://connect.raspberrypi.com/verify/…` (`connectLink`) and
+  warns while no API secret is set. **No terminal in the page, deliberately** (a root
+  shell over plain HTTP through an open hotspot) — the owner chose Connect + SSH + VNC
+  over an own ttyd terminal. Install refused while armed. Not yet run on a vehicle.
+- **Vehicle computer load** (`system/hostLoad.ts`, v1.73): CPU % between two `os.cpus()`
+  samples and memory from `os.totalmem/freemem` (MemAvailable on Linux) — no process, so
+  it rides the 5 s link/power poll into every status frame as `host` (protocol
+  `HostLoad`). OSD field `host` (off by default), the setup overview (`/api/health` →
+  `host`), diagnostics and the blackbox CSV (`vehicle_cpu_pct`, `vehicle_ram_pct`).
 - **Shell scripts keep LF** (`.gitattributes`): Git for Windows checks out CRLF, and a copy
   made from such a checkout fails on the Pi with `$'\r': command not found`.
 - **A GPS fix is assembled, not received** (`vehicle/sensors/fixMerge.ts`, v1.69.0): NMEA
@@ -275,16 +316,24 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   mAh/Wh, the low-battery warning and the blackbox. **`chargeSource: 'auto'` states a wish,
   not an outcome** — `resolveChargeSource` degrades to Pi integration whenever the primary
   current channel is not an INA228, and the mAh keep coming either way, only less accurate.
-  The resolved `chargeFrom` therefore has to stay visible: Setup › Sensors (`renderChargeLive`)
+  The resolved `chargeFrom` therefore has to stay visible: Vehicle setup › Sensors & telemetry (`renderChargeLive`)
   and the overview's `· counter` row, since v1.66.1. Verified live on the reference Pi
   (2026-08-28): the hardware counter tracked the polled current to 0.6 % over 151 s. The OSD prefixes a channel's label
   only when its kind has >1 channel, and each value can be hidden per browser
   (`yonderrc.osdHidden.v1`, keyed by `readingKey`).
 - **Telemetry config hot-applies** (`vehicle` POST `/api/telemetry` →
   `TelemetryService.reconfigure`). Battery % needs a capacity set there.
-- **The setup page is tabbed** (v1.63.0): every `<section class="panel">` in
-  `vehicle/src/setup/setup.html` declares a `data-tab` (overview / network / remote /
-  sensors / camera / gps) and `showTab` shows one group at a time, keyed off the URL hash.
+- **Two setups, named for where they live** (v1.73, a tester could not tell them apart):
+  the ground app's **Ground setup** (models, channels, controls, safety — in that browser)
+  and the vehicle's **Vehicle setup** (`/setup`, stored on the vehicle). Every user-facing
+  path says which: "Ground setup › Controls", "Vehicle setup › Network › WiFi" — **never a
+  bare "Setup ›"** (the suite greps the apps, docs and provisioning for one). The ground
+  app is the "ground app" (not "control app") in user-facing text.
+- **The Vehicle setup page is tabbed** (v1.63.0): every `<section class="panel">` in
+  `vehicle/src/setup/setup.html` declares a `data-tab` (overview / core / network / remote /
+  device / sensors / camera / gps / design; *Core setup* = vehicle configuration + Add-ons
+  since v1.73, *sensors* is labelled "Sensors & telemetry", `#outputs` aliases to core) and
+  `showTab` shows one group at a time, keyed off the URL hash.
   A new panel without a `data-tab` is invisible on every tab — the test suite checks the
   panels, the buttons and the switcher's own list against each other. **Hidden panels stay
   in the DOM** (`hidden`, not removed): handlers read fields across groups. Long
@@ -308,7 +357,7 @@ Build ground: `npx vite build -c packages/ground/vite.config.ts packages/ground`
   There is deliberately **no DS3231 and no NTP-server editor** here — the vehicle only
   needs the time when it already has internet, and then NTP just works.
 - **The theme belongs to the vehicle** (v1.64.0): `config.theme` ('light' default since v1.65.0 | 'dark'),
-  edited in Setup › Design, sent to the ground as its own `theme` WS message right after
+  edited in Vehicle setup › Design, sent to the ground as its own `theme` WS message right after
   the welcome and re-broadcast to every connected client when it changes. The ground has
   **no switch of its own** — `ground/src/lib/theme.ts` only caches the last answer so a
   cold start does not flash the wrong palette. Both stylesheets carry the whole palette as
@@ -359,12 +408,12 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   hardware-only-verified** — only the maths and the sim path are proven.
 - **Hold-to-arm — DONE (v1.22.0, configurable since v1.28.0)**: press-and-hold for arm
   *and* disarm (`ground/src/lib/hold.ts`; default 1 s, 0.5–10 s, switchable off in
-  Setup › Controls — `holdMsFor` returns 0 and the button becomes a plain toggle).
+  Ground setup › Controls — `holdMsFor` returns 0 and the button becomes a plain toggle).
   Since v1.29.0 the same hold gates the **bound key / gamepad button** via
   `useActionHotkeys(..., { holdMs, actions: ['toggle-arm'], onProgress })`, whose
   progress drives the arm button's fill. Panic-disarm stays instant, OSD shows only
   DISARMED/FAILSAFE.
-- **WiFi onboarding — DONE (v1.27.0)**: Setup › WiFi scans (`nmcli … device wifi list`,
+- **WiFi onboarding — DONE (v1.27.0)**: Vehicle setup › Network › WiFi scans (`nmcli … device wifi list`,
   pure `parseWifiScan`), joins a network and manages the hotspot (`hotspotArgs`, open by
   default — `config.hotspot`). A failed join restarts the hotspot so the Pi can't lock
   itself out. `hotspot.mode` (auto/always/off, pure `shouldStartHotspot`, mirrored in
@@ -377,12 +426,12 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   added only for a real password) and `hotspotStart` reads the key back instead of
   assuming. Pi OS also keeps the radio rfkill-blocked until a **WiFi country** is set —
   `wifiRadio`/`wifiRadioEnable` (+ `explainWifiFailure`, `guessWifiCountry`) diagnose and
-  repair that from Setup › WiFi, and `onboard.sh` mirrors both.
+  repair that from Vehicle setup › Network › WiFi, and `onboard.sh` mirrors both.
 - **Native driver modules from the UI — DONE (v1.39.0)**: `vehicle/system/hwDeps.ts` holds
   the allowlist (`i2c-bus`/`pigpio`/`serialport`), the npm args and `explainNpmFailure`
   (pure, unit-tested: no internet / no compiler / missing C library / timeout / full disk /
   permissions each get a cause + the command that fixes it). `GET|POST /api/hw-deps`
-  installs one, `POST /api/restart` restarts the unit, and Setup › Vehicle configuration
+  installs one, `POST /api/restart` restarts the unit, and Vehicle setup › Core setup › Add-ons
   lists status + Install buttons — the point is that a vehicle reachable only over its own
   hotspot never forces an SSH session. Successful installs are recorded in `hardwareDeps`
   and **restored by `install.sh`** after an update (`--omit=optional` prunes them). Only
@@ -405,7 +454,7 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
   `exec.Command`), so the `|` was a literal argv; without `{output}` go2rtc reads stdout
   and sniffs the format, so the `rpicam` path is now plain `rpicam-vid … -o -`. Never
   reintroduce a pipe there. (c) A sensor outside the firmware's auto-detect set needs
-  `camera_auto_detect=0` + `dtoverlay=`, which **Setup › CSI camera module** now writes
+  `camera_auto_detect=0` + `dtoverlay=`, which **Vehicle setup › Camera › CSI camera module** now writes
   (`vehicle/system/bootConfig.ts`, pure + tested; competing lines are commented out, one
   backup as `config.txt.yonderrc-bak`, reboot detected via the kernel boot id). The module
   choice is deliberately *not* a fourth `CameraCfg.type` — the type says how the picture is
@@ -428,7 +477,7 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
 - **GPS bring-up without a terminal — DONE (v1.61.0/v1.61.1)**: Raspberry Pi OS parks a
   login console on the header UART, and `install.sh` only ever enabled the hardware — so
   every wired GPS delivered shredded NMEA. `system/serial.ts` (pure) strips the console
-  token from cmdline.txt token-wise and ensures `enable_uart=1`; Setup › GPS shows the
+  token from cmdline.txt token-wise and ensures `enable_uart=1`; Vehicle setup › GPS shows the
   state and frees the port, the installer does it on fresh installs. `/dev/serial0` is the
   device everywhere — **`/dev/ttyAMA0` is the Bluetooth UART on a Pi 3/4/5** and stays
   silent, which the panel now warns about. GPS link stats (sentences, satellites in view)
@@ -436,10 +485,14 @@ current feature set; detailed history lives in `CHANGELOG.md` + releases.
 - Operator / first-flight guide (non-hardware).
 - Real-hardware bring-up: drivers, ESC calibration, encoder, LTE + Tailscale.
 - Screenshots: `scripts/screenshots.mjs` regenerates every image in `docs/screenshots`
-  (headless Chrome over CDP at deviceScaleFactor 2; needs `npm run dev` **and**
+  (headless Chrome over CDP at deviceScaleFactor 1.5; needs `npm run dev` **and**
   `npm run dev:video` running). Retake them whenever the UI changes visibly — they had
-  gone three releases stale before v1.65.2. `Mobile_FPV` is an emulated 390 px viewport,
-  not a device photo, and both READMEs say so; a real phone screenshot is still welcome.
+  gone three releases stale before v1.65.2 — and bump the `?v=N` on every reference in
+  README/FEATURES (GitHub's image cache). Chrome is found at its Windows/macOS install
+  path (or `YRC_CHROME`); without ImageMagick the files are shrunk with ffmpeg (v1.73,
+  so it runs on the owner's Windows PC). The dev run rewrites `docker/go2rtc.yaml` — save
+  and restore a local change to it. `Mobile_FPV` is an emulated 390 px viewport, not a
+  device photo, and FEATURES says so; a real phone screenshot is still welcome.
 
 Done in the v1.16.2–v1.18.0 review/feature pass: arm-over-WS, no-shell-injection, camera
 name/device hardening, INA voltage, per-channel detents, optional shared secret,

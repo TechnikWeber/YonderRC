@@ -11,6 +11,7 @@ import {
   type LinkSignal,
   type PowerFlags,
   type DataUsage,
+  type HostLoad,
   type GpsMessage,
   distanceMeters,
   bearingDeg,
@@ -22,7 +23,7 @@ import { useActionHotkeys, type ActionBindings } from '../lib/actions';
 import { autoQualityStep, AUTO_DEFAULTS, type AutoQualityCfg, type AutoState } from '../lib/autoQuality';
 import { reconnectDelayMs, selectedCamera, videoProblem, whepUrl } from '../lib/videoLink';
 import { throttleChannelsOf } from '../lib/templates';
-import { activePercent, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
+import { activePercent } from '../lib/throttleLimit';
 import { showLinkDetail, trendArrow, type LinkHealth, type LinkTrend, signalScore, LINK_FAIR } from '../lib/linkHealth';
 import { powerAlert, trackFirstPast } from '../lib/powerAlert';
 import type { ReturnBudgetResult } from '../lib/returnBudget';
@@ -69,14 +70,21 @@ export interface OsdFields {
   link: boolean;
   batteryBar: boolean;
   batteryData: boolean;
+  /** CPU and memory of the vehicle's own computer (v1.73). */
+  host: boolean;
 }
 const OSD_FIELDS_KEY = 'yonderrc.osdFields.v1';
 const OSD_FIELDS_DEFAULT: OsdFields = {
   // `link` now means "always show the link NUMBERS". Off by default since v1.37:
   // the single health score replaces them, and they come back by themselves the
   // moment the link stops being good.
-  timer: true, gps: true, homeArrow: true, channels: true, link: false, batteryBar: true, batteryData: true,
+  // `host` is off by default: two more numbers over the picture are for whoever is
+  // chasing a stutter, not for every drive.
+  timer: true, gps: true, homeArrow: true, channels: true, link: false, batteryBar: true, batteryData: true, host: false,
 };
+/** Where the vehicle computer's numbers turn amber — the same as on its setup page. */
+const HOST_CPU_WARN = 85;
+const HOST_MEM_WARN = 90;
 function loadOsdFields(): OsdFields {
   try {
     const raw = localStorage.getItem(OSD_FIELDS_KEY);
@@ -307,7 +315,7 @@ function TelemetryBar({ t }: { t: TelemetryMessage }) {
         />
         <span className="osd-batt-pct">{Math.round(pct)}%</span>
       </div>
-      {src && <span className="osd-batt-src" title="Which method drives the % (set in Setup › Telemetry)">{src}</span>}
+      {src && <span className="osd-batt-src" title="Which method drives the % (set in Vehicle setup › Sensors & telemetry)">{src}</span>}
     </div>
   );
 }
@@ -410,6 +418,7 @@ export function VideoPanel({
   vehicleQuality,
   power,
   dataUsage,
+  host = null,
   gps,
   odoMeters,
   budget,
@@ -442,6 +451,8 @@ export function VideoPanel({
   /** The vehicle's verdict on its own supply, or null when not connected. */
   power: PowerFlags | null;
   dataUsage: DataUsage | null;
+  /** CPU and memory of the vehicle's computer, or null when not connected / not reported. */
+  host?: HostLoad | null;
   gps: GpsMessage | null;
   /** Trip odometer, metres. Owned by App so the OSD and the energy budget agree. */
   odoMeters: number;
@@ -731,7 +742,6 @@ export function VideoPanel({
 
   const throttleCh = throttleChannelsOf(profile)[0] ?? 2;
   const limitPct = activePercent(profile);
-  const limitStep = (profile.throttleLimit?.step ?? 2) as 0 | 1 | 2;
   const steerCh = profile.bindings.find((b) => b.mode === 'proportional')?.channel ?? 0;
   // Unified weak-link warning: control RTT, video packet loss, OR low uplink signal.
   const weakLink =
@@ -827,7 +837,7 @@ export function VideoPanel({
             className={`btn tiny${rec.recording ? ' rec-on' : ''}`}
             onClick={rec.toggleRecord}
             disabled={!hasVideo}
-            title={hasVideo ? 'Record (bindable in Setup › Controls)' : 'No camera configured'}
+            title={hasVideo ? 'Record (bindable in Ground setup › Controls)' : 'No camera configured'}
           >
             {rec.recording ? '● REC' : 'Record'}
           </button>
@@ -835,7 +845,7 @@ export function VideoPanel({
             className="btn tiny"
             onClick={rec.snapshot}
             disabled={!hasVideo}
-            title={hasVideo ? 'Snapshot (bindable in Setup › Controls)' : 'No camera configured'}
+            title={hasVideo ? 'Snapshot (bindable in Ground setup › Controls)' : 'No camera configured'}
           >
             Snapshot
           </button>
@@ -883,6 +893,7 @@ export function VideoPanel({
               ['link', 'Link numbers always (else only when the link degrades)'],
               ['batteryBar', 'Battery bar (%)'],
               ['batteryData', 'Battery data (V / A / mAh)'],
+              ['host', 'Vehicle computer (CPU / RAM)'],
             ] as [keyof OsdFields, string][]).map(([key, label]) => (
               <label key={key} className="opt">
                 <input type="checkbox" checked={osdFields[key]} onChange={(e) => setOsdField(key, e.target.checked)} />
@@ -896,7 +907,7 @@ export function VideoPanel({
               <div className="eyebrow2" style={{ marginTop: 10 }}>Sensor values</div>
               <Hint summary="Every channel the vehicle reports">
                 Uncheck what you don't want over the picture — the label is shown as soon as a kind
-                has more than one channel. Add or rename channels in the vehicle's Setup › Telemetry.
+                has more than one channel. Add or rename channels in Vehicle setup › Sensors &amp; telemetry.
               </Hint>
               <div className="osd-fields">
                 {([
@@ -930,7 +941,7 @@ export function VideoPanel({
           <label className="rec-field">Filename prefix
             <input value={rec.settings.prefix} onChange={(e) => rec.setSettings({ prefix: e.target.value })} />
           </label>
-          <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Record, snapshot and next-camera keys/buttons live in <b>Setup › Controls</b>.</p>
+          <p className="note">Pick a folder once before flying, then record/snapshot never prompt. Record, snapshot and next-camera keys/buttons live in <b>Ground setup › Controls</b>.</p>
 
           <div className="eyebrow2" style={{ marginTop: 10 }}>Auto quality thresholds</div>
           <Hint summary={'Used when quality is set to "Auto"'}>
@@ -960,7 +971,7 @@ export function VideoPanel({
             {play === 'reconnecting' && (problem ? `No video: ${problem}` : 'Reconnecting…')}
             {play === 'idle' &&
               (cameras.length === 0 && linkState === 'connected'
-                ? 'No camera configured — the screen stays dark. Add one under Setup › Cameras, or leave it: driving on sight over IP/WiFi is a valid setup.'
+                ? 'No camera configured — the screen stays dark. Add one under Vehicle setup › Camera, or leave it: driving on sight over IP/WiFi is a valid setup.'
                 : videoBaseUrl
                   ? 'Connect the vehicle to start video.'
                   : 'Video disabled. Start go2rtc on the vehicle to enable FPV.')}
@@ -987,7 +998,7 @@ export function VideoPanel({
                 )}
                 {/* The data plan, only once it is running out. Same rule as the
                     low-voltage badge: while there is plenty left, the number is a
-                    distraction — it belongs in the link block and in Setup. */}
+                    distraction — it belongs in the link block and in Vehicle setup. */}
                 {dataUsage && dataUsage.level !== 'ok' && (
                   <span
                     className={`osd-badge bad${dataUsage.level === 'over' ? ' blink' : ''}`}
@@ -1087,7 +1098,7 @@ export function VideoPanel({
                   <span>THR</span>
                   <div className="osd-bar"><i style={{ width: `${bar(channels[throttleCh] ?? CHANNEL_NEUTRAL_US)}%` }} /></div>
                   {limitPct < 100 && (
-                    <span className="osd-lim" title={`Speed limit ${LIMIT_STEP_LABELS[limitStep]} — ${limitPct}% of full travel`}>
+                    <span className="osd-lim" title={`Speed limit ${limitPct}% of full travel`}>
                       LIM {limitPct}%
                     </span>
                   )}
@@ -1099,6 +1110,22 @@ export function VideoPanel({
               </div>
             )}
             <div className="osd-br">
+              {/* The vehicle's own computer, on request (FPV › ⚙ › OSD fields). The
+                  control loop and the video encoder share that CPU, so a stutter with a
+                  good link score often shows up here first. */}
+              {osdFields.host && host && (host.cpuPercent != null || host.memPercent != null) && (
+                <div
+                  className="osd-block osd-host"
+                  title={`The vehicle's computer: CPU busy over the last few seconds${host.memUsedMb != null ? `; memory ${host.memUsedMb} of ${host.memTotalMb} MB in use` : ''}`}
+                >
+                  <span className={host.cpuPercent != null && host.cpuPercent >= HOST_CPU_WARN ? 'osd-warn' : undefined}>
+                    CPU {host.cpuPercent ?? '--'}%
+                  </span>
+                  <span className={host.memPercent != null && host.memPercent >= HOST_MEM_WARN ? 'osd-warn' : undefined}>
+                    RAM {host.memPercent ?? '--'}%
+                  </span>
+                </div>
+              )}
               {/* The numbers behind the score: hidden while the link is good, back
                   on their own the moment it isn't — that's when you need to know
                   WHICH of them went bad, and it's the worst moment to go hunting

@@ -24,6 +24,8 @@ import { handleVideoProxy, type VideoProxyContext } from './videoProxy.js';
 import { failRequest } from './failRequest.js';
 import { applyCameras, scaleCamera, safeStreamName } from '../video/cameraManager.js';
 import { powerBadge } from '../system/power.js';
+import { HostLoadSampler } from '../system/hostLoad.js';
+import { RemoteKeeper } from '../system/remoteKeeper.js';
 import { serveGroundApp } from './staticServer.js';
 import { secretOk, readSecretFromUrl, originAllowed, originOf, secFetchSiteOf } from './auth.js';
 
@@ -75,6 +77,16 @@ export function startWsServer(
     { hilinkTraffic: () => system.hilinkTraffic(), wifiMode: () => currentWifiMode },
   );
   traffic.start();
+  // CPU and memory of this computer, sampled with the link/power reads below — cheap
+  // (no process, no file parsing of our own), and a busy CPU explains jitter the link
+  // did not cause. The OSD shows it on request; the setup page and diagnostics always.
+  const hostLoad = new HostLoadSampler();
+  hostLoad.sample();
+  // Keeps an OpenVPN tunnel on the network the vehicle is actually on, and a WireGuard
+  // peer behind DynDNS at its current address (system/remoteKeeper.ts). Idle for every
+  // other method — it does not even read the routing table then.
+  const remoteKeeper = new RemoteKeeper(system, () => config.remoteAccess);
+  remoteKeeper.start();
 
   const setupCtx: SetupContext = {
     config,
@@ -83,6 +95,8 @@ export function startWsServer(
     gps,
     core,
     traffic,
+    hostLoad: () => hostLoad.latest,
+    remoteKeeper: () => remoteKeeper.snapshot(),
     applyCameras: (cams) =>
       applyCameras(cams, config.go2rtcConfigPath, videoApiUrl(config), config.h264Encoder, config.rpicamBin),
     applyHilink,
@@ -127,6 +141,7 @@ export function startWsServer(
   // "your servo is browning out the Pi".
   let currentPower: import('@yonderrc/protocol').PowerFlags | undefined;
   const refreshLink = () => {
+    hostLoad.sample();
     system.linkSignal().then((l) => { currentLink = l; }).catch(() => {});
     system
       .status()
@@ -221,7 +236,7 @@ export function startWsServer(
 
     const statusTimer = setInterval(() => {
       if (ws.readyState === ws.OPEN)
-        ws.send(JSON.stringify({ ...core.status(), link: currentLink, power: currentPower, data: traffic.usage ?? undefined }));
+        ws.send(JSON.stringify({ ...core.status(), link: currentLink, power: currentPower, data: traffic.usage ?? undefined, host: hostLoad.latest }));
     }, 50);
     // Telemetry at a calmer rate (voltage/current/mAh change slowly).
     const telemetryTimer = setInterval(() => {

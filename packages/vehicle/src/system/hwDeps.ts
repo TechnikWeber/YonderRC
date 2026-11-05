@@ -140,7 +140,7 @@ export function explainNpmFailure(
   ) {
     return {
       cause: 'the Pi could not reach the npm registry (no internet)',
-      fix: 'The vehicle needs internet for this — join a WiFi network in Setup › WiFi, or bring up LTE, then try again. On its own hotspot without an uplink it cannot download anything.',
+      fix: 'The vehicle needs internet for this — join a WiFi network in Vehicle setup › Network › WiFi, or bring up LTE, then try again. On its own hotspot without an uplink it cannot download anything.',
     };
   }
 

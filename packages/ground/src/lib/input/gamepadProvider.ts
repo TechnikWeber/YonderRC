@@ -28,7 +28,7 @@ export interface GamepadProvider {
   setPreferred(id: string | null): void;
   /** Where each device's standard controls are, by device id; undefined = its own numbers. */
   setLayouts(lookup: (id: string) => PadLayout | undefined): void;
-  /** Raw state of one listed device, for the live view in Setup. */
+  /** Raw state of one listed device, for the live view in Ground setup. */
   peek(index: number): { axes: number[]; buttons: boolean[] } | null;
   /** Deadzoned axis value in [-1,1], or null if no controller. */
   axis(n: number): number | null;

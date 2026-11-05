@@ -47,7 +47,7 @@ import {
   loadReturnBudgetCfg, saveReturnBudgetCfg, returnBudget, consumptionRate, pushSample, odoStep, latchReturnNow,
   type ReturnBudgetCfg, type EnergySample,
 } from './lib/returnBudget';
-import { applyThrottleLimit, limitOf, withStep, nextStep } from './lib/throttleLimit';
+import { applyThrottleLimit, limitOf, withStep, nextStep, stepToward } from './lib/throttleLimit';
 import { nudgeTrim, clearTrim, trimTargetOf, TRIM_STEP_US } from './lib/trim';
 import { applyFollowers, throttleOutputsOf } from './lib/follow';
 import { VideoPanel, type VideoStats } from './components/VideoPanel';
@@ -64,7 +64,7 @@ import { DiagnosticsPanel, type DiagnosticsExport } from './components/Diagnosti
 import type { DiagnosticFinding } from '@yonderrc/protocol';
 
 /** Shown in the masthead and written into diagnostics files. Bumped with every release. */
-export const GROUND_VERSION = '1.72.3';
+export const GROUND_VERSION = '1.73.0';
 
 const DEFAULT_URL = `ws://${location.hostname || 'localhost'}:8080`;
 
@@ -329,7 +329,7 @@ export function App() {
     linkRef.current?.setPreferWebRtc(preferWebRtc);
   }, [preferWebRtc, connected]);
 
-  // If the vehicle stops sending telemetry (e.g. telemetry set to "off" in Setup),
+  // If the vehicle stops sending telemetry (e.g. telemetry set to "off" in Vehicle setup),
   // clear it so the OSD/status don't keep showing stale or sim values.
   useEffect(() => {
     const id = setInterval(() => {
@@ -410,7 +410,9 @@ export function App() {
     {
       'panic-disarm': panicDisarm,
       'toggle-arm': () => requestArm(!armed),
-      'throttle-limit': () => updateProfile(withStep(activeRef.current, nextStep(limitOf(activeRef.current).step))),
+      'throttle-limit': () => updateProfile(withStep(activeRef.current, nextStep(limitOf(activeRef.current)))),
+      'limit-down': () => updateProfile(withStep(activeRef.current, stepToward(limitOf(activeRef.current), -1))),
+      'limit-up': () => updateProfile(withStep(activeRef.current, stepToward(limitOf(activeRef.current), 1))),
       'trim-dec': () => trimByButton(-1),
       'trim-inc': () => trimByButton(1),
     },
@@ -418,7 +420,7 @@ export function App() {
     {
       // Arming is a confirmation; the speed limiter only needs the short filter.
       // Panic-disarm is absent on purpose and must stay instant.
-      holdMs: { 'toggle-arm': holdMsFor(holdCfg), 'throttle-limit': buttonHoldMs },
+      holdMs: { 'toggle-arm': holdMsFor(holdCfg), 'throttle-limit': buttonHoldMs, 'limit-down': buttonHoldMs, 'limit-up': buttonHoldMs },
       progressFor: 'toggle-arm',
       onProgress: setHotkeyHold,
     },
@@ -463,7 +465,7 @@ export function App() {
   const logRef = useRef<LogRow[]>([]);
   const logStartRef = useRef(0);
   const videoStatsRef = useRef<VideoStats | null>(null);
-  const snapRef = useRef<{ armed: boolean; failsafe: boolean; link: LinkState; rtt: number | null }>({ armed: false, failsafe: false, link: 'disconnected', rtt: null });
+  const snapRef = useRef<{ armed: boolean; failsafe: boolean; link: LinkState; rtt: number | null; cpu: number | null; ram: number | null }>({ armed: false, failsafe: false, link: 'disconnected', rtt: null, cpu: null, ram: null });
   useEffect(() => {
     if (!logging) return;
     logStartRef.current = Date.now();
@@ -489,6 +491,8 @@ export function App() {
         mah: t?.mah ?? null,
         pct: t?.batteryPercent ?? null,
         ...gpsSnapshot(gpsRef.current),
+        cpu: s.cpu,
+        ram: s.ram,
         sensors: sensorSnapshot(t),
       });
       if (logRef.current.length > LOG_CAP) logRef.current.shift();
@@ -562,7 +566,14 @@ export function App() {
   // the way games display a stable ping.
   const rttEma = useRef<number | null>(null);
   const [rttDisplay, setRttDisplay] = useState<number | null>(null);
-  snapRef.current = { armed, failsafe, link: linkState, rtt: rttDisplay };
+  snapRef.current = {
+    armed,
+    failsafe,
+    link: linkState,
+    rtt: rttDisplay,
+    cpu: connected ? status?.host?.cpuPercent ?? null : null,
+    ram: connected ? status?.host?.memPercent ?? null : null,
+  };
   useEffect(() => {
     const fresh =
       connected && status && !failsafe && status.lastClientT > 0 &&
@@ -788,7 +799,7 @@ export function App() {
   }, []);
 
   /**
-   * Setup › Diagnostics: this app's half, the vehicle's half (fetched from its setup API
+   * Ground setup › Diagnostics: this app's half, the vehicle's half (fetched from its setup API
    * on the same host as the control link), merged into one downloaded file. The secret
    * goes as `?secret=` — a header would cost a CORS preflight the vehicle does not allow.
    */
@@ -863,7 +874,7 @@ export function App() {
         const r = await fetch(vurl, { signal: ctl.signal });
         if (r.ok) vehicle = (await r.json()) as typeof vehicle;
         else if (r.status === 401) vehicleError = 'the vehicle wants its API secret — enter it next to the address and try again.';
-        else if (r.status === 404) vehicleError = 'this vehicle is older than v1.70.0 and cannot export its half — update it (Setup › Software update).';
+        else if (r.status === 404) vehicleError = 'this vehicle is older than v1.70.0 and cannot export its half — update it (Vehicle setup › Overview › Software update).';
         else vehicleError = `the vehicle answered HTTP ${r.status}.`;
       } catch (e) {
         vehicleError = connected
@@ -887,9 +898,17 @@ export function App() {
       <header className="masthead">
         <h1>YonderRC</h1>
         <span className="ver">ground · v{GROUND_VERSION}</span>
+        {/* "Ground setup", not "Setup" (v1.73): the vehicle has a setup page of its own
+            (the Vehicle setup ↗ link below), and a tester could not tell the two apart. */}
         <div className="mode-toggle">
           <button className={`seg${!setupMode ? ' on' : ''}`} onClick={() => setSetupMode(false)}>Drive</button>
-          <button className={`seg${setupMode ? ' on' : ''}`} onClick={() => setSetupMode(true)}>Setup</button>
+          <button
+            className={`seg${setupMode ? ' on' : ''}`}
+            onClick={() => setSetupMode(true)}
+            title="Models, controls and safety of this ground station — stored in this browser"
+          >
+            Ground setup
+          </button>
         </div>
       </header>
 
@@ -910,6 +929,18 @@ export function App() {
 
       {setupMode ? (
         <>
+          {/* Which of the two setups this is, and where the other one lives. */}
+          <p className="setup-lede">
+            <b>Ground setup</b> — models, controls and safety of this ground station, stored in this
+            browser. What the vehicle itself is set to — network, output driver, sensors, camera — is
+            in{' '}
+            {setupUrlFromWs(url) ? (
+              <a href={setupUrlFromWs(url)!} target="_blank" rel="noreferrer">Vehicle setup ↗</a>
+            ) : (
+              <b>Vehicle setup</b>
+            )}
+            , stored on the vehicle.
+          </p>
           <div className="profile-bar">
             <span className="eyebrow">Model</span>
             <select value={active.id} onChange={(e) => selectProfile(e.target.value)} disabled={armed}>
@@ -980,6 +1011,7 @@ export function App() {
             linkSignal={connected ? status?.link ?? null : null}
             power={connected ? status?.power ?? null : null}
             dataUsage={connected ? status?.data ?? null : null}
+            host={connected ? status?.host ?? null : null}
             gps={connected ? gps : null}
             odoMeters={odoMeters}
             budget={budget}
@@ -1046,7 +1078,7 @@ export function App() {
                     : 'nodata'
             }
           />
-          <ChannelMonitor channels={monitorChannels} failsafe={failsafe} profile={active} armed={armed} />
+          <ChannelMonitor channels={monitorChannels} failsafe={failsafe} profile={active} armed={armed} outputs={connected ? welcome?.outputs : undefined} />
         </>
       )}
 

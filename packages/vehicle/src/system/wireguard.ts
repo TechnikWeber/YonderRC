@@ -227,6 +227,90 @@ export function redactWireguardFields(f: WireguardFields): PublicWireguardFields
   return { ...rest, hasPrivateKey: !!privateKey.trim(), hasPresharedKey: !!presharedKey.trim() };
 }
 
+// ---- endpoints that are names (DynDNS) ----
+//
+// wg-quick resolves an Endpoint name exactly once, when the tunnel comes up. A home
+// router reached through DynDNS (a FritzBox's MyFRITZ name, say) changes its public
+// address now and then; from that moment the vehicle keeps sending to the old one and
+// the tunnel is dead until the next restart. WireGuard's own answer is the
+// reresolve-dns script from wireguard-tools: when a peer's last handshake is stale,
+// look the name up again and set the endpoint. RemoteKeeper does that (v1.73) — only
+// for peers whose endpoint is a name, and only when the address actually changed.
+
+/** A handshake older than this is stale: peers re-handshake every 2 minutes while traffic flows. */
+export const WG_STALE_S = 135;
+
+/** Every [Peer] in a conf — all of them, unlike the form, which holds the first. */
+export function wireguardPeers(conf: string): { publicKey: string; endpoint: string | null }[] {
+  const peers: { publicKey: string; endpoint: string | null }[] = [];
+  let cur: { publicKey: string; endpoint: string | null } | null = null;
+  for (const raw of (conf ?? '').split('\n')) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) continue;
+    const head = /^\[(\w+)\]$/.exec(line);
+    if (head) {
+      cur = head[1].toLowerCase() === 'peer' ? { publicKey: '', endpoint: null } : null;
+      if (cur) peers.push(cur);
+      continue;
+    }
+    if (!cur) continue;
+    const eq = line.indexOf('=');
+    if (eq < 0) continue;
+    const key = line.slice(0, eq).trim().toLowerCase();
+    const value = line.slice(eq + 1).trim();
+    if (key === 'publickey') cur.publicKey = value;
+    else if (key === 'endpoint') cur.endpoint = value || null;
+  }
+  return peers.filter((p) => p.publicKey);
+}
+
+/** `host:port` or `[v6]:port` → its parts; null when it is neither. */
+export function splitEndpoint(ep: string): { host: string; port: number } | null {
+  const m = /^(?:\[([0-9a-fA-F:.]+)\]|([^:\s]+)):(\d{1,5})$/.exec((ep ?? '').trim());
+  if (!m) return null;
+  const port = Number(m[3]);
+  if (!(port >= 1 && port <= 65535)) return null;
+  return { host: m[1] ?? m[2], port };
+}
+
+/** An address rather than a name — nothing to look up again. */
+export function isIpLiteral(host: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
+}
+
+/** `wg show <iface> latest-handshakes` (or `endpoints`): one `<public key>\t<value>` per line. */
+export function parseWgShow(out: string): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const line of (out ?? '').split('\n')) {
+    const [key, value] = line.trim().split(/\s+/);
+    if (key && value !== undefined) m.set(key, value);
+  }
+  return m;
+}
+
+/**
+ * The peers worth looking up again: an endpoint that is a name, and a last handshake
+ * that is stale or never happened (`0`). A peer the interface does not know is skipped
+ * — the tunnel is not up, and that is wg-quick's business.
+ */
+export function stalePeersByName(
+  peers: readonly { publicKey: string; endpoint: string | null }[],
+  handshakes: Map<string, string>,
+  nowS: number,
+): { publicKey: string; host: string; port: number }[] {
+  const out: { publicKey: string; host: string; port: number }[] = [];
+  for (const p of peers) {
+    const ep = p.endpoint ? splitEndpoint(p.endpoint) : null;
+    if (!ep || isIpLiteral(ep.host)) continue;
+    const last = handshakes.get(p.publicKey);
+    if (last === undefined) continue;
+    const ts = Number(last);
+    if (Number.isFinite(ts) && ts > 0 && nowS - ts < WG_STALE_S) continue;
+    out.push({ publicKey: p.publicKey, host: ep.host, port: ep.port });
+  }
+  return out;
+}
+
 /** Normalise an uploaded WireGuard conf: LF line endings, single trailing newline. */
 export function normaliseWireguardConf(conf: string): string {
   return conf.replace(/\r\n?/g, '\n').trim() + '\n';

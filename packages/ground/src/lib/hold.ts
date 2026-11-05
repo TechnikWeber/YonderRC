@@ -6,13 +6,13 @@
  * sustained press; this module holds the (pure, testable) timing math, the
  * component only drives it from pointer/key events.
  *
- * Panic-disarm (Setup › Controls) stays immediate on purpose — that's the
+ * Panic-disarm (Ground setup › Controls) stays immediate on purpose — that's the
  * emergency path and must not be slowed down.
  */
 
 /**
  * Default hold time. 1 s still filters out a tap or a bumped controller button,
- * while keeping arming quick. Adjustable — and switchable off — in Setup ›
+ * while keeping arming quick. Adjustable — and switchable off — in Ground setup ›
  * Controls; a stored setting is untouched by this default.
  */
 export const ARM_HOLD_MS = 1000;

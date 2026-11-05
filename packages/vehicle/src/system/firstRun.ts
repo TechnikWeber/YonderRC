@@ -69,11 +69,11 @@ export function firstRunPlan(persisted: PersistentConfig, detect: DetectResult):
   const pcas = detect.i2c.filter((d) => d.kind === 'pca9685');
   const inas = detect.i2c.filter((d) => d.kind && d.kind.startsWith('ina'));
   if (persisted.driver !== undefined) {
-    notes.push(`Output driver: keeping the saved "${persisted.driver}" (change it in Setup › Sensors & outputs).`);
+    notes.push(`Output driver: keeping the saved "${persisted.driver}" (change it in Vehicle setup › Core setup).`);
   } else if (pcas.length === 0) {
     notes.push(
       'Output driver: no PCA9685 found on I²C bus 1 — staying on "sim". ' +
-        'Wired one? Check SDA/SCL/3V3/GND and its address, then re-run the installer or pick it in Setup › Sensors & outputs.',
+        'Wired one? Check SDA/SCL/3V3/GND and its address, then re-run the installer or pick it in Vehicle setup › Core setup.',
     );
   } else {
     const pick = pcas.find((d) => d.confirmed) ?? pcas[0];
@@ -84,7 +84,7 @@ export function firstRunPlan(persisted: PersistentConfig, detect: DetectResult):
     } else if (persisted.pca9685.address !== address) {
       notes.push(
         `The saved PCA9685 address is 0x${persisted.pca9685.address.toString(16)}, but the chip answers at ${pick.address} — ` +
-          'the saved one is kept; correct it in Setup › Sensors & outputs if it is wrong, or the driver falls back to sim.',
+          'the saved one is kept; correct it in Vehicle setup › Core setup if it is wrong, or the driver falls back to sim.',
       );
     }
     notes.push(
@@ -111,20 +111,20 @@ export function firstRunPlan(persisted: PersistentConfig, detect: DetectResult):
     if (csi.length) {
       patch.cameras = [{ ...DETECTED_CSI_CAMERA }];
       notes.push(`Camera: CSI module ${sensorName(csi[0])} → camera "cam" (rpicam, 1280×720 @ 30 fps).`);
-      if (csi.length > 1) notes.push(`A second CSI camera (${sensorName(csi[1])}) was found — add it in Setup › Camera.`);
+      if (csi.length > 1) notes.push(`A second CSI camera (${sensorName(csi[1])}) was found — add it in Vehicle setup › Camera.`);
     } else if (other.length) {
-      notes.push(`Camera: only a USB/V4L2 device (${other[0]}) — add it in Setup › Camera (type usb). The test pattern stays until then.`);
+      notes.push(`Camera: only a USB/V4L2 device (${other[0]}) — add it in Vehicle setup › Camera (type usb). The test pattern stays until then.`);
     } else {
       notes.push(
         'Camera: none detected — the test pattern stays. Official Pi cameras are found by themselves; ' +
-          'others (Arducam …) need their overlay first: Setup › Camera › CSI camera module, reboot, re-run the installer.',
+          'others (Arducam …) need their overlay first: Vehicle setup › Camera › CSI camera module, reboot, re-run the installer.',
       );
     }
   }
 
   // --- sensors: reported, never configured ---
   for (const ina of inas) {
-    notes.push(`${ina.device ?? 'INA2xx'} at ${ina.address} found — set it up in Setup › Sensors & outputs › Telemetry (enter the shunt value printed on the board).`);
+    notes.push(`${ina.device ?? 'INA2xx'} at ${ina.address} found — set it up in Vehicle setup › Sensors & telemetry › Telemetry (enter the shunt value printed on the board).`);
   }
   // The collision this project's docs warn about: both chips ship on 0x40.
   const at40 = detect.i2c.find((d) => d.address === '0x40');

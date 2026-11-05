@@ -105,9 +105,14 @@ export class Pca9685Driver implements OutputDriver {
     return this.last.slice();
   }
 
-  /** The board prints its outputs 0–15; channel N is output N. */
+  /**
+   * The board prints its outputs 0–15 and the app counts channels from 1 (like every
+   * RC transmitter, SBUS and ArduPilot), so CH01 is the pin marked 0. "PCA 0" names
+   * the board and its own number — v1.71 said "out 0", which a tester read as the
+   * app's own output numbering and asked for channels from 0 instead (v1.73).
+   */
   outputLabel(ch: number): string | null {
-    return Number.isInteger(ch) && ch >= 0 && ch < CHANNEL_COUNT ? `out ${ch}` : null;
+    return Number.isInteger(ch) && ch >= 0 && ch < CHANNEL_COUNT ? `PCA ${ch}` : null;
   }
 
   async close(): Promise<void> {

@@ -15,7 +15,7 @@ desktop app on the ground. Built for LTE.
 
 Everything also runs **in a simulator, with no hardware**.
 
-![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, voltage/current/mAh bottom right, link health score top centre](docs/screenshots/Overview_OSD.png?v=5)
+![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, voltage/current/mAh bottom right, link health score top centre](docs/screenshots/Overview_OSD.png?v=6)
 
 ## What it does
 
@@ -29,8 +29,9 @@ Everything also runs **in a simulator, with no hardware**.
   endpoints, curves, follower channels and a speed limiter.
 - **Telemetry**: battery voltage, current, mAh, temperatures, GPS with the way home, voice
   callouts, a blackbox log.
-- **Setup page on the vehicle**: Wi-Fi, LTE, remote access (Tailscale, ZeroTier,
-  WireGuard), cameras, sensors, updates — from a phone, no screen on the Pi.
+- **Vehicle setup on the vehicle itself**: Wi-Fi, LTE, remote access (Tailscale, ZeroTier,
+  WireGuard), cameras, sensors, updates, a shell on the Pi — from a phone, no screen on the
+  Pi. Models and controls live in the ground app's **Ground setup**.
 - **Problem report in one file** that says in plain words what went wrong.
 
 The full list: [`docs/FEATURES.md`](docs/FEATURES.md).
@@ -51,7 +52,7 @@ On a Raspberry Pi with the hardware connected, one line installs everything:
 curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisioning/bootstrap.sh | bash
 ```
 
-Then open `http://<pi-ip>:8080/setup`.
+Then open the Vehicle setup at `http://<pi-ip>:8080/setup`.
 
 ## Try it in the simulator
 
@@ -86,7 +87,7 @@ Windows blocks a file on the first start ("Application Control policy")? See
 
 ## Desktop app
 
-The same control app as a program of its own, for Windows and Linux. It reads game
+The same ground app as a program of its own, for Windows and Linux. It reads game
 controllers natively (SDL): worth it when the browser does not know your controller, or
 for rumble. Everything else is the same as in the browser.
 

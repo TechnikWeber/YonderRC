@@ -36,6 +36,15 @@ import { type HilinkStatus, type HilinkTraffic } from './hilink.js';
 import { classifyChanges, describeCheck, type UpdateCheck } from './update.js';
 import type { SystemDiagnostics } from './diagnostics.js';
 import { ovpnRefusal, sanitiseOvpn } from './openvpn.js';
+import {
+  CONNECT_UNKNOWN,
+  connectVariantFor,
+  sshCommands,
+  type ConnectVariant,
+  type DeviceAccessAction,
+  type DeviceAccessResult,
+  type DeviceAccessStatus,
+} from './deviceAccess.js';
 import { arch } from 'node:os';
 
 /**
@@ -297,6 +306,120 @@ export class SimSystem implements SystemManager {
     return this.remote.kind === cfg.kind ? { ...this.remote } : { kind: cfg.kind, running: false, address: null, detail: 'off' };
   }
 
+  /** The simulated uplink: LTE when dialled, else the WiFi network joined, else none. */
+  async uplinkKey(): Promise<string> {
+    if (this.lte.connected) return `wwan0 src ${this.lte.ip ?? '10.64.12.34'}`;
+    if (this.wifi.mode === 'client' && this.wifi.ip) return `wlan0 src ${this.wifi.ip} (${this.wifi.ssid ?? 'wifi'})`;
+    return '';
+  }
+
+  async openvpnReconnect(): Promise<ActionResult> {
+    if (this.remote.kind !== 'openvpn' || !this.remote.running) return { ok: false, message: 'OpenVPN is not running (simulated).' };
+    this.remote = { ...this.remote, detail: 'tunnel up — reconnected after a network change (simulated, experimental)' };
+    return { ok: true, message: 'OpenVPN reconnecting (simulated).' };
+  }
+
+  async wireguardReresolve(_conf: string): Promise<{ updated: string[] }> {
+    return { updated: [] };
+  }
+
+  // --- device access (mock): Raspberry Pi Connect, SSH, VNC ---
+  // Starts with Connect NOT installed, so the whole path — install, turn on, sign in —
+  // can be clicked through without a Pi. YRC_SIM_DESKTOP=1 pretends to be an image with
+  // a desktop, which brings the VNC switch and Connect's screen sharing in.
+  private simDesktop = process.env.YRC_SIM_DESKTOP === '1';
+  private connectSim: { installed: ConnectVariant | null; running: boolean; signedIn: boolean; shell: 'allowed' | 'disallowed' } = {
+    installed: null,
+    running: false,
+    signedIn: false,
+    shell: 'allowed',
+  };
+  private vncSim = false;
+
+  async deviceAccess(): Promise<DeviceAccessStatus> {
+    const c = this.connectSim;
+    const addresses = [
+      ...(this.wifi.ip ? [{ iface: 'wlan0', address: this.wifi.ip }] : []),
+      ...(this.lte.connected && this.lte.ip ? [{ iface: 'wwan0', address: this.lte.ip }] : []),
+      ...(this.remote.running && this.remote.address ? [{ iface: this.remote.kind === 'openvpn' ? 'tunyrc' : 'yonderrc', address: this.remote.address }] : []),
+      ...(this.tailscale.running && this.tailscale.ip ? [{ iface: 'tailscale0', address: this.tailscale.ip }] : []),
+    ];
+    return {
+      kind: this.kind,
+      user: 'pi',
+      hostname: hostname(),
+      addresses,
+      connect: {
+        ...CONNECT_UNKNOWN,
+        installed: c.installed,
+        version: c.installed ? '2.5.1-sim' : null,
+        running: !!c.installed && c.running,
+        signedIn: c.installed && c.running ? c.signedIn : null,
+        shell: c.installed && c.running ? c.shell : null,
+        screen: c.installed && c.running ? (this.simDesktop ? 'allowed' : null) : null,
+        linger: c.installed ? c.running : null,
+        raw: c.installed && c.running
+          ? `Signed in: ${c.signedIn ? 'yes' : 'no'}\n${this.simDesktop ? 'Screen sharing: allowed (0 sessions active)\n' : ''}Remote shell: ${c.shell} (0 sessions active)`
+          : null,
+        note: !c.installed
+          ? `Not installed. Install (Core setup › Add-ons) puts ${connectVariantFor(this.simDesktop)} on — the vehicle needs internet for it. (simulated)`
+          : c.running ? null : 'Off — Turn on starts it, now and at every boot. (simulated)',
+      },
+      ssh: { active: true, enabled: true, commands: sshCommands('pi', hostname(), addresses) },
+      vnc: { desktop: this.simDesktop, enabled: this.simDesktop ? this.vncSim : null },
+      canManage: true,
+    };
+  }
+
+  async deviceAccessAction(action: DeviceAccessAction): Promise<DeviceAccessResult> {
+    const c = this.connectSim;
+    switch (action) {
+      case 'connect-install':
+        if (c.installed) return { ok: true, message: `${c.installed} is already installed (simulated).` };
+        await new Promise((r) => setTimeout(r, 1500));
+        c.installed = connectVariantFor(this.simDesktop);
+        return {
+          ok: true,
+          message: `${c.installed} installed (simulated). Switch it on and sign in under Device access.`,
+          output: `Reading package lists... Done\nSetting up ${c.installed} (2.5.1) ... (simulated)`,
+        };
+      case 'connect-on':
+        if (!c.installed) return { ok: false, message: 'Raspberry Pi Connect is not installed (simulated).' };
+        c.running = true;
+        return { ok: true, message: 'Raspberry Pi Connect is on — now and after every boot. Next: Sign in. (simulated)' };
+      case 'connect-off':
+        c.running = false;
+        return { ok: true, message: 'Raspberry Pi Connect is off (simulated).' };
+      case 'connect-signin':
+        if (!c.installed) return { ok: false, message: 'Raspberry Pi Connect is not installed — Core setup › Add-ons installs it. (simulated)' };
+        c.running = true;
+        if (c.signedIn) return { ok: true, message: 'Already signed in (simulated).' };
+        // A real user would open the link; pretend they did a few seconds later.
+        setTimeout(() => {
+          this.connectSim.signedIn = true;
+        }, 5000).unref?.();
+        return {
+          ok: true,
+          message: 'Open the link and sign in with your Raspberry Pi ID (simulated — it signs itself in after 5 s).',
+          signinUrl: 'https://connect.raspberrypi.com/verify/SIMU-LATE',
+        };
+      case 'connect-signout':
+        c.signedIn = false;
+        return { ok: true, message: 'Signed out (simulated).' };
+      case 'connect-shell-on':
+        c.shell = 'allowed';
+        return { ok: true, message: 'Remote shell allowed (simulated).' };
+      case 'ssh-on':
+        return { ok: true, message: 'SSH is on (simulated).' };
+      case 'vnc-on':
+      case 'vnc-off':
+        if (!this.simDesktop) return { ok: false, message: 'This (simulated) image has no desktop — nothing to share. Start the simulator with YRC_SIM_DESKTOP=1 to try it.' };
+        this.vncSim = action === 'vnc-on';
+        return { ok: true, message: `VNC is ${this.vncSim ? 'on' : 'off'} (simulated).` };
+    }
+    return { ok: false, message: `Unknown action "${String(action)}".` };
+  }
+
   async linkSignal() {
     if (this.lte.connected && this.lte.signal != null) {
       return { kind: 'lte' as const, quality: this.lte.signal, label: `LTE ${this.lte.signal}%` };
@@ -421,7 +544,7 @@ export class SimSystem implements SystemManager {
       output: '$ git pull --ff-only origin main\nFast-forward (simulated)',
       steps: [
         { label: 'Fetching and applying the update', ok: true },
-        { label: 'Rebuilding the control app', ok: true },
+        { label: 'Rebuilding the ground app', ok: true },
       ],
       restarting: true,
     };

@@ -2,12 +2,12 @@
 # YonderRC onboarding: if the Pi has no usable network shortly after boot (no LTE,
 # no known WiFi), bring up a NetworkManager hotspot so you can reach the setup UI
 # headless at http://192.168.4.1:8080/setup — and from there put the Pi on your
-# WiFi (Setup › WiFi › Scan) or configure LTE. Once it has a normal connection the
+# WiFi (Vehicle setup › Network › WiFi › Scan) or configure LTE. Once it has a normal connection the
 # hotspot won't start again.
 #
 # The hotspot is OPEN by default: the captive portal then puts the setup page in
 # front of you with nothing to type, and a default password published in a public
-# README protected nothing anyway. Set one in Setup › WiFi › Setup hotspot (and an
+# README protected nothing anyway. Set one in Vehicle setup › Network › WiFi › Setup hotspot (and an
 # API secret) before the vehicle leaves the bench.
 set -uo pipefail
 
@@ -75,14 +75,14 @@ if rfkill list wifi 2>/dev/null | grep -qi 'soft blocked: *yes'; then
 fi
 if ! iw reg get 2>/dev/null | grep -qE 'country [A-Z]{2}:'; then
   # Only the locale is used here (the service also knows the timezone); a wrong
-  # guess is corrected in Setup > WiFi, no guess means no radio at all.
+  # guess is corrected in Vehicle setup > Network > WiFi, no guess means no radio at all.
   CC=$(sed -n 's/^LANG="\?[a-z]\{2,3\}_\([A-Z]\{2\}\).*/\1/p' /etc/default/locale 2>/dev/null | head -1)
   if [ -n "${CC:-}" ] && command -v raspi-config >/dev/null 2>&1; then
     echo "[onboard] no WiFi country set — setting $CC from this Pi's locale"
     raspi-config nonint do_wifi_country "$CC" || true
     rfkill unblock wifi || true
   else
-    echo "[onboard] no WiFi country set and none derivable — set it in Setup > WiFi"
+    echo "[onboard] no WiFi country set and none derivable — set it in Vehicle setup > Network > WiFi"
   fi
 fi
 

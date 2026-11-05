@@ -22,7 +22,7 @@ import {
 } from '../lib/returnBudget';
 import { Hint } from './Hint';
 
-const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'trim-dec', 'trim-inc', 'next-camera', 'record-toggle', 'snapshot'];
+const ORDER: ActionId[] = ['panic-disarm', 'toggle-arm', 'throttle-limit', 'limit-down', 'limit-up', 'trim-dec', 'trim-inc', 'next-camera', 'record-toggle', 'snapshot'];
 
 export function ControlsPanel({
   bindings,
@@ -520,7 +520,7 @@ export function ControlsPanel({
         </div>
         <p className="note">
           Trim −/+ move one channel per model by 5 µs a press, with a click to hear it — the
-          steering by default; pick another under Setup › model › Trim buttons. Button numbers
+          steering by default; pick another in Ground setup › Channels › Trim buttons. Button numbers
           are the standard layout, the same in the browser and in the desktop app. Each controller
           can have buttons of its own (above); keys belong to the keyboard and stay shared.
         </p>
@@ -563,7 +563,7 @@ export function ControlsPanel({
         </div>
         <Hint summary="What each threshold needs">
           Auto only warns when a real sensor delivers data. Percent needs a battery capacity set on the
-          vehicle (Setup › Telemetry). Voltage is a pack value — set it for your cell count
+          vehicle (Vehicle setup › Sensors &amp; telemetry). Voltage is a pack value — set it for your cell count
           (e.g. 3S ≈ 10.5 V). "Consumed" warns after using that many mAh — handy without a capacity
           set. Alerts repeat every ~3 s while low.
         </Hint>
@@ -594,7 +594,7 @@ export function ControlsPanel({
           <span className="mono">volt</span>/<span className="mono">amp</span> stay as the primary
           channel. Because position and telemetry share a row, you can colour the track by voltage or
           RTT in QGIS or kepler.gl. <b>GPX</b> is the plain track for Google Earth, gpx.studio or any
-          mapping tool — it needs a GPS fix (Setup › GPS).
+          mapping tool — it needs a GPS fix (Vehicle setup › GPS).
         </Hint>
       </details>
 

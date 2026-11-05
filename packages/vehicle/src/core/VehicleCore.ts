@@ -220,6 +220,13 @@ export class VehicleCore {
     return Array.from({ length: CHANNEL_COUNT }, (_, ch) => d.outputLabel?.(ch) ?? '');
   }
 
+  /** `CH03 (PCA 2)` for a log line — the board's own pin when the driver knows it. */
+  channelText(ch: number): string {
+    const name = `CH${String(ch + 1).padStart(2, '0')}`;
+    const out = this.driver.outputLabel?.(ch);
+    return out ? `${name} (${out})` : name;
+  }
+
   get watchdogMs(): number {
     return this.watchdogTimeoutMs;
   }
@@ -251,7 +258,7 @@ export class VehicleCore {
   startCalibration(channel: number, minUs?: number, maxUs?: number): void {
     this.armed = false; // never armed during calibration
     this.calibration.start(channel, minUs, maxUs);
-    console.log(`[calib] started on channel ${channel + 1} — MAX applied`);
+    console.log(`[calib] started on ${this.channelText(channel)} — MAX applied`);
   }
   nextCalibration(): void {
     const stillActive = this.calibration.next();

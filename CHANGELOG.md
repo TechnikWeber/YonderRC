@@ -3,10 +3,75 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
-## Unreleased
-- **Telemetry with a sensor that never answers shows NO DATA** instead of an empty
-  OSD. With the I2C driver present but no INA226 wired (or I2C switched off), every
-  read failed and no message was sent at all. Found by the new CI run on GitHub.
+## v1.73.0
+*A tester's second round: two setups that say which is which, a Core setup tab, the
+board's own pin next to every channel, five speed steps, the vehicle's CPU and RAM in the
+OSD, a shell on the Pi from the browser, and OpenVPN that comes back after a network
+change.*
+
+- **Two setups, named for where they live.** The ground app's *Setup* is now **Ground
+  setup** — models, channels, controls and safety, stored in that browser — and says so at
+  the top, with a link to the other one. The vehicle's page is **Vehicle setup** — what the
+  vehicle itself is set to, stored on the vehicle, reachable without any app. The link in
+  the connection bar reads *Vehicle setup ↗*, the way back *Ground app ↗*, and every hint,
+  message and document that said "Setup ›" now says which one. A tester could not tell the
+  two apart.
+- **Core setup**, a new tab right after the Overview: name, output driver, watchdog,
+  PCA9685 address, throttle channels — the first things to set on a new vehicle — and
+  **Add-ons** below it: the driver modules and Raspberry Pi Connect, installed from the
+  browser. *Sensors & outputs* is now **Sensors & telemetry** and holds the telemetry. An
+  old `#outputs` link lands on Core setup.
+- **The board's own pin next to every channel.** The app keeps counting channels from 1,
+  like every transmitter, SBUS and ArduPilot, and names the PCA9685 pin next to it:
+  `CH03 · PCA 2` (it said `out 2`). While connected, the channel monitor has a pin column;
+  the servo test on the Overview picks from the vehicle's own channel names; the PCA9685
+  fields spell out the wiring (CH01 is pin 0). A vehicle not yet updated still reports
+  `out 2`, and the ground app shows it as `PCA 2`. A tester had asked for channels from 0
+  to match the board — this answers the same question without renumbering the RC world.
+- **Speed limit 20 / 40 / 60 / 80 / 100 %.** Five steps by default, two to five per model
+  (*+ step* / *− step* on the throttle channel), the buttons named by their percentage. A
+  model with the untouched old three (40/70/100) gets the five and keeps its speed (70 %
+  becomes the slower 60 %); edited steps are kept as they are. New bindable actions
+  **Speed limit − / +** stop at either end — five steps are four presses round on the
+  cycling button, which stays.
+- **The vehicle computer's CPU and RAM**: in the OSD on request (FPV › ⚙ › *OSD fields ›
+  Vehicle computer*, off by default), on the Vehicle setup's Overview, in the diagnostics
+  file and in the blackbox CSV (`vehicle_cpu_pct`, `vehicle_ram_pct`, after the GPS
+  columns). Sampled every 5 s without starting a process; memory is what the kernel could
+  not hand out, not the page cache. In the simulator it is the PC the vehicle runs on.
+- **Device access**, a new tab for getting onto the Pi itself:
+  - **Raspberry Pi Connect** — install (Core setup › Add-ons; Pi OS Lite usually has it
+    already), *Turn on*, *Sign in*: then a shell in the browser at connect.raspberrypi.com,
+    from anywhere and through carrier NAT, and the screen on an image with a desktop. It
+    runs as the Pi's login user and starts at boot. The sign-in link only ever goes back to
+    the button that asked for it, never into the status — whoever completes it owns a shell
+    on the vehicle — and the page warns while no API secret is set. **Experimental**: built
+    from Raspberry Pi's documentation, not yet run on a vehicle.
+  - **SSH** — the exact `ssh` command for every address the vehicle has (name, LAN,
+    hotspot, VPN), and a switch when SSH is off.
+  - **VNC** — one switch on an image with a desktop; on Pi OS Lite the tab says why there
+    is no screen to share.
+  - Deliberately no terminal inside the page: that would be a root shell over plain HTTP,
+    through a hotspot that is open by default.
+- **OpenVPN comes back after a network change** (experimental). The first report from a
+  vehicle: it connects, but came back slowly and lost its way when the vehicle moved from
+  the home Wi-Fi to a phone hotspot. The vehicle now notices a new uplink within seconds
+  and tells OpenVPN to reconnect at once (SIGUSR1, the same as its own ping-restart), and
+  never waits more than 15 s between attempts (`connect-retry 2 15` — OpenVPN's own backoff
+  grows to 300 s). *Remote access* shows how often it reconnected; the diagnostics file
+  carries it (`vehicle.remoteKeeper`).
+- **WireGuard to a DynDNS name**: wg-quick looks the server's name up only once, so a home
+  router that got a new address stranded the vehicle until a restart. When a peer's
+  handshake goes stale, the vehicle looks the name up again and moves the endpoint.
+- **Telemetry with a sensor that never answers shows NO DATA** instead of an empty OSD.
+  With the I2C driver present but no INA226 wired (or I2C switched off), every read failed
+  and no message was sent at all. Found by the new CI run on GitHub.
+- `provisioning/yonderrc.sudoers` names the new commands, for setups that run the service
+  as a non-root user.
+
+**Not verified on hardware:** Raspberry Pi Connect (its CLI run as the login user,
+lingering, the sign-in), the VNC switch, the OpenVPN reconnect on a real network change and
+the WireGuard re-lookup — covered by unit tests and the simulator. Reports welcome.
 
 ## v1.72.3
 *The desktop app as a download: Windows installer, portable and Linux AppImage on every

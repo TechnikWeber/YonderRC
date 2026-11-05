@@ -34,7 +34,7 @@ over LTE with Tailscale.
 
 ### The reference build
 
-What the setup page fills in for you, and what this guide assumes. All changeable.
+What the Vehicle setup fills in for you, and what this guide assumes. All changeable.
 
 | What | Value | Why this one |
 |---|---|---|
@@ -102,9 +102,11 @@ terminal resistance both land in the measurement. Feed a known current and enter
 - **V+** is the servo/ESC supply and comes from the BEC, **not** from the Pi.
 - Default address **0x40** — the same as every INA2xx sensor. **Leave the sensor on 0x40
   and move the PCA9685 to 0x41** (close the solder bridge **A0**), then enter `0x41` under
-  Setup › *Vehicle configuration* and restart the service.
-- Servos/ESC go to outputs 0–15. App channels 1–16 map to PCA9685 channels 0–15; while
-  connected, the app shows the output next to each channel (`CH03 · out 2`).
+  Vehicle setup › *Core setup* and restart the service.
+- Servos/ESC go to pins 0–15. The app counts its channels 1–16, like every RC
+  transmitter, so **CH01 is pin 0** and CH16 is pin 15. While connected, the app names the
+  pin next to each channel (`CH03 · PCA 2`) — in the channel list, the channel monitor and
+  the servo test on the vehicle's Overview.
 
 ### 2.2 INA228 (current/voltage) ↔ I2C
 
@@ -155,8 +157,8 @@ Drive battery ──► BEC 5V/3A ──► Pi (5V/GND, e.g. GPIO pin 2/6 or USB
 - **5.1 V / 3 A with a short, thick cable is the minimum.** Pi, camera, LTE stick and GPS
   alone draw 1.4–2 A at 5 V; a 5 A regulator from the drive battery is a safe choice.
 - The OSD shows **⚠ POWER** while the supply is too weak.
-- Power-on order: electronics first, drive last. To switch off use **Shut down** on the
-  setup page and wait for the green LED.
+- Power-on order: electronics first, drive last. To switch off use **Shut down** in
+  Vehicle setup › Overview and wait for the green LED.
 
 ### 2.4 Camera
 
@@ -184,7 +186,7 @@ most speak **NMEA at 9600 baud** over UART.
 - **TX and RX cross over.** Swapped, the receiver stays silent.
 - Use **`/dev/serial0`**, not `/dev/ttyAMA0` (that is Bluetooth on a Pi 3/4/5). Needs the
   `serialport` module (3.3).
-- If Setup › GPS offers **Free the serial port for GPS**, press it and reboot.
+- If Vehicle setup › GPS offers **Free the serial port for GPS**, press it and reboot.
 - **Indoors there is no fix**, but the GPS panel counts the incoming data: counting up
   means the wiring is right. "Nothing received" is the wiring; "no fix" is the roof.
 - **USB dongles** (u-blox VK-172, GlobalSat BU-353): pick the **gpsd** source instead.
@@ -194,8 +196,8 @@ most speak **NMEA at 9600 baud** over UART.
 
 ### 2.7 Temperature sensors (optional)
 
-Any number of channels, added in Setup › Telemetry, shown in the OSD under voltage and
-current.
+Any number of channels, added in Vehicle setup › Sensors & telemetry, shown in the OSD
+under voltage and current.
 
 | Sensor | Bus | Range / notes | Extra setup |
 |---|---|---|---|
@@ -307,8 +309,8 @@ same address cannot be told apart, so set the addresses **before** installing.
 ### 3.3 Hardware driver dependencies (only what you use)
 
 The hardware drivers need a native module, which is compiled on the Pi. A vehicle needs at
-most one, so none is installed by default. **Install yours in the browser** — Setup ›
-Vehicle configuration › **Native driver modules**:
+most one, so none is installed by default. **Install yours in the browser** — Vehicle
+setup › Core setup › **Add-ons › Driver modules**:
 
 | module | needed for |
 | --- | --- |
@@ -336,7 +338,7 @@ sudo systemctl restart yonderrc-vehicle
 
 ### 3.4 Updating the vehicle
 
-**From the setup page** — *Software update*:
+**From Vehicle setup** — *Overview › Software update*:
 
 1. **Check for updates** shows what is new. It changes nothing.
 2. **Update & restart** downloads, installs, rebuilds and restarts. If a step fails, the
@@ -360,16 +362,20 @@ sudo bash provisioning/install.sh
 
 ### 3.5 Configure over Wi-Fi (graphical)
 
-Open **`http://yonderrc.local:8080/setup`** (or `http://<pi-ip>:8080/setup`).
+Open **`http://yonderrc.local:8080/setup`** (or `http://<pi-ip>:8080/setup`) — the
+**Vehicle setup**, stored on the vehicle. (Models, channels, controls and safety are the
+ground app's **Ground setup**, stored in that browser.)
 
-The page has tabs — **Overview · Network · Remote access · Sensors & outputs · Camera ·
-GPS · Design**. *Overview* shows on one screen whether everything is there.
+The page has tabs — **Overview · Core setup · Network · Remote access · Device access ·
+Sensors & telemetry · Camera · GPS · Design**. *Overview* shows on one screen whether
+everything is there; *Core setup* is the first thing to fill in on a new vehicle.
 
-0. **Detect hardware** (in *Vehicle configuration*) lists the chips, modem and cameras it
-   finds, by name. **Use these addresses** fills them into the forms; Save keeps them.
-1. **Vehicle:** name, **Output driver = `pca9685`** (drone: `sbus`; no extra board:
+0. **Detect hardware** (in *Core setup*) lists the chips, modem and cameras it finds, by
+   name. **Use these addresses** fills them into the forms; Save keeps them.
+1. **Core setup:** name, **Output driver = `pca9685`** (drone: `sbus`; no extra board:
    `gpio-pwm`, pins in 2.8), check the throttle channel. Set the **I²C address** — **0x41**
-   for the reference build. Save, then **Restart vehicle service**.
+   for the reference build — and install the driver module under **Add-ons**. Save, then
+   **Restart vehicle service**.
 2. **CSI camera module:** pick the sensor on the camera port. The official Pi cameras are
    found by themselves; for others (Arducam …) the page writes the boot setting and asks
    for a **reboot**.
@@ -393,8 +399,9 @@ GPS · Design**. *Overview* shows on one screen whether everything is there.
 ### 3.6 First function test (WHEELS UP / PROPS OFF!)
 
 1. Open the ground app, enter `ws://yonderrc.local:8080`, **Connect**.
-2. Do **not arm**. In the channel monitor: does steering move the right channel? Endpoints
-   ok? Adjust trim/EPA/reverse in the setup.
+2. Do **not arm**. In the channel monitor: does steering move the right channel (the
+   monitor names each channel's pin, `PCA 0` for CH01)? Endpoints ok? Adjust
+   trim/EPA/reverse in Ground setup › Channels.
 3. **ESC calibration** if needed — it teaches the ESC the **throttle channel's own
    endpoints** (shown above the start button), so set that channel's travel first. The
    profile-wide *Endpoints* field is a **batch write**, not a cap.
@@ -414,7 +421,7 @@ the ground device on the same private network.
 ### 4.1 LTE stick
 
 1. Plug in the dongle and check `mmcli -L`.
-2. In Setup › **LTE**, enter the **APN** → **Connect**. It reconnects by itself after a
+2. In Vehicle setup › Network › **LTE**, enter the **APN** → **Connect**. It reconnects by itself after a
    reboot. **SIM PIN** and APN user/password if your provider needs them. The panel can
    also force **4G-only**, switch **roaming**, change the PIN and show diagnostics.
 3. The **signal** then shows in the OSD, marked weak below 25 %.
@@ -424,7 +431,7 @@ the ground device on the same private network.
 Many Huawei sticks are **not modems** but small routers: they dial by themselves, and
 `mmcli -L` stays empty — so the LTE panel stays empty too. That is expected.
 
-- **Setup › LTE stick (HiLink)** shows model, state, operator and signal; the OSD shows
+- **Vehicle setup › Network › LTE stick (HiLink)** shows model, state, operator and signal; the OSD shows
   the signal as for any modem.
 - **APN, PIN and network mode are set on the stick's own page.** The vehicle passes it
   through on **port 8081**: open `http://<vehicle>:8081/` (with an API secret:
@@ -435,7 +442,7 @@ Many Huawei sticks are **not modems** but small routers: they dial by themselves
 
 ### 4.1.2 Mobile data budget
 
-An FPV stream costs **0.5–1 GB per hour**. **Setup › Mobile data budget** counts the
+An FPV stream costs **0.5–1 GB per hour**. **Vehicle setup › Network › Mobile data budget** counts the
 mobile data and shows `⚠ DATA` in the OSD past a set share of your plan.
 
 - Enter the **Plan allowance** in MB (4096 = 4 GB), **Warn at** in % (default 80) and,
@@ -446,7 +453,7 @@ mobile data and shows `⚠ DATA` in the OSD past a set share of your plan.
 
 ### 4.2 Tailscale
 
-1. **Setup › Remote access** → **Tailscale** → **Bring up**, leave the auth key empty. A
+1. **Vehicle setup › Remote access** → **Tailscale** → **Bring up**, leave the auth key empty. A
    login link appears; open it and approve the device (it joins as `yonderrc`).
 2. Or create an **auth key** in Tailscale (*Settings › Keys*), paste it, **Bring up**.
 3. The vehicle's **Tailscale IP** appears in the status.
@@ -464,7 +471,7 @@ A first field test over LTE measured 110 ms control round-trip and 128 ms video 
 limit — an external antenna helps more than anything else. `tailscale ping <vehicle>`
 shows whether the connection is direct or goes through a relay.
 
-### 4.4 Other remote-access methods (Setup › Remote access)
+### 4.4 Other remote-access methods (Vehicle setup › Remote access)
 
 Pick **one** method:
 
@@ -474,13 +481,38 @@ Pick **one** method:
 - **WireGuard (your own server / FritzBox)** — **upload the exported `.conf`** or type the
   values in. On a FritzBox: *Internet › Permit Access › VPN (WireGuard) › Add connection*,
   download the file, upload it, *Bring up*. Keep **PersistentKeepalive at 25** — without
-  it the tunnel dies behind the carrier's NAT.
+  it the tunnel dies behind the carrier's NAT. A server reached by a **DynDNS name** (a
+  MyFRITZ address, say) is looked up again whenever its handshake goes stale, so a new
+  home address does not strand the vehicle.
 - **OpenVPN (your own server) — experimental.** Upload the client profile (`.ovpn`) **with
   the certificates inside**; add username and password if it asks for them. Lines that
-  would run programs on the vehicle are disabled and listed. **Not yet tested on a
-  vehicle** — try it on the bench and report back.
+  would run programs on the vehicle are disabled and listed. First reports from a vehicle:
+  it connects. When the vehicle changes networks (home Wi-Fi → phone hotspot) it now
+  reconnects the tunnel at once, and it never waits more than 15 s between attempts.
+
+**A vehicle that hops between networks** is best served by **WireGuard** or **Tailscale**:
+both simply carry on from the new address, where OpenVPN has to build a new connection.
 
 Test the method at home before you rely on it in the field.
+
+### 4.5 Onto the Pi itself: shell and screen (Vehicle setup › Device access)
+
+For the odd command on the vehicle — a log, a package, a look around:
+
+- **Raspberry Pi Connect** — Raspberry Pi's own remote access: a **shell in the browser**
+  at connect.raspberrypi.com, from anywhere, through carrier NAT, without a VPN;
+  end-to-end encrypted; free with a Raspberry Pi ID. Raspberry Pi OS Lite usually has it
+  installed (switched off); otherwise **Core setup › Add-ons › Install**. Then **Turn on**
+  and **Sign in** under *Device access*. On an image with a desktop it shares the screen
+  too. *Experimental: built from Raspberry Pi's documentation, not yet run on a vehicle.*
+- **SSH** — the tab lists the exact `ssh` command for every address the vehicle has
+  (LAN, hotspot, VPN) and switches SSH on if it is off.
+- **VNC** — only on an image with a desktop: one switch, then a VNC viewer on port 5900.
+  Raspberry Pi OS Lite has no desktop to share, and a vehicle is better without one.
+
+There is deliberately **no terminal inside the setup page**: it would be a root shell over
+plain HTTP, and the hotspot is open by default. Anyone who can open the page can also
+press *Sign in* — set an **API secret** (6.1) before the vehicle joins a network you share.
 
 ---
 
@@ -491,18 +523,19 @@ Unless its Wi-Fi is joined to a network, the Pi starts its own hotspot
 
 1. Connect the phone to **"YonderRC-setup"**.
 2. The page opens by itself; otherwise open `http://192.168.4.1:8080/`.
-3. You get **both**: the control app and, under **Setup**, the full configuration.
+3. You get **both**: the ground app (Drive, and **Ground setup** for models and controls)
+   and the **Vehicle setup** at `http://192.168.4.1:8080/setup`.
 
 > **The page does not open by itself** when the vehicle has its own internet (LTE): the
 > hotspot then shares it, and the page has to be opened by hand. Laptops usually only show
 > a "sign in to network" notice.
 
 > **Wi-Fi does not work at all?** Raspberry Pi OS blocks the radio until a **Wi-Fi
-> country** is set. **Setup › WiFi › WiFi radio** fixes it with one button.
+> country** is set. **Vehicle setup › Network › WiFi › WiFi radio** fixes it with one button.
 
 ### 5.1 Put the Pi on your Wi-Fi from the phone
 
-**Setup › WiFi**, no keyboard needed:
+**Vehicle setup › Network › WiFi**, no keyboard needed:
 
 1. **Scan for networks** — SSID, signal, encryption.
 2. Tap yours, type the password, **Connect**.
@@ -513,7 +546,7 @@ Unless its Wi-Fi is joined to a network, the Pi starts its own hotspot
 
 ### 5.2 Hotspot password and when it starts
 
-**Setup › WiFi › Setup hotspot** renames it, sets a password (min. 8 chars, WPA2 — empty
+**Vehicle setup › Network › WiFi › Setup hotspot** renames it, sets a password (min. 8 chars, WPA2 — empty
 keeps it open) and chooses when it starts:
 
 | Mode | Behaviour |
@@ -523,7 +556,7 @@ keeps it open) and chooses when it starts:
 | **off** | Never starts on its own. |
 
 > **Give it a password** once the vehicle leaves the bench. Open is only the default so the
-> first setup needs no typing — on an open hotspot anyone nearby reaches the setup page.
+> first setup needs no typing — on an open hotspot anyone nearby reaches the Vehicle setup.
 
 > **One radio, one job.** The built-in Wi-Fi is either the hotspot **or** joined to a
 > network, never both. For both at once, add a USB Wi-Fi adapter.
@@ -532,8 +565,8 @@ keeps it open) and chooses when it starts:
 
 ## 6. What safety YonderRC adds
 
-- **Failsafe:** no control frames for **500 ms** (100–2000 ms, Setup › Sensors &
-  outputs) → every channel goes to its failsafe value: a drone holds **mid** throttle, a
+- **Failsafe:** no control frames for **500 ms** (100–2000 ms, Vehicle setup › Core
+  setup) → every channel goes to its failsafe value: a drone holds **mid** throttle, a
   car or boat **stops**, a plane cuts the **motor**. Adjustable per channel.
 - **Disarmed means off:** a disarmed vehicle keeps its motor off, also when the link
   drops. The failsafe values hold from the moment the service starts, even before a ground
@@ -543,7 +576,7 @@ keeps it open) and chooses when it starts:
   the vehicle goes to failsafe. A gamepad model does not arm without its controller.
 - **Arming:** every new connection starts disarmed. After a reconnect, car and boat are
   disarmed, aircraft stay armed — a short drop must not cut a motor in flight (changeable
-  in **Setup › Controls**).
+  in **Ground setup › Controls**).
 - **Pre-arm check:** arming is refused while the throttle is not at rest.
 - **Hold to arm** (1 s) for arming *and* disarming, on the button and a bound key.
   **Panic-disarm** is instant and ships unbound — bind it to something you cannot hit by
@@ -562,8 +595,8 @@ vehicle must never lock you out — but it makes the network the security bounda
 - **The Pi's own hotspot:** WPA2 keeps strangers off the air.
 - **LTE:** with Tailscale/ZeroTier/WireGuard the vehicle is only reachable inside your
   private network, and CGNAT means no public IP anyway.
-- **Shared or public Wi-Fi:** set an **API secret** under *Setup › Security*. The control
-  app, the video and every change on the setup page then need it (enter it next to the
+- **Shared or public Wi-Fi:** set an **API secret** under *Vehicle setup › Network › Security*. The ground
+  app, the video and every change on the Vehicle setup then need it (enter it next to the
   address). It is a lock on the door, not encryption.
 - **A web page from the internet cannot drive your vehicle**, even without a secret: the
   vehicle only accepts pages from itself, the local network or a VPN.
@@ -591,13 +624,13 @@ vehicle must never lock you out — but it makes the network the security bounda
 | Link drops immediately / setup asks for a password | An **API secret** is set — enter it next to the address (WS 4001, HTTP 401). |
 | "Another ground station took over" | A second ground connected (close code 4002). Reconnect to take it back. |
 | "The vehicle refused this page" | The ground app came from a public address (4003 / HTTP 403). Serve it from the vehicle or set a secret. |
-| No GPS fix | Right source and device in *Setup › GPS*? Serial needs `serialport`; USB dongles need **gpsd**. First fix can take minutes. |
+| No GPS fix | Right source and device in *Vehicle setup › GPS*? Serial needs `serialport`; USB dongles need **gpsd**. First fix can take minutes. |
 | No signal value in the OSD | LTE must be connected, or the Wi-Fi interface must be `wlan0`. |
 | No data warning despite a budget | Without a **Plan allowance** there is no threshold — the panel says so (4.1.2). |
 | Flickers in and out of failsafe | Usually WiFi power saving, a hidden control page or jitter — the diagnostics file tells which ([TROUBLESHOOTING.md §2](TROUBLESHOOTING.md#2-the-vehicle-flickers-in-and-out-of-failsafe)). |
-| Controller does nothing / the wrong device is used | Press a button on it; *Setup › Controls › Game controller* lists every device and lets you pick ([TROUBLESHOOTING.md §3](TROUBLESHOOTING.md#3-the-game-controller-does-nothing)). |
+| Controller does nothing / the wrong device is used | Press a button on it; *Ground setup › Controls › Game controller* lists every device and lets you pick ([TROUBLESHOOTING.md §3](TROUBLESHOOTING.md#3-the-game-controller-does-nothing)). |
 | Overview: "Output driver … failed to start" | The native module is missing or the address is wrong — the line says which (TROUBLESHOOTING.md §4). |
-| Anything else | *Setup › Diagnostics* → one file → GitHub issue ([TROUBLESHOOTING.md §1](TROUBLESHOOTING.md#1-reporting-a-problem-the-diagnostics-file)). |
+| Anything else | *Ground setup › Diagnostics* → one file → GitHub issue ([TROUBLESHOOTING.md §1](TROUBLESHOOTING.md#1-reporting-a-problem-the-diagnostics-file)). |
 
 ---
 

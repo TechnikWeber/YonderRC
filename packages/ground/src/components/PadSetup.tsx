@@ -21,7 +21,7 @@ type Learning = { kind: 'axis' | 'button'; n: number } | null;
 const AXIS_PROMPT = ['Move it right…', 'Push it up…', 'Move it right…', 'Push it up…'];
 
 /**
- * Setup › Controls › Game controller › Set up (v1.72): where the standard controls are on a
+ * Ground setup › Controls › Game controller › Set up (v1.72): where the standard controls are on a
  * controller that reports a layout of its own — an RC transmitter in joystick mode, a pad
  * the browser does not know. Learned once from the device's raw readings; every model then
  * reads it through this (lib/input/padProfiles.ts). Locked while armed: a stick that

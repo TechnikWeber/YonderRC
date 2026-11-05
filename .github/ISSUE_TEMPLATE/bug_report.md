@@ -11,8 +11,8 @@ Thank you! Two minutes here save a lot of back-and-forth.
 
 The single most useful thing is the DIAGNOSTICS FILE, made right after the problem
 happened (no restart in between):
-  - control app › Setup › Diagnostics › Download diagnostics   (both halves — preferred)
-  - or setup page › Overview › Problem report                    (vehicle only)
+  - ground app › Ground setup › Diagnostics › Download diagnostics   (both halves — preferred)
+  - or Vehicle setup › Overview › Problem report                 (vehicle only)
   - or over SSH: sudo bash /opt/yonderrc/provisioning/diag.sh    (when no page opens)
 Drag the file into this text box. Passwords, keys, the API secret and GPS positions are
 removed from it; network names and local IP addresses stay. Rather not post it publicly?

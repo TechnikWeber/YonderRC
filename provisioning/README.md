@@ -3,7 +3,7 @@
 Everything in this folder runs **on the Pi** — nothing here is meant for your PC. It turns
 a Raspberry Pi into a headless YonderRC vehicle: control service, go2rtc video, hotspot
 onboarding, remote access — configured from a phone or laptop through the vehicle's own
-setup page.
+Vehicle setup page.
 
 - **First install, step by step:** [`docs/QUICKSTART.md`](../docs/QUICKSTART.md)
 - **Wiring, LTE, Tailscale, everything after the install:** [`docs/HARDWARE.md`](../docs/HARDWARE.md)
@@ -17,9 +17,9 @@ This page only describes the files themselves.
 |---|---|
 | `bootstrap.sh` | the one-liner: clone to `/opt/yonderrc` (or update it), then run `install.sh` |
 | `install.sh` | everything the Pi needs — see §2; safe to run again after every update |
-| `diag.sh` | diagnostics file from a terminal, for when the setup page is not reachable (§3) |
+| `diag.sh` | diagnostics file from a terminal, for when the Vehicle setup is not reachable (§3) |
 | `onboard.sh` | boot-time hotspot fallback, run by `yonderrc-onboard.service` |
-| `systemd/` | `yonderrc-vehicle` (control, setup page and video signalling, port 8080), `go2rtc` (video; its API and RTSP answer on the Pi only, WebRTC media on 8555), `yonderrc-onboard` |
+| `systemd/` | `yonderrc-vehicle` (control, Vehicle setup and video signalling, port 8080), `go2rtc` (video; its API and RTSP answer on the Pi only, WebRTC media on 8555), `yonderrc-onboard` |
 | `tuning/` | camera tuning files (Arducam IMX519 autofocus), copied to `/var/lib/yonderrc/tuning` |
 | `yonderrc.sudoers` | only for running the service as a non-root user (§4) |
 
@@ -35,7 +35,7 @@ sudo bash /opt/yonderrc/provisioning/install.sh
    i2c-tools, gpsd, iw), Node 22, Tailscale, ZeroTier and go2rtc.
 3. `npm install` without the native driver modules, then restores the ones this vehicle
    recorded (`hardwareDeps` in the config) — an update never turns a configured vehicle
-   back into a simulator. Builds the control app.
+   back into a simulator. Builds the ground app.
 4. Enables I²C and the UART and takes the login console off the UART (for a wired GPS).
 5. Switches **WiFi power saving off** — it delays incoming packets and trips the failsafe
    watchdog on a working link.
@@ -90,5 +90,5 @@ For flashing many vehicles, bake the above into a `.img` with
 [`rpi-image-gen`](https://github.com/RPi-Distro/rpi-image-gen) or `pi-gen`, adding
 this repo to `/opt/yonderrc` and running `install.sh` in a customization stage.
 Hardware detection then finds nothing (the image is built without the vehicle) — run
-`install.sh` once more on the vehicle, or pick driver and camera in the setup page.
+`install.sh` once more on the vehicle, or pick driver and camera in Vehicle setup › Core setup and › Camera.
 For a single build, the flash-then-`install.sh` path is simplest.

@@ -1,7 +1,8 @@
-import { exec, execFile, spawn } from 'node:child_process';
+import { exec, execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
-import { arch as osArch, hostname, tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { lookup } from 'node:dns/promises';
+import { arch as osArch, hostname, networkInterfaces, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -105,12 +106,41 @@ import {
   OVPN_AUTH_PATH,
   OVPN_CONF_PATH,
   OVPN_ENABLE_ARGS,
+  OVPN_RECONNECT_ARGS,
   OVPN_RESTART_ARGS,
   OVPN_STOP_ARGS,
   OVPN_TAP_IFACE,
   OVPN_TUN_IFACE,
   OVPN_UNIT,
 } from './openvpn.js';
+import { parseDefaultRoutes, uplinkKey as composeUplinkKey } from './uplink.js';
+import { parseWgShow, splitEndpoint, stalePeersByName, wireguardPeers } from './wireguard.js';
+import {
+  APT_UPDATE_ARGS,
+  CONNECT_CLI,
+  CONNECT_UNKNOWN,
+  SSH_ENABLE_ARGS,
+  VNC_GET_ARGS,
+  connectInstallArgs,
+  connectSigninUrl,
+  connectVariantFor,
+  explainAptFailure,
+  lingerArgs,
+  parseConnectStatus,
+  parseDpkgConnect,
+  parseUnitStates,
+  parseVncGet,
+  pickLoginUser,
+  runAsUserArgs,
+  sshCommands,
+  userServiceEnv,
+  vncArgs,
+  type DeviceAccessAction,
+  type DeviceAccessResult,
+  type DeviceAccessStatus,
+  type LoginUser,
+  type PiConnectStatus,
+} from './deviceAccess.js';
 import {
   interestingKernelLines,
   parseMeminfo,
@@ -900,6 +930,306 @@ export class RealSystem implements SystemManager {
       return { kind: 'openvpn', running, address: ip, detail: `${detail} (experimental)` };
     }
     return { kind: 'none', running: false, address: null, detail: 'off' };
+  }
+
+  // --- keeping the tunnel on the network the vehicle is on (RemoteKeeper, v1.73) ---
+
+  /**
+   * The main routing table's best default route plus the interface's own address —
+   * a file read and an in-process lookup, no command (this runs every few seconds
+   * while OpenVPN is the method).
+   */
+  async uplinkKey(): Promise<string> {
+    const routes = parseDefaultRoutes(readFileSafe('/proc/net/route'));
+    const nics = networkInterfaces();
+    return composeUplinkKey(routes, (dev) => nics[dev]?.find((a) => a.family === 'IPv4' && !a.internal)?.address ?? null);
+  }
+
+  async openvpnReconnect(): Promise<ActionResult> {
+    const active = (await shArgsAny('systemctl', ['is-active', OVPN_UNIT])).out.trim();
+    if (active !== 'active') return { ok: false, message: `${OVPN_UNIT} is ${active || 'not running'}` };
+    const r = await shArgs('sudo', OVPN_RECONNECT_ARGS);
+    return r.ok ? { ok: true, message: 'OpenVPN reconnecting (SIGUSR1).' } : { ok: false, message: r.out };
+  }
+
+  /**
+   * The reresolve-dns idea from wireguard-tools: for a stale peer whose endpoint is a
+   * name, look the name up again and set the endpoint — only when the address actually
+   * moved, so a server that is simply down is not "fixed" every half minute.
+   */
+  async wireguardReresolve(conf: string): Promise<{ updated: string[] }> {
+    const hs = await shArgs('sudo', ['wg', 'show', this.wgIface, 'latest-handshakes']);
+    if (!hs.ok) return { updated: [] }; // not up — bringing it up is wg-quick's business
+    const stale = stalePeersByName(wireguardPeers(conf), parseWgShow(hs.out), Date.now() / 1000);
+    if (!stale.length) return { updated: [] };
+    const endpoints = parseWgShow((await shArgs('sudo', ['wg', 'show', this.wgIface, 'endpoints'])).out);
+    const updated: string[] = [];
+    for (const p of stale) {
+      let addr: string;
+      try {
+        addr = (await lookup(p.host)).address;
+      } catch {
+        continue; // no DNS right now — the next round tries again
+      }
+      const cur = splitEndpoint(endpoints.get(p.publicKey) ?? '');
+      if (cur && cur.host === addr && cur.port === p.port) continue;
+      const target = addr.includes(':') ? `[${addr}]:${p.port}` : `${addr}:${p.port}`;
+      const r = await shArgs('sudo', ['wg', 'set', this.wgIface, 'peer', p.publicKey, 'endpoint', target]);
+      if (r.ok) updated.push(`${p.host} → ${target}`);
+    }
+    return { updated };
+  }
+
+  // --- device access: Raspberry Pi Connect, SSH, VNC (v1.73, see deviceAccess.ts) ---
+
+  /** The Pi's login user: the checkout's owner when that is a person, else uid 1000. */
+  private loginUser(): LoginUser | null {
+    let owner: number | null = null;
+    try {
+      owner = statSync(REPO_ROOT).uid;
+    } catch {
+      /* unknown — the first person's account it is */
+    }
+    return pickLoginUser(readFileSafe('/etc/passwd'), owner);
+  }
+
+  /** This service may act as `user`: it is root (the shipped unit), or it is that user. */
+  private canActAs(user: LoginUser | null): boolean {
+    const uid = process.getuid?.();
+    return !!user && (uid === 0 || uid === user.uid);
+  }
+
+  /** A root-only command: run directly as root, through sudo otherwise. */
+  private asRoot(args: string[]): { file: string; args: string[] } {
+    return process.getuid?.() === 0 ? { file: args[0], args: args.slice(1) } : { file: 'sudo', args };
+  }
+
+  /** The Connect CLI, as the login user, with that user's runtime directory and bus. */
+  private connectCommand(user: LoginUser, cli: string[]): { file: string; args: string[]; env: NodeJS.ProcessEnv } {
+    if (process.getuid?.() === user.uid) {
+      return { file: 'rpi-connect', args: cli, env: { ...process.env, ...userServiceEnv(user) } };
+    }
+    return { ...runAsUserArgs(user, cli), env: C_LOCALE };
+  }
+
+  private async connectCli(user: LoginUser, cli: string[], timeoutMs = 15000): Promise<{ ok: boolean; out: string }> {
+    const cmd = this.connectCommand(user, cli);
+    try {
+      const { stdout, stderr } = await runFile(cmd.file, cmd.args, { timeout: timeoutMs, env: cmd.env, maxBuffer: 1024 * 1024 });
+      return { ok: true, out: [stdout, stderr].filter(Boolean).join('\n').trim() };
+    } catch (e) {
+      const x = e as { stdout?: string; stderr?: string; message?: string };
+      return { ok: false, out: [x.stdout, x.stderr].filter(Boolean).join('\n').trim() || x.message || String(e) };
+    }
+  }
+
+  private async connectPackage(): Promise<ReturnType<typeof parseDpkgConnect>> {
+    const q = await shArgsAny('dpkg-query', ['-W', '-f', '${Package} ${db:Status-Abbrev} ${Version}\n', 'rpi-connect', 'rpi-connect-lite']);
+    return parseDpkgConnect(q.out);
+  }
+
+  private async connectStatus(user: LoginUser | null, desktop: boolean | null): Promise<PiConnectStatus> {
+    const pkg = await this.connectPackage();
+    const base: PiConnectStatus = { ...CONNECT_UNKNOWN, installed: pkg.variant, version: pkg.version };
+    if (!pkg.variant) {
+      return { ...base, note: `Not installed. Install (Core setup › Add-ons) puts ${connectVariantFor(desktop)} on — the vehicle needs internet for it.` };
+    }
+    if (!user) return { ...base, note: 'No login user on this system (a person\'s account, uid 1000) — Connect runs as one.' };
+    const linger = existsSync(`/var/lib/systemd/linger/${user.name}`);
+    if (!this.canActAs(user)) {
+      return { ...base, linger, note: `The vehicle service runs as another user than ${user.name}, whose service Connect is, so it cannot ask it. Use rpi-connect over SSH.` };
+    }
+    // No session bus = no user manager running = nothing to ask (and Connect is off).
+    if (!existsSync(`/run/user/${user.uid}/bus`)) {
+      return { ...base, linger, note: 'Off — Turn on starts it, now and at every boot.' };
+    }
+    const r = await this.connectCli(user, ['status'], 8000);
+    const st = parseConnectStatus(r.out);
+    return {
+      ...base,
+      linger,
+      running: st.answered,
+      signedIn: st.signedIn,
+      shell: st.shell,
+      screen: st.screen,
+      raw: r.out ? redactSecrets(r.out).slice(0, 2000) : null,
+      note: st.answered ? null : 'Off, or not answering — press Turn on.',
+    };
+  }
+
+  async deviceAccess(): Promise<DeviceAccessStatus> {
+    const user = this.loginUser();
+    const [target, sshActive, sshEnabled, raspi] = await Promise.all([
+      shArgsAny('systemctl', ['get-default']),
+      shArgsAny('systemctl', ['is-active', 'ssh.service', 'ssh.socket']),
+      shArgsAny('systemctl', ['is-enabled', 'ssh.service', 'ssh.socket']),
+      sh('command -v raspi-config'),
+    ]);
+    const def = target.out.trim();
+    const desktop = def ? def === 'graphical.target' : null;
+    const vncCmd = this.asRoot(VNC_GET_ARGS);
+    const vncGet = raspi.out.trim() ? await shArgsAny(vncCmd.file, vncCmd.args) : null;
+    const addresses: { iface: string; address: string }[] = [];
+    for (const [iface, list] of Object.entries(networkInterfaces())) {
+      for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal) addresses.push({ iface, address: a.address });
+    }
+    return {
+      kind: this.kind,
+      user: user?.name ?? null,
+      hostname: hostname(),
+      addresses,
+      connect: await this.connectStatus(user, desktop),
+      ssh: {
+        active: parseUnitStates(sshActive.out, 'active'),
+        enabled: parseUnitStates(sshEnabled.out, 'enabled'),
+        commands: sshCommands(user?.name ?? null, hostname(), addresses),
+      },
+      vnc: { desktop, enabled: vncGet ? parseVncGet(vncGet.out) : null },
+      canManage: this.canActAs(user),
+    };
+  }
+
+  /** The sign-in that is waiting for somebody to complete it, if any. */
+  private signin: ChildProcess | null = null;
+
+  async deviceAccessAction(action: DeviceAccessAction): Promise<DeviceAccessResult> {
+    if (action === 'ssh-on') {
+      const cmd = this.asRoot(SSH_ENABLE_ARGS);
+      const r = await shArgs(cmd.file, cmd.args);
+      return r.ok ? { ok: true, message: 'SSH is on — now and after every boot.' } : { ok: false, message: `Could not switch SSH on: ${r.out}` };
+    }
+    if (action === 'vnc-on' || action === 'vnc-off') {
+      const on = action === 'vnc-on';
+      const cmd = this.asRoot(vncArgs(on));
+      const r = await shSlow(cmd.file, cmd.args, { cwd: '/', timeoutMs: 60_000 });
+      return r.ok
+        ? { ok: true, message: on ? 'VNC is on. Point a VNC viewer at this vehicle, port 5900, and log in as the Pi user.' : 'VNC is off.' }
+        : { ok: false, message: `raspi-config could not switch VNC ${on ? 'on' : 'off'}: ${lastLines(r.out)}` };
+    }
+    if (action === 'connect-install') return this.connectInstall();
+    const user = this.loginUser();
+    if (!user) return { ok: false, message: 'No login user on this system (a person\'s account, uid 1000) — Connect runs as one.' };
+    if (!this.canActAs(user)) {
+      return { ok: false, message: `The vehicle service runs as another user than ${user.name}, and Connect is ${user.name}'s own service. Use the shipped unit (User=root), or rpi-connect over SSH.` };
+    }
+    if (action === 'connect-on') return this.connectOn(user);
+    if (action === 'connect-signin') return this.connectSignin(user);
+    const cli = CONNECT_CLI[action];
+    if (!cli) return { ok: false, message: `Unknown action "${action}".` };
+    const r = await this.connectCli(user, cli, 30_000);
+    const done: Partial<Record<DeviceAccessAction, string>> = {
+      'connect-off': 'Raspberry Pi Connect is off. It stays off after a reboot.',
+      'connect-signout': 'Signed out. The vehicle stays listed in your Connect dashboard until you remove it there.',
+      'connect-shell-on': 'Remote shell allowed.',
+    };
+    return r.ok ? { ok: true, message: done[action] ?? 'Done.' } : { ok: false, message: `rpi-connect ${cli.join(' ')} failed: ${r.out}` };
+  }
+
+  /**
+   * Lingering first: Connect is a user service, and without it it only runs while
+   * someone is logged in — on a vehicle, never. Then the user's own manager and bus
+   * come up, and `rpi-connect on` can reach them.
+   */
+  private async connectOn(user: LoginUser): Promise<DeviceAccessResult> {
+    const linger = this.asRoot(lingerArgs(user.name));
+    const l = await shArgs(linger.file, linger.args);
+    if (!l.ok) return { ok: false, message: `Could not let ${user.name}'s services run without a login (loginctl enable-linger): ${l.out}` };
+    const bus = `/run/user/${user.uid}/bus`;
+    for (let i = 0; i < 40 && !existsSync(bus); i++) await new Promise((r) => setTimeout(r, 250));
+    if (!existsSync(bus)) {
+      return {
+        ok: false,
+        message: `${user.name}'s session bus did not appear (${bus}).`,
+        fix: 'Is dbus-user-session installed? Over SSH: `sudo apt install dbus-user-session`, then press Turn on again.',
+      };
+    }
+    const r = await this.connectCli(user, ['on'], 30_000);
+    return r.ok
+      ? { ok: true, message: 'Raspberry Pi Connect is on — now and after every boot. Next: Sign in.' }
+      : { ok: false, message: `rpi-connect on failed: ${r.out}` };
+  }
+
+  /**
+   * `rpi-connect signin` prints a link and then waits for somebody to complete it. The
+   * link goes back in this answer only; the process keeps waiting (15 minutes at most)
+   * so the sign-in can finish on the phone that opened it.
+   */
+  private async connectSignin(user: LoginUser): Promise<DeviceAccessResult> {
+    const st = await this.connectStatus(user, null);
+    if (!st.installed) return { ok: false, message: 'Raspberry Pi Connect is not installed — Core setup › Add-ons installs it.' };
+    if (!st.running) {
+      const on = await this.connectOn(user);
+      if (!on.ok) return on;
+    } else if (st.signedIn) {
+      return { ok: true, message: 'Already signed in — open connect.raspberrypi.com.' };
+    }
+    this.signin?.kill();
+    const cmd = this.connectCommand(user, ['signin']);
+    const child = spawn(cmd.file, cmd.args, { env: cmd.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    this.signin = child;
+    const killer = setTimeout(() => child.kill(), 15 * 60_000);
+    killer.unref();
+    child.on('exit', () => {
+      clearTimeout(killer);
+      if (this.signin === child) this.signin = null;
+    });
+    let text = '';
+    const url = await new Promise<string | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), 20_000);
+      const done = (u: string | null) => {
+        clearTimeout(timer);
+        resolve(u);
+      };
+      const onData = (d: Buffer) => {
+        text += d.toString();
+        const u = connectSigninUrl(text);
+        if (u) done(u);
+      };
+      child.stdout?.on('data', onData);
+      child.stderr?.on('data', onData);
+      child.on('exit', () => done(connectSigninUrl(text)));
+      child.on('error', (e) => {
+        text += `\n${e.message}`;
+        done(null);
+      });
+    });
+    if (url) {
+      return {
+        ok: true,
+        message: 'Open the link and sign in with your Raspberry Pi ID — the vehicle then shows up in your Connect dashboard, with a shell one click away.',
+        signinUrl: url,
+      };
+    }
+    child.kill();
+    const said = redactSecrets(text.trim()).slice(0, 400);
+    return { ok: false, message: `rpi-connect signin gave no link${said ? `: ${said}` : ' within 20 s'}.`, fix: 'Does the vehicle have internet? Connect signs in through connect.raspberrypi.com.' };
+  }
+
+  /** apt-get update, then the package that fits the image. Minutes, with internet. */
+  private async connectInstall(): Promise<DeviceAccessResult> {
+    const before = await this.connectPackage();
+    if (before.variant) return { ok: true, message: `${before.variant}${before.version ? ` ${before.version}` : ''} is already installed.` };
+    const desktop = (await shArgsAny('systemctl', ['get-default'])).out.trim() === 'graphical.target';
+    const variant = connectVariantFor(desktop);
+    const env = { ...C_LOCALE, DEBIAN_FRONTEND: 'noninteractive' };
+    const update = this.asRoot(APT_UPDATE_ARGS);
+    const upd = await shSlow(update.file, update.args, { cwd: '/', timeoutMs: 3 * 60_000, env });
+    if (!upd.ok) {
+      const f = explainAptFailure(upd.out);
+      return { ok: false, message: `Could not install ${variant} — ${f.cause}.`, fix: f.fix, output: lastLines(upd.out) };
+    }
+    const install = this.asRoot(connectInstallArgs(variant));
+    const r = await shSlow(install.file, install.args, { cwd: '/', timeoutMs: 10 * 60_000, env });
+    const after = await this.connectPackage();
+    if (r.ok && after.variant) {
+      return {
+        ok: true,
+        message: `${after.variant}${after.version ? ` ${after.version}` : ''} installed. Switch it on and sign in under Device access.`,
+        output: lastLines(r.out),
+      };
+    }
+    const f = explainAptFailure(r.out);
+    return { ok: false, message: `Could not install ${variant} — ${f.cause}.`, fix: f.fix, output: lastLines(r.out) };
   }
 
   async linkSignal() {

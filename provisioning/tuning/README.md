@@ -30,7 +30,7 @@ dioptre numbers above 0 are a usable scale, not a calibrated distance — 10 is 
 near end of the stroke.
 
 `install.sh` copies it to `/var/lib/yonderrc/tuning/imx519-af.json`. Point a camera at it
-in **Setup › Cameras › Tuning file** and pick a focus mode. Verified on a Pi 4B
+in **Vehicle setup › Camera › Tuning file** and pick a focus mode. Verified on a Pi 4B
 (Bookworm, kernel 6.12) with an Arducam 16 MP IMX519: without the file
 `--autofocus-mode` is refused, with it both `auto` and `manual`/`--lens-position` work.
 

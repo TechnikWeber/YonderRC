@@ -39,7 +39,7 @@ export function controlHold(
 
 /** What the operator is told while frames are held. */
 export function controlHoldMessage(hold: ControlHold): string | null {
-  if (hold === 'hidden') return 'The control app is in the background — nothing is sent, the vehicle is in failsafe.';
+  if (hold === 'hidden') return 'The ground app is in the background — nothing is sent, the vehicle is in failsafe.';
   if (hold === 'no-controller') return 'Controller lost — nothing is sent, the vehicle is in failsafe until it is back.';
   return null;
 }

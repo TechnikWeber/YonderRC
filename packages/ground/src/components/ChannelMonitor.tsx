@@ -6,6 +6,7 @@ import {
   type Profile,
 } from '@yonderrc/protocol';
 import { throttleChannelsOf } from '../lib/templates';
+import { outputLabel } from '../lib/channelName';
 
 /** Position of the fill for a value within THIS channel's own endpoint range. */
 function fillGeometry(us: number, min: number, max: number): { left: number; width: number } {
@@ -36,18 +37,26 @@ export function ChannelMonitor({
   failsafe,
   profile,
   armed,
+  outputs,
 }: {
   channels: number[];
   failsafe: boolean;
   profile: Profile;
   armed: boolean;
+  /**
+   * What each channel is wired to on the connected vehicle (welcome.outputs) — the
+   * board's own pin, so a servo can be plugged in from this list. Undefined while not
+   * connected, or on a simulated vehicle.
+   */
+  outputs?: string[];
 }) {
   const labels = labelsFor(profile);
   const throttleSet = new Set(throttleChannelsOf(profile));
+  const wired = !!outputs;
   return (
     <section className={`panel monitor${failsafe ? ' failsafe' : ''}`}>
       <div className="mon-head">
-        <span className="eyebrow">Channel output · <span className="nocaps">µs</span></span>
+        <span className="eyebrow">Channel output · <span className="nocaps">µs</span>{wired && <> · <span className="nocaps">pin</span></>}</span>
         {failsafe && <span className="fs-tag">FAILSAFE</span>}
       </div>
       {Array.from({ length: CHANNEL_COUNT }, (_, i) => {
@@ -56,11 +65,17 @@ export function ChannelMonitor({
         const { left, width } = fillGeometry(us, min, max);
         const label = labels[i];
         const heldSafe = !armed && !failsafe && throttleSet.has(i);
+        const pin = wired ? outputLabel(outputs?.[i]) : null;
         return (
-          <div className={`chan${heldSafe ? ' safe' : ''}`} key={i}>
+          <div className={`chan${heldSafe ? ' safe' : ''}${wired ? ' wired' : ''}`} key={i}>
             <span className={`name${label ? ' bound' : ''}`}>
               {String(i + 1).padStart(2, '0')} {label ?? '—'}
             </span>
+            {wired && (
+              <span className="pin" title={pin ? `CH${String(i + 1).padStart(2, '0')} is ${pin} on the vehicle` : 'Not wired on this vehicle'}>
+                {pin ?? '—'}
+              </span>
+            )}
             <div className="track">
               <div className="center" />
               <div className="fill" style={{ left: `${left}%`, width: `${width}%` }} />

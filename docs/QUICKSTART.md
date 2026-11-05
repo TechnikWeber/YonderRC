@@ -3,7 +3,7 @@
 From an empty SD card to a vehicle you can drive from a browser — written for people
 who have never used Linux. Plan about an hour; most of it is waiting.
 
-At the end you have: a Raspberry Pi running YonderRC, its setup page open in your
+At the end you have: a Raspberry Pi running YonderRC, its Vehicle setup page open in your
 browser, and — if you wired them before installing — the servo board and the camera
 already in use.
 
@@ -17,7 +17,7 @@ already in use.
 | Part | Where | What you do |
 |---|---|---|
 | **Vehicle** | a Raspberry Pi in the model | install YonderRC on it — this guide |
-| **Ground station** | any browser (PC, phone, tablet) | nothing to install — the vehicle serves it at `http://yonderrc.local:8080/` |
+| **Ground station** — the ground app | any browser (PC, phone, tablet) | nothing to install — the vehicle serves it at `http://yonderrc.local:8080/` |
 | Desktop app (optional) | Windows / Linux | download from the release, see the [README](../README.md#desktop-app) — only if you want native controller support |
 
 In the repository, `provisioning/` is everything that only concerns the Pi (installer,
@@ -36,7 +36,7 @@ services, hotspot). You never run anything from it on your PC.
 **Do this first.** The installer looks at the I²C bus and the camera port once: a
 PCA9685 it finds becomes the output driver, a camera module replaces the test pattern.
 Whatever is not connected then stays simulated — that is fine, it can be set later in
-the setup page, but "plug in, install, drive" only works in this order.
+the Vehicle setup, but "plug in, install, drive" only works in this order.
 
 1. **Power off** the Pi while wiring.
 2. Wire the boards as in [`HARDWARE.md` §2](HARDWARE.md#2-wiring): SDA → pin 3,
@@ -55,7 +55,7 @@ the setup page, but "plug in, install, drive" only works in this order.
    Without a current sensor, the PCA9685 can stay on `0x40`.
 4. **Camera:** ribbon cable into the **CAM** port (not DISPLAY), contacts facing the
    HDMI side. The official Pi cameras are detected automatically. Others (Arducam
-   IMX519, 64MP …) need their overlay selected after the install: Setup › Camera ›
+   IMX519, 64MP …) need their overlay selected after the install: Vehicle setup › Camera ›
    *CSI camera module*, reboot, then run the installer once more.
 
 ## 3. Write the SD card (Raspberry Pi Imager)
@@ -94,7 +94,7 @@ from the PC: the SD card shows one drive, `bootfs`. Put two files on it:
   or the *Git Bash* that comes with Git for Windows).
 
 WiFi cannot be set this way any more since Raspberry Pi OS Bookworm (`wpa_supplicant.conf`
-is no longer read) — use the cable for the first start, then **Setup › Network › WiFi**
+is no longer read) — use the cable for the first start, then **Vehicle setup › Network › WiFi**
 in the browser. (Trixie images read their settings from the files `user-data` and
 `network-config` on the same drive — see
 [Raspberry Pi's note on cloud-init](https://www.raspberrypi.com/news/cloud-init-on-raspberry-pi-os/).)
@@ -157,7 +157,7 @@ curl -fsSL https://raw.githubusercontent.com/TechnikWeber/YonderRC/main/provisio
   `Output driver: PCA9685 at 0x41 → driver "pca9685"` and
   `Camera: CSI module imx708 → camera "cam"`. "staying on sim" means nothing was found
   — check wiring and addresses (step 2).
-- It ends with **`== Done ==`** and the addresses of the setup page.
+- It ends with **`== Done ==`** and the addresses of the Vehicle setup and the ground app.
 - Connection dropped half-way? Log in again and run the same line once more — it picks up
   where it is.
 
@@ -185,18 +185,23 @@ For a Pi without internet, or your own modified copy.
 > Windows line endings on the way (a copy edited or checked out on Windows). Fix on the
 > Pi: `sed -i 's/\r$//' ~/YonderRC-main/provisioning/*.sh` — then run the installer again.
 
-## 7. Open the setup page
+## 7. Open the Vehicle setup
 
 In a browser on the PC or phone (same network):
 
-- **Setup page:** `http://yonderrc.local:8080/setup`
-- **Control app:** `http://yonderrc.local:8080/`
+- **Vehicle setup:** `http://yonderrc.local:8080/setup` — the vehicle's own settings
+  (network, output driver, sensors, camera), stored on the vehicle.
+- **Ground app:** `http://yonderrc.local:8080/` — where you drive. Its **Ground setup**
+  holds models, controls and safety, stored in that browser.
+
+Two setups on purpose: the Vehicle setup works without any app (from the hotspot, on a
+new Pi), and every phone or PC you drive with keeps its own models and controls.
 
 On **Overview**, check the first lines:
 
 - **Output driver** — `pca9685` means the servo board is in use. `sim — nothing is wired to
   a servo` means the simulator. Red text means a driver that failed to start; the line
-  says why. Fix it under **Sensors & outputs**: *Detect hardware*, the *Install* button of
+  says why. Fix it under **Core setup**: *Detect hardware*, *Add-ons › Install* for
   the native module, *Restart vehicle service*.
 - **Cameras** — a camera of type `rpicam` is the camera module; type `sim` is the test
   pattern.
@@ -205,16 +210,20 @@ Then, before the vehicle leaves the bench: a **password for the setup hotspot**
 (Network › WiFi) and, on networks you do not fully trust, an **API secret**
 (Network › Security).
 
+A shell on the Pi later on, without SSH: **Device access** — Raspberry Pi Connect opens
+one in the browser, from anywhere (experimental). The same tab lists the `ssh` command
+for every address the vehicle has.
+
 > **No WiFi in reach?** The Pi then opens its own hotspot **`YonderRC-setup`** — join it
 > with the phone and open `http://192.168.4.1:8080/setup`.
 
 ## 8. The first drive (wheels up!)
 
-1. Open the control app `http://yonderrc.local:8080/` and press **Connect**.
-2. **Setup** (top right) › pick a model or create one (*+ New…*), choose the **input
+1. Open the ground app `http://yonderrc.local:8080/` and press **Connect**.
+2. **Ground setup** (top right) › pick a model or create one (*+ New…*), choose the **input
    method**: keyboard, gamepad or touch.
 3. **Game controller:** plug it in or pair it via Bluetooth, then **press one of its
-   buttons** — browsers only show a controller after that. *Setup › Controls › Game
+   buttons** — browsers only show a controller after that. *Ground setup › Controls › Game
    controller* lists every device and which one is used; pick yours if the automatic
    choice is wrong. PS4/PS5 pairing is explained right there. An RC transmitter or
    another controller marked *own layout*: press **Set up** next to it once.
@@ -223,7 +232,7 @@ Then, before the vehicle leaves the bench: a **password for the setup hotspot**
 
 ## 9. Updating later
 
-**Setup › Overview › Software update**: *Check for updates*, then *Update & restart*.
+**Vehicle setup › Overview › Software update**: *Check for updates*, then *Update & restart*.
 When it says the installer itself changed, run it once more over SSH:
 
 ```bash
@@ -232,8 +241,8 @@ sudo bash /opt/yonderrc/provisioning/install.sh
 
 ## 10. When something does not work
 
-Make a **diagnostics file** right after it happened — *Setup › Diagnostics* in the
-control app (or *Overview › Problem report* on the setup page) — and attach it to a
+Make a **diagnostics file** right after it happened — *Ground setup › Diagnostics* in the
+ground app (or *Overview › Problem report* in the Vehicle setup) — and attach it to a
 GitHub issue. What is in it, how to send it, and the usual causes of a vehicle that
 flickers into failsafe or a controller that does nothing:
 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).

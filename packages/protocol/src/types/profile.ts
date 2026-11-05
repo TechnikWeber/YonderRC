@@ -125,19 +125,23 @@ export interface Profile {
 }
 
 /**
- * Throttle limiter: three named steps the operator switches between while
- * driving, in percent of full travel. It scales the command **around the
- * channel's rest position**, so a centre-detent throttle is capped forwards and
- * backwards while a min-detent one keeps its idle and is only capped upwards.
+ * Throttle limiter: steps the operator switches between while driving, in percent
+ * of full travel. It scales the command **around the channel's rest position**, so a
+ * centre-detent throttle is capped forwards and backwards while a min-detent one
+ * keeps its idle and is only capped upwards.
+ *
+ * Two to five steps per model (v1.73; three named Low/Mid/High before). New models
+ * get 20/40/60/80/100 — see `ground/src/lib/throttleLimit.ts`, which also heals the
+ * shapes older versions stored.
  *
  * It is a ground-side comfort/training limit — it never touches the endpoints,
  * the failsafe value, the disarmed value or the pre-arm check.
  */
 export interface ThrottleLimit {
-  /** Percent per step, in order Low / Mid / High. */
-  steps: [number, number, number];
-  /** Which step is active (0..2). */
-  step: 0 | 1 | 2;
+  /** Percent per step, in the order the buttons show them. 2–5 entries. */
+  steps: number[];
+  /** Index of the active step. */
+  step: number;
 }
 
 /** Transmitter mode 1–4 (which stick carries throttle vs elevator, etc.). */

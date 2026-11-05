@@ -2,6 +2,7 @@ import { CHANNEL_COUNT, CHANNEL_NEUTRAL_US, neutralChannels } from '@yonderrc/pr
 import type { Profile } from '@yonderrc/protocol';
 import { buildProfile, disarmedThrottleUs, plainShaping, repairAxisBindings, throttleChannelsOf, withResolvedThrottle } from './templates';
 import { followerUs, isFollower, leaderOf } from './follow';
+import { withHealedLimit } from './throttleLimit';
 
 /** Where the models are stored; exported for the one-time layout move (padLayout.ts). */
 export const PROFILES_KEY = 'yonderrc.profiles.v3';
@@ -24,8 +25,9 @@ export function loadProfiles(): Profile[] {
       if (Array.isArray(parsed) && parsed.length && parsed[0].vehicleType) {
         // Heal models written by older versions: an axis whose source/element no
         // longer matches the input method would be invisible and undrivable, and
-        // a stale throttle list would misdirect the disarm/failsafe values.
-        const healed = parsed.map((p) => withResolvedThrottle(repairAxisBindings(p)));
+        // a stale throttle list would misdirect the disarm/failsafe values. The
+        // untouched three-step speed limit of v1.72 and before becomes the five steps.
+        const healed = parsed.map((p) => withHealedLimit(withResolvedThrottle(repairAxisBindings(p))));
         if (healed.some((p, i) => p !== parsed[i])) saveProfiles(healed);
         return healed;
       }

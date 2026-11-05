@@ -6,7 +6,7 @@
 #
 # Writes ONE text file into the home directory of the user who ran it and prints where.
 # Passwords, PINs, keys, the API secret and GPS positions are masked. When the vehicle
-# service is running, its own diagnostics report (the same as Setup > Problem report) is
+# service is running, its own diagnostics report (the same as Vehicle setup > Overview > Problem report) is
 # included as well. How to send the file: docs/TROUBLESHOOTING.md.
 set -uo pipefail
 

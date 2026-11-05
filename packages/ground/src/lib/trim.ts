@@ -3,7 +3,7 @@ import { funcFromLabel } from './templates';
 
 /**
  * Live trims — nudging a proportional channel's neutral while you drive, instead
- * of stopping and editing `trimUs` in Setup. Same idea as the trim buttons on a
+ * of stopping and editing `trimUs` in Ground setup. Same idea as the trim buttons on a
  * transmitter: the car pulls left, you tap right a few times.
  *
  * The value lands in the channel's `shaping.trimUs`, which is where trim already

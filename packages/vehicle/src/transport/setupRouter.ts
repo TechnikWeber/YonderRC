@@ -11,7 +11,7 @@ import type { GpsService } from '../sensors/GpsService.js';
 import type { TrafficService } from '../system/TrafficService.js';
 import type { VehicleCore } from '../core/VehicleCore.js';
 import { CHANNEL_MIN_US, CHANNEL_MAX_US, CHANNEL_NEUTRAL_US, clampWatchdogMs } from '@yonderrc/protocol';
-import type { CameraCfg, TelemetryConfig, GpsConfig } from '@yonderrc/protocol';
+import type { CameraCfg, TelemetryConfig, GpsConfig, HostLoad } from '@yonderrc/protocol';
 import { safeStreamName } from '../video/cameraManager.js';
 import { CSI_MODULES, moduleById, reconcileCameras } from '../system/bootConfig.js';
 import { secretOk, readSecretFromReq, originAllowed, originOf, secFetchSiteOf } from './auth.js';
@@ -43,6 +43,8 @@ import { looksLikeOvpn, normaliseOvpn, ovpnRefusal, sanitiseOvpn } from '../syst
 import { isCountryCode } from '../system/wifi.js';
 import { isIpv4 } from '../system/hilink.js';
 import { isGitBranch, isGitSource, UPDATE_SOURCE_DEFAULT } from '../system/update.js';
+import type { KeeperSnapshot } from '../system/remoteKeeper.js';
+import { isDeviceAccessAction, DEVICE_ACCESS_ACTIONS } from '../system/deviceAccess.js';
 
 const SETUP_HTML = fileURLToPath(new URL('../setup/setup.html', import.meta.url));
 
@@ -53,6 +55,10 @@ export interface SetupContext {
   gps: GpsService;
   core: VehicleCore;
   traffic: TrafficService;
+  /** CPU and memory of this computer, as last sampled on the 5 s status poll. */
+  hostLoad?: () => HostLoad;
+  /** What RemoteKeeper did last (OpenVPN reconnects after a network change, …). */
+  remoteKeeper?: () => KeeperSnapshot;
   applyCameras: (cams: CameraCfg[]) => Promise<void>;
   /** Re-read config.hilink: point the reader at the stick and (re)start its proxy. */
   applyHilink?: () => void;
@@ -163,7 +169,8 @@ export async function handleSetup(
    */
   if (url === '/api/health' && method === 'GET') {
     const health = await ctx.system.health();
-    json(res, 200, { health, message: explainHealth(health) });
+    // CPU and memory ride along from the status poll's sampler — no extra reading.
+    json(res, 200, { health, host: ctx.hostLoad?.() ?? null, message: explainHealth(health) });
     return true;
   }
 
@@ -291,6 +298,9 @@ export async function handleSetup(
       // start, with the reason next to it. Saved ≠ running ≠ working.
       driverRunning: ctx.core.driverKind,
       driverError: c.driverError,
+      // The running driver's own name for each channel's output (`PCA 0` for CH01), or
+      // null on the sim — so the servo test and the throttle line can name the pin.
+      outputs: ctx.core.outputLabels() ?? null,
       // A stored pre-v1.70.0 default is not shown as if someone had chosen it.
       watchdogTimeoutMs: resolveWatchdogMs(persisted.watchdogTimeoutMs, ctx.core.watchdogMs, persisted.watchdogChosen),
       throttleChannels: persisted.throttleChannels ?? c.throttleChannels,
@@ -436,7 +446,30 @@ export async function handleSetup(
       openvpn: ovpnCheck
         ? { removed: ovpnCheck.removed, externalFiles: ovpnCheck.externalFiles, needsAuth: ovpnCheck.needsAuth, problems: ovpnCheck.problems }
         : null,
+      // Reconnects after a network change, WireGuard endpoints looked up again.
+      keeper: ctx.remoteKeeper?.() ?? null,
     });
+    return true;
+  }
+
+  // --- device access: Raspberry Pi Connect, SSH, VNC (system/deviceAccess.ts) ---
+  // The status never carries a sign-in link: it answers without the API secret, and
+  // whoever completes that link owns a shell on this vehicle.
+  if (url === '/api/device-access' && method === 'GET') {
+    json(res, 200, { ...(await ctx.system.deviceAccess()), open: !ctx.config.apiSecret });
+    return true;
+  }
+  if (url === '/api/device-access' && method === 'POST') {
+    const { action } = (await readBody(req)) as { action?: unknown };
+    if (!isDeviceAccessAction(action)) {
+      json(res, 400, { ok: false, message: `Unknown action. Known: ${DEVICE_ACCESS_ACTIONS.join(', ')}.` });
+      return true;
+    }
+    // apt takes the CPU and the card for minutes — not while the vehicle is driving.
+    if (action === 'connect-install' && refusedWhileArmed(ctx, res, 'installing software')) return true;
+    const r = await ctx.system.deviceAccessAction(action);
+    console.log(`[device] ${action}: ${r.ok ? 'ok' : 'failed'} — ${r.message}`);
+    json(res, r.ok ? 200 : 500, r);
     return true;
   }
   if (url === '/api/remote' && method === 'POST') {
@@ -819,7 +852,7 @@ export async function handleSetup(
       await new Promise((r) => setTimeout(r, 450));
     }
     ctx.core.clearTestOverride();
-    json(res, 200, { ok: true, message: `Swept channel ${ch + 1} (min→max→center).` });
+    json(res, 200, { ok: true, message: `Swept ${ctx.core.channelText(ch)} (min→max→center).` });
     return true;
   }
 

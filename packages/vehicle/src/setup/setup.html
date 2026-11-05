@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>YonderRC — Setup</title>
+    <title>YonderRC — Vehicle setup</title>
     <script>
       // Before the first paint, or the page flashes dark on its way to light. The
       // vehicle is still the authority — this is only last session's answer, and
@@ -29,7 +29,7 @@
       /*
        * The light palette — the default since v1.65.0. Two looks, and no "follow the
        * system" third: the vehicle owns the
-       * choice (Setup › Design, persisted as `theme`) and pushes the same one to the
+       * choice (Vehicle setup › Design, persisted as `theme`) and pushes the same one to the
        * ground app, so the two halves of the product can never disagree. Nothing else on
        * this page names a colour — that is why a whole second look is eleven lines.
        * Contrast against the light panel: text 16:1, muted 6.2:1, the four state colours
@@ -82,7 +82,15 @@
       .btn:disabled { opacity: .55; cursor: not-allowed; }
       .btn[data-busy] { cursor: progress; }
       .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-      .head a { text-decoration: none; }
+      .head a { text-decoration: none; white-space: nowrap; }
+      /* A link styled as a button (Open connect.raspberrypi.com ↗) is a button, not underlined text. */
+      a.btn { display: inline-block; text-decoration: none; }
+      /* What this page is, under its name — there is a second setup in the ground app. */
+      .lede { margin: -4px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+      .lede b { color: var(--text); font-weight: 600; }
+      /* A command to type elsewhere: readonly, selected on a tap (the clipboard API needs
+         HTTPS, and this page is plain HTTP on the vehicle). */
+      .cmd { cursor: text; margin-bottom: 6px; }
       /* Same shape as the ground app's masthead version, so the two read as one product. */
       .ver { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 400; }
       /* Thin divider between groups of status rows (LTE / remote access / WiFi). */
@@ -191,17 +199,23 @@
   <body>
     <div class="wrap">
       <div class="head">
-        <h1>YonderRC · Setup <span class="ver" id="ver">…</span></h1>
+        <h1>YonderRC · Vehicle setup <span class="ver" id="ver">…</span></h1>
         <!-- Shown only when the ground app is actually built on this vehicle. The
              ground app has the mirror image of this link, so you can get back. -->
-        <a class="btn tiny" id="ground-link" href="/" style="display:none">Control ↗</a>
+        <a class="btn tiny" id="ground-link" href="/" style="display:none" title="The ground app on this vehicle: Drive, and Ground setup for models, controls and safety">Ground app ↗</a>
       </div>
+      <!-- Two setup pages, one product (v1.73): a tester asked why there are two. This
+           one is the vehicle's, stored on the vehicle and reachable without any app; the
+           ground app's Ground setup is the operator's, stored in that browser. -->
+      <p class="lede">Settings stored <b>on this vehicle</b>: its network, remote access, output driver, sensors, camera and GPS. Models, controls and safety belong to whoever drives — they are in the <b>ground app</b> under <b>Ground setup</b>, stored in that browser.</p>
 
       <nav class="tabs" role="tablist">
         <button class="tab" role="tab" data-for="overview" onclick="showTab('overview')">Overview</button>
+        <button class="tab" role="tab" data-for="core" onclick="showTab('core')">Core setup</button>
         <button class="tab" role="tab" data-for="network" onclick="showTab('network')">Network</button>
         <button class="tab" role="tab" data-for="remote" onclick="showTab('remote')">Remote access</button>
-        <button class="tab" role="tab" data-for="sensors" onclick="showTab('sensors')">Sensors &amp; outputs</button>
+        <button class="tab" role="tab" data-for="device" onclick="showTab('device')">Device access</button>
+        <button class="tab" role="tab" data-for="sensors" onclick="showTab('sensors')">Sensors &amp; telemetry</button>
         <button class="tab" role="tab" data-for="camera" onclick="showTab('camera')">Camera</button>
         <button class="tab" role="tab" data-for="gps" onclick="showTab('gps')">GPS</button>
         <button class="tab" role="tab" data-for="design" onclick="showTab('design')">Design</button>
@@ -217,8 +231,8 @@
       <section class="panel" data-tab="overview">
         <div class="eyebrow">Hardware test — WHEELS UP / PROPS OFF</div>
         <div class="grid2">
-          <label>Channel to sweep<input id="testCh" type="number" placeholder="1" /></label>
-          <div style="display:flex;align-items:flex-end"><button class="btn" onclick="run(this, () => sweepChannel())">Sweep (min→max→center)</button></div>
+          <label>Channel to sweep<select id="testCh"></select></label>
+          <div style="display:flex;align-items:flex-end;margin-bottom:10px"><button class="btn" onclick="run(this, () => sweepChannel())">Sweep (min→max→center)</button></div>
         </div>
         <div class="btns">
           <button class="btn" onclick="run(this, () => readSensors())">Read sensors now</button>
@@ -249,7 +263,7 @@
         </details>
         <details class="hint">
           <summary>What “Update &amp; restart” does</summary>
-          <p>Does what an SSH session would: <span class="mono">git pull --ff-only</span>, installs changed dependencies, rebuilds the control app when it changed, then restarts the vehicle service — so you can update from a field with nothing but this page. The vehicle needs <b>internet</b> for it. If a step fails, it stops there and keeps running the version you have.</p>
+          <p>Does what an SSH session would: <span class="mono">git pull --ff-only</span>, installs changed dependencies, rebuilds the ground app when it changed, then restarts the vehicle service — so you can update from a field with nothing but this page. The vehicle needs <b>internet</b> for it. If a step fails, it stops there and keeps running the version you have.</p>
         </details>
         <div class="msg" id="upd-msg"></div>
         <div class="log" id="upd-log" style="display:none"></div>
@@ -264,7 +278,7 @@
         <details class="hint">
           <summary>What is in it — and what is not</summary>
           <p>The vehicle's version and settings, its log, link statistics (gaps between control frames, every failsafe episode), WiFi and power state, temperature and load, and what the operating system says about its network and services. <b>Passwords, PINs, VPN keys, the API secret and the GPS position are removed.</b> Network names (SSIDs) and local IP addresses stay in — they are what a network problem is found with. Download it right after the problem happened: the link statistics count since the service started.</p>
-          <p>The ground app's own report (<b>Setup › Diagnostics</b> in the control app) contains this file plus the ground's side — browser, controller, how regularly it sent. Prefer that one when the problem is in driving. How to send it: <span class="mono">docs/TROUBLESHOOTING.md</span> in the repository.</p>
+          <p>The ground app's own report (<b>Ground setup › Diagnostics</b> in the ground app) contains this file plus the ground's side — browser, controller, how regularly it sent. Prefer that one when the problem is in driving. How to send it: <span class="mono">docs/TROUBLESHOOTING.md</span> in the repository.</p>
         </details>
         <div class="msg" id="diag-msg"></div>
       </section>
@@ -530,7 +544,11 @@
           </div>
         </div>
         <div id="remote-openvpn" class="remote-fields" style="display:none">
-          <p class="msg" style="color:var(--idle)">⚠ <b>Experimental.</b> Built from the OpenVPN documentation and tested in the simulator, but not yet on a vehicle. Try it on the bench first and please report what works and what does not (GitHub issue, ideally with the diagnostics file from the Overview tab).</p>
+          <p class="msg" style="color:var(--idle)">⚠ <b>Experimental.</b> The first report from a vehicle: it connects, but came back slowly after the vehicle changed networks. Since v1.73 the vehicle reconnects the tunnel the moment its uplink changes (home WiFi → phone hotspot) and never waits more than 15 s between attempts. Please report what works and what does not (GitHub issue, ideally with the diagnostics file from the Overview tab).</p>
+          <details class="hint">
+            <summary>A vehicle that changes networks a lot: WireGuard or Tailscale roam without reconnecting</summary>
+            <p>OpenVPN has to notice that its path is gone and build a new connection — the vehicle now tells it to at once, but a few seconds of gap remain. WireGuard (with Keepalive 25) and Tailscale simply carry on from the new address, which makes them the better fit for a vehicle that hops between WiFi and LTE. A WireGuard server behind a DynDNS name is looked up again when its handshake goes stale.</p>
+          </details>
           <label>Client profile (.ovpn — certificates inline)
             <input id="ovpnFile" type="file" accept=".ovpn,.conf,text/plain" onchange="loadOvpnFile(event)" />
           </label>
@@ -551,10 +569,15 @@
           <button class="btn" onclick="run(this, () => remoteDown())">Stop</button>
         </div>
         <div class="msg" id="ts-msg"></div>
+        <div class="msg" id="remote-keeper" style="display:none"></div>
       </section>
 
-      <section class="panel" data-tab="sensors">
+      <!-- Core setup (v1.73): the first things to set on a new vehicle — what it is called,
+           what drives the servos, and the software that needs. They used to share a tab
+           with the sensors, which a tester (rightly) found was not where to look. -->
+      <section class="panel" data-tab="core">
         <div class="eyebrow">Vehicle configuration</div>
+        <p class="msg" style="margin-top:0">Start here on a new vehicle: a name, the <b>output driver</b> that moves the servos, and below, the add-ons that driver needs.</p>
         <label>Name<input id="vehicleName" /></label>
         <div class="grid2">
           <label>Output driver
@@ -580,14 +603,10 @@
           <summary>The PCA9685 and every INA2xx ship on 0x40 — move the PCA to 0x41</summary>
           <p>The PCA9685 ships on <b>0x40</b> — and so does every INA2xx current sensor, which can only live at the address you give it under Telemetry. With both on the bus, move the PCA: close solder bridge <b>A0</b> on its board (→ 0x41) and enter that here. It answers on <b>0x70</b> as well; that is its all-call address, not a second chip. Changing this needs a restart of the vehicle service.</p>
         </details>
-        <div class="eyebrow2" style="margin-top:12px">Native driver modules</div>
-        <div id="hwdeps"><div class="msg">Reading module status…</div></div>
-        <details class="hint">
-          <summary>Installed from here — the vehicle needs internet, and it takes a minute</summary>
-          <p>Installed here, not in a terminal. They are compiled on the Pi, so the vehicle needs <b>internet</b> for it (WiFi or LTE — its own hotspot has no uplink), and it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>. Note that installing one <b>builds all three</b>: they are optional dependencies of the same package and npm always reifies them together — harmless, nothing uses a module unless you select that driver.</p>
+        <details class="hint" id="pca-pins" style="display:none">
+          <summary>Wiring: CH01 is the pin marked 0 — the board counts 0–15, the app 1–16</summary>
+          <p>The app counts channels from 1, like every RC transmitter, SBUS and ArduPilot; the PCA9685 board prints its outputs <b>0–15</b>. So <b>CH01 → pin 0</b>, CH02 → pin 1 … <b>CH16 → pin 15</b>. Wherever a channel is shown — here, in the servo test on the Overview and in the ground app's channel list and monitor — the pin is named next to it: <span class="mono">CH03 · PCA 2</span>.</p>
         </details>
-        <div class="msg" id="hw-msg"></div>
-        <div class="log" id="hw-out" style="display:none"></div>
 
         <div class="grid2">
           <label>Throttle channels<input id="throttleChannels" placeholder="3" /></label>
@@ -602,6 +621,67 @@
         </div>
         <div class="msg" id="cfg-msg"></div>
         <div id="detect-out"></div>
+      </section>
+
+      <section class="panel" data-tab="core">
+        <div class="eyebrow">Add-ons</div>
+        <p class="msg" style="margin-top:0">Software this vehicle installs from here — no terminal needed. It needs <b>internet</b> for it (WiFi or LTE; its own hotspot has no uplink).</p>
+        <div class="eyebrow2">Driver modules</div>
+        <div id="hwdeps"><div class="msg">Reading module status…</div></div>
+        <details class="hint">
+          <summary>Compiled on the Pi — it takes a minute</summary>
+          <p>Installed here, not in a terminal. They are compiled on the Pi, so it takes a minute. Without the module the matching driver/sensor falls back to <b>sim</b>. Note that installing one <b>builds all three</b>: they are optional dependencies of the same package and npm always reifies them together — harmless, nothing uses a module unless you select that driver.</p>
+        </details>
+        <div class="msg" id="hw-msg"></div>
+        <div class="log" id="hw-out" style="display:none"></div>
+
+        <div class="eyebrow2" style="margin-top:12px">Device access</div>
+        <div id="addon-device"><div class="msg">Reading…</div></div>
+        <details class="hint">
+          <summary>Raspberry Pi Connect: a shell in the browser, from anywhere</summary>
+          <p>Raspberry Pi's own remote access. Raspberry Pi OS Lite usually has it already (switched off); this installs it where it is missing — the shell-only <span class="mono">rpi-connect-lite</span>, or on an image with a desktop the full <span class="mono">rpi-connect</span> with screen sharing. Switch it on and sign in under <span class="jump" onclick="showTab('device')">Device access ›</span>. SSH needs nothing installed; VNC comes with a desktop image.</p>
+        </details>
+        <div class="msg" id="addon-msg"></div>
+        <div class="log" id="addon-out" style="display:none"></div>
+      </section>
+
+      <!-- Device access (v1.73): onto the vehicle's computer itself. Deliberately not a
+           terminal in this page — that would be a root shell over plain HTTP through a
+           hotspot that is open by default. See system/deviceAccess.ts. -->
+      <section class="panel" data-tab="device">
+        <div class="eyebrow">Raspberry Pi Connect — a shell in your browser, from anywhere</div>
+        <p class="msg" style="margin-top:0">Raspberry Pi's own remote access: open <b>connect.raspberrypi.com</b>, sign in, and this vehicle's shell is one click away — over LTE and behind carrier NAT too, without a VPN. On an image with a desktop it shares the screen as well.</p>
+        <p class="msg" style="color:var(--idle)">⚠ <b>Experimental.</b> Built from Raspberry Pi's documentation, not yet tried on a vehicle — please report what works and what does not (GitHub issue, ideally with the diagnostics file from the Overview).</p>
+        <div id="connect-status"><div class="msg">Reading…</div></div>
+        <div class="btns" id="connect-btns"></div>
+        <div class="msg" id="connect-msg"></div>
+        <div class="msg" id="connect-open" style="display:none;color:var(--idle)"></div>
+        <details class="hint">
+          <summary>What it needs, and who can read it</summary>
+          <p>Internet on the vehicle and a free <b>Raspberry Pi ID</b>. The connection is end-to-end encrypted (WebRTC); where no direct path exists, Raspberry Pi's relay servers carry it without being able to read it. It runs as the Pi's login user and, once switched on, starts at every boot; the shell it opens is that user's — with sudo, as over SSH.</p>
+        </details>
+        <details class="raw hint" id="connect-raw-box" style="display:none">
+          <summary>What rpi-connect says</summary>
+          <pre class="log" id="connect-raw"></pre>
+        </details>
+      </section>
+
+      <section class="panel" data-tab="device">
+        <div class="eyebrow">SSH — a terminal on the local network, the hotspot or the VPN</div>
+        <div id="ssh-status"><div class="msg">Reading…</div></div>
+        <div class="btns" id="ssh-btns"></div>
+        <div class="msg" id="ssh-msg"></div>
+        <details class="hint">
+          <summary>Where to type it</summary>
+          <p>Windows 10/11: PowerShell or Windows Terminal. macOS and Linux: Terminal. A phone: any SSH app. The password is the one set in Raspberry Pi Imager. Through the VPN (Remote access) take the address of the tunnel from the list — the commands above are every way this vehicle can be reached right now.</p>
+        </details>
+      </section>
+
+      <section class="panel" data-tab="device">
+        <div class="eyebrow">Screen (VNC)</div>
+        <div id="vnc-status"><div class="msg">Reading…</div></div>
+        <div class="btns" id="vnc-btns"></div>
+        <div class="msg" id="vnc-msg"></div>
       </section>
 
       <section class="panel" data-tab="sensors">
@@ -636,6 +716,10 @@
         <details class="hint">
           <summary>Optional — shown in the OSD below voltage and current</summary>
           <p>Optional. Shown in the OSD below voltage/current; each value can be hidden per ground device under FPV › ⚙ › <i>Sensor values</i>. Give short labels (<code>T1</code>, <code>Motor</code>, <code>ESC</code>) — they are only shown once a kind has more than one channel.</p>
+        </details>
+        <details class="hint">
+          <summary>The Pi itself: CPU and memory are always reported, its temperature is a channel</summary>
+          <p>The vehicle's own <b>CPU and memory</b> load go out with every status, nothing to set up: switch them into the OSD in the ground app under FPV › ⚙ › <i>OSD fields › Vehicle computer</i>, and the blackbox log records them. They are also on the Overview. The Pi's <b>temperature</b> is a temperature channel above — sensor <i>Raspberry Pi (SoC, no wiring)</i>.</p>
         </details>
         <div class="grid2">
           <label>Battery capacity (mAh)<input id="capacity" type="number" placeholder="e.g. 2200" /></label>
@@ -765,13 +849,13 @@
           </span>
         </button>
         <details class="hint">
-          <summary>One choice for both halves — this page and the control app</summary>
-          <p>The vehicle stores it and pushes it to every connected ground app, so switching here repaints the control app within a second; one that is not connected picks it up the next time it is. <b>Light is the default</b> — the daylight bench, a phone in the sun. Dark is the one to fly with at night, where the page sits next to live video. The video overlay (OSD) stays light-on-dark in both, because it is drawn over the picture and has to stay readable there.</p>
+          <summary>One choice for both halves — this page and the ground app</summary>
+          <p>The vehicle stores it and pushes it to every connected ground app, so switching here repaints the ground app within a second; one that is not connected picks it up the next time it is. <b>Light is the default</b> — the daylight bench, a phone in the sun. Dark is the one to fly with at night, where the page sits next to live video. The video overlay (OSD) stays light-on-dark in both, because it is drawn over the picture and has to stay readable there.</p>
         </details>
         <div class="msg" id="theme-msg"></div>
       </section>
 
-      <div class="foot">YonderRC setup · configure headless, then connect from the ground app</div>
+      <div class="foot">YonderRC vehicle setup · configure headless, then drive from the ground app</div>
     </div>
 
     <script>
@@ -792,9 +876,14 @@
        * reload after a restart, so "open the GPS page" is a URL and not a click path.
        * Unknown or empty hash → Overview.
        */
-      const TABS = ['overview', 'network', 'remote', 'sensors', 'camera', 'gps', 'design'];
+      const TABS = ['overview', 'core', 'network', 'remote', 'device', 'sensors', 'camera', 'gps', 'design'];
+      // Old links keep working: the vehicle configuration moved from Sensors to Core setup.
+      const TAB_ALIASES = { outputs: 'core' };
       function showTab(id, opts) {
-        const tab = TABS.includes(id) ? id : 'overview';
+        const want = TAB_ALIASES[id] || id;
+        const tab = TABS.includes(want) ? want : 'overview';
+        // Device access reads a handful of system states — on demand, not on the 3 s poll.
+        if ((tab === 'device' || tab === 'core') && typeof loadDevice === 'function') void loadDevice();
         document.querySelectorAll('.panel[data-tab]').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
         document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.for === tab)));
         // replaceState, not location.hash: setting the hash scrolls the page to whatever
@@ -833,7 +922,7 @@
           $('theme-msg').textContent = r.message || 'Not saved — the vehicle refused it.';
           return;
         }
-        $('theme-msg').textContent = 'Saved. A connected control app repaints within a second.';
+        $('theme-msg').textContent = 'Saved. A connected ground app repaints within a second.';
       }
 
       async function run(btn, fn) {
@@ -899,7 +988,7 @@
 
       function renderStatus(s) {
         renderGroundLink(!!s.groundApp);
-        // Mirrors "ground · vX.Y.Z" in the control app — same place, same shape, so
+        // Mirrors "ground · vX.Y.Z" in the ground app — same place, same shape, so
         // it is obvious at a glance whether the two halves are on the same version.
         $('ver').textContent = s.version ? `vehicle · v${s.version}` : '';
         // A HiLink stick fills the LTE row but cannot be steered from this panel.
@@ -1012,7 +1101,7 @@
           const fell = !cfgNow.restartPending && run !== cfgNow.driver;
           html += devRow('Output driver',
             fell ? `${esc(run)} — ${esc(cfgNow.driver)} failed to start` : run === 'sim' ? 'sim — nothing is wired to a servo' : esc(run),
-            fell ? 'bad' : run === 'sim' ? 'warn' : 'go', 'sensors');
+            fell ? 'bad' : run === 'sim' ? 'warn' : 'go', 'core');
         }
         html += devRow('Sensors', tel.text, tel.cls, 'sensors');
         const live = telLiveNow;
@@ -1056,6 +1145,15 @@
           html += devRow('· counted by', u.source === 'hilink' ? 'the LTE stick' : 'the vehicle');
         }
         html += sep;
+        // How to get onto the box itself — read once when the page loads (and whenever
+        // the Device access tab opens), not on this 3 s poll.
+        if (devNow) {
+          const c = devNow.connect || {};
+          const connect = !c.installed ? 'not installed' : !c.running ? 'off' : c.signedIn ? 'signed in' : 'on, not signed in';
+          html += devRow('Device access', `SSH ${devNow.ssh && devNow.ssh.active ? 'on' : 'off'} · Connect ${connect}`,
+            (devNow.ssh && devNow.ssh.active) || c.signedIn ? 'go' : 'warn', 'device');
+          html += sep;
+        }
         html += devRow('Cameras', cams.length ? `${cams.length} configured` : 'none', cams.length ? 'go' : 'warn', 'camera');
         cams.forEach((c) => {
           html += devRow(`· ${esc(c.name)}`, `${esc(c.type)}${c.width ? ` · ${c.width}×${c.height}${c.fps ? '@' + c.fps : ''}` : ''}`);
@@ -1072,18 +1170,24 @@
        * update button, and only when there is something wrong with it.
        */
       let healthNow = null;
-      function renderHealth(h, message) {
+      function renderHealth(h, message, host) {
         healthNow = h;
         if (!h) { $('status-health').innerHTML = ''; return; }
         const row = (k, v, cls) => `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
         const temp = h.cpuTempC == null ? null
           : row('temperature', `${h.cpuTempC} °C`, h.cpuTempC >= 75 ? 'bad' : h.cpuTempC >= 65 ? 'warn' : '');
+        // CPU and memory (v1.73): the share of the last few seconds, next to the load
+        // average that says the same over a minute. The OSD can show both while driving.
+        const cpu = !host || host.cpuPercent == null ? null
+          : row('CPU', `${host.cpuPercent} %`, host.cpuPercent >= 85 ? 'warn' : '');
+        const mem = !host || host.memPercent == null ? null
+          : row('memory', `${host.memUsedMb} of ${host.memTotalMb} MB · ${host.memPercent} %`, host.memPercent >= 90 ? 'warn' : '');
         const load = h.load1 == null ? null : row('load', h.load1.toFixed(2), h.load1 >= 3 ? 'warn' : '');
         const up = h.uptimeS == null ? null : row('uptime', fmtUptime(h.uptimeS));
         const disk = h.diskFreeMb == null ? null
           : row('card free', `${h.diskFreeMb >= 1024 ? (h.diskFreeMb / 1024).toFixed(1) + ' GB' : h.diskFreeMb + ' MB'}${h.diskUsedPercent != null ? ` · ${h.diskUsedPercent}% used` : ''}`,
               h.diskFreeMb < 500 ? 'bad' : '');
-        const rows = [temp, load, up, disk].filter(Boolean).join('');
+        const rows = [temp, cpu, mem, load, up, disk].filter(Boolean).join('');
         $('status-health').innerHTML = rows
           ? '<div class="sep"></div>' + rows + (message ? `<div class="msg" style="color:var(--idle)">${esc(message)}</div>` : '')
           : '';
@@ -1115,7 +1219,7 @@
       async function refreshHealth() {
         try {
           const r = await getJSON('/api/health');
-          renderHealth(r.health, r.message);
+          renderHealth(r.health, r.message, r.host);
         } catch {}
       }
 
@@ -1133,6 +1237,25 @@
         const isPca = $('driver').value === 'pca9685';
         $('pca-row').style.display = isPca ? 'grid' : 'none';
         $('pca-msg').style.display = isPca ? 'block' : 'none';
+        $('pca-pins').style.display = isPca ? 'block' : 'none';
+      }
+      /**
+       * A channel as this vehicle names it: `CH03 · PCA 2` while a driver that knows its
+       * wiring is running, plain `CH03` on the sim. The app counts from 1; the PCA9685
+       * board from 0 — naming the pin is what spares the operator the translation.
+       */
+      let outputsNow = null;
+      function chName(n) {
+        const name = 'CH' + String(n + 1).padStart(2, '0');
+        const out = outputsNow && outputsNow[n];
+        return out ? `${name} · ${out}` : name;
+      }
+      /** The servo test's channel list, re-labelled whenever the running driver is known. */
+      function renderTestChannels() {
+        const sel = $('testCh');
+        const keep = sel.value;
+        sel.innerHTML = Array.from({ length: 16 }, (_, n) => `<option value="${n}">${esc(chName(n))}</option>`).join('');
+        if (keep !== '') sel.value = keep;
       }
       /** "0x41" and a bare "41" both mean 0x41; empty → undefined (keep the default). */
       function hexAddr(val) {
@@ -1165,15 +1288,17 @@
         $('driver-warn').innerHTML = fellBack
           ? `⚠ Driver <b class="mono">${esc(c.driver)}</b> did not start — the vehicle is running <b class="mono">${esc(c.driverRunning)}</b>, so no servo moves.` +
             (c.driverError ? `<br><span class="mono">${esc(c.driverError)}</span>` : '') +
-            '<br>Usually the native module is missing (install it below) or the I²C address is wrong (<b>Detect hardware</b>). Then restart the vehicle service.'
+            '<br>Usually the native module is missing (install it under <b>Add-ons</b> below) or the I²C address is wrong (<b>Detect hardware</b>). Then restart the vehicle service.'
           : '';
         cfgNow = c;
+        outputsNow = Array.isArray(c.outputs) ? c.outputs : null;
+        renderTestChannels();
         renderDevices();
         $('watchdogTimeoutMs').value = c.watchdogTimeoutMs ?? 500;
         $('throttleChannels').value = (c.throttleChannels || []).map((n) => n + 1).join(', ');
         // Once a ground app has connected, its model decides — and the vehicle keeps
         // those values across restarts. Say so, or the field looks like it is in charge.
-        const thrActive = (c.throttleChannelsActive || []).map((n) => 'CH ' + (n + 1)).join(', ') || 'none';
+        const thrActive = (c.throttleChannelsActive || []).map((n) => chName(n)).join(', ') || 'none';
         $('throttle-active').textContent = c.throttleFromGround
           ? `In use: ${thrActive} — from the ground app's model, kept across restarts. The field above is only the starting value for a vehicle no ground app has connected to yet.`
           : '';
@@ -1408,7 +1533,7 @@
           // A detected I²C device is useless while the module that talks to it is
           // missing — say so here, where the operator is actually looking.
           const needI2c = (d.i2c || []).length && !hwDepInstalled('i2c-bus')
-            ? '<div class="msg" style="color:var(--idle)">⚠ <b class="mono">i2c-bus</b> is not installed — the <b>pca9685</b> driver and the INA/ADS sensors would fall back to <b>sim</b>. Install it under “Native driver modules” above.</div>'
+            ? '<div class="msg" style="color:var(--idle)">⚠ <b class="mono">i2c-bus</b> is not installed — the <b>pca9685</b> driver and the INA/ADS sensors would fall back to <b>sim</b>. Install it under <b>Add-ons</b> below.</div>'
             : '';
           // ✓ = read back from the chip's own ID register; the rest is a guess from
           // the address, which cannot separate a PCA9685 from an INA2xx on 0x40.
@@ -1788,7 +1913,22 @@
           renderWgSource();
           renderRemote();
           showRemoteStatus(r.status);
+          renderKeeper(r.keeper, c.kind);
         } catch {}
+      }
+      /**
+       * What the vehicle did to keep the tunnel on its current network: the reconnects
+       * after an uplink change (OpenVPN), the DynDNS lookups (WireGuard). Silent until
+       * there is something to say.
+       */
+      function renderKeeper(k, kind) {
+        const el = $('remote-keeper');
+        const show = !!(k && (kind === 'openvpn' || kind === 'wireguard') && (k.lastEvent || k.reconnects));
+        el.style.display = show ? '' : 'none';
+        if (!show) return;
+        const when = k.lastReconnectAt ? new Date(k.lastReconnectAt).toLocaleTimeString() : null;
+        el.innerHTML = `${k.reconnects ? `Reconnected after a network change <b>${k.reconnects}×</b> since the service started${when ? ` — last at ${esc(when)}` : ''}.` : ''}` +
+          (k.lastEvent ? `<br><span class="mono">${esc(k.lastEvent)}</span>` : '');
       }
       function showRemoteStatus(s) {
         if (!s) return;
@@ -1827,6 +1967,166 @@
         setTimeout(loadRemote, 500);
         refresh();
       }
+      // ---- Device access: Raspberry Pi Connect, SSH, VNC (v1.73) ----
+      /**
+       * Read on demand — when the page opens and whenever Core setup or Device access is
+       * shown — because the answer costs a handful of system calls. The status never
+       * carries a Connect sign-in link; that only comes back in the answer to the Sign in
+       * button, and only Raspberry Pi's own verify page is ever made a link.
+       */
+      let devNow = null;
+      let devLoading = null;
+      async function loadDevice() {
+        if (devLoading) return devLoading;
+        devLoading = (async () => {
+          try { devNow = await getJSON('/api/device-access'); } catch { devNow = null; }
+          renderDevice(devNow);
+          renderDeviceAddon(devNow);
+          renderDevices();
+        })();
+        try { await devLoading; } finally { devLoading = null; }
+      }
+      function connectLink(url) {
+        const u = String(url || '');
+        return /^https:\/\/connect\.raspberrypi\.com\/verify\/[A-Za-z0-9-]+$/.test(u)
+          ? `<a href="${esc(u)}" target="_blank" rel="noreferrer">${esc(u)}</a>`
+          : esc(u);
+      }
+      const PERM = { allowed: 'allowed', disallowed: 'not allowed', unavailable: 'unavailable' };
+      function renderDevice(d) {
+        const row = (k, v, cls) => `<div class="row"><span class="k">${esc(k)}</span><span class="v ${cls || ''}">${esc(v)}</span></div>`;
+        if (!d) {
+          for (const id of ['connect-status', 'ssh-status', 'vnc-status']) $(id).innerHTML = '<div class="msg">Could not read the device state (is the vehicle service running?).</div>';
+          return;
+        }
+        // ---- Connect ----
+        const c = d.connect || {};
+        let html = row('installed', c.installed ? `${c.installed}${c.version ? ' · ' + c.version : ''}` : 'no', c.installed ? 'go' : 'warn');
+        if (c.installed) {
+          html += row('service', c.running ? 'on' : 'off', c.running ? 'go' : 'warn');
+          if (c.running) {
+            html += row('signed in', c.signedIn ? 'yes' : 'no', c.signedIn ? 'go' : 'warn');
+            if (c.shell) html += row('remote shell', PERM[c.shell] || c.shell, c.shell === 'allowed' ? 'go' : 'warn');
+            if (c.screen) html += row('screen sharing', PERM[c.screen] || c.screen, c.screen === 'allowed' ? 'go' : '');
+          }
+          if (c.linger != null) html += row('starts at boot', c.linger ? 'yes' : 'no', c.linger ? '' : 'warn');
+        }
+        if (d.user) html += row('runs as', d.user);
+        if (c.note) html += `<div class="msg">${esc(c.note)}</div>`;
+        if (!c.installed) html += '<div class="msg">Install it under <span class="jump" onclick="showTab(\'core\')">Core setup › Add-ons</span>.</div>';
+        $('connect-status').innerHTML = html;
+        const btn = (label, action, primary) =>
+          `<button class="btn${primary ? ' primary' : ''}" onclick="run(this, () => deviceAction('${action}', 'connect-msg'))">${label}</button>`;
+        const btns = [];
+        if (d.canManage && c.installed) {
+          if (!c.running) btns.push(btn('Turn on', 'connect-on', true));
+          if (!c.signedIn) btns.push(btn('Sign in', 'connect-signin', c.running));
+          if (c.signedIn) btns.push('<a class="btn primary" href="https://connect.raspberrypi.com/" target="_blank" rel="noreferrer">Open connect.raspberrypi.com ↗</a>');
+          if (c.running && c.shell && c.shell !== 'allowed') btns.push(btn('Allow remote shell', 'connect-shell-on'));
+          if (c.signedIn) btns.push(btn('Sign out', 'connect-signout'));
+          if (c.running) btns.push(btn('Turn off', 'connect-off'));
+        }
+        $('connect-btns').innerHTML = btns.join('');
+        // Anyone who can reach this page can press Sign in — and own a shell on the vehicle.
+        $('connect-open').style.display = d.open ? '' : 'none';
+        $('connect-open').innerHTML = d.open
+          ? '⚠ No API secret is set, so anyone who can open this page can sign this vehicle in — to <b>their</b> account, with a shell on it. On a network you share, set one first (<span class="jump" onclick="showTab(\'network\')">Network › Security</span>), and a hotspot password.'
+          : '';
+        $('connect-raw-box').style.display = c.raw ? '' : 'none';
+        $('connect-raw').textContent = c.raw || '';
+
+        // ---- SSH ----
+        const s = d.ssh || {};
+        const cmds = s.commands || [];
+        let sh = row('SSH', s.active == null ? 'unknown' : s.active ? 'on' : 'off', s.active ? 'go' : 'warn');
+        if (s.enabled === false && s.active) sh += row('· at boot', 'off — on only until the next reboot', 'warn');
+        if (s.active !== false) {
+          sh += `<div class="eyebrow2">Type one of these${d.user ? '' : ' (with your user name)'}</div>`;
+          sh += cmds.map((cmd) => `<input class="cmd mono" readonly value="${esc(cmd)}" onclick="this.select()" />`).join('');
+        }
+        $('ssh-status').innerHTML = sh;
+        $('ssh-btns').innerHTML = s.active === false || s.enabled === false
+          ? `<button class="btn primary" onclick="run(this, () => deviceAction('ssh-on', 'ssh-msg'))">Switch SSH on</button>`
+          : '';
+
+        // ---- VNC ----
+        const v = d.vnc || {};
+        let vh = '';
+        let vb = '';
+        if (v.desktop === false) {
+          vh = '<div class="msg">This vehicle runs <b>Raspberry Pi OS Lite</b> — it has no desktop, so there is no screen to share. That is the image to have on a vehicle: a desktop costs RAM, CPU and boot time the control loop needs. For a terminal, use Raspberry Pi Connect or SSH above.</div>';
+        } else if (v.desktop) {
+          vh = row('VNC', v.enabled == null ? 'unknown' : v.enabled ? 'on' : 'off', v.enabled ? 'go' : 'warn') +
+            `<div class="msg">On the local network or through the VPN: a VNC viewer — <b>TigerVNC</b> (what Raspberry Pi suggests) or <b>RealVNC Viewer</b>; if one does not connect, try the other — pointed at <span class="mono">${esc(d.hostname || 'this vehicle')}.local:5900</span>, logging in as ${d.user ? `<b>${esc(d.user)}</b>` : 'the Pi user'}. From anywhere, Raspberry Pi Connect above shares the same screen in the browser.</div>`;
+          vb = v.enabled
+            ? `<button class="btn" onclick="run(this, () => deviceAction('vnc-off', 'vnc-msg'))">Switch VNC off</button>`
+            : `<button class="btn primary" onclick="run(this, () => deviceAction('vnc-on', 'vnc-msg'))">Switch VNC on</button>`;
+        } else {
+          vh = '<div class="msg">Could not tell whether this image has a desktop.</div>';
+        }
+        $('vnc-status').innerHTML = vh;
+        $('vnc-btns').innerHTML = vb;
+      }
+      /** Core setup › Add-ons: the Connect row, with Install where it is missing. */
+      function renderDeviceAddon(d) {
+        const el = $('addon-device');
+        if (!d) { el.innerHTML = '<div class="msg">Could not read the device state.</div>'; return; }
+        const c = d.connect || {};
+        el.innerHTML = `
+          <div class="hw-row">
+            <span><b class="mono">Raspberry Pi Connect</b><br><span style="color:var(--muted)">a shell in the browser from anywhere${d.vnc && d.vnc.desktop ? ', and the screen' : ''} — <span class="jump" onclick="showTab('device')">Device access ›</span></span></span>
+            <span class="hw-right">
+              <span class="v ${c.installed ? 'go' : 'warn'}">${c.installed ? 'installed' + (c.version ? ' · ' + esc(c.version) : '') : 'not installed'}</span>
+              ${c.installed ? '' : `<button class="btn tiny" onclick="run(this, () => installConnect())">Install</button>`}
+            </span>
+          </div>
+          <div class="hw-row">
+            <span><b class="mono">SSH</b><br><span style="color:var(--muted)">part of Raspberry Pi OS — nothing to install</span></span>
+            <span class="hw-right"><span class="v ${d.ssh && d.ssh.active ? 'go' : 'warn'}">${d.ssh && d.ssh.active ? 'on' : 'off'}</span></span>
+          </div>`;
+      }
+      async function installConnect() {
+        $('addon-out').style.display = 'none';
+        $('addon-msg').innerHTML = 'Installing Raspberry Pi Connect… apt fetches it from the Raspberry Pi OS package source, which takes a minute or two. Keep this page open.';
+        let r;
+        try {
+          r = await post('/api/device-access', { action: 'connect-install' });
+        } catch (e) {
+          r = { ok: false, message: 'Lost contact with the vehicle during the install.', fix: 'Reload this page — the status shows whether it made it through.', output: String(e) };
+        }
+        $('addon-msg').innerHTML = r.ok
+          ? `<b style="color:var(--go)">✓ ${esc(r.message)}</b> <span class="jump" onclick="showTab('device')">Device access ›</span>`
+          : `<b style="color:var(--bad)">${esc(r.message || 'Install failed.')}</b>${r.fix ? '<br>' + fmtFix(r.fix) : ''}`;
+        if (r.output) { $('addon-out').textContent = r.output; $('addon-out').style.display = 'block'; }
+        await loadDevice();
+      }
+      /**
+       * One button press. After Sign in the vehicle signs itself in the moment somebody
+       * completes the link, so the status is re-read for a while to show it.
+       */
+      let devPoll = null;
+      async function deviceAction(action, msgId) {
+        $(msgId).textContent = action === 'connect-signin' ? 'Asking Raspberry Pi Connect for a sign-in link…' : 'Working…';
+        let r;
+        try { r = await post('/api/device-access', { action }); } catch (e) { r = { ok: false, message: String(e) }; }
+        let html = r.ok ? esc(r.message || 'Done.') : `<b style="color:var(--bad)">${esc(r.message || 'Failed.')}</b>`;
+        if (r.fix) html += '<br>' + fmtFix(r.fix);
+        if (r.signinUrl) html += `<br>Sign in: ${connectLink(r.signinUrl)}`;
+        $(msgId).innerHTML = html;
+        await loadDevice();
+        if (r.signinUrl) {
+          clearInterval(devPoll);
+          let left = 30; // 2 minutes at 4 s
+          devPoll = setInterval(async () => {
+            await loadDevice();
+            if (--left <= 0 || (devNow && devNow.connect && devNow.connect.signedIn)) {
+              clearInterval(devPoll);
+              if (devNow && devNow.connect && devNow.connect.signedIn) $(msgId).innerHTML = '<b style="color:var(--go)">✓ Signed in.</b> Open connect.raspberrypi.com — this vehicle is in your device list.';
+            }
+          }, 4000);
+        }
+      }
+
       // ---- Problem report ----
       /**
        * Download the vehicle's diagnostics file and show what it found right here — the
@@ -2343,7 +2643,7 @@
       }
 
       async function applyUpdate() {
-        $('upd-msg').innerHTML = 'Updating… this can take a few minutes if dependencies or the control app changed. <b>Keep this page open.</b>';
+        $('upd-msg').innerHTML = 'Updating… this can take a few minutes if dependencies or the ground app changed. <b>Keep this page open.</b>';
         let r;
         try {
           r = await post('/api/update', {});
@@ -2378,8 +2678,9 @@
 
       // ---- Hardware test ----
       async function sweepChannel() {
-        const ch = Number($('testCh').value) - 1;
-        if (!(ch >= 0)) { $('test-msg').textContent = 'Enter a channel number.'; return; }
+        // The list's values are the channel index (CH01 = 0), whatever the label says.
+        const ch = Number($('testCh').value);
+        if (!(ch >= 0)) { $('test-msg').textContent = 'Pick a channel.'; return; }
         $('test-msg').textContent = 'Sweeping… watch the servo.';
         const r = await post('/api/test/channel', { channel: ch });
         $('test-msg').textContent = r.message || (r.ok ? 'Done.' : 'Failed.');
@@ -2427,9 +2728,11 @@
         }
       }
 
+      renderTestChannels();
       showTab(location.hash.slice(1), { keepScroll: true });
       loadConfig();
       loadHwDeps();
+      loadDevice();
       loadLte();
       loadHilink();
       loadCameras();

@@ -17,7 +17,15 @@ import {
   throttleRestStick,
   withResolvedThrottle,
 } from '../lib/templates';
-import { clampPercent, limitOf, LIMIT_MAX_PCT, LIMIT_MIN_PCT, LIMIT_STEP_LABELS } from '../lib/throttleLimit';
+import {
+  limitOf,
+  withStepCount,
+  withStepPercent,
+  LIMIT_MAX_PCT,
+  LIMIT_MAX_STEPS,
+  LIMIT_MIN_PCT,
+  LIMIT_MIN_STEPS,
+} from '../lib/throttleLimit';
 import { CurveEditor } from './CurveEditor';
 import type { InputManager } from '../lib/input/inputManager';
 import { learnedElement, newlyPressed, padLabel } from '../lib/input/gamepadPick';
@@ -72,11 +80,7 @@ export function BindingEditor({
   // …plus the followers of a throttle channel: they stop with it.
   const throttleOutputs = new Set(throttleOutputsOf(profile));
   const limit = limitOf(profile);
-  const setLimitStepPct = (i: 0 | 1 | 2, pct: number) => {
-    const steps = [...limit.steps] as [number, number, number];
-    steps[i] = clampPercent(pct);
-    onChange({ ...profile, throttleLimit: { ...limit, steps } });
-  };
+  const setLimitStepPct = (i: number, pct: number) => onChange(withStepPercent(profile, i, pct));
 
   const patchShaping = (id: string, patch: Partial<ChannelBinding['shaping']>) =>
     onChange({
@@ -452,22 +456,40 @@ export function BindingEditor({
                 <>
                   <div className="eyebrow2" style={{ marginTop: 10 }}>Speed limit steps (%)</div>
                   <div className="shaping-grid">
-                    {([0, 1, 2] as const).map((i) => (
+                    {limit.steps.map((pct, i) => (
                       <label key={i}>
-                        {LIMIT_STEP_LABELS[i]}
+                        Step {i + 1}
                         <input
                           type="number"
                           min={LIMIT_MIN_PCT}
                           max={LIMIT_MAX_PCT}
-                          value={limit.steps[i]}
+                          value={pct}
                           onChange={(e) => setLimitStepPct(i, Number(e.target.value))}
                         />
                       </label>
                     ))}
                   </div>
+                  <div className="limit-steps-btns">
+                    <button
+                      className="btn tiny"
+                      disabled={locked || limit.steps.length >= LIMIT_MAX_STEPS}
+                      onClick={() => onChange(withStepCount(profile, 1))}
+                    >
+                      + step
+                    </button>
+                    <button
+                      className="btn tiny"
+                      disabled={locked || limit.steps.length <= LIMIT_MIN_STEPS}
+                      onClick={() => onChange(withStepCount(profile, -1))}
+                      title="Removes the last step"
+                    >
+                      − step
+                    </button>
+                  </div>
                   <Hint summary="How the steps scale around the rest position">
-                    Switched while driving with the three buttons under the sticks (and a bindable
-                    controller button). The command is scaled around this channel's rest position:
+                    Switched while driving with the buttons under the sticks, {LIMIT_MIN_STEPS} to {LIMIT_MAX_STEPS} of
+                    them — and on a controller with <b>Speed limit −/+</b> (or one button that cycles), bound in
+                    Ground setup › Controls › Action bindings. The command is scaled around this channel's rest position:
                     it rests at <b>{throttleRestStick(b, profile.vehicleType) === 0 ? 'centre' : 'idle'}</b>, so{' '}
                     {throttleRestStick(b, profile.vehicleType) === 0
                       ? 'forward and reverse are capped equally'

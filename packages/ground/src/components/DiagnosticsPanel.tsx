@@ -10,7 +10,7 @@ export interface DiagnosticsExport {
 }
 
 /**
- * Setup › Diagnostics: one button that writes a file with both halves — this app and
+ * Ground setup › Diagnostics: one button that writes a file with both halves — this app and
  * the vehicle — and shows right away what the report noticed, because the finding is
  * often the answer and nobody has to send anything anywhere.
  */

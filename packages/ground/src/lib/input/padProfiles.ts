@@ -10,7 +10,7 @@ import { movedAxis, newlyPressed } from './gamepadPick';
  * the same in the browser and the desktop app. A controller that reports that layout
  * itself needs nothing here. One that reports its OWN — an RC transmitter in joystick mode,
  * a pad the browser does not know — gets a LAYOUT: where the standard controls are on it,
- * learned once in Setup › Controls › Game controller. Every model then works with it,
+ * learned once in Ground setup › Controls › Game controller. Every model then works with it,
  * instead of each model being learned again for each controller. Anything the layout does
  * not mention keeps the controller's own number, which is exactly how it was read before.
  *

@@ -14,6 +14,8 @@ export type ActionId =
   | 'record-toggle'
   | 'snapshot'
   | 'throttle-limit'
+  | 'limit-down'
+  | 'limit-up'
   | 'trim-dec'
   | 'trim-inc';
 
@@ -29,7 +31,9 @@ export const ACTION_LABELS: Record<ActionId, string> = {
   'next-camera': 'Next camera',
   'record-toggle': 'Record start/stop',
   snapshot: 'Snapshot',
-  'throttle-limit': 'Speed limit — next step',
+  'throttle-limit': 'Speed limit — next step (wraps)',
+  'limit-down': 'Speed limit − (one step slower)',
+  'limit-up': 'Speed limit + (one step faster)',
   'trim-dec': 'Trim − (left / down)',
   'trim-inc': 'Trim + (right / up)',
 };
@@ -56,6 +60,10 @@ const DEFAULTS: ActionBindings = {
   'record-toggle': { key: 'r', button: null },
   snapshot: { key: 't', button: null },
   'throttle-limit': { key: null, button: null },
+  // Five speed steps (v1.73) are four presses round on one cycling button; two
+  // buttons that stop at the ends are quicker and can never jump from 20 % to 100 %.
+  'limit-down': { key: null, button: null },
+  'limit-up': { key: null, button: null },
   // Unbound like the rest: the D-pad is where trims usually go, and where a model's
   // own switches may already be.
   'trim-dec': { key: null, button: null },

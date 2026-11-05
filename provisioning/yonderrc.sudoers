@@ -6,23 +6,33 @@
 #   and then this file is NOT needed — root already has these rights.
 #
 # WHAT IT ALLOWS (and why)
-#   mmcli        — unlock a PIN-locked SIM               (Setup › LTE)
-#   wg, wg-quick — bring the WireGuard tunnel up/down    (Setup › Remote access)
+#   mmcli        — unlock a PIN-locked SIM               (Vehicle setup › Network › LTE)
+#   wg, wg-quick — bring the WireGuard tunnel up/down, and look a DynDNS endpoint up
+#                  again when the handshake goes stale  (Vehicle setup › Remote access)
 #   install      — place the uploaded WireGuard .conf into /etc/wireguard, and the
 #                  OpenVPN profile + credentials into /etc/openvpn/client
-#   systemctl … openvpn-client@yonderrc — start/stop the OpenVPN tunnel
-#                  (experimental; exactly the three commands RealSystem runs)
-#   zerotier-cli — join/leave a ZeroTier network         (Setup › Remote access)
-#   reboot       — the "Reboot vehicle" button           (Setup › System)
-#   rfkill       — unblock the WiFi radio                (Setup › WiFi)
+#   systemctl … openvpn-client@yonderrc — start/stop the OpenVPN tunnel, and make it
+#                  reconnect at once after the vehicle changed networks
+#                  (experimental; exactly the four commands RealSystem runs)
+#   zerotier-cli — join/leave a ZeroTier network         (Vehicle setup › Remote access)
+#   reboot       — the "Reboot vehicle" button           (Vehicle setup › Overview)
+#   rfkill       — unblock the WiFi radio                (Vehicle setup › Network › WiFi)
 #   raspi-config — set the WiFi country, which is what unblocks it in the first
-#                  place on Raspberry Pi OS       (Setup › WiFi › Enable radio)
+#                  place on Raspberry Pi OS; switch VNC on/off and read its state
+#                  (Vehicle setup › Network › WiFi, › Device access)
 #   systemctl    — "Restart service now" after installing a native driver
-#                  module (Setup › Vehicle configuration). The npm install
+#                  module (Vehicle setup › Core setup). The npm install
 #                  itself is NOT sudo: the service user must own /opt/yonderrc.
+#   systemctl enable --now ssh — switch SSH on            (Vehicle setup › Device access)
+#   apt-get      — install Raspberry Pi Connect, exactly those packages
+#                  (Vehicle setup › Core setup › Add-ons)
+#   loginctl enable-linger — let the login user's Raspberry Pi Connect service run
+#                  without a login. The Connect CLI itself runs as THAT user: with a
+#                  non-root service this works only when the service user IS the
+#                  login user (runuser is root-only).
 #   (NetworkManager/`nmcli` is NOT listed — grant it to the user via polkit or
-#    the `netdev` group instead of sudo. It is what Setup › WiFi uses to scan,
-#    join a network and (re)start the onboarding hotspot, and what LTE dials with.)
+#    the `netdev` group instead of sudo. It is what Vehicle setup › Network uses to
+#    scan, join a network and (re)start the onboarding hotspot, and what LTE dials with.)
 #
 # INSTALL (replace "yonderrc" with your actual service user)
 #   sudo cp provisioning/yonderrc.sudoers /etc/sudoers.d/yonderrc
@@ -49,6 +59,12 @@ Cmnd_Alias YONDERRC = \
     /usr/bin/systemctl restart yonderrc-vehicle.service, \
     /usr/bin/systemctl enable openvpn-client@yonderrc, \
     /usr/bin/systemctl restart --no-block openvpn-client@yonderrc, \
-    /usr/bin/systemctl disable --now openvpn-client@yonderrc
+    /usr/bin/systemctl disable --now openvpn-client@yonderrc, \
+    /usr/bin/systemctl kill -s SIGUSR1 openvpn-client@yonderrc, \
+    /usr/bin/systemctl enable --now ssh, \
+    /usr/bin/apt-get update, \
+    /usr/bin/apt-get install -y rpi-connect-lite, \
+    /usr/bin/apt-get install -y rpi-connect, \
+    /usr/bin/loginctl enable-linger *
 
 yonderrc ALL=(root) NOPASSWD: YONDERRC

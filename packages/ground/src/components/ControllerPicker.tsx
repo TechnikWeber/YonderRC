@@ -6,7 +6,7 @@ import { Hint } from './Hint';
 import { PadSetup } from './PadSetup';
 
 /**
- * Setup › Controls › Game controller: every device the browser reports, which one is
+ * Ground setup › Controls › Game controller: every device the browser reports, which one is
  * being read, and a way to pick another. Everything stays listed — a device the
  * heuristic doubts may still be the one you want, an RC transmitter in joystick mode
  * for instance — but only a likely controller is ever chosen automatically.

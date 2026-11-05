@@ -39,6 +39,12 @@ export interface LogRow {
   hdop?: number | null;
   speedMs?: number | null;
   courseDeg?: number | null;
+  /**
+   * The vehicle computer's CPU and memory in use, % (v1.73) — after the fixed columns
+   * that came before, so a script reading by position finds those where it did.
+   */
+  cpu?: number | null;
+  ram?: number | null;
   /** Every reported channel: column name → value. The union drives the header. */
   sensors?: Record<string, number | null>;
 }
@@ -47,7 +53,7 @@ export const LOG_CAP = 36000; // ~5 h at 2 Hz
 
 const FIXED_HEAD =
   't_ms,armed,failsafe,link,rtt_ms,bitrate_kbps,loss_pct,fps,video_latency_ms,volt,amp,mah,percent,' +
-  'lat,lon,alt_m,sats,hdop,speed_ms,course_deg';
+  'lat,lon,alt_m,sats,hdop,speed_ms,course_deg,vehicle_cpu_pct,vehicle_ram_pct';
 
 /** Labels are free text; a CSV header is not. Keep it ASCII and separator-safe. */
 function sanitize(label: string): string {
@@ -107,6 +113,7 @@ export function logToCsv(rows: LogRow[]): string {
       r.lat == null ? '' : r.lat.toFixed(7),
       r.lon == null ? '' : r.lon.toFixed(7),
       cell(r.altM), cell(r.sats), cell(r.hdop), cell(r.speedMs), cell(r.courseDeg),
+      cell(r.cpu), cell(r.ram),
       ...cols.map((c) => cell(r.sensors?.[c])),
     ].join(',');
   return [head, ...rows.map(line)].join('\n');

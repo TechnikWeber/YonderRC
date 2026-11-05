@@ -81,7 +81,7 @@ export function TrimPanel({
       </div>
       <p className="hint">
         {TRIM_STEP_US} µs per press, up to ±{TRIM_LIMIT_US} µs. Trim shifts the channel's neutral and is
-        saved with the model — it's the same value as <span className="mono">trim µs</span> in Setup › Channels.
+        saved with the model — it's the same value as <span className="mono">trim µs</span> in Ground setup › Channels.
       </p>
     </details>
   );

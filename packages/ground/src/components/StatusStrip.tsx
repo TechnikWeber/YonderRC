@@ -60,9 +60,9 @@ export function ConnectionBar({
             href={setupUrl}
             target="_blank"
             rel="noreferrer"
-            title="Open the vehicle's setup page (same host as the control link)"
+            title="The vehicle's own setup page — network, output driver, sensors, camera; stored on the vehicle (same host as the control link)"
           >
-            Setup ↗
+            Vehicle setup ↗
           </a>
         )}
       </div>
@@ -136,10 +136,10 @@ export function StatusStrip({
       <div className="stat">
         <div className="k">Input</div>
         {/* Which device: two controllers, or a headset, used to be indistinguishable here.
-            Setup › Controls › Game controller lists them all. */}
+            Ground setup › Controls › Game controller lists them all. */}
         <div
           className={`v ${gamepad ? 'good' : ''}`}
-          title={gamepad ? `${gamepad} — change it in Setup › Controls › Game controller` : 'No game controller in use — Setup › Controls › Game controller'}
+          title={gamepad ? `${gamepad} — change it in Ground setup › Controls › Game controller` : 'No game controller in use — Ground setup › Controls › Game controller'}
         >
           {gamepad ? `gamepad · ${gamepadKind}` : 'kbd / touch'}
         </div>

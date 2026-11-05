@@ -11,7 +11,7 @@ import { profileFailsafeUs, profileDisarmedUs } from '../packages/ground/src/lib
 import { BindingEngine, type InputSnapshot } from '../packages/ground/src/lib/input/bindingEngine';
 import { autoQualityStep, AUTO_DEFAULTS } from '../packages/ground/src/lib/autoQuality';
 import type { TelemetryConfig, CameraCfg } from '@yonderrc/protocol';
-import { readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -1327,7 +1327,8 @@ async function main() {
   const pushed2 = neutral();
   pushed2[2] = 2000;
   pushed2[0] = 2000; // steering must NOT be limited
-  const limited = TL.applyThrottleLimit(TL.withStep({ ...limCar, throttleLimit: { steps: [40, 70, 100], step: 0 } }, 0), pushed2);
+  // [40, 75, 100], not the pre-v1.73 default [40, 70, 100] — that one becomes the five steps.
+  const limited = TL.applyThrottleLimit(TL.withStep({ ...limCar, throttleLimit: { steps: [40, 75, 100], step: 0 } }, 0), pushed2);
   ok('limits the throttle channel', limited[2] === 1700, `=${limited[2]}`);
   ok('leaves other channels alone', limited[0] === 2000);
   ok('unlimited returns the same array', TL.applyThrottleLimit(limCar, pushed2) === pushed2);
@@ -1337,9 +1338,45 @@ async function main() {
   planePush[7] = 2000;
   const limPlane = TL.applyThrottleLimit(limMoved, planePush);
   ok('follows the moved throttle channel', limPlane[7] === 1500, `=${limPlane[7]}`);
-  ok('step cycling wraps', TL.nextStep(0) === 1 && TL.nextStep(1) === 2 && TL.nextStep(2) === 0);
+  const three = { steps: [30, 60, 100], step: 0 };
+  ok('step cycling wraps', TL.nextStep(three) === 1 && TL.nextStep({ ...three, step: 1 }) === 2 && TL.nextStep({ ...three, step: 2 }) === 0);
   ok('withStep keeps the steps', TL.withStep(limCar, 1).throttleLimit?.step === 1);
-  ok('garbage config falls back', TL.limitOf({ ...limCar, throttleLimit: { steps: [0, 999, Number.NaN] as [number, number, number], step: 9 as 0 } }).steps.join() === '10,100,100');
+  ok('garbage config falls back', TL.limitOf({ ...limCar, throttleLimit: { steps: [0, 999, Number.NaN], step: 9 } }).steps.join() === '10,100,100');
+
+  // ---- v1.73: five steps, 20/40/60/80/100 (a tester's wish) ----
+  ok('a new model has 20/40/60/80/100', TL.limitOf(limCar).steps.join() === '20,40,60,80,100' && TL.activePercent(limCar) === 100);
+  const v1 = (step: number) => ({ ...limCar, throttleLimit: { steps: [40, 70, 100], step } });
+  ok('the untouched old three become the five, at full speed when that was chosen', TL.limitOf(v1(2)).steps.length === 5 && TL.activePercent(v1(2)) === 100);
+  ok('40 % stays 40 %', TL.activePercent(v1(0)) === 40);
+  ok('70 % has no match and lands on the slower 60 %', TL.activePercent(v1(1)) === 60);
+  ok('edited three are kept as they are', TL.limitOf({ ...limCar, throttleLimit: { steps: [30, 70, 100], step: 1 } }).steps.join() === '30,70,100');
+  ok('more than five are cut, fewer than two are the default',
+    TL.limitOf({ ...limCar, throttleLimit: { steps: [10, 20, 30, 40, 50, 60], step: 5 } }).steps.length === 5 &&
+    TL.limitOf({ ...limCar, throttleLimit: { steps: [50], step: 0 } }).steps.length === 5);
+  ok('a step past the end means the last', TL.limitOf({ ...limCar, throttleLimit: { steps: [30, 60, 90], step: 7 } }).step === 2);
+  const lim5 = TL.limitOf(limCar);
+  ok('one cycling button wraps from 100 % to 20 %', TL.nextStep(lim5) === 0);
+  ok('Speed + stops at the top, Speed − at the bottom',
+    TL.stepToward(lim5, 1) === 4 && TL.stepToward({ ...lim5, step: 0 }, -1) === 0 && TL.stepToward(lim5, -1) === 3);
+  ok('withStep clamps', TL.withStep(limCar, 99).throttleLimit?.step === 4 && TL.withStep(limCar, -3).throttleLimit?.step === 0);
+  const fewer = TL.withStepCount(limCar, -1);
+  ok('removing a step takes the last one and keeps a valid active step', fewer.throttleLimit?.steps.join() === '20,40,60,80' && fewer.throttleLimit?.step === 3);
+  ok('never fewer than two', TL.withStepCount({ ...limCar, throttleLimit: { steps: [50, 100], step: 1 } }, -1).throttleLimit?.steps.length === 2);
+  ok('never more than five', TL.withStepCount(limCar, 1) === limCar);
+  ok('an added step goes half-way up', TL.withStepCount({ ...limCar, throttleLimit: { steps: [30, 60], step: 0 } }, 1).throttleLimit?.steps.join() === '30,60,80');
+  ok('a step percentage is clamped', TL.withStepPercent(limCar, 0, 5).throttleLimit?.steps[0] === 10);
+  ok('healing on load rewrites only the old default',
+    TL.withHealedLimit(v1(0)) !== v1(0) && TL.withHealedLimit(limCar) === limCar &&
+    (() => { const p = { ...limCar, throttleLimit: { steps: [30, 70, 100], step: 1 } }; return TL.withHealedLimit(p) === p; })());
+  ok('…and loadProfiles runs it', readFileSync('packages/ground/src/lib/profiles.ts', 'utf8').includes('withHealedLimit(withResolvedThrottle(repairAxisBindings(p)))'));
+  const pad = readFileSync('packages/ground/src/components/ControlPad.tsx', 'utf8');
+  ok('the drive screen has a button per step, named by its percentage', pad.includes('limit.steps.map((pct, i)') && pad.includes('{pct}%'));
+  const A73 = await import('../packages/ground/src/lib/actions');
+  ok('Speed −/+ can be bound and ship unbound',
+    A73.migrateActions(null)['limit-up'].button === null && A73.migrateActions(null)['limit-down'].key === null && !!A73.ACTION_LABELS['limit-up']);
+  const appSrc73 = readFileSync('packages/ground/src/App.tsx', 'utf8');
+  ok('…and step without wrapping', appSrc73.includes("'limit-up': () => updateProfile(withStep(activeRef.current, stepToward(limitOf(activeRef.current), 1)))"));
+  ok('…behind the same short hold as the cycling button', appSrc73.includes("'limit-down': buttonHoldMs, 'limit-up': buttonHoldMs"));
 
   // ---- pre-arm safety check ----
   const { preArmCheck, throttleSafeUs } = await import('../packages/ground/src/lib/safety');
@@ -1887,6 +1924,17 @@ async function main() {
     ok('the switcher knows exactly those tabs', inList.join(',') === buttons.join(','), `${inList} vs ${buttons}`);
     // The overview is what a fresh page shows; losing it would land nobody anywhere.
     ok('the overview carries the system status', /data-tab="overview"[\s\S]{0,200}id="status"/.test(html));
+    // v1.73, from a tester: the vehicle's configuration is the first thing to set and had
+    // no tab of its own ("Sensors & outputs" — channels are outputs too).
+    ok('Core setup comes right after the overview', buttons.slice(0, 2).join() === 'overview,core');
+    ok('…and holds the vehicle configuration and the add-ons',
+      /data-tab="core">\s*<div class="eyebrow">Vehicle configuration<\/div>/.test(html) && /data-tab="core">\s*<div class="eyebrow">Add-ons<\/div>/.test(html));
+    ok('the sensors tab is "Sensors & telemetry" now', html.includes('data-for="sensors" onclick="showTab(\'sensors\')">Sensors &amp; telemetry</button>') && !/Sensors &amp; outputs/.test(html));
+    ok('a Device access tab', buttons.includes('device') && /data-tab="device">\s*<div class="eyebrow">Raspberry Pi Connect/.test(html));
+    ok('the overview links the driver to Core setup', html.includes("fell ? 'bad' : run === 'sim' ? 'warn' : 'go', 'core');"));
+    // Two setups, one product: say which one this is.
+    ok('the page says it is the Vehicle setup', html.includes('<title>YonderRC — Vehicle setup</title>') && html.includes('YonderRC · Vehicle setup') && /class="lede"[^>]*>[\s\S]{0,400}Ground setup/.test(html));
+    ok('and the way back says where it leads', html.includes('>Ground app ↗</a>'));
 
     // ---- which charge counter is actually running ----
     // `chargeSource: 'auto'` states a wish, not an outcome: it degrades to Pi
@@ -2207,7 +2255,10 @@ async function main() {
   const { logToCsv } = await import('../packages/ground/src/lib/logger');
   const csv = logToCsv([{ t: 0, armed: 1, failsafe: 0, link: 'connected', rtt: 40, bitrate: 2500, loss: 0.5, fps: 30, vlat: 120, volt: 12.1, amp: 3.2, mah: 150, pct: 88 }]);
   ok('csv has header + row', csv.split('\n').length === 2 && csv.includes('t_ms,armed'));
-  ok('csv null renders empty', logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1] === '5,0,0,connected' + ','.repeat(16), logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1]);
+  ok('csv null renders empty', logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1] === '5,0,0,connected' + ','.repeat(18), logToCsv([{ t: 5, armed: 0, failsafe: 0, link: 'connected', rtt: null, bitrate: null, loss: null, fps: null, vlat: null, volt: null, amp: null, mah: null, pct: null }]).split('\n')[1]);
+  // v1.73: the vehicle computer's CPU and RAM, after the columns that came before.
+  const cpuCsv = logToCsv([{ t: 0, armed: 1, failsafe: 0, link: 'connected', rtt: 40, bitrate: 2500, loss: 0.5, fps: 30, vlat: 120, volt: 12.1, amp: 3.2, mah: 150, pct: 88, cpu: 37, ram: 52 }]).split('\n');
+  ok('csv carries the vehicle CPU and RAM after the GPS columns', cpuCsv[0].includes(',course_deg,vehicle_cpu_pct,vehicle_ram_pct') && cpuCsv[1].endsWith(',37,52'), cpuCsv.join(' | '));
 
   // Every telemetry channel gets its own column, named after its label.
   const { sensorSnapshot } = await import('../packages/ground/src/lib/logger');
@@ -3028,7 +3079,13 @@ async function main() {
     // The sudoers file must name exactly what RealSystem runs, or a non-root setup fails.
     const sudoers = readFileSync('provisioning/yonderrc.sudoers', 'utf8');
     ok('sudoers allows exactly the OpenVPN commands that are run',
-      [O.OVPN_ENABLE_ARGS, O.OVPN_RESTART_ARGS, O.OVPN_STOP_ARGS].every((a) => sudoers.includes(`/usr/bin/${a.join(' ')}`)));
+      [O.OVPN_ENABLE_ARGS, O.OVPN_RESTART_ARGS, O.OVPN_STOP_ARGS, O.OVPN_RECONNECT_ARGS].every((a) => sudoers.includes(`/usr/bin/${a.join(' ')}`)));
+    // sudoers wants an `=` in an argument escaped; the reconnect uses `-s` so it needs none.
+    ok('no sudoers argument needs escaping', !O.OVPN_RECONNECT_ARGS.some((a) => a.includes('=')));
+    // v1.73, after the first report from a vehicle: slow to come back after a network change.
+    ok('the retry backoff is capped at 15 s', s.conf.includes('connect-retry 2 15'));
+    ok('…unless the profile sets its own', !O.sanitiseOvpn('client\nremote a 1\nconnect-retry 5 60\n').conf.includes('connect-retry 2 15'));
+    ok('a reconnect is OpenVPN\'s own SIGUSR1', O.OVPN_RECONNECT_ARGS.join(' ') === `systemctl kill -s SIGUSR1 ${O.OVPN_UNIT}`);
     ok('the installer installs OpenVPN', /apt-get install -y[^\n]*\bopenvpn\b/.test(readFileSync('provisioning/install.sh', 'utf8')));
     const html = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
     ok('the setup page offers it, marked experimental', /<option value="openvpn">[^<]*experimental/.test(html) && /id="remote-openvpn"/.test(html));
@@ -3693,7 +3750,10 @@ async function main() {
 
     const N = await import('../packages/ground/src/lib/channelName');
     ok('a channel is CH03 without wiring', N.channelName(2) === 'CH03');
-    ok('with a PCA9685 it says which output', N.channelName(2, ['out 0', 'out 1', 'out 2']) === 'CH03 · out 2');
+    ok('with a PCA9685 it names the board pin', N.channelName(2, ['PCA 0', 'PCA 1', 'PCA 2']) === 'CH03 · PCA 2');
+    // v1.73: a vehicle that is not updated yet still reports "out 2" — the same pin.
+    ok('an older vehicle\'s "out 2" reads as PCA 2', N.channelName(2, ['out 0', 'out 1', 'out 2']) === 'CH03 · PCA 2' && N.outputLabel('out 15') === 'PCA 15');
+    ok('other drivers\' names are left as they are', N.outputLabel('GPIO 27') === 'GPIO 27' && N.outputLabel('') === null && N.outputLabel(undefined) === null);
     ok('a channel with no output says so', N.channelName(5, ['GPIO 17', '']) === 'CH06 · not wired');
     const { Pca9685Driver } = await import('../packages/vehicle/src/drivers/Pca9685Driver');
     const { GpioPwmDriver } = await import('../packages/vehicle/src/drivers/GpioPwmDriver');
@@ -3701,7 +3761,7 @@ async function main() {
     const { SimDriver } = await import('../packages/vehicle/src/drivers/SimDriver');
     const { VehicleCore } = await import('../packages/vehicle/src/core/VehicleCore');
     const pca = new Pca9685Driver();
-    ok('the board counts from 0', pca.outputLabel(0) === 'out 0' && pca.outputLabel(15) === 'out 15' && pca.outputLabel(16) === null);
+    ok('the board counts from 0, and the label names the board', pca.outputLabel(0) === 'PCA 0' && pca.outputLabel(15) === 'PCA 15' && pca.outputLabel(16) === null);
     const gpio = new GpioPwmDriver({ pins: [18, 27] });
     ok('GPIO names the pin, and nothing past the list', gpio.outputLabel(1) === 'GPIO 27' && gpio.outputLabel(2) === null);
     ok('SBUS counts from 1', new SbusDriver().outputLabel(0) === 'SBUS 1');
@@ -3711,6 +3771,15 @@ async function main() {
     ok('the welcome carries it', readFileSync('packages/vehicle/src/transport/wsServer.ts', 'utf8').includes('outputs: core.outputLabels(),'));
     const calib = readFileSync('packages/ground/src/components/CalibrationPanel.tsx', 'utf8');
     ok('ESC calibration names the output, and takes a second ESC as a throttle', calib.includes('channelName(channel - 1, outputs)') && calib.includes('throttleOutputsOf(profile)'));
+    // v1.73: the pin wherever a channel means hardware — a tester asked for CH0–15 to
+    // match the board; the answer is the board's own number next to every channel.
+    ok('log lines name the pin', new VehicleCore({ driver: pca }).channelText(2) === 'CH03 (PCA 2)' && new VehicleCore({ driver: new SimDriver() }).channelText(0) === 'CH01');
+    const monitor = readFileSync('packages/ground/src/components/ChannelMonitor.tsx', 'utf8');
+    ok('the channel monitor shows the pin while connected', monitor.includes('outputLabel(outputs?.[i])') && readFileSync('packages/ground/src/App.tsx', 'utf8').includes('outputs={connected ? welcome?.outputs : undefined} />'));
+    const setup73 = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    ok('the servo test picks from the vehicle\'s own channel names', setup73.includes('<select id="testCh"></select>') && setup73.includes('function renderTestChannels()') && setup73.includes("const ch = Number($('testCh').value);"));
+    ok('…which the config answer carries', readFileSync('packages/vehicle/src/transport/setupRouter.ts', 'utf8').includes('outputs: ctx.core.outputLabels() ?? null'));
+    ok('and the wiring is spelled out next to the PCA9685 fields', /id="pca-pins"[\s\S]{0,300}CH01 → pin 0/.test(setup73));
 
     // Found on the way: every key counted as control, even inside a text field.
     const { InputManager, isTypingTarget } = await import('../packages/ground/src/lib/input/inputManager');
@@ -3926,6 +3995,213 @@ async function main() {
     const wf = readFileSync('.github/workflows/desktop.yml', 'utf8');
     ok('every release gets Windows and Linux installers', wf.includes('windows-latest') && wf.includes('ubuntu-latest') && wf.includes('gh release upload'));
     ok('electron-builder never publishes on its own', pkg.scripts.build.includes('--publish never'));
+  }
+
+  // ---- v1.73: a tester's second round ----
+  {
+    const sudoers73 = readFileSync('provisioning/yonderrc.sudoers', 'utf8');
+    // -- the vehicle computer's CPU and RAM --
+    const HL = await import('../packages/vehicle/src/system/hostLoad');
+    const core = (user: number, idle: number) => ({ times: { user, nice: 0, sys: 0, idle, irq: 0 } });
+    ok('CPU needs two samples', HL.cpuBusyPercent(null, HL.cpuTimes([core(10, 90)])) === null);
+    ok('CPU is the busy share between them, over all cores',
+      HL.cpuBusyPercent(HL.cpuTimes([core(100, 900), core(100, 900)]), HL.cpuTimes([core(150, 950), core(130, 970)])) === 40);
+    ok('no time passed or a counter went back is unknown, not 0',
+      HL.cpuBusyPercent(HL.cpuTimes([core(10, 10)]), HL.cpuTimes([core(10, 10)])) === null &&
+      HL.cpuBusyPercent(HL.cpuTimes([core(20, 10)]), HL.cpuTimes([core(10, 30)])) === null);
+    ok('memory in use is total minus what the kernel can still give', HL.memUsage(4096 * 1048576, 1024 * 1048576).memPercent === 75 && HL.memUsage(4096 * 1048576, 1024 * 1048576).memUsedMb === 3072);
+    ok('an unreadable total is unknown', HL.memUsage(0, 5).memPercent === null);
+    let t = 0;
+    const sampler = new HL.HostLoadSampler({ cpus: () => [core(100 + t * 25, 900 + t * 75)], totalmem: () => 1000 * 1048576, freemem: () => 600 * 1048576 });
+    const first = sampler.sample();
+    t = 1;
+    const second = sampler.sample();
+    ok('the sampler reports from its second sample on', first.cpuPercent === null && second.cpuPercent === 25 && second.memPercent === 40 && sampler.latest === second);
+    const broken = new HL.HostLoadSampler({ cpus: () => { throw new Error('no /proc'); }, totalmem: () => { throw new Error('x'); }, freemem: () => 0 });
+    ok('a sampler that cannot read reports unknown instead of throwing', broken.sample().cpuPercent === null && broken.latest.memPercent === null);
+    const ws = readFileSync('packages/vehicle/src/transport/wsServer.ts', 'utf8');
+    ok('every status frame carries it', ws.includes('host: hostLoad.latest }));') && /hostLoad\.sample\(\);\s*system\.linkSignal\(\)/.test(ws));
+    const vp = readFileSync('packages/ground/src/components/VideoPanel.tsx', 'utf8');
+    ok('the OSD shows it on request, off by default', vp.includes("['host', 'Vehicle computer (CPU / RAM)']") && /batteryData: true, host: false/.test(vp) && vp.includes('osdFields.host && host'));
+    ok('the setup overview and the diagnostics carry it',
+      readFileSync('packages/vehicle/src/transport/setupRouter.ts', 'utf8').includes("host: ctx.hostLoad?.() ?? null, message: explainHealth(health)") &&
+      readFileSync('packages/vehicle/src/transport/diagnosticsReport.ts', 'utf8').includes('host: ctx.hostLoad?.() ?? null,'));
+
+    // -- the uplink, and keeping the tunnel on it --
+    const U = await import('../packages/vehicle/src/system/uplink');
+    ok('route addresses are little-endian hex', U.hexToIpv4('0101A8C0') === '192.168.1.1' && U.hexToIpv4('zz') === null);
+    const routeTable = [
+      'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT',
+      'wlan0\t00000000\t0101A8C0\t0003\t0\t0\t600\t00000000\t0\t0\t0',
+      'eth1\t00000000\t0108A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0',
+      // OpenVPN's redirect-gateway def1: two /1 halves, not a default route.
+      'tunyrc\t00000000\t0100080A\t0003\t0\t0\t0\t00000080\t0\t0\t0',
+      'wlan0\t0001A8C0\t00000000\t0001\t0\t0\t600\t00FFFFFF\t0\t0\t0',
+    ].join('\n');
+    const routes = U.parseDefaultRoutes(routeTable);
+    ok('only default routes, best metric first', routes.length === 2 && routes[0].dev === 'eth1' && routes[0].via === '192.168.8.1');
+    ok('a VPN\'s own routes never count as the uplink', !routes.some((r) => r.dev === 'tunyrc'));
+    ok('the key names interface, gateway and own address', U.uplinkKey(routes, (d) => (d === 'eth1' ? '192.168.8.100' : null)) === 'eth1 via 192.168.8.1 src 192.168.8.100');
+    ok('a tunnel default route is skipped', U.uplinkKey([{ dev: 'wg0', via: null, metric: 0 }, { dev: 'wlan0', via: '172.20.10.1', metric: 600 }], () => null) === 'wlan0 via 172.20.10.1');
+    ok('no way out is an empty key', U.uplinkKey([], () => null) === '' && U.parseDefaultRoutes('').length === 0);
+
+    const K = await import('../packages/vehicle/src/system/remoteKeeper');
+    let st = K.UPLINK_INITIAL;
+    const step = (key: string, now: number) => {
+      const d = K.decideUplink(st, key, now);
+      st = d.state;
+      return d.reconnect;
+    };
+    ok('the first look only records', step('wlan0 via 192.168.1.1', 100_000) === false && st.key === 'wlan0 via 192.168.1.1');
+    ok('the same uplink does nothing', step('wlan0 via 192.168.1.1', 105_000) === false);
+    ok('losing the uplink waits for the next one', step('', 110_000) === false);
+    ok('the next one reconnects', step('wlan0 via 172.20.10.1', 115_000) === true && st.reconnects === 1);
+    ok('a change inside 15 s waits…', step('wwan0 src 10.1.2.3', 120_000) === false && st.pending);
+    ok('…and goes once the gap has passed', step('wwan0 src 10.1.2.3', 131_000) === true && !st.pending && st.reconnects === 2);
+    ok('coming back to the same network after an outage reconnects too',
+      (() => { st = { key: 'a', pending: false, lastReconnectAt: 0, reconnects: 0 }; step('', 50_000); return step('a', 55_000); })());
+
+    // The keeper against a fake system: OpenVPN reconnects, others are left alone.
+    const calls: string[] = [];
+    let uplinkNow = 'wlan0 via 192.168.1.1';
+    let remoteCfg: import('../packages/vehicle/src/system/SystemManager').RemoteAccessConfig = { kind: 'openvpn' };
+    let clock = 1_000_000;
+    const keeper = new K.RemoteKeeper(
+      {
+        uplinkKey: async () => { calls.push('uplink'); return uplinkNow; },
+        openvpnReconnect: async () => { calls.push('reconnect'); return { ok: true, message: 'ok' }; },
+        wireguardReresolve: async () => { calls.push('reresolve'); return { updated: ['vpn.example.org → 203.0.113.7:51820'] }; },
+      },
+      () => remoteCfg,
+      () => {},
+      () => clock,
+    );
+    await keeper.tick();
+    uplinkNow = 'wlan0 via 172.20.10.1';
+    clock += 20_000;
+    await keeper.tick();
+    ok('the keeper reconnects OpenVPN when the uplink changes', calls.filter((c) => c === 'reconnect').length === 1 && keeper.snapshot().reconnects === 1 && /OpenVPN reconnecting/.test(keeper.snapshot().lastEvent ?? ''));
+    remoteCfg = { kind: 'tailscale' };
+    calls.length = 0;
+    await keeper.tick();
+    ok('Tailscale roams by itself — the keeper does not even look', calls.length === 0);
+    remoteCfg = { kind: 'wireguard', wireguardConf: '[Interface]\nPrivateKey = x\n[Peer]\nPublicKey = y\nEndpoint = vpn.example.org:51820\n' };
+    await keeper.tick();
+    await keeper.tick(); // inside the 30 s: not again
+    clock += 31_000;
+    await keeper.tick();
+    ok('WireGuard is checked every 30 s, not every poll', calls.filter((c) => c === 'reresolve').length === 2 && /looked up again/.test(keeper.snapshot().lastEvent ?? ''));
+    ok('the keeper runs on the vehicle, next to the status poll', ws.includes('new RemoteKeeper(system, () => config.remoteAccess)') && ws.includes('remoteKeeper.start();'));
+    ok('what it did is in the diagnostics and on the Remote access panel',
+      readFileSync('packages/vehicle/src/transport/diagnosticsReport.ts', 'utf8').includes('remoteKeeper: ctx.remoteKeeper?.() ?? null') &&
+      readFileSync('packages/vehicle/src/setup/setup.html', 'utf8').includes('renderKeeper(r.keeper, c.kind);'));
+
+    // -- WireGuard behind a DynDNS name --
+    const W = await import('../packages/vehicle/src/system/wireguard');
+    const twoPeers = '[Interface]\nPrivateKey = k=\n\n[Peer]\nPublicKey = AAA=\nEndpoint = home.example.net:51820\n\n[Peer]\nPublicKey = BBB=\nEndpoint = 203.0.113.9:51820\n# comment\n';
+    const peers = W.wireguardPeers(twoPeers);
+    ok('every peer of a file, not only the first', peers.length === 2 && peers[0].endpoint === 'home.example.net:51820' && peers[1].publicKey === 'BBB=');
+    ok('endpoints split, IPv6 in brackets too', W.splitEndpoint('[2001:db8::1]:51820')?.host === '2001:db8::1' && W.splitEndpoint('a.b:0') === null && W.splitEndpoint('nope') === null);
+    ok('an address is not a name', W.isIpLiteral('203.0.113.9') && W.isIpLiteral('2001:db8::1') && !W.isIpLiteral('home.example.net'));
+    const nowS = 1_700_000_000;
+    const hs = W.parseWgShow(`AAA=\t${nowS - 400}\nBBB=\t${nowS - 400}\n`);
+    ok('a stale peer with a name is looked up again — an address never', W.stalePeersByName(peers, hs, nowS).map((p) => p.host).join() === 'home.example.net');
+    ok('a fresh handshake needs nothing', W.stalePeersByName(peers, W.parseWgShow(`AAA=\t${nowS - 30}\n`), nowS).length === 0);
+    ok('a handshake that never happened counts as stale', W.stalePeersByName(peers, W.parseWgShow('AAA=\t0\n'), nowS).length === 1);
+    ok('a peer the interface does not know is left to wg-quick', W.stalePeersByName(peers, new Map(), nowS).length === 0);
+
+    // -- device access: Raspberry Pi Connect, SSH, VNC --
+    const D = await import('../packages/vehicle/src/system/deviceAccess');
+    const statusOut = 'Signed in: yes\nScreen sharing: allowed (0 sessions active)\nRemote shell: allowed (1 session active)\n';
+    const cs = D.parseConnectStatus(statusOut);
+    ok('rpi-connect status is read as documented', cs.answered && cs.signedIn === true && cs.shell === 'allowed' && cs.screen === 'allowed');
+    ok('signed out, screen sharing unavailable', (() => { const x = D.parseConnectStatus('✗ Signed in: no\nScreen sharing: unavailable\nRemote shell: allowed (0 sessions active)'); return x.signedIn === false && x.screen === 'unavailable'; })());
+    ok('anything else is "not answering", not a guess', !D.parseConnectStatus('Failed to connect to bus: No such file').answered);
+    ok('dpkg names the installed variant', D.parseDpkgConnect('rpi-connect-lite ii  2.5.1\n').variant === 'rpi-connect-lite' && D.parseDpkgConnect('rpi-connect-lite ii  2.5.1\n').version === '2.5.1');
+    ok('a removed package is not installed', D.parseDpkgConnect('rpi-connect rc  2.4.0\n').variant === null && D.parseDpkgConnect('').variant === null);
+    ok('the sign-in link is Raspberry Pi\'s own verify page — and nothing else',
+      D.connectSigninUrl('Complete sign in by visiting https://connect.raspberrypi.com/verify/ABCD-EFGH\n') === 'https://connect.raspberrypi.com/verify/ABCD-EFGH' &&
+      D.connectSigninUrl('visit https://evil.example/verify/ABCD') === null && D.connectSigninUrl('https://connect.raspberrypi.com.evil.example/verify/X') === null);
+    ok('apt failures are explained', /no Raspberry Pi OS package source/.test(D.explainAptFailure('E: Unable to locate package rpi-connect-lite').cause) &&
+      /automatic updates/.test(D.explainAptFailure('E: Could not get lock /var/lib/dpkg/lock-frontend').cause) &&
+      /no internet/.test(D.explainAptFailure('Temporary failure resolving \'archive.raspberrypi.com\'').cause));
+    const passwd = 'root:x:0:0:root:/root:/bin/bash\nsystemd-network:x:998:998::/:/usr/sbin/nologin\npi:x:1000:1000:,,,:/home/pi:/bin/bash\nanna:x:1001:1001:,,,:/home/anna:/bin/bash\nnobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin\n';
+    ok('the login user is the first person\'s account…', D.pickLoginUser(passwd, 0)?.name === 'pi');
+    ok('…or whoever owns the checkout', D.pickLoginUser(passwd, 1001)?.name === 'anna' && D.pickLoginUser(passwd, 1001)?.home === '/home/anna');
+    ok('system accounts never are', D.pickLoginUser('root:x:0:0:root:/root:/bin/bash\n', 0) === null);
+    const pi = D.pickLoginUser(passwd, 1000)!;
+    const ru = D.runAsUserArgs(pi, ['status']);
+    ok('the CLI runs as that user, with its bus, and no shell', ru.file === 'runuser' && ru.args.slice(0, 3).join(' ') === '-u pi --' && ru.args.includes('XDG_RUNTIME_DIR=/run/user/1000') && ru.args.includes('DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus') && ru.args.slice(-2).join(' ') === 'rpi-connect status');
+    ok('ssh commands for the name and every address, once each',
+      D.sshCommands('pi', 'yonderrc', [{ iface: 'wlan0', address: '192.168.4.1' }, { iface: 'tailscale0', address: '100.64.0.7' }, { iface: 'x', address: '192.168.4.1' }]).join('|') === 'ssh pi@yonderrc.local|ssh pi@192.168.4.1|ssh pi@100.64.0.7');
+    ok('raspi-config: 0 means on', D.parseVncGet('0\n') === true && D.parseVncGet('1') === false && D.parseVncGet('') === null);
+    ok('either SSH unit counts', D.parseUnitStates('inactive\nactive\n', 'active') === true && D.parseUnitStates('', 'active') === null);
+    ok('the full package wants a desktop', D.connectVariantFor(true) === 'rpi-connect' && D.connectVariantFor(false) === 'rpi-connect-lite' && D.connectVariantFor(null) === 'rpi-connect-lite');
+    ok('only known actions', D.isDeviceAccessAction('connect-signin') && !D.isDeviceAccessAction('rm -rf') && !D.isDeviceAccessAction(undefined));
+    ok('sudoers lists exactly the device-access commands',
+      [D.SSH_ENABLE_ARGS, D.APT_UPDATE_ARGS, D.connectInstallArgs('rpi-connect-lite'), D.connectInstallArgs('rpi-connect')].every((a) => sudoers73.includes(`/usr/bin/${a.join(' ')}`)) && sudoers73.includes('/usr/bin/loginctl enable-linger *'));
+    const router = readFileSync('packages/vehicle/src/transport/setupRouter.ts', 'utf8');
+    const getHandler = router.slice(router.indexOf("url === '/api/device-access' && method === 'GET'"), router.indexOf("url === '/api/device-access' && method === 'POST'"));
+    ok('the status never carries a sign-in link', getHandler.length > 0 && !getHandler.includes('signin'));
+    ok('installing is refused while armed', router.includes("action === 'connect-install' && refusedWhileArmed(ctx, res, 'installing software')"));
+    const setupD = readFileSync('packages/vehicle/src/setup/setup.html', 'utf8');
+    const fnSrc73 = (name: string) => {
+      const start = setupD.indexOf(`function ${name}(`);
+      let depth = 0;
+      for (let i = setupD.indexOf('{', start); i < setupD.length; i++) {
+        if (setupD[i] === '{') depth++;
+        else if (setupD[i] === '}' && --depth === 0) return setupD.slice(start, i + 1);
+      }
+      return '';
+    };
+    const esc73 = new Function(`${fnSrc73('esc')}; return esc;`)() as (v: unknown) => string;
+    void esc73;
+    const connectLink = new Function(`${fnSrc73('esc')} ${fnSrc73('connectLink')}; return connectLink;`)() as (u: unknown) => string;
+    ok('the page links only a verify URL', connectLink('https://connect.raspberrypi.com/verify/ABCD-EFGH').includes('href="https://connect.raspberrypi.com/verify/ABCD-EFGH"') &&
+      !connectLink('javascript:alert(1)').includes('href') && !connectLink('https://connect.raspberrypi.com/verify/X" onmouseover="x').includes('href'));
+    ok('a command is a readonly field, selected on a tap (no clipboard API over HTTP)', setupD.includes('<input class="cmd mono" readonly value="${esc(cmd)}" onclick="this.select()" />'));
+    ok('an open page warns that anyone can sign the vehicle in', setupD.includes("$('connect-open').style.display = d.open ? '' : 'none';") && router.includes('open: !ctx.config.apiSecret'));
+    ok('no terminal in the page', !/xterm|ttyd|\/api\/term/i.test(setupD));
+
+    // The whole Connect path in the simulator: install, turn on, sign in.
+    const { SimSystem } = await import('../packages/vehicle/src/system/SimSystem');
+    const simD = new SimSystem();
+    ok('the sim starts without Connect, with SSH', (await simD.deviceAccess()).connect.installed === null && (await simD.deviceAccess()).ssh.active === true);
+    ok('sign-in before install is refused', !(await simD.deviceAccessAction('connect-signin')).ok);
+    await simD.deviceAccessAction('connect-install');
+    ok('install puts the Lite variant on a Lite image', (await simD.deviceAccess()).connect.installed === 'rpi-connect-lite');
+    const signin = await simD.deviceAccessAction('connect-signin');
+    ok('sign-in hands back the verify link', signin.ok && D.connectSigninUrl(signin.signinUrl ?? '') !== null);
+    const after = await simD.deviceAccess();
+    ok('…and the status shows it on, without the link', after.connect.running && !JSON.stringify(after).includes('verify/'));
+    ok('VNC needs a desktop', !(await simD.deviceAccessAction('vnc-on')).ok && (await simD.deviceAccess()).vnc.desktop === false);
+    ok('the sim reconnects OpenVPN only when it runs', !(await simD.openvpnReconnect()).ok);
+
+    // -- two setups, named for where they live --
+    const app = readFileSync('packages/ground/src/App.tsx', 'utf8');
+    ok('the ground app\'s toggle says Ground setup', app.includes('Ground setup\n          </button>') && !/>Setup<\/button>/.test(app));
+    ok('…and explains which setup it is', /className="setup-lede"[\s\S]{0,500}Vehicle setup/.test(app));
+    ok('the link to the vehicle says Vehicle setup', readFileSync('packages/ground/src/components/StatusStrip.tsx', 'utf8').includes('Vehicle setup ↗'));
+    // Every "Setup ›" path in the apps and the docs names WHICH setup — a bare one was
+    // exactly the confusion. (CHANGELOG history and CLAUDE.md are not user-facing.)
+    const bare: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = `${dir}/${e.name}`;
+        if (e.isDirectory()) { if (e.name !== 'node_modules') walk(p); continue; }
+        if (!/\.(ts|tsx|html|md|sh)$/.test(e.name)) continue;
+        readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
+          if (/(?<!Ground |Vehicle |ground |vehicle )Setup [›>]/.test(line)) bare.push(`${p}:${i + 1}`);
+        });
+      }
+    };
+    for (const d of ['packages/ground/src', 'packages/vehicle/src', 'docs', 'provisioning']) walk(d);
+    for (const f of ['README.md', '.github/ISSUE_TEMPLATE/bug_report.md']) {
+      readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+        if (/(?<!Ground |Vehicle |ground |vehicle )Setup [›>]/.test(line)) bare.push(`${f}:${i + 1}`);
+      });
+    }
+    ok('every "Setup ›" says which setup', bare.length === 0, bare.slice(0, 8).join(', '));
   }
 
   // ---- report ----
