@@ -98,7 +98,8 @@ for rumble. Everything else is the same as in the browser.
   With Smart App Control on, Windows blocks them outright; then use the browser, or start
   it from the source (below).
 - **Linux**: `chmod +x YonderRC-*.AppImage`, then start it. Ubuntu 22.04 and newer need
-  `libfuse2` (`sudo apt install libfuse2`; on 24.04 `libfuse2t64`). The AppImage is built
+  `libfuse2` (`sudo apt install libfuse2`; on 24.04 `libfuse2t64`), Fedora needs
+  `fuse-libs` (`sudo dnf install fuse-libs`). The AppImage is built
   automatically and **not yet tested on a real Linux desktop** — if it does not start,
   please open an issue.
 - **From the source**: with `npm run dev` running, start `npm run dev:desktop` in a second
