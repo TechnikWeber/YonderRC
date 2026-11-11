@@ -11,6 +11,15 @@
   <a href="LICENSE"><img alt="License: PolyForm NC 1.0.0 + no military" src="https://img.shields.io/badge/license-PolyForm%20NC%201.0.0%20%2B%20no%20military-lightgrey"></a>
 </p>
 
+<p>
+  <a href="https://github.com/TechnikWeber/YonderRC/releases/latest"><b>Download</b></a> &nbsp;·&nbsp;
+  <a href="docs/QUICKSTART.md"><b>Quick start</b></a> &nbsp;·&nbsp;
+  <a href="#try-it-in-the-simulator"><b>Simulator</b></a> &nbsp;·&nbsp;
+  <a href="https://technikweber.github.io/2026/yonderrc-fernsteuerung-ueber-lte/"><b>Blog post (German)</b></a> &nbsp;·&nbsp;
+  <a href="https://github.com/TechnikWeber/YonderGate"><b>YonderGate</b></a> &nbsp;·&nbsp;
+  <a href="https://github.com/TechnikWeber/YonderRC/releases"><b>Releases</b></a>
+</p>
+
 Remote control over the internet for RC cars, boats, planes and drones — with live video,
 telemetry and settings in the browser. A Raspberry Pi in the vehicle, a browser, phone or
 desktop app on the ground. Built for LTE.
