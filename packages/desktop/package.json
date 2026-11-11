@@ -20,6 +20,7 @@
     "electron-builder": "^26.18.0",
     "typescript": "^5.6.3"
   },
+  "homepage": "https://github.com/TechnikWeber/YonderRC",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Philipp Weber"
 }

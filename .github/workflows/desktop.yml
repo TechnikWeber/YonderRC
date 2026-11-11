@@ -1,6 +1,12 @@
-# Desktop installers for every release: Windows (setup + portable) and a Linux AppImage,
-# built on the matching OS and attached to the release that triggered the run.
-# Unsigned — see the README's "Desktop app" section for what that means on Windows.
+# Desktop installers for every release, each built on its own OS and CPU so the native
+# controller module (@kmamal/sdl) is the right one:
+#   Windows x64  — setup + portable (Windows on ARM runs it through its x64 emulation;
+#                  @kmamal/sdl has no win32-arm64 build)
+#   Linux x64    — AppImage + .deb
+#   Linux arm64  — AppImage + .deb (Raspberry Pi 4/5 with a desktop, ARM laptops)
+# plus SHA256SUMS over all of them. Unsigned — see the README's "Desktop app" section.
+#
+# Run by hand without a tag to build only (the files land under the run's artifacts).
 name: Desktop installers
 
 on:
@@ -9,37 +15,61 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to build and attach to (e.g. v1.72.3)
-        required: true
+        description: Release tag to build and attach to (e.g. v1.72.3); empty = build only
+        required: false
 
 permissions:
   contents: write
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ env.TAG || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install
       - run: npm run build:desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            packages/desktop/release/YonderRC-*-windows-*.exe
+            packages/desktop/release/YonderRC-*.AppImage
+            packages/desktop/release/YonderRC-*.deb
+
+  release:
+    needs: build
+    if: ${{ always() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum YonderRC-* > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: dist/SHA256SUMS
       - name: Attach to the release
-        shell: bash
+        if: ${{ env.TAG != '' }}
+        working-directory: dist
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          cd packages/desktop/release
-          shopt -s nullglob
-          files=(YonderRC-*-windows-*.exe YonderRC-*.AppImage)
-          ls -la "${files[@]}"
-          gh release upload "$TAG" "${files[@]}" --clobber
+        run: gh release upload "$TAG" YonderRC-* SHA256SUMS --clobber -R "$GITHUB_REPOSITORY"

@@ -23,8 +23,19 @@ module.exports = {
   win: { target: ['nsis', 'portable'] },
   portable: { artifactName: 'YonderRC-${version}-windows-portable.${ext}' },
   nsis: { artifactName: 'YonderRC-${version}-windows-setup.${ext}' },
-  // AppImage only: one file that runs on any desktop Linux, no package to maintain.
+  // AppImage runs on any desktop Linux; the .deb is for Debian, Ubuntu and Raspberry Pi OS
+  // (apt install ./file.deb puts it in the menu). Both for x64 and arm64, each built on its
+  // own architecture so @kmamal/sdl brings the matching native binary.
   // executableName: electron-builder 26 no longer turns the package name
   // "@yonderrc/desktop" into a file name on its own.
-  linux: { target: ['AppImage'], category: 'Utility', executableName: 'yonderrc' },
+  linux: {
+    // The .deb only in CI: electron-builder's bundled fpm needs libcrypt.so.1, which a
+    // stock Fedora does not have, and a local build should keep working there.
+    target: process.env.CI ? ['AppImage', 'deb'] : ['AppImage'],
+    category: 'Utility',
+    executableName: 'yonderrc',
+    // A .deb needs a maintainer; the package.json author has no e-mail address.
+    maintainer: 'TechnikWeber <https://github.com/TechnikWeber/YonderRC>',
+  },
+  deb: { packageName: 'yonderrc' },
 };
