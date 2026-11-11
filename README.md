@@ -2,7 +2,9 @@
 
 <p>
   <img alt="Status: stable" src="https://img.shields.io/badge/status-stable-brightgreen">
-  <a href="https://github.com/TechnikWeber/YonderRC/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/TechnikWeber/YonderRC?include_prereleases&label=release"></a>
+  <a href="https://github.com/TechnikWeber/YonderRC/releases/latest"><img alt="Download" src="https://img.shields.io/github/v/release/TechnikWeber/YonderRC?include_prereleases&label=download&color=2ea44f"></a>
+  <a href="https://github.com/TechnikWeber/YonderRC/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/TechnikWeber/YonderRC/total?color=blue"></a>
+  <a href="https://github.com/TechnikWeber/YonderRC/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/TechnikWeber/YonderRC?style=flat&color=yellow"></a>
   <a href="https://github.com/TechnikWeber/YonderRC/actions/workflows/ci.yml"><img alt="tests" src="https://img.shields.io/github/actions/workflow/status/TechnikWeber/YonderRC/ci.yml?branch=main&label=tests"></a>
   <img alt="Platform: Raspberry Pi | browser | Windows | Linux" src="https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20browser%20%7C%20Windows%20%7C%20Linux-blue">
   <img alt="UI: English" src="https://img.shields.io/badge/UI-English-informational">
@@ -16,6 +18,8 @@ desktop app on the ground. Built for LTE.
 Everything also runs **in a simulator, with no hardware**.
 
 ![Ground station while driving: FPV video with a full OSD — GPS fix and home compass with distance, odometer and speed top left, battery bar top right, voltage/current/mAh bottom right, link health score top centre](docs/screenshots/Overview_OSD.png?v=6)
+
+**Contents:** [What it does](#what-it-does) · [Get started](#get-started) · [Try it in the simulator](#try-it-in-the-simulator) · [Desktop app](#desktop-app) · [How this code was written](#how-this-code-was-written) · [Safety & legal](#safety--legal) · [License](#license)
 
 ## What it does
 
