@@ -4,7 +4,6 @@
   <img alt="Status: stable" src="https://img.shields.io/badge/status-stable-brightgreen">
   <a href="https://github.com/TechnikWeber/YonderRC/releases/latest"><img alt="Download" src="https://img.shields.io/github/v/release/TechnikWeber/YonderRC?include_prereleases&label=download&color=2ea44f"></a>
   <a href="https://github.com/TechnikWeber/YonderRC/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/TechnikWeber/YonderRC/total?color=blue"></a>
-  <a href="https://github.com/TechnikWeber/YonderRC/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/TechnikWeber/YonderRC?style=flat&color=yellow"></a>
   <a href="https://github.com/TechnikWeber/YonderRC/actions/workflows/ci.yml"><img alt="tests" src="https://img.shields.io/github/actions/workflow/status/TechnikWeber/YonderRC/ci.yml?branch=main&label=tests"></a>
   <img alt="Platform: Raspberry Pi | browser | Windows | Linux" src="https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20browser%20%7C%20Windows%20%7C%20Linux-blue">
   <img alt="UI: English" src="https://img.shields.io/badge/UI-English-informational">
