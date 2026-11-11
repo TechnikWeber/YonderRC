@@ -3,7 +3,9 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
-## Unreleased
+## v1.73.1
+*Maintenance: up-to-date Electron and Vite, which closes every open security advisory.*
+
 
 - **Dependencies updated for security fixes.** Electron 33 → 45 (33 no longer got
   security updates; GitHub listed 30 open advisories against it and Vite), Vite 5 → 8
