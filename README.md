@@ -96,12 +96,19 @@ controllers natively (SDL): worth it when the browser does not know your control
 for rumble. Everything else is the same as in the browser.
 
 - **Download** from the [latest release](https://github.com/TechnikWeber/YonderRC/releases/latest):
-  `…-windows-setup.exe` (installs), `…-windows-portable.exe` (runs without installing) or
-  `…-linux-x86_64.AppImage`.
+
+  | System | File |
+  | --- | --- |
+  | Windows (x64, and Windows on ARM through its emulation) | `…-windows-setup.exe` (installs) or `…-windows-portable.exe` (runs without installing) |
+  | Linux x64 | `…-linux-x86_64.AppImage`, or `…-linux-amd64.deb` for Debian/Ubuntu |
+  | Linux ARM64 (Raspberry Pi 4/5 with a desktop, ARM laptops) | `…-linux-arm64.AppImage`, or `…-linux-arm64.deb` for Raspberry Pi OS/Debian/Ubuntu |
+
+  `SHA256SUMS` lists the checksums (`sha256sum -c SHA256SUMS --ignore-missing`).
 - **Windows**: the files are **not signed**. SmartScreen warns — *More info › Run anyway*.
   With Smart App Control on, Windows blocks them outright; then use the browser, or start
   it from the source (below).
-- **Linux**: `chmod +x YonderRC-*.AppImage`, then start it. Ubuntu 22.04 and newer need
+- **Linux**: `.deb` — `sudo apt install ./YonderRC-*.deb`, then *YonderRC* is in the menu.
+  AppImage — `chmod +x YonderRC-*.AppImage`, then start it. Ubuntu 22.04 and newer need
   `libfuse2` (`sudo apt install libfuse2`; on 24.04 `libfuse2t64`), Fedora needs
   `fuse-libs` (`sudo dnf install fuse-libs`). The AppImage is built
   automatically and **not yet tested on a real Linux desktop** — if it does not start,

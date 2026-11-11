@@ -28,9 +28,14 @@ npm run dev:desktop
 ## Build installers
 
 Every published release gets them automatically: `.github/workflows/desktop.yml` builds
-on Windows and Linux and attaches `YonderRC-<version>-windows-setup.exe`,
-`…-windows-portable.exe` and `…-linux-x86_64.AppImage`. Unsigned. To build by hand (each
-OS builds its own; an AppImage needs Linux):
+on Windows x64, Linux x64 and Linux ARM64 — each natively, so `@kmamal/sdl` brings the
+matching binary (it has none for Windows on ARM, which runs the x64 build) — and attaches
+`YonderRC-<version>-windows-setup.exe`, `…-windows-portable.exe`, `…-linux-x86_64.AppImage`,
+`…-linux-amd64.deb`, `…-linux-arm64.AppImage`, `…-linux-arm64.deb` and `SHA256SUMS`.
+Unsigned. Started by hand without a tag it only builds (files under the run's artifacts).
+To build by hand (each OS builds its own; an AppImage needs Linux; the `.deb` is only
+built when `CI` is set, because electron-builder's fpm needs `libcrypt.so.1`, which
+Fedora lacks — `sudo dnf install libxcrypt-compat` adds it):
 
 ```bash
 npm run build:desktop

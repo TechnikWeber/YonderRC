@@ -3,6 +3,13 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## Unreleased
+
+- **More desktop downloads**: Linux ARM64 (Raspberry Pi 4/5 with a desktop, ARM laptops)
+  as AppImage and `.deb`, a `.deb` for Linux x64 too, and `SHA256SUMS` over every file.
+  Each one is built on its own architecture, so the native controller support is the
+  right one.
+
 ## v1.73.1
 *Maintenance: up-to-date Electron and Vite, which closes every open security advisory.*
 
