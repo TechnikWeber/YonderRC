@@ -3,7 +3,8 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
-## Unreleased
+## v1.73.2
+*More desktop downloads: Linux ARM64 and .deb packages.*
 
 - **More desktop downloads**: Linux ARM64 (Raspberry Pi 4/5 with a desktop, ARM laptops)
   as AppImage and `.deb`, a `.deb` for Linux x64 too, and `SHA256SUMS` over every file.
