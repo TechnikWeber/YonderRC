@@ -3,6 +3,15 @@
 All notable changes to YonderRC. Each release is the full project; every zip is
 self-contained.
 
+## Unreleased
+
+- **Dependencies updated for security fixes.** Electron 33 → 45 (33 no longer got
+  security updates; GitHub listed 30 open advisories against it and Vite), Vite 5 → 8
+  with `@vitejs/plugin-react` 6, electron-builder 25 → 26. The Linux executable inside
+  the AppImage is now called `yonderrc` (electron-builder 26 no longer derives a file name
+  from `@yonderrc/desktop`). Vite 8 needs **Node.js 20.19 or newer**; the Pi installer
+  already sets up Node 22.
+
 ## v1.73.0
 *A tester's second round: two setups that say which is which, a Core setup tab, the
 board's own pin next to every channel, five speed steps, the vehicle's CPU and RAM in the

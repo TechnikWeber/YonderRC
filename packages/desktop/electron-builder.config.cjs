@@ -24,5 +24,7 @@ module.exports = {
   portable: { artifactName: 'YonderRC-${version}-windows-portable.${ext}' },
   nsis: { artifactName: 'YonderRC-${version}-windows-setup.${ext}' },
   // AppImage only: one file that runs on any desktop Linux, no package to maintain.
-  linux: { target: ['AppImage'], category: 'Utility' },
+  // executableName: electron-builder 26 no longer turns the package name
+  // "@yonderrc/desktop" into a file name on its own.
+  linux: { target: ['AppImage'], category: 'Utility', executableName: 'yonderrc' },
 };

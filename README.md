@@ -60,14 +60,14 @@ Then open the Vehicle setup at `http://<pi-ip>:8080/setup`.
 
 ## Try it in the simulator
 
-Runs on Windows, Linux and macOS. You need [Node.js](https://nodejs.org) 20 or newer
+Runs on Windows, Linux and macOS. You need [Node.js](https://nodejs.org) 20.19 or newer
 (npm comes with it) and [Git](https://git-scm.com); for video also `ffmpeg`. No compiler:
 the hardware drivers are optional and are skipped on a PC.
 
 | System | Install once |
 | --- | --- |
 | Windows | `winget install OpenJS.NodeJS.LTS Git.Git Gyan.FFmpeg`, then open a new terminal |
-| Debian / Ubuntu | `sudo apt install git ffmpeg`, Node.js from [nodejs.org](https://nodejs.org/en/download) (the system package is often older than 20) |
+| Debian / Ubuntu | `sudo apt install git ffmpeg`, Node.js from [nodejs.org](https://nodejs.org/en/download) (the system package is often older than 20.19) |
 | Fedora | `sudo dnf install nodejs git ffmpeg-free openh264` |
 | macOS | `brew install node git ffmpeg` |
 
